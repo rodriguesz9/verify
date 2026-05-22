@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #04080C;
+  color: #CDE8F0;
+  font-family: "Syne", sans-serif;
+  overflow-x: hidden;
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: #0A1520; }
+::-webkit-scrollbar-thumb { background: #1A3A50; border-radius: 2px; }
+
+textarea:focus, input:focus { outline: none; }
+
+/* ── Animations ─────────────────────────────────────────────────────────── */
+@keyframes scanline {
+  0%   { top: -8%;  opacity: 0 }
+  10%  { opacity: .6 }
+  90%  { opacity: .4 }
+  100% { top: 108%; opacity: 0 }
+}
+@keyframes blinkDot   { 0%,100%{ opacity:1 } 50%{ opacity:.2 } }
+@keyframes floatUp    { from{ opacity:0; transform:translateY(20px) } to{ opacity:1; transform:translateY(0) } }
+@keyframes revealW    { from{ width:0 } to{ width:var(--w) } }
+@keyframes spinCW     { from{ transform:rotate(0deg) }   to{ transform:rotate(360deg) } }
+@keyframes spinCCW    { from{ transform:rotate(0deg) }   to{ transform:rotate(-360deg) } }
+@keyframes dashDraw   { from{ stroke-dashoffset:var(--full) } to{ stroke-dashoffset:var(--offset) } }
+@keyframes fadeIn     { from{ opacity:0 } to{ opacity:1 } }
+@keyframes gridPulse  { 0%,100%{ opacity:.03 } 50%{ opacity:.08 } }
+
+.anim-scanline  { animation: scanline  7s linear infinite; }
+.anim-blink     { animation: blinkDot  1s ease-in-out infinite; }
+.anim-spin-cw   { animation: spinCW    1.2s linear infinite; }
+.anim-spin-ccw  { animation: spinCCW   1.8s linear infinite; }
+.anim-dash      { animation: dashDraw  1.6s .3s cubic-bezier(.22,1,.36,1) forwards; }
+
+.fade-1  { animation: floatUp .55s .00s cubic-bezier(.22,1,.36,1) both; }
+.fade-2  { animation: floatUp .55s .10s cubic-bezier(.22,1,.36,1) both; }
+.fade-3  { animation: floatUp .55s .20s cubic-bezier(.22,1,.36,1) both; }
+.fade-4  { animation: floatUp .55s .30s cubic-bezier(.22,1,.36,1) both; }
+.fade-5  { animation: floatUp .55s .40s cubic-bezier(.22,1,.36,1) both; }
+.fade-6  { animation: floatUp .55s .50s cubic-bezier(.22,1,.36,1) both; }
+.fade-7  { animation: floatUp .55s .60s cubic-bezier(.22,1,.36,1) both; }
+
+.bar-reveal {
+  width: 0;
+  animation: revealW .9s var(--delay, 0s) cubic-bezier(.22,1,.36,1) forwards;
+}
