@@ -1,99 +1,40 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import UsageBar from "./UsageBar";
-
-const HexLogo = () => (
-  <svg width="26" height="26" viewBox="0 0 28 28">
-    <polygon points="14,2 26,8 26,20 14,26 2,20 2,8" fill="none" stroke="#00D4FF" strokeWidth="1.5"/>
-    <polygon points="14,7 21,11 21,17 14,21 7,17 7,11" fill="none" stroke="#00D4FF" strokeWidth="1" opacity=".45"/>
-    <circle cx="14" cy="14" r="3" fill="#00D4FF"/>
-  </svg>
-);
 
 export default function Navbar() {
-  const { pathname } = useLocation();
   const { user, signOut } = useAuth();
-  const navigate = useNavigate();
-
-  const authedLinks = [
-    { to: "/app",          label: "ANÁLISE"   },
-    { to: "/dashboard", label: "DASHBOARD" },
-    { to: "/history",   label: "HISTÓRICO" },
-    { to: "/plans",     label: "PLANOS"    },
-    { to: "/mission",   label: "MISSÃO"    },
-    { to: "/suggestions", label: "SUGESTÕES" },
-  ];
-
+  
   return (
-    <nav className="sticky top-0 z-50 border-b border-border backdrop-blur-md"
-      style={{ background: "rgba(4,8,12,0.92)" }}>
-      <div className="max-w-6xl mx-auto px-5 flex items-center justify-between h-14 gap-4">
-        {/* brand */}
-        <Link to="/" className="flex items-center gap-2 no-underline shrink-0">
-          <HexLogo/>
-          <span className="font-syne font-extrabold text-base tracking-widest text-text">
-            VERIF<span className="text-cyan">AI</span>
-          </span>
-        </Link>
-
-        {/* links */}
-        {user && (
-          <div className="flex items-center gap-1 overflow-x-auto">
-            {authedLinks.map(({ to, label }) => {
-              const active = pathname === to;
-              return (
-                <Link key={to} to={to}
-                  className="font-mono text-[10px] tracking-widest px-3.5 py-1.5 rounded-md transition-all whitespace-nowrap"
-                  style={{
-                    color: active ? "#00D4FF" : "#3A6070",
-                    background: active ? "rgba(0,212,255,.1)" : "transparent",
-                    border: active ? "1px solid rgba(0,212,255,.25)" : "1px solid transparent",
-                    textDecoration: "none",
-                  }}>
-                  {label}
-                </Link>
-              );
-            })}
+    <nav className="fixed top-0 left-0 right-0 z-[100] border-b border-[#132435] backdrop-blur-xl" style={{ backgroundColor: "rgba(4, 8, 12, 0.8)" }}>
+      <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-20">
+        <div className="flex items-center" style={{ gap: "3rem" }}>
+          <Link to="/" className="flex items-center gap-3 no-underline group translate-y-[-2px]">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center font-syne font-black text-sm group-hover:rotate-12 transition-transform shadow-[0_0_15px_#00D4FF66]"
+                 style={{ backgroundColor: "#00D4FF", color: "#04080C" }}>V</div>
+            <span className="font-syne font-black text-xl tracking-[5px] text-[#CDE8F0]">VERIFY</span>
+          </Link>
+          
+          <div className="hidden md:flex items-center" style={{ gap: "2.5rem" }}>
+            <Link to="/app" className="font-mono text-[11px] tracking-[3px] text-[#3A6070] no-underline hover:text-[#00D4FF] transition-colors uppercase">Verificar</Link>
+            <Link to="/dashboard" className="font-mono text-[11px] tracking-[3px] text-[#3A6070] no-underline hover:text-[#00D4FF] transition-colors uppercase">Meu Painel</Link>
+            <Link to="/history" className="font-mono text-[11px] tracking-[3px] text-[#3A6070] no-underline hover:text-[#00D4FF] transition-colors uppercase">Histórico</Link>
+            <Link to="/plans" className="font-mono text-[11px] tracking-[3px] text-[#3A6070] no-underline hover:text-[#00D4FF] transition-colors uppercase">Planos</Link>
           </div>
-        )}
+        </div>
 
-        {/* right */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-6">
           {user ? (
-            <>
-              <UsageBar/>
-              <div className="flex items-center gap-2">
-                {user.avatar_url
-                  ? <img src={user.avatar_url} alt="" className="w-7 h-7 rounded-full border border-border"/>
-                  : (
-                    <div className="w-7 h-7 rounded-full flex items-center justify-center font-syne font-bold text-xs"
-                      style={{ background: "rgba(0,212,255,.15)", color: "#00D4FF", border: "1px solid rgba(0,212,255,.3)" }}>
-                      {user.name?.[0]?.toUpperCase()}
-                    </div>
-                  )}
-                <span className="font-mono text-[10px]" style={{ color: "#3A6070" }}>
-                  {user.name?.split(" ")[0]}
-                </span>
-                <button onClick={signOut}
-                  className="font-mono text-[10px] tracking-widest px-3 py-1.5 rounded-md transition-all"
-                  style={{ background: "transparent", border: "1px solid #132435", color: "#3A6070", cursor: "pointer" }}>
-                  SAIR
-                </button>
+            <div className="flex items-center gap-4 pl-6 border-l border-[#132435]">
+              <div className="text-right hidden sm:block">
+                <div className="font-mono text-[11px] text-[#CDE8F0] font-bold leading-none">{user.name}</div>
+                <div className="font-mono text-[9px] text-[#00FF87] tracking-widest uppercase mt-1">Conta Ativa</div>
               </div>
-            </>
-          ) : (
-            <div className="flex gap-2">
-              <Link to="/login"
-                className="font-mono text-[10px] tracking-widest px-4 py-1.5 rounded-md"
-                style={{ color: "#3A6070", border: "1px solid #132435", textDecoration: "none" }}>
-                ENTRAR
-              </Link>
-              <Link to="/register"
-                className="font-mono text-[10px] tracking-widest px-4 py-1.5 rounded-md"
-                style={{ background: "linear-gradient(135deg,#00D4FF,#00FF87)", color: "#04080C", textDecoration: "none", fontWeight: 700 }}>
-                CADASTRAR
-              </Link>
+              <button onClick={signOut} className="font-mono text-[10px] px-4 py-1.5 rounded-full hover:bg-[#FF3B5C22] transition-all uppercase font-bold"
+                      style={{ color: "#FF3B5C", backgroundColor: "rgba(255, 59, 92, 0.07)", border: "1px solid rgba(255, 59, 92, 0.2)" }}>Sair</button>
             </div>
+          ) : (
+            <Link to="/login" className="font-mono text-[11px] tracking-[3px] px-8 py-2.5 rounded-full font-bold no-underline shadow-[0_0_20px_rgba(0,212,255,0.27)]"
+                  style={{ backgroundColor: "#00D4FF", color: "#04080C" }}>ENTRAR</Link>
           )}
         </div>
       </div>

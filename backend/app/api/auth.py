@@ -2,59 +2,42 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from datetime import datetime
 
 from app.core.database import get_db
 from app.core.security import (
-    hash_password, verify_password,
     create_access_token, create_refresh_token, decode_token,
-    sanitize, validate_password_strength, validate_email,
+    hash_password, verify_password,
+    sanitize, validate_email, validate_password_strength
 )
 from app.core.auth import get_current_user, verify_google_id_token
-from app.models.user import User, Plan, OAuthProvider
+from app.models.user import User, UserTier
 
 router = APIRouter(prefix="/auth")
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
 
 class RegisterBody(BaseModel):
-    name:     str
     email:    str
     password: str
-
-    @field_validator("name")
-    @classmethod
-    def clean_name(cls, v: str) -> str:
-        v = sanitize(v.strip())
-        if len(v) < 2 or len(v) > 100:
-            raise ValueError("Nome deve ter 2–100 caracteres")
-        return v
+    name:     str
 
     @field_validator("email")
-    @classmethod
-    def clean_email(cls, v: str) -> str:
-        v = sanitize(v.strip().lower())
-        if not validate_email(v):
-            raise ValueError("E-mail inválido")
-        return v
+    def email_valid(cls, v):
+        if not validate_email(v): raise ValueError("E-mail parece inválido.")
+        return v.lower()
 
     @field_validator("password")
-    @classmethod
-    def check_password(cls, v: str) -> str:
-        if not validate_password_strength(v):
-            raise ValueError(
-                "Senha deve ter no mínimo 8 caracteres, "
-                "uma maiúscula, uma minúscula e um número."
-            )
+    def password_valid(cls, v):
+        # We simplify for seniors but keep a minimum
+        if len(v) < 6:
+            raise ValueError("A senha deve ter pelo menos 6 letras ou números.")
         return v
 
 
 class LoginBody(BaseModel):
     email:    str
     password: str
-
-
-class RefreshBody(BaseModel):
-    refresh_token: str
 
 
 class GoogleBody(BaseModel):
@@ -72,29 +55,33 @@ def _user_to_dict(user: User) -> dict:
         "id":         str(user.id),
         "email":      user.email,
         "name":       user.name,
-        "plan":       user.plan.value,
+        "tier":       user.tier.value,
         "avatar_url": user.avatar_url,
-        "oauth":      user.oauth_provider.value != "local",
     }
 
 
-# ── Register ──────────────────────────────────────────────────────────────────
-@router.post("/register", response_model=TokenOut, status_code=201)
+# ── Auth Endpoints ─────────────────────────────────────────────────────────────
+
+@router.post("/register", response_model=TokenOut)
 async def register(body: RegisterBody, db: AsyncSession = Depends(get_db)):
-    existing = await db.execute(select(User).where(User.email == body.email))
-    if existing.scalar_one_or_none():
-        raise HTTPException(status_code=409, detail="E-mail já cadastrado.")
+    # Check email
+    res = await db.execute(select(User).where(User.email == body.email))
+    if res.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Este e-mail já está sendo usado.")
 
-    user = User(
-        email=body.email,
-        name=body.name,
-        hashed_password=hash_password(body.password),
-        oauth_provider=OAuthProvider.LOCAL,
-        is_verified=False,
-    )
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
+    try:
+        user = User(
+            email=body.email,
+            hashed_password=hash_password(body.password),
+            name=sanitize(body.name),
+            tier=UserTier.STANDARD
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+    except Exception as e:
+        print(f"Error creating user: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao salvar no banco de dados. Tente novamente.")
 
     return TokenOut(
         access_token=create_access_token(str(user.id)),
@@ -102,28 +89,19 @@ async def register(body: RegisterBody, db: AsyncSession = Depends(get_db)):
     )
 
 
-# ── Login ─────────────────────────────────────────────────────────────────────
 @router.post("/login", response_model=TokenOut)
-async def login(body: LoginBody, request: Request, db: AsyncSession = Depends(get_db)):
-    # rate limit is applied at main.py via slowapi (5/15min per IP)
-    email = sanitize(body.email.strip().lower())
-    result = await db.execute(select(User).where(User.email == email))
-    user = result.scalar_one_or_none()
+async def login(body: LoginBody, db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(User).where(User.email == body.email.lower()))
+    user = res.scalar_one_or_none()
+    
+    if not user or not user.hashed_password:
+        raise HTTPException(status_code=401, detail="E-mail ou senha não encontrados.")
+    
+    if not verify_password(body.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Senha incorreta.")
 
-    # Constant-time comparison — always hash even if user not found
-    dummy_hash = "$argon2id$v=19$m=65536,t=3,p=4$dummysalt1234567$dummyhash000000000000000000000000000"
-    pwd_ok = verify_password(body.password, user.hashed_password if user else dummy_hash)
-
-    if not user or not user.is_active or not pwd_ok:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="E-mail ou senha incorretos.",
-        )
-    if user.oauth_provider != OAuthProvider.LOCAL:
-        raise HTTPException(
-            status_code=400,
-            detail="Esta conta usa login social. Use 'Entrar com Google'.",
-        )
+    user.last_login = datetime.utcnow()
+    await db.commit()
 
     return TokenOut(
         access_token=create_access_token(str(user.id)),
@@ -131,41 +109,42 @@ async def login(body: LoginBody, request: Request, db: AsyncSession = Depends(ge
     )
 
 
-# ── Google OAuth ──────────────────────────────────────────────────────────────
 @router.post("/google", response_model=TokenOut)
 async def google_login(body: GoogleBody, db: AsyncSession = Depends(get_db)):
-    info = verify_google_id_token(body.id_token)
+    try:
+        info = verify_google_id_token(body.id_token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Falha na verificação com o Google.")
+        
     google_sub = info["sub"]
     email      = info.get("email", "").lower()
     name       = sanitize(info.get("name", email.split("@")[0])[:100])
     avatar     = info.get("picture")
 
-    # Try find by oauth_id first, then by email
-    result = await db.execute(
-        select(User).where(User.oauth_provider == OAuthProvider.GOOGLE, User.oauth_id == google_sub)
-    )
+    if not email:
+        raise HTTPException(status_code=400, detail="O Google não forneceu um e-mail.")
+
+    result = await db.execute(select(User).where(User.google_id == google_sub))
     user = result.scalar_one_or_none()
 
     if not user:
-        # Check if email exists with local account — link it
+        # Check if email exists
         res2 = await db.execute(select(User).where(User.email == email))
         user = res2.scalar_one_or_none()
         if user:
-            user.oauth_provider = OAuthProvider.GOOGLE
-            user.oauth_id = google_sub
-            if avatar:
-                user.avatar_url = avatar
+            user.google_id = google_sub
+            if avatar: user.avatar_url = avatar
         else:
             user = User(
                 email=email,
                 name=name,
-                oauth_provider=OAuthProvider.GOOGLE,
-                oauth_id=google_sub,
+                google_id=google_sub,
                 avatar_url=avatar,
-                is_verified=True,
+                tier=UserTier.STANDARD
             )
             db.add(user)
 
+    user.last_login = datetime.utcnow()
     await db.commit()
     await db.refresh(user)
 
@@ -175,22 +154,23 @@ async def google_login(body: GoogleBody, db: AsyncSession = Depends(get_db)):
     )
 
 
-# ── Refresh ───────────────────────────────────────────────────────────────────
 @router.post("/refresh", response_model=TokenOut)
-async def refresh(body: RefreshBody, db: AsyncSession = Depends(get_db)):
-    from jose import JWTError
+async def refresh(body: dict, db: AsyncSession = Depends(get_db)):
+    refresh_token = body.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(status_code=401)
+    
     try:
-        payload = decode_token(body.refresh_token)
-        if payload.get("type") != "refresh":
-            raise ValueError()
+        payload = decode_token(refresh_token)
+        if payload.get("type") != "refresh": raise ValueError()
         user_id = payload["sub"]
     except Exception:
-        raise HTTPException(status_code=401, detail="Refresh token inválido.")
+        raise HTTPException(status_code=401, detail="Sessão expirada. Faça login novamente.")
 
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user or not user.is_active:
-        raise HTTPException(status_code=401, detail="Usuário não encontrado.")
+        raise HTTPException(status_code=401)
 
     return TokenOut(
         access_token=create_access_token(str(user.id)),
@@ -198,7 +178,6 @@ async def refresh(body: RefreshBody, db: AsyncSession = Depends(get_db)):
     )
 
 
-# ── Me ────────────────────────────────────────────────────────────────────────
 @router.get("/me")
 async def me(user: User = Depends(get_current_user)):
     return _user_to_dict(user)

@@ -32,10 +32,10 @@ async def get_db() -> AsyncSession:
 
 
 async def init_db():
-    """Create all tables on startup."""
+    """Create and sync all tables for Antigravity Core 3.0."""
     # import models so Base knows about them
-    from app.models.user import User          # noqa
-    from app.models.history import VerificationLog  # noqa
+    from app.models.user import User
+    from app.models.history import Verification, AnalysisMetrics, CacheRegistry
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

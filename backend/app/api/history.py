@@ -1,13 +1,12 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, delete
-from sqlalchemy.orm import selectinload
+from sqlalchemy import select, func
 from datetime import date, datetime, timezone
 
 from app.core.database import get_db
 from app.core.auth import get_current_user, DAILY_LIMITS
 from app.models.user import User
-from app.models.history import VerificationLog
+from app.models.history import Verification
 
 router = APIRouter(prefix="/history")
 
@@ -22,14 +21,14 @@ async def get_history(
     offset = (page - 1) * limit
 
     total_q = await db.execute(
-        select(func.count(VerificationLog.id)).where(VerificationLog.user_id == user.id)
+        select(func.count(Verification.id)).where(Verification.user_id == user.id)
     )
     total = total_q.scalar_one()
 
     rows_q = await db.execute(
-        select(VerificationLog)
-        .where(VerificationLog.user_id == user.id)
-        .order_by(VerificationLog.created_at.desc())
+        select(Verification)
+        .where(Verification.user_id == user.id)
+        .order_by(Verification.created_at.desc())
         .offset(offset)
         .limit(limit)
     )
@@ -41,13 +40,13 @@ async def get_history(
         "limit": limit,
         "items": [
             {
-                "id":          str(r.id),
-                "query_type":  r.query_type.value,
-                "query_input": r.query_input[:200],
-                "score":       r.score,
-                "verdict":     r.verdict,
-                "summary":     r.summary,
-                "created_at":  r.created_at.isoformat(),
+                "id":            str(r.id),
+                "content_type":  r.content_type.value,
+                "query_input":   r.ai_summary[:100] if not r.source_url else r.source_url,
+                "verdict_score": r.verdict_score,
+                "verdict_label": r.verdict_label.value,
+                "ai_summary":    r.ai_summary,
+                "created_at":    r.created_at.isoformat(),
             }
             for r in rows
         ],
@@ -61,58 +60,60 @@ async def get_stats(
 ):
     today_start = datetime.combine(date.today(), datetime.min.time()).replace(tzinfo=timezone.utc)
 
+    # Note: Simplified count for total used today across all types
     daily_q = await db.execute(
-        select(func.count(VerificationLog.id)).where(
-            VerificationLog.user_id == user.id,
-            VerificationLog.created_at >= today_start,
+        select(func.count(Verification.id)).where(
+            Verification.user_id == user.id,
+            Verification.created_at >= today_start,
         )
     )
     daily_used = daily_q.scalar_one()
 
     total_q = await db.execute(
-        select(func.count(VerificationLog.id)).where(VerificationLog.user_id == user.id)
+        select(func.count(Verification.id)).where(Verification.user_id == user.id)
     )
     total = total_q.scalar_one()
 
     avg_q = await db.execute(
-        select(func.avg(VerificationLog.score)).where(VerificationLog.user_id == user.id)
+        select(func.avg(Verification.verdict_score)).where(Verification.user_id == user.id)
     )
     avg_score = avg_q.scalar_one()
 
-    limit = DAILY_LIMITS.get(user.plan.value, 3)
+    # Get limit for display (based on TEXTUAL for simplicity in summary)
+    limit = DAILY_LIMITS.get(user.tier, {}).get("TEXTUAL", 3)
+    
     return {
         "daily_used":  daily_used,
         "daily_limit": limit,
-        "daily_left":  max(0, limit - daily_used),
         "total":       total,
-        "avg_score":   round(float(avg_score), 1) if avg_score else None,
-        "plan":        user.plan.value,
+        "avg_score":   round(float(avg_score), 1) if avg_score else 0,
+        "plan":        user.tier.value,
     }
 
 
-@router.get("/{log_id}")
-async def get_log(
-    log_id: str,
-    user:   User = Depends(get_current_user),
-    db:     AsyncSession = Depends(get_db),
+@router.get("/{v_id}")
+async def get_verification(
+    v_id: str,
+    user: User = Depends(get_current_user),
+    db:   AsyncSession = Depends(get_db),
 ):
-    from fastapi import HTTPException
     row_q = await db.execute(
-        select(VerificationLog).where(
-            VerificationLog.id == log_id,
-            VerificationLog.user_id == user.id,
+        select(Verification).where(
+            Verification.id == v_id,
+            Verification.user_id == user.id,
         )
     )
     row = row_q.scalar_one_or_none()
     if not row:
         raise HTTPException(status_code=404, detail="Análise não encontrada.")
+        
     return {
-        "id":          str(row.id),
-        "query_type":  row.query_type.value,
-        "query_input": row.query_input,
-        "score":       row.score,
-        "verdict":     row.verdict,
-        "summary":     row.summary,
-        "result":      row.result,
-        "created_at":  row.created_at.isoformat(),
+        "id":            str(row.id),
+        "content_type":  row.content_type.value,
+        "query_input":   row.source_url or "Conteúdo Direto",
+        "verdict_score": row.verdict_score,
+        "verdict_label": row.verdict_label.value,
+        "ai_summary":    row.ai_summary,
+        "raw_result":    row.raw_result,
+        "created_at":    row.created_at.isoformat(),
     }

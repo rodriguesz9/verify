@@ -1,6 +1,9 @@
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from datetime import datetime, timedelta
 import asyncio
+import hashlib
 
 from app.core.gemini_analyzer import generate_final_report
 from app.core.sightengine_client import check_deepfake
@@ -9,19 +12,15 @@ from app.core.auth import get_current_user, verify_limit
 from app.core.database import get_db
 from app.models.schemas import AnalysisResponse
 from app.models.user import User
-from app.models.history import VerificationLog, QueryType
+from app.models.history import Verification, AnalysisMetrics, CacheRegistry, ContentType, VerdictLabel
 
 router = APIRouter()
 
-ALLOWED_TYPES = {
-    "image/jpeg", "image/png", "image/webp",
-    "video/mp4", "video/webm",
-    "audio/mpeg", "audio/wav"
-}
+ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "video/mp4", "audio/mpeg"}
 MAX_SIZE = 15 * 1024 * 1024
 
 
-@router.post("/upload", response_model=AnalysisResponse)
+@router.post("/upload")
 async def analyze_upload(
     file: UploadFile      = File(...),
     user: User            = Depends(get_current_user),
@@ -33,55 +32,65 @@ async def analyze_upload(
     if len(data) > MAX_SIZE:
         raise HTTPException(status_code=413, detail="Arquivo muito grande.")
 
+    # 1. Cache Check
+    file_hash = hashlib.md5(data).hexdigest()
+    cache_res = await db.execute(select(CacheRegistry).where(CacheRegistry.file_hash_md5 == file_hash))
+    cache_entry = cache_res.scalar_one_or_none()
+    
+    if cache_entry and cache_entry.expires_at > datetime.now():
+        # Pull cached verification
+        v_res = await db.execute(select(Verification).where(Verification.id == cache_entry.cached_verdict_id))
+        cached_v = v_res.scalar_one_or_none()
+        if cached_v:
+            return cached_v.raw_result
+
+    # 2. Analysis
     is_image = file.content_type.startswith("image/")
-    q_type = QueryType.VIDEO if "video" in file.content_type else QueryType.AUDIO if "audio" in file.content_type else QueryType.IMAGE
+    c_type   = ContentType.VIDEO if "video" in file.content_type else ContentType.AUDIO if "audio" in file.content_type else ContentType.IMAGE
 
-    # Parallel Forensic Collection
-    tasks = []
-    if is_image:
-        tasks.append(asyncio.create_task(check_deepfake(data)))
-        tasks.append(asyncio.create_task(check_ai_image_hf(data)))
-    
-    # We can still use Gemini for all media types as the chief perito
-    # Note: we pass dummy text or description if it was a file
-    
     forensics = {}
-    if tasks:
-        results = await asyncio.gather(*tasks)
-        forensics["sightengine"] = results[0]
-        forensics["huggingface"]  = results[1]
+    if is_image:
+        df_task = asyncio.create_task(check_deepfake(data))
+        hf_task = asyncio.create_task(check_ai_image_hf(data))
+        await asyncio.gather(df_task, hf_task)
+        forensics["sightengine"] = df_task.result()
+        forensics["huggingface"]  = hf_task.result()
 
-    # Final Orchestration
-    # For media, we can also extract text from Gemini's internal vision if we used it,
-    # but for now we consolidate the forensic results.
-    ai = await generate_final_report(f"Arquivo enviado: {file.filename}", forensics)
+    ai = await generate_final_report(f"Auditoria: {file.filename}", {"forensics": forensics})
 
-    result = AnalysisResponse(
-        score              =int(ai.get("score", 50)),
-        semantic_score     =int(ai.get("semantic_score", 50)),
-        domain_score       =70,
-        sensationalism     =int(ai.get("sensationalism", 50)),
-        verdict            =ai.get("verdict", "SUSPEITO"),
-        summary            =ai.get("summary", ""),
-        red_flags          =ai.get("red_flags", []),
-        positive_signals   =ai.get("positive_signals", []),
-        logical_fallacies  =ai.get("logical_fallacies", []),
-        emotional_triggers =bool(ai.get("emotional_triggers", False)),
-        fact_checks        =[],
-        domain_note        ="Análise forense de mídia concluída.",
-        recommended_sources=ai.get("recommended_sources", []),
-        hive_result        =forensics.get("sightengine"), # Map to UI field
+    # 3. Save Verification
+    v = Verification(
+        user_id=user.id,
+        content_type=c_type,
+        file_hash_md5=file_hash,
+        verdict_score=int(ai["score"]),
+        verdict_label=ai["verdict"], # VerdictLabel enum matches AI string if prompt is good
+        ai_summary=ai["summary"],
+        raw_result=ai
     )
+    db.add(v)
+    await db.flush() # Get ID
 
-    log = VerificationLog(
-        user_id    =user.id,
-        query_type =q_type,
-        query_input=file.filename[:500],
-        result     =result.model_dump(),
-        score      =result.score,
-        verdict    =result.verdict,
-        summary    =result.summary,
+    # 4. Save Metrics
+    m = AnalysisMetrics(
+        verification_id=v.id,
+        sightengine_ai_score=forensics.get("sightengine", {}).get("genai_probability"),
+        sightengine_deepfake_score=forensics.get("sightengine", {}).get("deepfake_probability"),
+        huggingface_model_score=forensics.get("huggingface", {}).get("ai_probability")
     )
-    db.add(log)
+    db.add(m)
+
+    # 5. Update Cache
+    if not cache_entry:
+        cache_entry = CacheRegistry(
+            file_hash_md5=file_hash,
+            cached_verdict_id=v.id,
+            expires_at=datetime.now() + timedelta(days=7)
+        )
+        db.add(cache_entry)
+    else:
+        cache_entry.cached_verdict_id = v.id
+        cache_entry.expires_at = datetime.now() + timedelta(days=7)
+
     await db.commit()
-    return result
+    return ai

@@ -1,106 +1,73 @@
-import os
 import json
-import re
 from datetime import datetime
 import google.generativeai as genai
+import os
+from dotenv import load_dotenv
 
-MODEL_NAME = os.getenv("GEMINI_MODEL_NAME", "gemini-3.1-flash-lite-preview")
-genai.configure(api_key=os.getenv("GEMINI_API_KEY", ""))
+load_dotenv()
 
-_TODAY = datetime.now().strftime("%d de %B de %Y")
-
-SYSTEM_INSTRUCTION = f"""Você é o Perito-Chefe do Sistema VerifAI (Antigravity Core).
-Sua missão é consolidar dados de múltiplas ferramentas forenses e gerar um veredito final humanizado.
-
-DATA DE HOJE: {_TODAY}
-
-Você receberá dados técnicos de:
-1. Sightengine/Hive (Detecção de Deepfakes/IA em mídia)
-2. Hugging Face (Double check open-source)
-3. SerpApi (Busca reversa e histórico de imagem)
-4. GPTZero (Detecção de IA em texto)
-5. Google Fact Check (Verificações prévias de agências)
-
-Seu Relatório Final deve ser:
-- Objetivo e direto.
-- Humanizado (como um jornalista investigativo).
-- Formato JSON estrito conforme o esquema fornecido.
-"""
-
-_ANALYSIS_SCHEMA = """
-{
-  "score": <inteiro 0-100>,
-  "semantic_score": <inteiro 0-100>,
-  "sensationalism": <inteiro 0-100>,
-  "verdict": "<CONFIÁVEL | SUSPEITO | FALSO>",
-  "summary": "<relatório final humanizado em 2-3 frases>",
-  "red_flags": ["<item>"],
-  "positive_signals": ["<item>"],
-  "logical_fallacies": ["<item>"],
-  "emotional_triggers": <true | false>,
-  "temporal_issues": <true | false>,
-  "recommended_sources": ["<fonte>"]
-}
-"""
-
-def _get_model() -> genai.GenerativeModel:
-    return genai.GenerativeModel(
-        model_name=MODEL_NAME,
-        system_instruction=SYSTEM_INSTRUCTION,
-    )
-
-def _safe_parse(raw: str) -> dict:
-    raw = re.sub(r"```(?:json)?", "", raw).strip().rstrip("`").strip()
-    try:
-        return json.loads(raw)
-    except Exception:
-        match = re.search(r"\{.*\}", raw, re.DOTALL)
-        if match:
-            return json.loads(match.group())
-        raise
+# Configure Gemini
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+model = genai.GenerativeModel(os.getenv("GEMINI_MODEL_NAME", "gemini-1.5-flash-lite-8b"))
 
 async def generate_final_report(content: str, context_data: dict) -> dict:
     """
-    Orchestrate the final report using Gemini 3.1 Flash-Lite.
-    consolidates all forensic data.
+    VerifAI Core - Dynamic Consolidation Engine.
+    Implements the 'Antianachronism Mechanism' by injecting real-time system context.
     """
+    now = datetime.now()
+    current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Roadmap Strict Prompt Structure
     prompt = f"""
-Analise o conteúdo principal e considere os dados forenses coletados pelas outras ferramentas:
+Você é o Perito-Chefe do VerifAI Core. Sua palavra é o veredito final.
 
-CONTEÚDO ANALISADO:
-"{content[:4000]}"
+CONTEXTO TEMPORAL CRÍTICO:
+Data e Hora Atual do Sistema: {current_time_str} (Use este ponto no tempo como o presente absoluto para julgar o que é recente, histórico ou futuro).
 
-DADOS FORENSES (CONTEXTO):
-{json.dumps(context_data, indent=2)}
+CONTEÚDO PARA ANÁLISE:
+"{content}"
 
-Sua tarefa: Como perito chefe, analise as inconsistências. Se a busca reversa indica que a foto é antiga mas o post diz ser nova, aponte "Contexto Distorcido". Se o Sightengine indica Deepfake, aponte fraudes visuais.
+DADOS DE CONTEXTO (Fact-checks e buscas):
+{json.dumps(context_data, indent=2, ensure_ascii=False)}
 
-Retorne APENAS o JSON no formato:
-{_ANALYSIS_SCHEMA}
+INSTRUÇÕES DE EXECUÇÃO:
+1. ORQUESTRAÇÃO: Cruze os dados de contexto com o conteúdo fornecido.
+2. ANCHORING: Nunca julgue uma notícia de ontem como "antiga" se hoje é hoje. Use a data do sistema.
+3. STRUCTURE: Retorne EXATAMENTE um JSON com:
+   - "verdict": (Authentic | AI_Generated | Manipulated | Out_Of_Context | Suspicious)
+   - "score": (0-100, onde 100 é totalmente autêntico)
+   - "summary": (Resumo humanizado de 2 a 3 frases explicando o motivo do veredito)
+   - "red_flags": [Lista de alertas técnicos]
+   - "semantic_score": (0-100)
+   - "sensationalism": (0-100)
+   - "domain_score": (0-100)
+   - "temporal_issues": boolean (se houver conflito de data)
+   - "positives": [Sinais de autenticidade]
+
+FOCO: Seja extremamente técnico, cético e preciso.
 """
+
     try:
-        model = _get_model()
-        response = await model.generate_content_async(prompt)
-        return _safe_parse(response.text)
+        response = model.generate_content(prompt)
+        # Extract json block
+        text = response.text
+        if "```json" in text:
+            text = text.split("```json")[1].split("```")[0].strip()
+        elif "```" in text:
+            text = text.split("```")[1].split("```")[0].strip()
+        
+        return json.loads(text)
     except Exception as e:
+        print(f"Error in Gemini Analyzer: {e}")
         return {
-            "score": 50, "verdict": "SUSPEITO",
-            "summary": f"Erro na orquestração final: {str(e)[:100]}",
-            "red_flags": ["Erro do Orquestrador Gemini"],
-            "positive_signals": [], "logical_fallacies": [],
-            "emotional_triggers": False, "temporal_issues": False,
-            "recommended_sources": []
+            "verdict": "Suspicious",
+            "score": 50,
+            "summary": "Erro no motor de análise. Veredito inconclusivo.",
+            "red_flags": ["Falha na orquestração de IA"],
+            "semantic_score": 50,
+            "sensationalism": 50,
+            "domain_score": 50,
+            "temporal_issues": False,
+            "positives": []
         }
-
-async def analyze_with_gemini(text: str) -> dict:
-    """Legacy support - redirected to orchestrator with empty context."""
-    return await generate_final_report(text, {"source": "direct_text"})
-
-async def analyze_media_with_gemini(media_bytes: bytes, mime_type: str) -> dict:
-    """Consolidate media analysis."""
-    # This will be called from upload.py pipeline
-    # For now, keep it simple as a fallback
-    model = _get_model()
-    prompt = f"Analise esta mídia e retorne o JSON base:\n{_ANALYSIS_SCHEMA}"
-    response = await model.generate_content_async([{"mime_type": mime_type, "data": media_bytes}, prompt])
-    return _safe_parse(response.text)

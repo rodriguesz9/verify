@@ -1,113 +1,78 @@
 import Footer from "../components/Footer";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { scoreColor, scoreLabel } from "../components/GaugeChart";
+import { getHistory, getStats } from "../services/api";
 
-const MOCK = [
-  { score: 82, verdict: "CONFIÁVEL", summary: "Notícia verificada por agências de checagem.", query: "BBC News Brasil – 2024", ts: "há 5 min" },
-  { score: 44, verdict: "SUSPEITO",  summary: "Fonte desconhecida, domínio recente.", query: "urgente-verdade.xyz/post/123", ts: "há 12 min" },
-  { score: 18, verdict: "FALSO",     summary: "Contradições factuais detectadas pelo Gemini.", query: "Foto mostra X acontecendo em SP...", ts: "há 1h" },
-];
+const TYPE_ICON = { Text: "📝", Image: "🖼️", Video: "🎬", Audio: "🎵" };
+const VERDICT_COLORS = {
+  Authentic: "#00FF87",
+  AI_Generated: "#00D4FF",
+  Manipulated: "#FF3B5C",
+  Out_Of_Context: "#FFB830",
+  Suspicious: "#3A6070"
+};
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [items, setItems] = useState(MOCK);
+  const [items, setItems] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([getHistory(1), getStats()])
+      .then(([hist, st]) => { setItems(hist.items || []); setStats(st); })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
 
   return (
     <div className="relative min-h-screen pb-20">
-      <div className="pointer-events-none fixed inset-0"
-        style={{
-          backgroundImage: "linear-gradient(#132435 1px,transparent 1px),linear-gradient(90deg,#132435 1px,transparent 1px)",
-          backgroundSize: "48px 48px", opacity: .2,
-        }}
-      />
-
       <div className="relative z-10 max-w-4xl mx-auto px-5 pt-10">
-        {/* header */}
-        <div className="flex items-center justify-between mb-8 fade-1">
+        <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="font-syne font-extrabold text-2xl tracking-wide mb-1" style={{ color: "#CDE8F0" }}>
-              Dashboard
-            </h1>
-            <p className="font-mono text-[11px]" style={{ color: "#3A6070" }}>
-              Histórico de análises desta sessão
-            </p>
+            <h1 className="font-syne font-extrabold text-2xl text-[#CDE8F0] tracking-widest uppercase">Meu Painel</h1>
+            <p className="font-mono text-[10px] text-[#3A6070] uppercase tracking-widest">Resumo das suas verificações</p>
           </div>
-          <button onClick={() => navigate("/app")}
-            className="font-mono text-[10px] tracking-widest px-5 py-2.5 rounded-lg transition-all"
-            style={{
-              background: "linear-gradient(135deg,#00D4FF,#00FF87)",
-              color: "#04080C", border: "none", cursor: "pointer",
-              boxShadow: "0 0 20px rgba(0,212,255,.3)", fontWeight: 700,
-            }}>
-            + NOVA ANÁLISE
+          <button onClick={() => navigate("/app")} className="font-syne font-bold text-[12px] tracking-[3px] px-8 py-3 rounded-xl border-none cursor-pointer shadow-lg hover:scale-105 transition-all uppercase" style={{ background: "linear-gradient(135deg,#00D4FF,#00FF87)", color: "#04080C" }}>
+            + NOVA CHECAGEM
           </button>
         </div>
 
-        {/* stats row */}
-        <div className="grid grid-cols-3 gap-4 mb-8 fade-2">
-          {[
-            { label: "ANÁLISES",   value: items.length, col: "#00D4FF" },
-            { label: "CONFIÁVEIS", value: items.filter(i => i.score >= 68).length, col: "#00FF87" },
-            { label: "FALSOS",     value: items.filter(i => i.score <  38).length, col: "#FF3B5C" },
-          ].map(({ label, value, col }) => (
-            <div key={label} className="rounded-xl p-5 text-center"
-              style={{ background: "#0A1520", border: "1px solid #132435" }}>
-              <span className="font-syne font-extrabold text-4xl" style={{ color: col }}>{value}</span>
-              <span className="font-mono text-[9px] tracking-widest block mt-1" style={{ color: "#3A6070" }}>
-                {label}
-              </span>
-            </div>
-          ))}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+           {[{l: "TOTAL", v: stats?.total}, {l: "PRECISÃO", v: (stats?.avg_score || 0) + "%"}, {l: "USO HOJE", v: stats?.daily_used}, {l: "PLANO", v: stats?.plan || "GRÁTIS"}].map(s => (
+             <div key={s.l} className="p-6 rounded-2xl bg-[#0A1520] border border-[#132435] text-center shadow-inner group hover:border-[#00D4FF44] transition-all">
+                <span className="font-syne font-black text-3xl text-[#CDE8F0] block mb-1 group-hover:scale-110 transition-transform">{s.v || 0}</span>
+                <span className="font-mono text-[9px] text-[#3A6070] tracking-[4px] uppercase font-bold">{s.l}</span>
+             </div>
+           ))}
         </div>
 
-        {/* table header */}
-        <div className="grid grid-cols-[1fr_auto_auto] gap-4 px-4 mb-2 fade-3">
-          {["CONTEÚDO ANALISADO","SCORE","VEREDICTO"].map(h => (
-            <span key={h} className="font-mono text-[9px] tracking-widest" style={{ color: "#1A3A50" }}>
-              {h}
-            </span>
-          ))}
-        </div>
-
-        {/* rows */}
-        {items.map((item, i) => {
-          const col = scoreColor(item.score);
-          return (
-            <div key={i}
-              className={`grid grid-cols-[1fr_auto_auto] gap-4 items-center px-4 py-4 rounded-xl mb-2 transition-all cursor-pointer fade-${i + 3}`}
-              style={{ background: "#0A1520", border: "1px solid #132435" }}
-              onClick={() => navigate("/app")}
-            >
-              {/* content */}
-              <div>
-                <p className="font-syne font-semibold text-[13px] mb-1 truncate" style={{ color: "#CDE8F0", maxWidth: 400 }}>
-                  {item.query}
-                </p>
-                <p className="font-mono text-[11px] leading-relaxed line-clamp-1" style={{ color: "#3A6070" }}>
-                  {item.summary}
-                </p>
-                <span className="font-mono text-[9px]" style={{ color: "#1A3A50" }}>{item.ts}</span>
-              </div>
-
-              {/* score */}
-              <div className="text-right">
-                <span className="font-syne font-extrabold text-2xl" style={{ color: col }}>{item.score}</span>
-                <span className="font-mono text-[9px] block" style={{ color: "#3A6070" }}>/100</span>
-              </div>
-
-              {/* badge */}
-              <span className="font-mono text-[10px] tracking-wider px-3 py-1.5 rounded-full whitespace-nowrap"
-                style={{ background: col + "18", border: `1px solid ${col}33`, color: col }}>
-                {item.verdict}
-              </span>
+        <div className="space-y-4">
+          <div className="px-2 mb-4 font-mono text-[11px] text-[#1A3A50] tracking-[5px] uppercase font-bold border-l-2 border-[#00D4FF] ml-2 pl-4">Últimas Verificações</div>
+          {loading ? <div className="text-center font-mono text-[10px] opacity-20 py-20 animate-pulse tracking-[8px]">SINCRONIZANDO...</div> : items.length === 0 ? (
+            <div className="bg-[#0A1520] rounded-2xl p-20 border border-[#132435] text-center">
+              <p className="font-mono text-[12px] text-[#1A3A50]">Nenhuma verificação feita ainda.</p>
             </div>
-          );
-        })}
-
-        <p className="font-mono text-[10px] text-center mt-6" style={{ color: "#1A3A50" }}>
-          Os dados acima são de exemplo (MVP). Em produção, serão persistidos em banco de dados.
-        </p>
+          ) : items.map((item) => {
+            const col = VERDICT_COLORS[item.verdict_label] || "#3A6070";
+            return (
+              <div key={item.id} className="p-5 rounded-2xl bg-[#0A1520] border border-[#132435] flex items-center gap-6 hover:border-white/10 hover:bg-[#0F1E2E] transition-all cursor-pointer shadow-sm group" onClick={() => navigate(`/report/${item.id}`)}>
+                <div className="w-12 h-12 rounded-xl bg-[#04080C] flex items-center justify-center text-2xl shadow-inner group-hover:rotate-6 transition-transform">{TYPE_ICON[item.content_type] || "❓"}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="font-mono text-[9px] px-3 py-1 rounded-full border font-bold tracking-widest uppercase" style={{ borderColor: col, color: col, background: col + "11" }}>{item.verdict_label}</span>
+                    <span className="font-mono text-[10px] text-[#1A3A50] font-bold">{new Date(item.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <p className="font-mono text-[13px] text-[#CDE8F0] truncate font-black tracking-tight">{item.query_input}</p>
+                </div>
+                <div className="text-right">
+                  <div className="font-syne font-black text-2xl tracking-tighter" style={{ color: col }}>{item.verdict_score}%</div>
+                  <div className="font-mono text-[8px] text-[#3A6070] font-bold uppercase tracking-widest">Certeza</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
       <Footer />
     </div>

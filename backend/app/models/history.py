@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, Integer, Text, ForeignKey, JSON, Enum as SAEnum
+from sqlalchemy import Column, String, DateTime, Integer, Text, ForeignKey, JSON, Enum as SAEnum, Float
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -6,29 +6,58 @@ import uuid
 import enum
 
 
-class QueryType(str, enum.Enum):
-    TEXT   = "text"
-    URL    = "url"
-    IMAGE  = "image"
-    AUDIO  = "audio"
-    VIDEO  = "video"
+class ContentType(str, enum.Enum):
+    TEXT   = "Text"
+    IMAGE  = "Image"
+    AUDIO  = "Audio"
+    VIDEO  = "Video"
 
 
-class VerificationLog(Base):
-    __tablename__ = "verification_logs"
+class VerdictLabel(str, enum.Enum):
+    AUTHENTIC      = "Authentic"
+    AI_GENERATED   = "AI_Generated"
+    MANIPULATED    = "Manipulated"
+    OUT_OF_CONTEXT = "Out_Of_Context"
+    SUSPICIOUS     = "Suspicious"
 
-    id           = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id      = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
-    query_type   = Column(SAEnum(QueryType), nullable=False)
-    query_input  = Column(Text, nullable=False)           # sanitized input text / url / filename
+class Verification(Base):
+    __tablename__ = "verifications"
 
-    # Full result stored as JSONB
-    result       = Column(JSON, nullable=False)
+    id              = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id         = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
-    # Quick-access fields (denormalized for dashboard queries)
-    score        = Column(Integer, nullable=False)
-    verdict      = Column(String(20), nullable=False)
-    summary      = Column(Text, nullable=True)
+    content_type    = Column(SAEnum(ContentType), nullable=False)
+    source_url      = Column(String(512), nullable=True)
+    file_hash_md5   = Column(String(32), nullable=True, index=True)
 
-    created_at   = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    verdict_score   = Column(Integer, nullable=False) # 0 to 100
+    verdict_label   = Column(SAEnum(VerdictLabel), nullable=False)
+    ai_summary      = Column(Text, nullable=True)
+    
+    # Full tech result for deep-dive
+    raw_result      = Column(JSON, nullable=False)
+
+    created_at      = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class AnalysisMetrics(Base):
+    __tablename__ = "analysis_metrics"
+
+    id                       = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    verification_id          = Column(UUID(as_uuid=True), ForeignKey("verifications.id", ondelete="CASCADE"), nullable=False)
+
+    sightengine_ai_score     = Column(Float, nullable=True)
+    sightengine_deepfake_score = Column(Float, nullable=True)
+    huggingface_model_score  = Column(Float, nullable=True)
+    text_ai_probability      = Column(Float, nullable=True)
+    
+    earliest_known_date      = Column(DateTime(timezone=True), nullable=True)
+
+
+class CacheRegistry(Base):
+    __tablename__ = "cache_registry"
+
+    file_hash_md5     = Column(String(32), primary_key=True)
+    cached_verdict_id = Column(UUID(as_uuid=True), ForeignKey("verifications.id", ondelete="CASCADE"), nullable=False)
+    expires_at        = Column(DateTime(timezone=True), nullable=False)
