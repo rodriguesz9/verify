@@ -51,6 +51,8 @@ services:
       - /app/node_modules
     working_dir: /app
     command: npm run dev
+    environment:
+      VITE_API_PROXY_TARGET: http://backend:8000
     depends_on:
       - backend
     networks:
