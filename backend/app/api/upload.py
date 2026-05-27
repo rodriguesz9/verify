@@ -1,7 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import asyncio
 import hashlib
 
@@ -37,7 +37,7 @@ async def analyze_upload(
     cache_res = await db.execute(select(CacheRegistry).where(CacheRegistry.file_hash_md5 == file_hash))
     cache_entry = cache_res.scalar_one_or_none()
     
-    if cache_entry and cache_entry.expires_at > datetime.now():
+    if cache_entry and cache_entry.expires_at > datetime.now(timezone.utc):
         # Pull cached verification
         v_res = await db.execute(select(Verification).where(Verification.id == cache_entry.cached_verdict_id))
         cached_v = v_res.scalar_one_or_none()
