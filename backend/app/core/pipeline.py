@@ -22,17 +22,15 @@ async def run_pipeline(text: str, url: str | None = None) -> dict:
     
     fact_checks = fact_task.result()
     ai_forensics = ai_task.result()
-    domain_info = domain_task.result() if url else None
+    domain_info = domain_task.result() if url else { "score": None, "note": "Nenhuma URL fornecida" }
 
     context = {
         "gptzero": ai_forensics,
+        "domain": domain_info,
         "fact_checks": [fc.model_dump() for fc in fact_checks[:3]],
         "source_url": url,
     }
-
-    if domain_info:
-        context["domain"] = domain_info
-
+    
     ai = await generate_final_report(text, context)
 
     # Return structured dict for DB & API
