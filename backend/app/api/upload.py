@@ -10,9 +10,8 @@ from app.core.sightengine_client import check_deepfake
 from app.core.huggingface_client import check_ai_image_hf
 from app.core.auth import get_current_user, verify_limit
 from app.core.database import get_db
-from app.models.schemas import AnalysisResponse
 from app.models.user import User
-from app.models.history import Verification, AnalysisMetrics, CacheRegistry, ContentType, VerdictLabel
+from app.models.history import Verification, AnalysisMetrics, CacheRegistry, ContentType
 
 router = APIRouter()
 
@@ -20,11 +19,16 @@ ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "video/mp4", "audio/mp
 MAX_SIZE = 15 * 1024 * 1024
 
 
+def _has_ai_orchestration_failure(result: dict) -> bool:
+    red_flags = result.get("red_flags", [])
+    return any("Falha" in flag and "IA" in flag for flag in red_flags)
+
+
 @router.post("/upload")
 async def analyze_upload(
-    file: UploadFile      = File(...),
-    user: User            = Depends(get_current_user),
-    db:   AsyncSession    = Depends(get_db),
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     await verify_limit(user, db, "MEDIA")
 
@@ -36,17 +40,27 @@ async def analyze_upload(
     file_hash = hashlib.md5(data).hexdigest()
     cache_res = await db.execute(select(CacheRegistry).where(CacheRegistry.file_hash_md5 == file_hash))
     cache_entry = cache_res.scalar_one_or_none()
-    
     if cache_entry and cache_entry.expires_at > datetime.now(timezone.utc):
         # Pull cached verification
         v_res = await db.execute(select(Verification).where(Verification.id == cache_entry.cached_verdict_id))
         cached_v = v_res.scalar_one_or_none()
         if cached_v:
-            return cached_v.raw_result
+            if _has_ai_orchestration_failure(cached_v.raw_result):
+                await db.delete(cache_entry)
+                await db.flush()
+                cache_entry = None
+            else:
+                return cached_v.raw_result
 
     # 2. Analysis
     is_image = file.content_type.startswith("image/")
-    c_type   = ContentType.VIDEO if "video" in file.content_type else ContentType.AUDIO if "audio" in file.content_type else ContentType.IMAGE
+    c_type = (
+        ContentType.VIDEO
+        if "video" in file.content_type
+        else ContentType.AUDIO
+        if "audio" in file.content_type
+        else ContentType.IMAGE
+    )
 
     forensics = {}
     if is_image:
@@ -54,9 +68,12 @@ async def analyze_upload(
         hf_task = asyncio.create_task(check_ai_image_hf(data))
         await asyncio.gather(df_task, hf_task)
         forensics["sightengine"] = df_task.result()
-        forensics["huggingface"]  = hf_task.result()
+        forensics["huggingface"] = hf_task.result()
 
     ai = await generate_final_report(f"Auditoria: {file.filename}", {"forensics": forensics})
+    print("AI red_flags:", ai.get("red_flags", []), flush=True)
+    if _has_ai_orchestration_failure(ai):
+        raise HTTPException(status_code=502, detail="Falha na analise de IA")
 
     # 3. Save Verification
     v = Verification(
@@ -64,19 +81,19 @@ async def analyze_upload(
         content_type=c_type,
         file_hash_md5=file_hash,
         verdict_score=int(ai["score"]),
-        verdict_label=ai["verdict"], # VerdictLabel enum matches AI string if prompt is good
+        verdict_label=ai["verdict"],
         ai_summary=ai["summary"],
-        raw_result=ai
+        raw_result=ai,
     )
     db.add(v)
-    await db.flush() # Get ID
+    await db.flush()
 
     # 4. Save Metrics
     m = AnalysisMetrics(
         verification_id=v.id,
         sightengine_ai_score=forensics.get("sightengine", {}).get("genai_probability"),
         sightengine_deepfake_score=forensics.get("sightengine", {}).get("deepfake_probability"),
-        huggingface_model_score=forensics.get("huggingface", {}).get("ai_probability")
+        huggingface_model_score=forensics.get("huggingface", {}).get("ai_probability"),
     )
     db.add(m)
 
@@ -85,12 +102,12 @@ async def analyze_upload(
         cache_entry = CacheRegistry(
             file_hash_md5=file_hash,
             cached_verdict_id=v.id,
-            expires_at=datetime.now() + timedelta(days=7)
+            expires_at=datetime.now(timezone.utc) + timedelta(days=7),
         )
         db.add(cache_entry)
     else:
         cache_entry.cached_verdict_id = v.id
-        cache_entry.expires_at = datetime.now() + timedelta(days=7)
+        cache_entry.expires_at = datetime.now(timezone.utc) + timedelta(days=7)
 
     await db.commit()
     return ai

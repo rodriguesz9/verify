@@ -1,0 +1,92 @@
+import unittest
+import uuid
+from datetime import datetime, timezone
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
+
+from fastapi.testclient import TestClient
+
+from helpers import FakeSession, ScalarResult, app, fake_report, fake_user, override_auth_and_db
+from app.models.history import Verification
+
+
+class ExternalApisIntegrationTests(unittest.TestCase):
+    def setUp(self):
+        self.client = TestClient(app)
+        self.user = fake_user()
+        self.db = FakeSession()
+        override_auth_and_db(self.user, self.db)
+
+    def tearDown(self):
+        app.dependency_overrides.clear()
+
+    def test_check_url_normalizes_url_scrapes_page_and_persists_analysis(self):
+        report = fake_report(source_url="https://example.com/news")
+        pipeline_result = {
+            "report": report,
+            "metrics": {"text_ai_probability": 0.12, "earliest_known_date": None},
+        }
+        scraped = {
+            "text": "This page has enough article text for the audit to run successfully.",
+            "meta": {"title": "Example", "description": ""},
+        }
+
+        with (
+            patch("app.api.check_url.verify_limit", new=AsyncMock()) as verify_limit,
+            patch("app.api.check_url.fetch_page_text", new=AsyncMock(return_value=scraped)) as fetch_page_text,
+            patch("app.api.check_url.run_pipeline", new=AsyncMock(return_value=pipeline_result)) as run_pipeline,
+        ):
+            response = self.client.post("/api/check-url", json={"url": "example.com/news"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), report)
+        verify_limit.assert_awaited_once_with(self.user, self.db, "TEXTUAL")
+        fetch_page_text.assert_awaited_once_with("https://example.com/news")
+        run_pipeline.assert_awaited_once_with(text=scraped["text"], url="https://example.com/news")
+        verification = next(item for item in self.db.added if isinstance(item, Verification))
+        self.assertEqual(verification.source_url, "https://example.com/news")
+        self.assertEqual(self.db.commits, 1)
+
+    def test_check_url_rejects_pages_without_enough_content(self):
+        with (
+            patch("app.api.check_url.verify_limit", new=AsyncMock()),
+            patch("app.api.check_url.fetch_page_text", new=AsyncMock(return_value={"text": "Too short", "meta": {}})),
+            patch("app.api.check_url.run_pipeline", new=AsyncMock()) as run_pipeline,
+        ):
+            response = self.client.post("/api/check-url", json={"url": "https://example.com"})
+
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("detail", response.json())
+        run_pipeline.assert_not_awaited()
+        self.assertEqual(self.db.commits, 0)
+
+    def test_upload_returns_cached_analysis_without_calling_external_apis(self):
+        cached_report = fake_report(summary="Cached image analysis.")
+        cached_verification = SimpleNamespace(id=uuid.uuid4(), raw_result=cached_report)
+        cached_entry = SimpleNamespace(
+            cached_verdict_id=cached_verification.id,
+            expires_at=datetime.now(timezone.utc).replace(year=2099),
+        )
+        self.db.execute_results = [ScalarResult(cached_entry), ScalarResult(cached_verification)]
+
+        with (
+            patch("app.api.upload.verify_limit", new=AsyncMock()),
+            patch("app.api.upload.check_deepfake", new=AsyncMock()) as check_deepfake,
+            patch("app.api.upload.check_ai_image_hf", new=AsyncMock()) as check_ai_image_hf,
+            patch("app.api.upload.generate_final_report", new=AsyncMock()) as final_report,
+        ):
+            response = self.client.post(
+                "/api/upload",
+                files={"file": ("sample.png", b"same image bytes", "image/png")},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), cached_report)
+        check_deepfake.assert_not_awaited()
+        check_ai_image_hf.assert_not_awaited()
+        final_report.assert_not_awaited()
+        self.assertEqual(self.db.commits, 0)
+
+
+if __name__ == "__main__":
+    unittest.main()

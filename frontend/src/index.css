@@ -15,10 +15,12 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  min-width: 0;
 }
 
 html {
   scroll-behavior: smooth;
+  min-height: 100%;
 }
 
 body {
@@ -26,7 +28,82 @@ body {
   background-color: var(--bg);
   color: var(--text);
   overflow-x: hidden;
+  overflow-y: auto;
   line-height: 1.5;
+  min-height: 100%;
+}
+
+#root {
+  min-height: 100%;
+}
+
+footer .mb-8 {
+  margin-bottom: 1.25rem;
+}
+
+footer .tracking-\[5px\] {
+  letter-spacing: 0.1875rem;
+}
+
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+span,
+a,
+button,
+li,
+div {
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
+}
+
+.data-token {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
+  scrollbar-width: thin;
+}
+
+.data-token::-webkit-scrollbar {
+  height: 4px;
+}
+
+.data-token::-webkit-scrollbar-thumb {
+  background: #132435;
+  border-radius: 999px;
+}
+
+.price-row {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  align-items: end;
+  justify-content: center;
+  column-gap: 0.5rem;
+  width: 100%;
+  overflow: visible;
+}
+
+.price-row > span:first-child {
+  min-width: max-content;
+  font-size: clamp(2.75rem, 4.6vw, 3.5rem);
+  line-height: 0.95;
+  white-space: nowrap;
+}
+
+.price-row > span:last-child {
+  min-width: max-content;
+  padding-bottom: 0.4rem;
+  font-size: clamp(0.75rem, 1.2vw, 0.875rem);
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .font-mono {

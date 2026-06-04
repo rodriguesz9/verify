@@ -10,15 +10,18 @@ async def run_pipeline(text: str, url: str | None = None) -> dict:
     Antigravity Core Pipeline (TEXT/URL).
     Returns raw analysis data and the final report.
     """
-    ai_task = asyncio.create_task(detect_ai_text(text))
+    source_url = url
+    analysis_text = text
+
+    ai_task = asyncio.create_task(detect_ai_text(analysis_text))
     domain_task = (
-        asyncio.create_task(asyncio.to_thread(check_domain_reputation, url))
-        if url
+        asyncio.create_task(asyncio.to_thread(check_domain_reputation, source_url))
+        if source_url
         else None
     )
 
-    claims = await extract_claims_with_ai(text)
-    fact_check_queries = claims[:5] or [text[:200]]
+    claims = await extract_claims_with_ai(analysis_text)
+    fact_check_queries = claims[:5] or [analysis_text[:200]]
     fact_tasks = [
         asyncio.create_task(query_fact_check_api(query[:200]))
         for query in fact_check_queries
@@ -48,10 +51,10 @@ async def run_pipeline(text: str, url: str | None = None) -> dict:
         "domain": domain_info,
         "claims": claims,
         "fact_checks": [fc.model_dump() for fc in fact_checks[:3]],
-        "source_url": url,
+        "source_url": source_url,
     }
 
-    ai = await generate_final_report(text, context)
+    ai = await generate_final_report(analysis_text, context)
     ai["claims"] = claims
 
     # Return structured dict for DB & API

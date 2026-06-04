@@ -24,8 +24,8 @@ _GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 
 # Tiers-based DAILY LIMITS
 DAILY_LIMITS = {
-    UserTier.STANDARD:   {"TEXTUAL": 3, "MEDIA": 1},
-    UserTier.PREMIUM:    {"TEXTUAL": 100, "MEDIA": 50},
+    UserTier.STANDARD:   {"TEXTUAL": 300, "MEDIA": 100},
+    UserTier.PREMIUM:    {"TEXTUAL": 10000, "MEDIA": 5000},
     UserTier.ENTERPRISE: {"TEXTUAL": 9999, "MEDIA": 9999},
 }
 

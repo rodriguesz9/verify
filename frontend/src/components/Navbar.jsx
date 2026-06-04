@@ -5,7 +5,7 @@ export default function Navbar() {
   const { user, signOut } = useAuth();
   
   return (
-    <nav className="fixed top-0 left-0 right-0 z-[100] border-b border-[#132435] backdrop-blur-xl" style={{ backgroundColor: "rgba(4, 8, 12, 0.8)" }}>
+    <nav className="sticky top-0 left-0 right-0 z-[100] border-b border-[#132435] backdrop-blur-xl" style={{ backgroundColor: "rgba(4, 8, 12, 0.8)" }}>
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-20">
         <div className="flex items-center" style={{ gap: "3rem" }}>
           <Link to="/" className="flex items-center gap-3 no-underline group translate-y-[-2px]">

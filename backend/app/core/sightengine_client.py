@@ -8,13 +8,13 @@ ENDPOINT = "https://api.sightengine.com/1.0/check.json"
 async def check_deepfake(file_bytes: bytes) -> dict:
     """
     Check for deepfakes and AI generated images using Sightengine.
-    Models used: 'deepfake', 'gen_ai'
+    Models used: 'deepfake', 'genai'
     """
     if not SIGHTENGINE_API_USER or not SIGHTENGINE_API_SECRET:
         return {"available": False, "reason": "Sightengine API keys not configured."}
 
     params = {
-        "models": "deepfake,gen_ai",
+        "models": "deepfake,genai",
         "api_user": SIGHTENGINE_API_USER,
         "api_secret": SIGHTENGINE_API_SECRET,
     }
@@ -28,7 +28,7 @@ async def check_deepfake(file_bytes: bytes) -> dict:
             
             # Extract scores
             deepfake_score = data.get("deepfake", {}).get("probability", 0)
-            genai_score = data.get("gen_ai", {}).get("score", 0)
+            genai_score = data.get("genai", {}).get("score", 0)
             
             return {
                 "available": True,

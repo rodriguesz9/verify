@@ -1,6 +1,10 @@
 import os
+
 import httpx
+from dotenv import load_dotenv
 from app.models.schemas import FactCheckResult
+
+load_dotenv()
 
 FACT_CHECK_BASE = "https://factchecktools.googleapis.com/v1alpha1/claims:search"
 

@@ -3,11 +3,11 @@ import { Link } from "react-router-dom";
 
 function PricingCard({ tier, price, desc, features, highlighted, cta }) {
   return (
-    <div className={`p-10 rounded-[2.5rem] border transition-all duration-500 flex flex-col h-full ${highlighted ? 'bg-[#0F1E2E] border-[#00D4FF44] shadow-[0_30px_70px_rgba(0,212,255,0.15)] scale-105 z-10' : 'bg-[#0A1520] border-[#132435]'}`}>
-      <div className="mb-10">
+    <div className={`p-8 lg:p-10 rounded-[2.5rem] border transition-all duration-500 flex flex-col h-full ${highlighted ? 'bg-[#0F1E2E] border-[#00D4FF44] shadow-[0_30px_70px_rgba(0,212,255,0.15)] md:scale-105 z-10' : 'bg-[#0A1520] border-[#132435]'}`}>
+      <div className="mb-10 text-center">
         <span className="font-mono text-[10px] tracking-[5px] text-[#3A6070] uppercase block mb-4 font-bold">{tier}</span>
-        <div className="flex items-baseline gap-1 mb-4">
-          <span className="font-syne font-black text-6xl text-[#CDE8F0]">R${price}</span>
+        <div className="price-row flex items-baseline justify-center gap-2 mb-4 whitespace-nowrap">
+          <span className="font-syne font-black text-[clamp(3rem,5vw,3.75rem)] leading-none text-[#CDE8F0]">R${price}</span>
           <span className="font-mono text-[14px] text-[#1A3A50] font-bold">/mês</span>
         </div>
         <p className="font-mono text-[11px] text-[#3A6070] uppercase font-bold tracking-wider leading-relaxed">{desc}</p>
@@ -48,7 +48,7 @@ export default function PricingPage() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-10 items-stretch">
+        <div className="grid md:grid-cols-3 gap-8 lg:gap-10 items-stretch">
           <PricingCard 
             tier="Básico" 
             price="0" 

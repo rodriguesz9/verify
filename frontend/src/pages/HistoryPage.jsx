@@ -63,7 +63,7 @@ export default function HistoryPage() {
               { label: "PLANO",       value: stats.plan || "GRÁTIS", col: "#FFB830" },
             ].map(({ label, value, col }) => (
               <div key={label} className="rounded-2xl p-6 text-center border border-[#132435] bg-[#0A1520] shadow-sm">
-                <span className="font-syne font-black text-3xl block mb-1" style={{ color: col }}>{value}</span>
+                <span className="data-token font-syne font-black text-3xl block mb-1" style={{ color: col }}>{value}</span>
                 <span className="font-mono text-[9px] tracking-[5px] block font-bold uppercase text-[#3A6070]">{label}</span>
               </div>
             ))}
@@ -102,7 +102,7 @@ export default function HistoryPage() {
                           {item.query_type}
                         </span>
                      </div>
-                     <p className="font-mono text-[14px] font-black text-[#CDE8F0] truncate tracking-tight">
+                     <p className="data-token font-mono text-[14px] font-black text-[#CDE8F0] tracking-tight">
                        {item.query_input}
                      </p>
                    </div>
@@ -112,7 +112,7 @@ export default function HistoryPage() {
                        style={{ background: col + "18", color: col, border: `1px solid ${col}33` }}>
                        {item.verdict}
                      </span>
-                     <div className="font-syne font-black text-3xl tracking-tighter" style={{ color: col }}>
+                     <div className="data-token font-syne font-black text-3xl tracking-tighter" style={{ color: col }}>
                        {item.score}%
                      </div>
                    </div>

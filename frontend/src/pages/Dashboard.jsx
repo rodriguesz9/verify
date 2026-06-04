@@ -41,7 +41,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
            {[{l: "TOTAL", v: stats?.total}, {l: "PRECISÃO", v: (stats?.avg_score || 0) + "%"}, {l: "USO HOJE", v: stats?.daily_used}, {l: "PLANO", v: stats?.plan || "GRÁTIS"}].map(s => (
              <div key={s.l} className="p-6 rounded-2xl bg-[#0A1520] border border-[#132435] text-center shadow-inner group hover:border-[#00D4FF44] transition-all">
-                <span className="font-syne font-black text-3xl text-[#CDE8F0] block mb-1 group-hover:scale-110 transition-transform">{s.v || 0}</span>
+                <span className="data-token font-syne font-black text-3xl text-[#CDE8F0] block mb-1 group-hover:scale-110 transition-transform">{s.v || 0}</span>
                 <span className="font-mono text-[9px] text-[#3A6070] tracking-[4px] uppercase font-bold">{s.l}</span>
              </div>
            ))}
@@ -63,10 +63,10 @@ export default function Dashboard() {
                     <span className="font-mono text-[9px] px-3 py-1 rounded-full border font-bold tracking-widest uppercase" style={{ borderColor: col, color: col, background: col + "11" }}>{item.verdict_label}</span>
                     <span className="font-mono text-[10px] text-[#1A3A50] font-bold">{new Date(item.created_at).toLocaleDateString()}</span>
                   </div>
-                  <p className="font-mono text-[13px] text-[#CDE8F0] truncate font-black tracking-tight">{item.query_input}</p>
+                  <p className="data-token font-mono text-[13px] text-[#CDE8F0] font-black tracking-tight">{item.query_input}</p>
                 </div>
                 <div className="text-right">
-                  <div className="font-syne font-black text-2xl tracking-tighter" style={{ color: col }}>{item.verdict_score}%</div>
+                  <div className="data-token font-syne font-black text-2xl tracking-tighter" style={{ color: col }}>{item.verdict_score}%</div>
                   <div className="font-mono text-[8px] text-[#3A6070] font-bold uppercase tracking-widest">Certeza</div>
                 </div>
               </div>
