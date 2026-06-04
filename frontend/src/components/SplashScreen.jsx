@@ -47,7 +47,7 @@ export default function SplashScreen() {
         <div className="text-center overflow-hidden">
           <div className="animate-slide-up">
             <h1 className="font-syne font-black text-4xl tracking-[18px] text-[#CDE8F0] mb-3 translate-x-[9px] select-none">
-              VERIFY
+              VERIFAI
             </h1>
             <div className="flex flex-col items-center" style={{ gap: "0.5rem" }}>
               <p className="font-mono text-[9px] tracking-[6px] text-[#3A6070] uppercase opacity-70">

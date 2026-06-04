@@ -11,7 +11,7 @@ export default function Navbar() {
           <Link to="/" className="flex items-center gap-3 no-underline group translate-y-[-2px]">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center font-syne font-black text-sm group-hover:rotate-12 transition-transform shadow-[0_0_15px_#00D4FF66]"
                  style={{ backgroundColor: "#00D4FF", color: "#04080C" }}>V</div>
-            <span className="font-syne font-black text-xl tracking-[5px] text-[#CDE8F0]">VERIFY</span>
+            <span className="font-syne font-black text-xl tracking-[5px] text-[#CDE8F0]">VERIFAI</span>
           </Link>
           
           <div className="hidden md:flex items-center" style={{ gap: "2.5rem" }}>

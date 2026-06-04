@@ -7,7 +7,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
           <div className="md:col-span-2">
             <h3 className="font-syne font-black text-xl tracking-[4px] text-text mb-4">
-              VERIFY
+              VERIFAI
             </h3>
             <p className="font-mono text-[13px] leading-relaxed max-w-sm text-[#3A6070]">
               Ajudando você a descobrir a verdade por trás das notícias. 
@@ -37,7 +37,7 @@ export default function Footer() {
 
         <div className="border-t border-[#132435] mt-10 pt-6 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="font-mono text-[10px] text-[#1A3A50] tracking-[1px] uppercase font-bold text-center md:text-left">
-            &copy; {new Date().getFullYear()} Verify – A verdade ao seu alcance.
+            &copy; {new Date().getFullYear()} VeriAI – A verdade ao seu alcance.
           </p>
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 font-mono text-[9px] text-[#1A3A50] tracking-[2px] uppercase font-bold">
              <span>Brasil</span>
