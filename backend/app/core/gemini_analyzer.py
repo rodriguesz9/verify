@@ -161,6 +161,10 @@ DADOS DE CONTEXTO (Fact-checks e buscas):
 {json.dumps(context_data, indent=2, ensure_ascii=False)}
 
 INSTRUÇÕES DE EXECUÇÃO:
+0. INPUT: Analise o input recebido.
+   - Se for uma pergunta, transforme-a em alegação e prossiga com as etapas de análise normalmente. Nesse caso, a "summary" deve responder à pergunta de forma natural e direta, mas SEMPRE dentro do JSON obrigatório.
+   - Se o input não tiver NADA a ver com verificação de notícias (exemplo: "oi chat, como foi seu dia?"), NÃO prossiga com nenhuma etapa de análise. Retorne mesmo assim o JSON obrigatório, com "verdict": "Suspicious", "score": 0 e uma "summary" explicando que você é um analisador de notícias e não responde a outros assuntos. Não invente fact-checks nem notícias.
+   - Em TODOS os casos (pergunta, fora de escopo ou análise normal), a resposta DEVE ser o JSON da estrutura do passo 6 — nunca texto solto.
 1. ORQUESTRAÇÃO: Cruze os dados de contexto com o conteúdo fornecido.
 2. ANCHORING: Nunca julgue uma notícia de ontem como "antiga" se hoje é hoje. Use a data do sistema.
 3. ETAPAS DE ANALISE:
@@ -182,7 +186,7 @@ INSTRUÇÕES DE EXECUÇÃO:
 - Fontes conflitantes ou apenas veículos de baixa credibilidade: reforce o "verdict" para Suspicious e adicione alerta em "red_flags".
 - Nenhuma notícia relevante encontrada: NÃO invente cobertura; apenas informe na "summary" que não há cobertura de imprensa indexada.
 - Adicione em "serper_news_evidence" os itens usados (title, link, snippet, date).
-6. STRUCTURE: Retorne EXATAMENTE um JSON com:
+6. STRUCTURE: Em TODOS os casos, retorne EXATAMENTE um JSON (sem markdown, sem texto fora do JSON) com:
    - "verdict": (Authentic | AI_Generated | Manipulated | Out_Of_Context | Suspicious)
    - "score": (0-100, onde 100 é totalmente autêntico)
    - "summary": (Resumo humanizado de 2 a 3 frases explicando o motivo do veredito, citando fact-checks e/ou veículos de imprensa relevantes quando existirem)
