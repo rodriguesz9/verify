@@ -50,7 +50,7 @@ async def run_pipeline(text: str, url: str | None = None) -> dict:
         "gptzero": ai_forensics,
         "domain": domain_info,
         "claims": claims,
-        "fact_checks": [fc.model_dump() for fc in fact_checks[:3]],
+        "fact_checks": [fc.model_dump() for fc in fact_checks],
         "source_url": source_url,
     }
 

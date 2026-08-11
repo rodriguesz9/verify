@@ -170,18 +170,25 @@ INSTRUÇÕES DE EXECUÇÃO:
 - Avaliar linguagem sensacionalista
 - Avaliar problemas temporais
 - Avaliar sinais de manipulação/IA, se houver imagem
-9. STRUCTURE: Retorne EXATAMENTE um JSON com:
+4. FACT-CHECKING (OBRIGATÓRIO quando context_data.fact_checks não estiver vazio):
+- Para cada alegação principal, compare com os itens de context_data.fact_checks (claim_text, rating, publisher, url).
+- Alegação que contradiz um fact-check de fonte confiável: reduza o "score", reforce o "verdict" para Suspicious/Out_Of_Context e adicione alerta em "red_flags" citando o publisher e a avaliação.
+- Alegação corroborada por fact-check: adicione o item em "fact_check_evidence" e registre sinal positivo em "positives".
+- SEMPRE reflita os resultados dos fact-checks na "summary", citando publisher e avaliação (ex.: "Boatos.org avalia a alegação como Falso").
+- Se nenhum fact-check corresponde, NÃO invente: apenas informe que não houve correspondência.
+5. STRUCTURE: Retorne EXATAMENTE um JSON com:
    - "verdict": (Authentic | AI_Generated | Manipulated | Out_Of_Context | Suspicious)
    - "score": (0-100, onde 100 é totalmente autêntico)
-   - "summary": (Resumo humanizado de 2 a 3 frases explicando o motivo do veredito)
+   - "summary": (Resumo humanizado de 2 a 3 frases explicando o motivo do veredito, citando fact-checks relevantes quando existirem)
    - "red_flags": [Lista de alertas técnicos]
+   - "fact_check_evidence": [Lista de fact-checks efetivamente usados na análise, cada um com claim_text, rating, publisher e url]
    - "semantic_score": (0-100)
    - "sensationalism": (0-100)
    - "domain_score": (0-100)
    - "temporal_issues": boolean (se houver conflito de data)
    - "positives": [Sinais de autenticidade]
 
-FOCO: Seja extremamente técnico, cético e preciso.
+FOCO: Seja extremamente técnico, cético e preciso. Se um fact-check contradisser o conteúdo, o score e o veredito DEVEM refletir isso.
 """
 
     try:
