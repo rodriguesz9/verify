@@ -1,3 +1,15 @@
+# VerifAI
+
+VerifAI ("Antigravity Core") — misinformation & digital-forensics audit platform. FastAPI + async SQLAlchemy + PostgreSQL backend, React/Vite frontend, Docker Compose. Pipeline: Gemini orchestrates claim extraction, fact-checking, Serper news search, GPTZero AI-text detection, domain reputation; Sightengine + Hugging Face for media deepfake/AI checks. JWT auth with tier-based daily quotas.
+
+**General structure & architecture: read `docs/general.md` first for layout, data model, request flow, and per-module responsibilities.**
+
+
+---
+
+## Skills
+
+### Caveman
 Respond terse like smart caveman. All technical substance stay. Only fluff die.
 Persistence
 
