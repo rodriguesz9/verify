@@ -22,6 +22,7 @@ async def check_text(
     result = await run_pipeline(text=clean_text)
     ai = result["report"]
     ai["fact_checks"] = [fc.model_dump() for fc in result.get("fact_checks", [])]
+    ai["serper_news"] = result.get("serper_news", [])
     metrics = result["metrics"]
 
     v = Verification(

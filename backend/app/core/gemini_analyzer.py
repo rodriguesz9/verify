@@ -176,19 +176,26 @@ INSTRUÇÕES DE EXECUÇÃO:
 - Alegação corroborada por fact-check: adicione o item em "fact_check_evidence" e registre sinal positivo em "positives".
 - SEMPRE reflita os resultados dos fact-checks na "summary", citando publisher e avaliação (ex.: "Boatos.org avalia a alegação como Falso").
 - Se nenhum fact-check corresponde, NÃO invente: apenas informe que não houve correspondência.
-5. STRUCTURE: Retorne EXATAMENTE um JSON com:
+5. BUSCA DE NOTÍCIAS (OBRIGATÓRIO quando context_data.serper_news não estiver vazio):
+- Compare cada alegação principal com context_data.serper_news (title, link, snippet, date de veículos de imprensa).
+- Alegação confirmada por MÚLTIPLAS fontes de imprensa confiáveis: aumente o "score", registre sinal positivo em "positives" e cite os veículos na "summary".
+- Fontes conflitantes ou apenas veículos de baixa credibilidade: reforce o "verdict" para Suspicious e adicione alerta em "red_flags".
+- Nenhuma notícia relevante encontrada: NÃO invente cobertura; apenas informe na "summary" que não há cobertura de imprensa indexada.
+- Adicione em "serper_news_evidence" os itens usados (title, link, snippet, date).
+6. STRUCTURE: Retorne EXATAMENTE um JSON com:
    - "verdict": (Authentic | AI_Generated | Manipulated | Out_Of_Context | Suspicious)
    - "score": (0-100, onde 100 é totalmente autêntico)
-   - "summary": (Resumo humanizado de 2 a 3 frases explicando o motivo do veredito, citando fact-checks relevantes quando existirem)
+   - "summary": (Resumo humanizado de 2 a 3 frases explicando o motivo do veredito, citando fact-checks e/ou veículos de imprensa relevantes quando existirem)
    - "red_flags": [Lista de alertas técnicos]
    - "fact_check_evidence": [Lista de fact-checks efetivamente usados na análise, cada um com claim_text, rating, publisher e url]
+   - "serper_news_evidence": [Lista de notícias efetivamente usadas na análise, cada uma com title, link, snippet e date]
    - "semantic_score": (0-100)
    - "sensationalism": (0-100)
    - "domain_score": (0-100)
    - "temporal_issues": boolean (se houver conflito de data)
    - "positives": [Sinais de autenticidade]
 
-FOCO: Seja extremamente técnico, cético e preciso. Se um fact-check contradisser o conteúdo, o score e o veredito DEVEM refletir isso.
+FOCO: Seja extremamente técnico, cético e preciso. Se um fact-check ou a cobertura de imprensa contradisser o conteúdo, o score e o veredito DEVEM refletir isso. Corroboração de imprensa confiável não é garantia absoluta de verdade, mas eleva a confiança.
 """
 
     try:

@@ -3,6 +3,7 @@ from app.core.gemini_analyzer import extract_claims_with_ai, generate_final_repo
 from app.core.fact_checker import query_fact_check_api
 from app.core.domain_checker import check_domain_reputation
 from app.core.gptzero_client import detect_ai_text
+from app.core.serper_client import search_news
 
 
 async def run_pipeline(text: str, url: str | None = None) -> dict:
@@ -26,8 +27,13 @@ async def run_pipeline(text: str, url: str | None = None) -> dict:
         asyncio.create_task(query_fact_check_api(query[:200]))
         for query in fact_check_queries
     ]
-    
-    tasks = [*fact_tasks, ai_task]
+
+    serper_news_queries = claims[:3] or [analysis_text[:200]]
+    serper_news_tasks = [
+        asyncio.create_task(search_news(query[:200]))
+        for query in serper_news_queries
+    ]
+    tasks = [*fact_tasks, *serper_news_tasks, ai_task]
     if domain_task:
         tasks.append(domain_task)
     
@@ -46,11 +52,23 @@ async def run_pipeline(text: str, url: str | None = None) -> dict:
     ai_forensics = ai_task.result()
     domain_info = domain_task.result() if domain_task else { "score": None, "note": "Nenhuma URL fornecida" }
 
+    serper_news_results = []
+    seen_links: set[str] = set()
+    for task in serper_news_tasks:
+        for item in task.result():
+            link = item.get("link")
+            if link and link in seen_links:
+                continue
+            if link:
+                seen_links.add(link)
+            serper_news_results.append(item)
+
     context = {
         "gptzero": ai_forensics,
         "domain": domain_info,
         "claims": claims,
         "fact_checks": [fc.model_dump() for fc in fact_checks],
+        "serper_news": serper_news_results,
         "source_url": source_url,
     }
 
@@ -64,9 +82,11 @@ async def run_pipeline(text: str, url: str | None = None) -> dict:
         "metrics": {
             "text_ai_probability": ai_forensics.get("ai_probability", 0),
             "fact_checks_count": len(fact_checks),
+            "serper_news_count": len(serper_news_results),
             "domain_score": domain_info.get("score"),
             "earliest_known_date": None
         },
         "fact_checks": fact_checks,
+        "serper_news": serper_news_results,
         "domain_info": domain_info
     }

@@ -28,6 +28,7 @@ def fake_report(**overrides):
         "logical_fallacies": [],
         "emotional_triggers": False,
         "fact_checks": [],
+        "serper_news": [],
         "domain_note": "No domain provided",
         "source_url": None,
         "recommended_sources": [],
