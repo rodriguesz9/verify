@@ -10,7 +10,7 @@ External forensic APIs: Gemini, Sightengine, Hugging Face, Serper/SerpApi, GPTZe
 
 ```
 Browser (React)
-   │  /api (JWT Bearer, axios)
+   │  /api (HTTP-only JWT cookies, axios)
    ▼
 FastAPI backend (uvicorn, port 8000)
    │
@@ -72,7 +72,7 @@ verify/
 - `POST /api/auth/login-rl` is rate-limited wrapper (5/15min) — actual logic lives in auth router.
 
 ### `api/` — Routers (thin layers: validate → quota → pipeline → persist)
-- `auth.py` — register/login/google/refresh/me. Argon2 hashing via `core/security`. Emits access+refresh JWTs. Email/password validation.
+- `auth.py` — register/login/google/refresh/logout/me. Argon2 hashing via `core/security`. Sets access+refresh JWTs as HTTP-only same-site cookies. Email/password validation.
 - `check_text.py` — `POST /api/check-text`. Sanitize text → `run_pipeline` → store Verification + AnalysisMetrics.
 - `check_url.py` — `POST /api/check-url`. Scrapes page (httpx + BeautifulSoup, strips nav/scripts, grabs `<main>`/`<article>`), then same pipeline.
 - `upload.py` — `POST /api/upload`. Allowed MIME types, 15MB cap, md5 cache, image deepfake/AI forensics, persist + cache.
@@ -89,7 +89,7 @@ verify/
 - `huggingface_client.py` — `check_ai_image_hf` (community model second check).
 - `serpapi_client.py` — Google Reverse Image search wrapper.
 - `hive_moderation.py` — Hive moderation API wrapper.
-- `auth.py` — `get_current_user` (JWT via HTTPBearer), `verify_limit` (tier-based daily quota: Standard 300 textual/100 media, Premium 10k/5k, Enterprise 9999), Google token verify.
+- `auth.py` — `get_current_user` (JWT from HTTP-only access cookie), `verify_limit` (tier-based daily quota: Standard 300 textual/100 media, Premium 10k/5k, Enterprise 9999), Google token verify.
 - `security.py` — Argon2 hashing, JWT create/decode, bleach-based XSS sanitize, password/email validation.
 - `cache.py` — caching helpers.
 - `database.py` — async engine, `get_db` dependency, `init_db`.
@@ -107,7 +107,7 @@ verify/
 ## Frontend (`frontend/src`)
 
 - **React 18 + Vite + Tailwind + react-router-dom + axios**.
-- `services/api.js` — axios instance, base `/api`, attaches JWT from `localStorage` (`verifai_access`/`verifai_refresh`), auto-refresh on 401, `logout()` redirect to `/login`. Exports auth/analysis/history wrappers.
+- `services/api.js` — axios instance, base `/api`, sends same-site cookies, auto-refreshes on 401, calls cookie-clearing logout, then redirects to `/login`. Exports auth/analysis/history wrappers.
 - `hooks/useAuth.jsx` — AuthProvider context (user state, login/register/logout).
 - `components/` — `Navbar`, `Footer`, `ProtectedRoute`, `Dropzone`, `GaugeChart`, `MetricBar`, `UsageBar`, `LoadingScreen`, `SplashScreen`.
 - `pages/` — Public: `LandingPage`, `LoginPage`, `RegisterPage`, `Termos`, `Privacidade`, `LimitacoesIA`. Protected (`ProtectedRoute` + Navbar): `Home`, `Dashboard`, `HistoryPage`, `ReportPage` (incl. `/report/:id`), `PricingPage`, `Missao`, `Sugestoes`.
@@ -138,6 +138,6 @@ Tables auto-created at startup via SQLAlchemy `Base.metadata.create_all`.
 
 ## Key Config (.env, backend/)
 
-`GEMINI_API_KEY`, `GEMINI_MODEL_NAME`, `SIGHTENGINE_API_USER/SECRET`, `HUGGINGFACE_API_TOKEN`, `SERPAPI_KEY`, `GPTZERO_API_KEY`, `GOOGLE_CLIENT_ID`, `JWT_SECRET`, `DATABASE_URL`, `CORS_ORIGINS`.
+`GEMINI_API_KEY`, `GEMINI_MODEL_NAME`, `SIGHTENGINE_API_USER/SECRET`, `HUGGINGFACE_API_TOKEN`, `SERPAPI_KEY`, `GPTZERO_API_KEY`, `GOOGLE_CLIENT_ID`, `JWT_SECRET`, `DATABASE_URL`, `CORS_ORIGINS`, `COOKIE_SECURE`.
 
 See `README.md` for the full list and docker-compose for wiring.

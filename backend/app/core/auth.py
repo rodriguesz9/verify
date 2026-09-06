@@ -5,8 +5,7 @@ Auth helpers for Antigravity Core.
 import os
 from datetime import datetime, timezone, date
 
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Depends, HTTPException, status, Request
 from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -19,8 +18,8 @@ from app.core.security import decode_token
 from app.models.user import User, UserTier
 from app.models.history import Verification, ContentType
 
-_bearer = HTTPBearer(auto_error=True)
 _GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+_ACCESS_COOKIE = "verifai_access"
 
 # Tiers-based DAILY LIMITS
 DAILY_LIMITS = {
@@ -31,16 +30,18 @@ DAILY_LIMITS = {
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> User:
     cred_exc = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Sessão inválida ou expirada.",
-        headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = decode_token(credentials.credentials)
+        token = request.cookies.get(_ACCESS_COOKIE)
+        if not token:
+            raise cred_exc
+        payload = decode_token(token)
         if payload.get("type") != "access":
             raise cred_exc
         user_id: str = payload.get("sub")

@@ -1,48 +1,40 @@
 import axios from "axios";
 
-const api = axios.create({ baseURL: "/api", timeout: 60000 });
-
-// Attach JWT from localStorage on every request
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("verifai_access");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
+const api = axios.create({ baseURL: "/api", timeout: 60000, withCredentials: true });
 
 // Auto-refresh on 401
 api.interceptors.response.use(
   (r) => r,
   async (err) => {
     const orig = err.config;
-    if (err.response?.status === 401 && !orig._retry) {
+    const skipRefresh = ["/auth/login", "/auth/register", "/auth/google", "/auth/refresh", "/auth/logout"].includes(orig?.url);
+    if (err.response?.status === 401 && !orig._retry && !orig._skipAuthRefresh && !skipRefresh) {
       orig._retry = true;
-      const refresh = localStorage.getItem("verifai_refresh");
-      if (refresh) {
-        try {
-          const { data } = await axios.post("/api/auth/refresh", { refresh_token: refresh });
-          localStorage.setItem("verifai_access",  data.access_token);
-          localStorage.setItem("verifai_refresh", data.refresh_token);
-          orig.headers.Authorization = `Bearer ${data.access_token}`;
-          return api(orig);
-        } catch { logout(); }
+      try {
+        await api.post("/auth/refresh", {}, { _skipAuthRefresh: true });
+        return api(orig);
+      } catch {
+        // Startup session checks are expected to fail for signed-out visitors.
+        // Redirecting them here reloads /login indefinitely.
+        if (!orig._skipLogoutRedirect) logout();
       }
     }
     return Promise.reject(err);
   }
 );
 
-export const logout = () => {
-  localStorage.removeItem("verifai_access");
-  localStorage.removeItem("verifai_refresh");
-  window.location.href = "/login";
+export const logout = (redirect = "/login") => {
+  api.post("/auth/logout", {}, { _skipAuthRefresh: true })
+    .catch(() => {})
+    .finally(() => { window.location.href = redirect; });
 };
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export const register   = (b) => api.post("/auth/register",   b).then(r => r.data);
 export const login      = (b) => api.post("/auth/login",      b).then(r => r.data);
 export const googleAuth = (b) => api.post("/auth/google",     b).then(r => r.data);
-export const refreshTokens=(b)=> api.post("/auth/refresh",    b).then(r => r.data);
-export const getMe      = ()  => api.get ("/auth/me"           ).then(r => r.data);
+export const refreshTokens = () => api.post("/auth/refresh", {}).then(r => r.data);
+export const getMe      = ()  => api.get ("/auth/me", { _skipLogoutRedirect: true }).then(r => r.data);
 
 // ── Analysis ──────────────────────────────────────────────────────────────────
 export const analyzeText   = (text) => api.post("/check-text", { text }    ).then(r => r.data);

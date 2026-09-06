@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+import os
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -44,10 +46,44 @@ class GoogleBody(BaseModel):
     id_token: str
 
 
-class TokenOut(BaseModel):
-    access_token:  str
-    refresh_token: str
-    token_type:    str = "bearer"
+class AuthOut(BaseModel):
+    detail: str = "Sessão iniciada."
+
+
+_ACCESS_COOKIE = "verifai_access"
+_REFRESH_COOKIE = "verifai_refresh"
+_ACCESS_MAX_AGE = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60")) * 60
+_REFRESH_MAX_AGE = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7")) * 24 * 60 * 60
+_COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() in {"1", "true", "yes"}
+
+
+def _set_auth_cookies(response: Response, user_id: str) -> None:
+    """Issue tokens only as same-site, HTTP-only cookies."""
+    response.headers["Cache-Control"] = "no-store"
+    response.set_cookie(
+        key=_ACCESS_COOKIE,
+        value=create_access_token(user_id),
+        max_age=_ACCESS_MAX_AGE,
+        path="/",
+        httponly=True,
+        secure=_COOKIE_SECURE,
+        samesite="lax",
+    )
+    response.set_cookie(
+        key=_REFRESH_COOKIE,
+        value=create_refresh_token(user_id),
+        max_age=_REFRESH_MAX_AGE,
+        path="/api/auth/refresh",
+        httponly=True,
+        secure=_COOKIE_SECURE,
+        samesite="lax",
+    )
+
+
+def _clear_auth_cookies(response: Response) -> None:
+    response.headers["Cache-Control"] = "no-store"
+    response.delete_cookie(_ACCESS_COOKIE, path="/")
+    response.delete_cookie(_REFRESH_COOKIE, path="/api/auth/refresh")
 
 
 def _user_to_dict(user: User) -> dict:
@@ -62,8 +98,8 @@ def _user_to_dict(user: User) -> dict:
 
 # ── Auth Endpoints ─────────────────────────────────────────────────────────────
 
-@router.post("/register", response_model=TokenOut)
-async def register(body: RegisterBody, db: AsyncSession = Depends(get_db)):
+@router.post("/register", response_model=AuthOut)
+async def register(body: RegisterBody, response: Response, db: AsyncSession = Depends(get_db)):
     # Check email
     res = await db.execute(select(User).where(User.email == body.email))
     if res.scalar_one_or_none():
@@ -83,14 +119,12 @@ async def register(body: RegisterBody, db: AsyncSession = Depends(get_db)):
         print(f"Error creating user: {e}")
         raise HTTPException(status_code=500, detail="Erro ao salvar no banco de dados. Tente novamente.")
 
-    return TokenOut(
-        access_token=create_access_token(str(user.id)),
-        refresh_token=create_refresh_token(str(user.id)),
-    )
+    _set_auth_cookies(response, str(user.id))
+    return AuthOut()
 
 
-@router.post("/login", response_model=TokenOut)
-async def login(body: LoginBody, db: AsyncSession = Depends(get_db)):
+@router.post("/login", response_model=AuthOut)
+async def login(body: LoginBody, response: Response, db: AsyncSession = Depends(get_db)):
     res = await db.execute(select(User).where(User.email == body.email.lower()))
     user = res.scalar_one_or_none()
     
@@ -103,14 +137,12 @@ async def login(body: LoginBody, db: AsyncSession = Depends(get_db)):
     user.last_login = datetime.utcnow()
     await db.commit()
 
-    return TokenOut(
-        access_token=create_access_token(str(user.id)),
-        refresh_token=create_refresh_token(str(user.id)),
-    )
+    _set_auth_cookies(response, str(user.id))
+    return AuthOut()
 
 
-@router.post("/google", response_model=TokenOut)
-async def google_login(body: GoogleBody, db: AsyncSession = Depends(get_db)):
+@router.post("/google", response_model=AuthOut)
+async def google_login(body: GoogleBody, response: Response, db: AsyncSession = Depends(get_db)):
     try:
         info = verify_google_id_token(body.id_token)
     except Exception:
@@ -148,15 +180,13 @@ async def google_login(body: GoogleBody, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(user)
 
-    return TokenOut(
-        access_token=create_access_token(str(user.id)),
-        refresh_token=create_refresh_token(str(user.id)),
-    )
+    _set_auth_cookies(response, str(user.id))
+    return AuthOut()
 
 
-@router.post("/refresh", response_model=TokenOut)
-async def refresh(body: dict, db: AsyncSession = Depends(get_db)):
-    refresh_token = body.get("refresh_token")
+@router.post("/refresh", response_model=AuthOut)
+async def refresh(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
+    refresh_token = request.cookies.get(_REFRESH_COOKIE)
     if not refresh_token:
         raise HTTPException(status_code=401)
     
@@ -172,10 +202,13 @@ async def refresh(body: dict, db: AsyncSession = Depends(get_db)):
     if not user or not user.is_active:
         raise HTTPException(status_code=401)
 
-    return TokenOut(
-        access_token=create_access_token(str(user.id)),
-        refresh_token=create_refresh_token(str(user.id)),
-    )
+    _set_auth_cookies(response, str(user.id))
+    return AuthOut()
+
+
+@router.post("/logout", status_code=204)
+async def logout(response: Response):
+    _clear_auth_cookies(response)
 
 
 @router.get("/me")
