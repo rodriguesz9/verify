@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 import Footer from "../components/Footer";
 
 function HexCanvas() {
@@ -80,6 +81,7 @@ function FloatingInfo({ icon, text, style }) {
 }
 
 function PlanCard({ tier, price, features, highlighted }) {
+  const { user } = useAuth();
   return (
     <div className={`p-10 rounded-[3rem] border transition-all duration-500 flex flex-col h-full ${highlighted ? 'bg-[#0F1E2E] border-[#00D4FF44] shadow-[0_30px_70px_rgba(0,212,255,0.15)] scale-105 z-10' : 'bg-[#0A1520] border-[#132435]'}`}>
       <span className="font-mono text-[10px] tracking-[5px] text-[#3A6070] uppercase block mb-6">{tier}</span>
@@ -94,14 +96,16 @@ function PlanCard({ tier, price, features, highlighted }) {
           </li>
         ))}
       </ul>
-      <Link to="/register" className={`block text-center py-6 rounded-2xl font-syne font-black text-[14px] tracking-[4px] transition-all no-underline ${highlighted ? 'bg-gradient-to-r from-[#00D4FF] to-[#00FF87] text-[#04080C] shadow-lg' : 'border-2 border-[#132435] text-[#CDE8F0] hover:bg-white/5'}`}>
-        ESCOLHER ESTE
+      <Link to={user ? "/app" : "/register"} className={`block text-center py-6 rounded-2xl font-syne font-black text-[14px] tracking-[4px] transition-all no-underline ${highlighted ? 'bg-gradient-to-r from-[#00D4FF] to-[#00FF87] text-[#04080C] shadow-lg' : 'border-2 border-[#132435] text-[#CDE8F0] hover:bg-white/5'}`}>
+        {user ? "IR PARA O APP" : "ESCOLHER ESTE"}
       </Link>
     </div>
   );
 }
 
 export default function LandingPage() {
+  const { user, signOut } = useAuth();
+
   return (
     <div className="relative" style={{ background: "#04080C", minHeight: "100vh" }}>
       <HexCanvas />
@@ -117,7 +121,14 @@ export default function LandingPage() {
              {["O que é?", "Como funciona", "Planos", "Sobre"].map(item => (
                <a key={item} href={`#${item.toLowerCase().replace(' ', '-').replace('?', '')}`} className="font-mono text-[11px] tracking-[4px] text-[#3A6070] no-underline hover:text-[#00D4FF] uppercase transition-all">{item}</a>
              ))}
-             <Link to="/login" className="font-mono text-[11px] tracking-[4px] text-white no-underline border-2 border-[#132435] px-8 py-2.5 rounded-full hover:bg-white hover:text-[#04080C] hover:border-white transition-all font-bold">ENTRAR</Link>
+             {user ? (
+               <div className="flex items-center gap-6">
+                 <Link to="/app" className="font-mono text-[11px] tracking-[4px] text-white no-underline border-2 border-[#00D4FF44] px-8 py-2.5 rounded-full hover:bg-[#00D4FF22] hover:border-[#00D4FF] transition-all font-bold">IR PARA O APP</Link>
+                 <button onClick={signOut} className="font-mono text-[11px] tracking-[4px] text-[#FF3B5C] no-underline border-2 border-[#FF3B5C33] px-6 py-2.5 rounded-full hover:bg-[#FF3B5C11] transition-all font-bold bg-transparent cursor-pointer">SAIR</button>
+               </div>
+             ) : (
+               <Link to="/login" className="font-mono text-[11px] tracking-[4px] text-white no-underline border-2 border-[#132435] px-8 py-2.5 rounded-full hover:bg-white hover:text-[#04080C] hover:border-white transition-all font-bold">ENTRAR</Link>
+             )}
           </div>
         </div>
       </nav>
@@ -137,8 +148,8 @@ export default function LandingPage() {
               Não se deixe enganar. O Verify usa inteligência artificial para checar notícias, sites e fotos para você, rápido e fácil.
             </p>
             <div className="flex flex-col sm:flex-row gap-6">
-              <Link to="/register" className="px-14 py-6 rounded-3xl bg-gradient-to-r from-[#00D4FF] to-[#00FF87] text-[#04080C] font-syne font-black text-[16px] tracking-[4px] shadow-[0_20px_50px_rgba(0,212,255,0.3)] hover:scale-105 active:scale-95 transition-all text-center no-underline">
-                COMEÇAR AGORA →
+              <Link to={user ? "/app" : "/register"} className="px-14 py-6 rounded-3xl bg-gradient-to-r from-[#00D4FF] to-[#00FF87] text-[#04080C] font-syne font-black text-[16px] tracking-[4px] shadow-[0_20px_50px_rgba(0,212,255,0.3)] hover:scale-105 active:scale-95 transition-all text-center no-underline">
+                {user ? "IR PARA O APP →" : "COMEÇAR AGORA →"}
               </Link>
             </div>
           </div>
