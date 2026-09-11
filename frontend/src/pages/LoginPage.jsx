@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { ArrowRight, LockKeyhole, Mail, ShieldCheck, X } from "lucide-react";
 import { login, getMe, googleAuth } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
 
@@ -7,130 +8,196 @@ const MAX_ATTEMPTS = 5;
 const BLOCK_MS = 15 * 60 * 1000;
 
 export default function LoginPage() {
-  const { signIn }    = useAuth();
-  const navigate      = useNavigate();
+  const { signIn } = useAuth();
+  const navigate = useNavigate();
 
-  const [email,    setEmail]    = useState("");
+  // Keep form state isolated from auth context to avoid re-renders on every keystroke
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error,    setError]    = useState("");
-  const [loading,  setLoading]  = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const [attempts, setAttempts] = useState(0);
-  const [blocked,  setBlocked]  = useState(false);
+  const [blocked, setBlocked] = useState(false);
+
+  // useRef so the Google callback closure is always fresh without re-registering the button
+  const completeLoginRef = useRef(null);
+  completeLoginRef.current = async () => {
+    const me = await getMe();
+    signIn(me);
+    navigate("/app");
+  };
 
   useEffect(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (!clientId) return;
-    if (window.google) {
-      google.accounts.id.initialize({ client_id: clientId, callback: handleGoogleCallback });
-      google.accounts.id.renderButton(document.getElementById("google-btn"), { theme: "dark", size: "large", width: "100%", type: "standard", shape: "rectangular" });
-    }
-  }, []);
+    if (!clientId || !window.google) return;
 
-  const handleGoogleCallback = async (response) => {
-    setLoading(true); setError("");
-    try {
-      const tokens = await googleAuth({ id_token: response.credential });
-      if (tokens?.access_token) {
-        localStorage.setItem("verify_access", tokens.access_token);
-        localStorage.setItem("verify_refresh", tokens.refresh_token);
-      }
-      const me = await getMe();
-      signIn(tokens, me);
-      navigate("/app");
-    } catch (err) {
-      setError("Falha ao entrar com Google.");
-    } finally { setLoading(false); }
-  };
+    google.accounts.id.initialize({
+      client_id: clientId,
+      callback: async (response) => {
+        setLoading(true);
+        setError("");
+        try {
+          await googleAuth({ id_token: response.credential });
+          await completeLoginRef.current();
+        } catch {
+          setError("Não foi possível entrar com Google.");
+          setLoading(false);
+        }
+      },
+    });
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+    google.accounts.id.renderButton(document.getElementById("google-btn"), {
+      theme: "filled_black",
+      size: "large",
+      width: "100%",
+      shape: "rectangular",
+    });
+  }, []); // run once — callback always uses the ref
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     if (blocked) return;
     setError("");
-    if (!email.trim() || !password) { setError("Por favor, preencha seu e-mail e sua senha."); return; }
+    if (!email.trim() || !password) {
+      setError("Informe seu e-mail e sua senha.");
+      return;
+    }
     setLoading(true);
-
     try {
-      const tokens = await login({ email: email.trim().toLowerCase(), password });
-      if (tokens?.access_token) {
-        localStorage.setItem("verify_access", tokens.access_token);
-        localStorage.setItem("verify_refresh", tokens.refresh_token);
-      }
-      const me = await getMe();
-      signIn(tokens, me);
-      navigate("/app");
+      await login({ email: email.trim().toLowerCase(), password });
+      await completeLoginRef.current();
     } catch (err) {
-      console.error("Login error:", err);
-      const newAttempts = attempts + 1;
-      setAttempts(newAttempts);
-      if (newAttempts >= MAX_ATTEMPTS) {
+      const nextAttempts = attempts + 1;
+      setAttempts(nextAttempts);
+      if (nextAttempts >= MAX_ATTEMPTS) {
         setBlocked(true);
-        setError("Muitas tentativas erradas. Por segurança, aguarde 15 minutos.");
-        setTimeout(() => { setBlocked(false); setAttempts(0); setError(""); }, BLOCK_MS);
+        setError("Muitas tentativas. Aguarde 15 minutos para tentar novamente.");
+        setTimeout(() => {
+          setBlocked(false);
+          setAttempts(0);
+          setError("");
+        }, BLOCK_MS);
       } else {
-        const detail = err?.response?.data?.detail;
-        setError(`${typeof detail === "string" ? detail : "E-mail ou senha incorretos."}`);
+        setError(
+          typeof err?.response?.data?.detail === "string"
+            ? err.response.data.detail
+            : "E-mail ou senha incorretos."
+        );
       }
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center px-5 overflow-hidden">
-      <div className="pointer-events-none fixed inset-0" style={{ backgroundImage: "linear-gradient(#132435 1px,transparent 1px),linear-gradient(90deg,#132435 1px,transparent 1px)", backgroundSize: "48px 48px", opacity: .3 }}/>
+    <div className="relative grid min-h-screen place-items-center overflow-hidden bg-[#04080C] px-5 py-10 text-[#CDE8F0]">
+      {/* Grid background */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-20"
+        style={{
+          backgroundImage:
+            "linear-gradient(#132435 1px,transparent 1px),linear-gradient(90deg,#132435 1px,transparent 1px)",
+          backgroundSize: "48px 48px",
+        }}
+      />
 
-      <Link to="/" className="fixed top-8 right-8 z-[100] w-12 h-12 flex items-center justify-center rounded-full bg-[#0A1520] border border-[#132435] text-text no-underline hover:bg-white/10 transition-colors">
-         <span className="font-syne font-bold">✕</span>
+      {/* Close button */}
+      <Link
+        aria-label="Voltar à página inicial"
+        to="/"
+        className="absolute right-5 top-5 z-10 rounded-lg border border-[#132435] bg-[#0A1520] p-3 text-[#CDE8F0] hover:border-[#00D4FF] transition-colors"
+      >
+        <X size={17} />
       </Link>
 
-      <div className="w-full max-w-md relative z-10">
-        <div className="text-center mb-10">
-          <Link to="/" style={{ textDecoration: "none" }}>
-            <h1 className="font-syne font-black text-4xl tracking-[10px] text-text uppercase">VERIFY</h1>
+      <main className="relative z-10 w-full max-w-md">
+        {/* Logo */}
+        <header className="mb-8 text-center">
+          <Link to="/" className="inline-flex items-center gap-3">
+            <span className="grid h-10 w-10 place-items-center rounded-lg bg-[#00D4FF] text-[#04080C] shadow-[0_0_20px_#00D4FF44]">
+              <ShieldCheck size={20} />
+            </span>
+            <span className="font-syne text-3xl font-black tracking-[5px]">VERIFY</span>
           </Link>
-          <p className="font-mono text-[11px] mt-2 tracking-[4px] text-[#3A6070] font-bold">Acesse sua conta</p>
-        </div>
+          <p className="mt-4 font-mono text-[11px] uppercase tracking-[3px] text-[#8AA2B4]">
+            Acesse sua conta
+          </p>
+        </header>
 
-        <div className="rounded-[2.5rem] p-10" style={{ background: "#0A1520", border: "1px solid #132435", boxShadow: "0 40px 100px rgba(0,0,0,.6)" }}>
-          <div className="p-0 pb-4">
-             <div id="google-btn" className="w-full"></div>
+        <section className="rounded-2xl border border-[#132435] bg-[#0A1520] p-6 shadow-2xl sm:p-8">
+          {/* Google button */}
+          <div id="google-btn" className="w-full" />
+
+          <div className="my-6 flex items-center gap-3">
+            <span className="h-px flex-1 bg-[#132435]" />
+            <span className="font-mono text-[9px] uppercase tracking-wider text-[#8AA2B4]">
+              ou por e-mail
+            </span>
+            <span className="h-px flex-1 bg-[#132435]" />
           </div>
 
-          <div className="flex items-center gap-4 opacity-20 mb-8 mt-4">
-            <div className="flex-1 h-px bg-white"/>
-            <span className="font-mono text-[9px] tracking-[4px]">OU USE SEU E-MAIL</span>
-            <div className="flex-1 h-px bg-white"/>
-          </div>
+          <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+            {/* Email */}
+            <label className="block">
+              <span className="mb-2 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-wider text-[#8AA2B4]">
+                <Mail size={13} /> E-mail
+              </span>
+              <input
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={blocked}
+                placeholder="voce@exemplo.com"
+                className="w-full rounded-lg border border-[#132435] bg-[#04080C] px-4 py-3 font-mono text-sm outline-none placeholder:text-[#5A7E94] focus:border-[#00D4FF] transition-colors disabled:opacity-50"
+              />
+            </label>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-6" noValidate>
-            <div>
-              <label className="font-mono text-[11px] block mb-2 text-[#3A6070] tracking-[2px] uppercase">E-MAIL</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} disabled={blocked}
-                className="w-full font-mono text-[14px] px-6 py-4 rounded-2xl bg-[#0F1E2E] border border-[#132435] text-[#CDE8F0] outline-none focus:border-cyan transition-all"
-                placeholder="seu@email.com"/>
-            </div>
-            <div>
-              <label className="font-mono text-[11px] block mb-2 text-[#3A6070] tracking-[2px] uppercase">SENHA</label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} disabled={blocked}
-                className="w-full font-mono text-[14px] px-6 py-4 rounded-2xl bg-[#0F1E2E] border border-[#132435] text-[#CDE8F0] outline-none focus:border-cyan transition-all"
-                placeholder="sua senha"/>
-            </div>
-            
-            {error && <div className="p-5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 font-mono text-[12px]"> <span className="font-bold mr-1">!</span> {error}</div>}
-            
-            <button type="submit" disabled={loading || blocked} className="w-full font-syne font-black text-[15px] tracking-[4px] py-6 rounded-3xl transition-all shadow-xl" 
-                    style={{ 
-                      background: blocked ? "#132435" : "linear-gradient(135deg,#00D4FF,#00FF87)", 
-                      color: "#04080C", border: "none", 
-                      opacity: (loading || blocked) ? 0.7 : 1
-                    }}>
-              {loading ? "ENTRANDO..." : blocked ? "BLOQUEADO" : "ENTRAR AGORA"}
+            {/* Password */}
+            <label className="block">
+              <span className="mb-2 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-wider text-[#8AA2B4]">
+                <LockKeyhole size={13} /> Senha
+              </span>
+              <input
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={blocked}
+                placeholder="Sua senha"
+                className="w-full rounded-lg border border-[#132435] bg-[#04080C] px-4 py-3 font-mono text-sm outline-none placeholder:text-[#5A7E94] focus:border-[#00D4FF] transition-colors disabled:opacity-50"
+              />
+            </label>
+
+            {/* Error */}
+            {error && (
+              <p className="rounded-lg border border-[#FF3B5C44] bg-[#FF3B5C11] p-3 font-mono text-xs text-[#FF8195]">
+                {error}
+              </p>
+            )}
+
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={loading || blocked}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#00D4FF] to-[#00FF87] px-5 py-4 font-syne text-sm font-black uppercase tracking-wider text-[#04080C] disabled:opacity-50 transition-opacity"
+            >
+              {loading
+                ? "Entrando..."
+                : blocked
+                ? "Acesso temporariamente bloqueado"
+                : (<>Entrar <ArrowRight size={16} /></>)}
             </button>
           </form>
-        </div>
-        
-        <p className="text-center font-mono text-[12px] mt-8 text-[#3A6070] tracking-[4px] uppercase font-medium">
-          Ainda não tem conta? <Link to="/register" style={{ color: "#00D4FF", textDecoration: 'none', fontWeight: 'bold' }}>Cadastre-se aqui</Link>
+        </section>
+
+        <p className="mt-6 text-center font-mono text-xs text-[#8AA2B4]">
+          Ainda não tem conta?{" "}
+          <Link to="/register" className="font-bold text-[#00D4FF] hover:underline">
+            Criar conta
+          </Link>
         </p>
-      </div>
+      </main>
     </div>
   );
 }

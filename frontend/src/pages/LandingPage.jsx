@@ -1,276 +1,473 @@
-import { useEffect, useRef } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import Footer from "../components/Footer";
+import {
+  AlertTriangle,
+  ArrowRight,
+  BadgeCheck,
+  CheckCircle2,
+  FileSearch,
+  Image,
+  Link2,
+  LogOut,
+  Menu,
+  MessageCircle,
+  Mic,
+  ScanSearch,
+  ShieldCheck,
+  Sparkles,
+  Volume2,
+  X,
+} from "lucide-react";
 
-function HexCanvas() {
-  const ref = useRef(null);
-  useEffect(() => {
-    const canvas = ref.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    let raf, t = 0;
-    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
-    resize();
-    window.addEventListener("resize", resize);
-    const particles = Array.from({ length: 40 }, () => ({
-      x: Math.random(), y: Math.random(), s: Math.random() * 0.8 + 0.2, v: Math.random() * 0.4 + 0.1
-    }));
-    const draw = () => {
-      const W = canvas.width, H = canvas.height;
-      ctx.clearRect(0, 0, W, H);
-      particles.forEach(p => {
-        ctx.fillStyle = "#00D4FF11";
-        ctx.beginPath();
-        const px = (p.x * W + t * 30 * p.v) % W;
-        const py = (p.y * H + Math.sin(t + p.x) * 20) % H;
-        ctx.arc(px, py, p.s * 4, 0, Math.PI * 2);
-        ctx.fill();
-      });
-      t += 0.005;
-      raf = requestAnimationFrame(draw);
-    };
-    draw();
-    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", resize); };
-  }, []);
-  return <canvas ref={ref} className="fixed inset-0 w-full h-full pointer-events-none opacity-40 z-0" />;
-}
+/* ─── Static data ─────────────────────────────────────────────────── */
 
-function SectionTitle({ overline, title, center }) {
+const STEPS = [
+  {
+    number: "01",
+    title: "Envie o conteúdo",
+    text: "Cole uma mensagem, um link ou envie uma imagem e um áudio suspeito.",
+    color: "#00D4FF",
+  },
+  {
+    number: "02",
+    title: "Veja os sinais",
+    text: "O Verify aponta alertas, contexto e referências para você conferir.",
+    color: "#00FF87",
+  },
+  {
+    number: "03",
+    title: "Decida com calma",
+    text: "Receba uma explicação clara e uma orientação prática antes de compartilhar.",
+    color: "#FFB800",
+  },
+];
+
+const FEATURES = [
+  {
+    icon: MessageCircle,
+    title: "Linguagem direta",
+    text: "Sem jargão: o resultado explica o risco em palavras simples e sugere o próximo passo.",
+    color: "#00D4FF",
+  },
+  {
+    icon: ScanSearch,
+    title: "Mais contexto",
+    text: "A análise reúne sinais de fraude, checagens e informações de apoio.",
+    color: "#00FF87",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Proteção compartilhável",
+    text: "Transforme a orientação em uma mensagem simples para proteger sua família.",
+    color: "#FFB800",
+  },
+];
+
+const MEDIA_TYPES = [
+  { icon: MessageCircle, label: "Mensagens" },
+  { icon: Link2, label: "Links" },
+  { icon: Image, label: "Imagens" },
+  { icon: Mic, label: "Áudios" },
+];
+
+/* ─── Sub-components ──────────────────────────────────────────────── */
+
+function SignalCard({ icon: Icon, label, value, tone = "cyan" }) {
+  const colors =
+    tone === "red"
+      ? "border-[#FF3B5C]/35 bg-[#FF3B5C]/10 text-[#FF9CAF]"
+      : tone === "green"
+      ? "border-[#00FF87]/35 bg-[#00FF87]/10 text-[#6DFFB4]"
+      : "border-[#00D4FF]/35 bg-[#00D4FF]/10 text-[#63E4FF]";
+
   return (
-    <div className={`mb-16 ${center ? 'text-center' : ''}`}>
-      <span className="font-mono text-[10px] tracking-[6px] text-[#00D4FF] uppercase mb-4 block animate-fade-in">{overline}</span>
-      <h2 className="font-syne font-black text-4xl md:text-6xl text-[#CDE8F0] uppercase tracking-tight leading-none">{title}</h2>
-    </div>
-  );
-}
-
-function FeatureCard({ title, desc, icon }) {
-  return (
-    <div className="group p-10 rounded-3xl bg-[#0A1520] border border-[#132435] hover:border-[#00D4FF33] transition-all duration-500 perspective-1000 shadow-xl">
-      <div className="tilt-card h-full">
-        <div className="text-5xl mb-6 group-hover:scale-110 transition-transform inline-block">{icon}</div>
-        <h3 className="font-syne font-bold text-xl text-[#CDE8F0] mb-4 uppercase tracking-wider">{title}</h3>
-        <p className="font-mono text-[13px] leading-relaxed text-[#3A6070]">{desc}</p>
+    <div className={`flex items-center gap-3 rounded-xl border p-3 ${colors}`}>
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#04080C]/55">
+        <Icon size={18} />
+      </span>
+      <div className="min-w-0">
+        <p className="font-mono text-[9px] font-bold uppercase tracking-[.16em] opacity-75">
+          {label}
+        </p>
+        <p className="mt-0.5 truncate font-syne text-sm font-bold">{value}</p>
       </div>
     </div>
   );
 }
 
-function StepCard({ num, title, desc }) {
-  return (
-    <div className="flex gap-6 items-start p-8 rounded-3xl bg-[#0A1520] border border-[#132435] hover:bg-[#0F1E2E] transition-all">
-      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#00D4FF] to-[#00FF87] flex items-center justify-center font-syne font-black text-[#04080C] text-xl shrink-0 shadow-lg">
-        {num}
-      </div>
-      <div>
-        <h4 className="font-syne font-bold text-lg text-[#CDE8F0] mb-2 uppercase tracking-wide">{title}</h4>
-        <p className="font-mono text-[12px] text-[#3A6070] leading-relaxed">{desc}</p>
-      </div>
-    </div>
-  );
-}
-
-function FloatingInfo({ icon, text, style }) {
-  return (
-    <div className="absolute hidden lg:flex items-center gap-3 px-4 py-2.5 rounded-2xl border border-white/5 bg-[#0A1520]/80 backdrop-blur-md shadow-2xl animate-float-slow z-0" style={style}>
-       <span className="text-lg">{icon}</span>
-       <span className="font-mono text-[10px] text-[#3A6070] tracking-widest uppercase font-bold">{text}</span>
-    </div>
-  );
-}
-
-function PlanCard({ tier, price, features, highlighted }) {
-  const { user } = useAuth();
-  return (
-    <div className={`p-10 rounded-[3rem] border transition-all duration-500 flex flex-col h-full ${highlighted ? 'bg-[#0F1E2E] border-[#00D4FF44] shadow-[0_30px_70px_rgba(0,212,255,0.15)] scale-105 z-10' : 'bg-[#0A1520] border-[#132435]'}`}>
-      <span className="font-mono text-[10px] tracking-[5px] text-[#3A6070] uppercase block mb-6">{tier}</span>
-      <div className="flex items-baseline gap-1 mb-10">
-        <span className="font-syne font-black text-6xl text-[#CDE8F0]">R${price}</span>
-        <span className="font-mono text-[14px] text-[#1A3A50] font-bold">/mês</span>
-      </div>
-      <ul className="space-y-4 mb-12 flex-1">
-        {features.map((f, i) => (
-          <li key={i} className="flex items-center gap-4 font-mono text-[13px] text-[#CDE8F0] list-none">
-            <span className="text-[#00D4FF] text-lg">✓</span> {f}
-          </li>
-        ))}
-      </ul>
-      <Link to={user ? "/app" : "/register"} className={`block text-center py-6 rounded-2xl font-syne font-black text-[14px] tracking-[4px] transition-all no-underline ${highlighted ? 'bg-gradient-to-r from-[#00D4FF] to-[#00FF87] text-[#04080C] shadow-lg' : 'border-2 border-[#132435] text-[#CDE8F0] hover:bg-white/5'}`}>
-        {user ? "IR PARA O APP" : "ESCOLHER ESTE"}
-      </Link>
-    </div>
-  );
-}
+/* ─── Main component ──────────────────────────────────────────────── */
 
 export default function LandingPage() {
   const { user, signOut } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const appPath = user ? "/app" : "/register";
 
   return (
-    <div className="relative" style={{ background: "#04080C", minHeight: "100vh" }}>
-      <HexCanvas />
-      
-      {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-[100] border-b border-[#132435] backdrop-blur-xl bg-[rgba(4,8,12,0.8)]">
-        <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-20">
-          <Link to="/" className="flex items-center gap-3 no-underline group">
-             <div className="w-9 h-9 rounded-lg bg-[#00D4FF] flex items-center justify-center font-syne font-black text-[#04080C] group-hover:rotate-12 transition-transform shadow-[0_0_20px_#00D4FF66]">V</div>
-             <span className="font-syne font-black text-2xl tracking-[6px] text-[#CDE8F0]">VERIFY</span>
+    <div className="min-h-screen overflow-x-clip bg-[#04080C] text-[#CDE8F0]">
+      {/* ── NAVBAR ──────────────────────────────────────────────── */}
+      <nav className="sticky top-0 z-[100] border-b border-[#132435] bg-[#04080C]/90 backdrop-blur-xl">
+        <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-5 sm:px-8">
+          {/* Logo */}
+          <Link
+            to="/"
+            className="flex items-center gap-3"
+            aria-label="Verify, página inicial"
+          >
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#00D4FF] text-[#04080C] shadow-[0_0_25px_#00D4FF55]">
+              <ShieldCheck size={21} />
+            </span>
+            <span className="font-syne text-xl font-black tracking-[.2em] sm:text-2xl">
+              VERIFY
+            </span>
           </Link>
-          <div className="hidden md:flex items-center gap-12">
-             {["O que é?", "Como funciona", "Planos", "Sobre"].map(item => (
-               <a key={item} href={`#${item.toLowerCase().replace(' ', '-').replace('?', '')}`} className="font-mono text-[11px] tracking-[4px] text-[#3A6070] no-underline hover:text-[#00D4FF] uppercase transition-all">{item}</a>
-             ))}
-             {user ? (
-               <div className="flex items-center gap-6">
-                 <Link to="/app" className="font-mono text-[11px] tracking-[4px] text-white no-underline border-2 border-[#00D4FF44] px-8 py-2.5 rounded-full hover:bg-[#00D4FF22] hover:border-[#00D4FF] transition-all font-bold">IR PARA O APP</Link>
-                 <button onClick={signOut} className="font-mono text-[11px] tracking-[4px] text-[#FF3B5C] no-underline border-2 border-[#FF3B5C33] px-6 py-2.5 rounded-full hover:bg-[#FF3B5C11] transition-all font-bold bg-transparent cursor-pointer">SAIR</button>
-               </div>
-             ) : (
-               <Link to="/login" className="font-mono text-[11px] tracking-[4px] text-white no-underline border-2 border-[#132435] px-8 py-2.5 rounded-full hover:bg-white hover:text-[#04080C] hover:border-white transition-all font-bold">ENTRAR</Link>
-             )}
+
+          {/* Desktop nav */}
+          <div className="hidden items-center gap-7 md:flex">
+            <a
+              href="#como-funciona"
+              className="font-mono text-[10px] font-bold uppercase tracking-[.15em] text-[#8AA2B4] hover:text-[#00D4FF] transition-colors"
+            >
+              Como funciona
+            </a>
+            <a
+              href="#protege"
+              className="font-mono text-[10px] font-bold uppercase tracking-[.15em] text-[#8AA2B4] hover:text-[#00D4FF] transition-colors"
+            >
+              Proteção
+            </a>
+            <Link
+              to="/demo"
+              className="font-mono text-[10px] font-bold uppercase tracking-[.15em] text-[#8AA2B4] hover:text-[#00D4FF] transition-colors"
+            >
+              Demonstração
+            </Link>
+            {user ? (
+              <>
+                <Link
+                  to="/app"
+                  className="font-mono text-[10px] font-bold uppercase tracking-[.15em] text-[#00D4FF]"
+                >
+                  Abrir Verify
+                </Link>
+                <button
+                  onClick={signOut}
+                  className="inline-flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[.15em] text-[#FF8195] hover:text-[#FF3B5C] transition-colors"
+                >
+                  <LogOut size={14} /> Sair
+                </button>
+              </>
+            ) : (
+              <Link
+                to="/login"
+                className="rounded-lg border border-[#00D4FF55] px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-[.15em] hover:bg-[#00D4FF] hover:text-[#04080C] transition-colors"
+              >
+                Entrar
+              </Link>
+            )}
+          </div>
+
+          {/* Mobile menu toggle */}
+          <div className="flex items-center gap-2 md:hidden">
+            <Link
+              to={appPath}
+              className="rounded-lg bg-[#00D4FF] px-3 py-2 font-mono text-[10px] font-bold uppercase text-[#04080C]"
+            >
+              Começar
+            </Link>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((o) => !o)}
+              aria-expanded={menuOpen}
+              aria-label="Abrir navegação"
+              className="rounded-lg border border-[#284258] p-2 text-[#CDE8F0]"
+            >
+              {menuOpen ? <X size={19} /> : <Menu size={19} />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile dropdown */}
+        {menuOpen && (
+          <div className="border-t border-[#132435] bg-[#07111A] px-5 py-4 md:hidden">
+            <div className="mx-auto flex max-w-7xl flex-col gap-1">
+              <a
+                onClick={() => setMenuOpen(false)}
+                href="#como-funciona"
+                className="rounded-lg px-3 py-3 font-mono text-xs font-bold uppercase tracking-wider text-[#CDE8F0] hover:bg-[#0A1520]"
+              >
+                Como funciona
+              </a>
+              <a
+                onClick={() => setMenuOpen(false)}
+                href="#protege"
+                className="rounded-lg px-3 py-3 font-mono text-xs font-bold uppercase tracking-wider text-[#CDE8F0] hover:bg-[#0A1520]"
+              >
+                Proteção
+              </a>
+              <Link
+                onClick={() => setMenuOpen(false)}
+                to="/demo"
+                className="rounded-lg px-3 py-3 font-mono text-xs font-bold uppercase tracking-wider text-[#CDE8F0] hover:bg-[#0A1520]"
+              >
+                Ver demonstração
+              </Link>
+              {!user && (
+                <Link
+                  onClick={() => setMenuOpen(false)}
+                  to="/login"
+                  className="rounded-lg px-3 py-3 font-mono text-xs font-bold uppercase tracking-wider text-[#00D4FF] hover:bg-[#0A1520]"
+                >
+                  Entrar
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
       </nav>
 
-      {/* Hero Section */}
-      <section id="o-que-é" className="relative min-h-screen flex items-center pt-32 pb-32 overflow-hidden z-10 px-6">
-        <div className="max-w-7xl mx-auto w-full grid md:grid-cols-2 gap-16 items-center">
-          <div className="animate-fade-in">
-            <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full border border-[#00D4FF33] bg-[#00D4FF0D] mb-8">
-               <div className="w-2 h-2 rounded-full bg-[#00D4FF] animate-pulse shadow-[0_0_10px_#00D4FF]" />
-               <span className="font-mono text-[10px] tracking-[5px] text-[#00D4FF] uppercase font-bold">A verdade ao seu alcance</span>
-            </div>
-            <h1 className="font-syne font-black leading-[1.1] mb-10 text-[56px] md:text-[92px] text-[#CDE8F0] uppercase tracking-tighter">
-              Saiba se é <span className="text-[#00D4FF] italic transition-all hover:text-[#00FF87]">verdade</span> na hora.
-            </h1>
-            <p className="font-mono text-[18px] md:text-[20px] leading-relaxed mb-12 text-[#3A6070] max-w-xl">
-              Não se deixe enganar. O Verify usa inteligência artificial para checar notícias, sites e fotos para você, rápido e fácil.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Link to="/app" className="px-10 py-5 rounded-2xl bg-gradient-to-r from-[#00D4FF] to-[#00FF87] text-[#04080C] font-syne font-black text-sm tracking-[3px] shadow-[0_20px_50px_rgba(0,212,255,0.3)] hover:scale-105 active:scale-95 transition-all text-center no-underline">
-                {user ? "IR PARA O APP →" : "🔍 CHECAR NOTÍCIA GRÁTIS →"}
-              </Link>
-              <a href="#como-funciona" className="px-8 py-5 rounded-2xl bg-[#0A1520] border border-[#132435] text-[#CDE8F0] font-mono font-bold text-xs tracking-widest hover:border-[#00D4FF] transition-all text-center no-underline flex items-center justify-center gap-2">
-                <span>💬</span> Usar no WhatsApp
-              </a>
-            </div>
-          </div>
+      <main>
+        {/* ── HERO ───────────────────────────────────────────────── */}
+        <section className="relative isolate overflow-hidden border-b border-[#132435] px-5 pb-20 pt-16 sm:px-8 sm:pb-28 sm:pt-24">
+          {/* Background gradients */}
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 -z-10 opacity-70"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle at 78% 24%, rgba(0,212,255,.16), transparent 27rem)," +
+                "radial-gradient(circle at 25% 82%, rgba(0,255,135,.1), transparent 22rem)," +
+                "linear-gradient(rgba(19,36,53,.6) 1px, transparent 1px)," +
+                "linear-gradient(90deg, rgba(19,36,53,.6) 1px, transparent 1px)",
+              backgroundSize: "auto, auto, 48px 48px, 48px 48px",
+            }}
+          />
 
-          <div className="relative hidden md:flex justify-end p-10">
-             {/* Floating Info Snippets behind the card */}
-             <FloatingInfo icon="🛡️" text="Anti-Scam active" style={{ top: '0', left: '-20px', animationDelay: '0s' }} />
-             <FloatingInfo icon="📸" text="Deepfake Guard" style={{ bottom: '10%', left: '-80px', animationDelay: '2s' }} />
-             <FloatingInfo icon="🔍" text="Fact Check 3.1" style={{ top: '30%', right: '-40px', animationDelay: '1s' }} />
-             <FloatingInfo icon="✅" text="Trusted Node" style={{ bottom: '-20px', right: '40px', animationDelay: '3s' }} />
+          <div className="mx-auto grid max-w-7xl items-center gap-14 lg:grid-cols-[1.05fr_.95fr] lg:gap-20">
+            {/* Left: headline */}
+            <div className="max-w-3xl">
+              {/* Badge */}
+              <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-[#00D4FF33] bg-[#00D4FF0D] px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-[.16em] text-[#00D4FF]">
+                <Sparkles size={13} /> Verificação digital para todos
+              </div>
 
-             <div className="relative tilt-card z-10 rounded-[3rem] p-12 bg-[#0A1520] border border-white/10 backdrop-blur-3xl shadow-[0_50px_100px_rgba(0,0,0,0.5)] w-full max-w-[440px]">
-                <div className="flex justify-between items-center mb-12">
-                   <div className="flex gap-3">
-                      <div className="w-4 h-4 rounded-full bg-[#FF3B5C] shadow-inner" />
-                      <div className="w-4 h-4 rounded-full bg-[#FFB830] shadow-inner" />
-                      <div className="w-4 h-4 rounded-full bg-[#00D4FF] shadow-[0_0_15px_#00D4FF]" />
-                   </div>
-                   <span className="font-mono text-[10px] text-[#3A6070] tracking-[8px] font-bold">VERIFY_3.1</span>
+              <h1 className="font-syne text-4xl font-black leading-[1.06] tracking-tight sm:text-6xl xl:text-7xl">
+                Antes de compartilhar,{" "}
+                <span className="text-[#00D4FF]">verifique.</span>
+              </h1>
+
+              <p className="mt-7 max-w-2xl font-mono text-sm leading-8 text-[#9BB3C4] sm:text-base">
+                O Verify ajuda você a entender mensagens suspeitas, golpes e
+                conteúdo manipulado. Você recebe uma explicação clara para
+                decidir com mais segurança.
+              </p>
+
+              {/* CTAs */}
+              <div className="mt-9 flex flex-col gap-4 sm:flex-row">
+                <Link
+                  to={appPath}
+                  className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#00FF87] px-7 font-syne text-sm font-black uppercase tracking-wider text-[#04080C] shadow-[0_12px_35px_rgba(0,212,255,.22)] transition-transform hover:-translate-y-0.5"
+                >
+                  <FileSearch size={18} />
+                  {user ? "Fazer uma checagem" : "Começar agora"}
+                  <ArrowRight size={17} />
+                </Link>
+
+                <Link
+                  to="/demo"
+                  className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl border border-[#284258] bg-[#091622]/80 px-7 font-mono text-xs font-bold uppercase tracking-wider text-[#CDE8F0] transition-colors hover:border-[#00D4FF] hover:text-[#00D4FF]"
+                >
+                  <Volume2 size={16} /> Ver demonstração
+                </Link>
+              </div>
+
+              <p className="mt-5 flex items-center gap-2 font-mono text-[10px] leading-5 text-[#6F8B9F]">
+                <CheckCircle2 size={13} className="shrink-0 text-[#00FF87]" />
+                A demonstração é aberta. Crie uma conta quando quiser guardar o
+                histórico.
+              </p>
+            </div>
+
+            {/* Right: mock analysis card */}
+            <div className="relative mx-auto w-full max-w-[540px]">
+              <div
+                aria-hidden="true"
+                className="absolute -inset-4 -z-10 rounded-[2.4rem] bg-[#00D4FF]/10 blur-3xl"
+              />
+              <div className="overflow-hidden rounded-[1.8rem] border border-[#2A5269] bg-[#07111A]/95 p-5 shadow-[0_25px_80px_rgba(0,0,0,.45)] sm:p-7">
+                {/* Window bar */}
+                <div className="flex items-center justify-between border-b border-[#183347] pb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#FF3B5C]" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#FFB800]" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#00FF87]" />
+                  </div>
+                  <span className="font-mono text-[9px] font-bold uppercase tracking-[.2em] text-[#00D4FF]">
+                    Análise em foco
+                  </span>
                 </div>
-                <div className="flex items-center gap-10 mb-14">
-                   <div className="relative">
-                      <svg width="120" height="120" viewBox="0 0 100 100">
-                         <circle cx="50" cy="50" r="45" fill="none" stroke="#132435" strokeWidth="12" />
-                         <circle cx="50" cy="50" r="45" fill="none" stroke="url(#g_v)" strokeWidth="12" strokeDasharray="230 282" strokeLinecap="round" transform="rotate(-90 50 50)" />
-                         <defs><linearGradient id="g_v"><stop stopColor="#00D4FF" /><stop offset="1" stopColor="#00FF87" /></linearGradient></defs>
-                      </svg>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center">
-                         <span className="font-syne font-black text-4xl text-[#CDE8F0]">100%</span>
-                      </div>
-                   </div>
-                   <div>
-                      <h4 className="font-syne font-black text-2xl text-[#CDE8F0] mb-2 italic uppercase underline decoration-[#00FF87] decoration-2 underline-offset-4">É Verdade!</h4>
-                      <p className="font-mono text-[11px] text-[#3A6070] uppercase leading-tight tracking-wider font-bold">Informação verificada com sucesso em nossa rede global.</p>
-                   </div>
-                </div>
-                <div className="space-y-8">
-                   {[["CONFIANÇA", 95], ["FONTES", 99], ["ANÁLISE", 88]].map(([l, v]) => (
-                     <div key={l}>
-                        <div className="flex justify-between font-mono text-[10px] mb-3 uppercase tracking-[4px] font-bold text-[#3A6070]">
-                           <span>{l}</span><span>{v}%</span>
-                        </div>
-                        <div className="h-2 bg-[#04080C] rounded-full overflow-hidden border border-white/5">
-                           <div className="h-full bg-gradient-to-r from-[#00D4FF] to-[#00FF87] shadow-[0_0_10px_rgba(0,212,255,0.4)]" style={{ width: `${v}%` }} />
-                        </div>
-                     </div>
-                   ))}
-                </div>
-             </div>
-          </div>
-        </div>
-      </section>
 
-      {/* How it Works Section */}
-      <section id="como-funciona" className="py-40 relative border-t border-[#132435] z-10 px-6 bg-[#060C1233]">
-         <div className="max-w-7xl mx-auto">
-            <SectionTitle overline="Utilidade" title="O que o Verify faz por você?" />
-            <div className="grid md:grid-cols-3 gap-10">
-               <FeatureCard icon="🧑‍🦳" title="Fácil para idosos" desc="Não precisa ser mestre em tecnologia. Se você sabe copiar um texto, você sabe usar o Verify." />
-               <FeatureCard icon="🔎" title="Busca Instantânea" desc="Nosso motor pesquisa em milhares de sites confiáveis ao mesmo tempo para te dar o resultado." />
-               <FeatureCard icon="🛡️" title="Sua Segurança" desc="Seus dados estão protegidos. Nós verificamos a informação sem guardar o que você pesquisou." />
-            </div>
-            
-            <div className="mt-20 grid md:grid-cols-2 gap-12">
-               <StepCard num="1" title="Você envia" desc="Cole o texto, o link do site ou envie uma foto que você recebeu no WhatsApp." />
-               <StepCard num="2" title="Nós pesquisamos" desc="Nossa inteligência artificial analisa cada detalhe em segundos." />
-               <StepCard num="3" title="Você fica tranquilo" desc="Te damos uma resposta clara: É verdade ou é enganação. Simples assim." />
-               <StepCard num="4" title="Proteja a Família" desc="Lute contra golpes e notícias falsas compartilhando resultados reais." />
-            </div>
-         </div>
-      </section>
-
-      {/* Utility / Why use it SECTION */}
-      <section id="sobre" className="py-40 z-10 px-6 border-t border-[#132435]">
-         <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-24 items-center">
-            <div>
-               <SectionTitle overline="Missão" title="Resgatando a Confiança." />
-               <p className="font-mono text-[16px] leading-relaxed text-[#3A6070] mb-10">
-                  Vivemos em uma era de muita informação e pouca certeza. O Verify nasceu para ser o seu escudo digital, garantindo que você tome decisões baseadas em fatos, não em mentiras.
-               </p>
-               <div className="grid grid-cols-1 gap-6">
-                  {[
-                    { t: "Proteção de Pais e Avós", d: "Criamos ferramentas pensadas em quem não nasceu na era digital." },
-                    { t: "Combate a Deepfakes", d: "Identificamos fotos e vídeos criados por computador para enganar." },
-                    { t: "Checagem de Saúde", d: "Verificamos boatos de saúde e remédios milagrosos antes que você arrisque." }
-                  ].map(item => (
-                    <div key={item.t} className="flex gap-4 p-6 rounded-2xl bg-[#0A1520] border border-[#132435] hover:border-[#00D4FF22] transition-all">
-                       <span className="text-2xl text-[#00D4FF]">✓</span>
-                       <div>
-                          <h5 className="font-syne font-bold text-[#CDE8F0] uppercase text-[14px] mb-1 tracking-wider">{item.t}</h5>
-                          <p className="font-mono text-[11px] text-[#3A6070] uppercase leading-tight">{item.d}</p>
-                       </div>
+                {/* Alert card */}
+                <div className="mt-5 rounded-2xl border border-[#FF3B5C]/35 bg-gradient-to-br from-[#FF3B5C]/15 to-[#0A1520] p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-mono text-[10px] font-bold uppercase tracking-[.16em] text-[#FF9CAF]">
+                        Mensagem recebida
+                      </p>
+                      <p className="mt-3 font-syne text-lg font-bold leading-snug text-white">
+                        "Pague uma taxa agora para liberar seu Pix."
+                      </p>
                     </div>
-                  ))}
-               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-6">
-               {[["Checagens", "Personalizadas"], ["Precisão", "Total"], ["Rede de IA", "Global"], ["Status", "100% Online"]].map(([l, v]) => (
-                 <div key={l} className="p-10 rounded-2xl border border-[#132435] text-center bg-[#010203] hover:border-cyan/30 transition-all group">
-                    <div className="font-syne font-black text-2xl text-text mb-2 group-hover:scale-110 transition-transform uppercase tracking-tighter">{v}</div>
-                    <div className="font-mono text-[10px] text-[#1A3A50] uppercase tracking-[4px] font-bold">{l}</div>
-                 </div>
-               ))}
-            </div>
-         </div>
-      </section>
+                    <AlertTriangle className="shrink-0 text-[#FF8195]" size={25} />
+                  </div>
 
-      {/* Plans Section */}
-      <section id="planos" className="py-40 bg-[#060C12] border-y border-[#132435] z-10 px-6">
-         <div className="max-w-7xl mx-auto">
-            <SectionTitle overline="Acesso" title="Escolha como quer se proteger" center />
-            <div className="grid md:grid-cols-3 gap-10">
-               <PlanCard tier="Iniciante" price="0" features={["Até 3 checagens por dia", "Relatórios fáceis", "Uso no celular"]} />
-               <PlanCard highlighted tier="Protetor" price="49" features={["Checagens ilimitadas", "Prioridade nas buscas", "Suporte VIP", "Deepfake Guard"]} />
-               <PlanCard tier="Família" price="149" features={["Para 5 pessoas", "Controle de segurança", "Alertas automáticos", "Gestor exclusivo"]} />
+                  {/* Risk bar */}
+                  <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-[#132435]">
+                    <div className="h-full w-[84%] rounded-full bg-gradient-to-r from-[#FFB800] to-[#FF3B5C]" />
+                  </div>
+                  <p className="mt-2 font-mono text-[10px] text-[#FFB2BF]">
+                    Sinais de risco identificados — 84%
+                  </p>
+                </div>
+
+                {/* Signal cards */}
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  <SignalCard icon={ShieldCheck} label="Orientação" value="Não envie Pix" tone="red" />
+                  <SignalCard icon={BadgeCheck} label="Contexto" value="Fonte oficial" tone="cyan" />
+                  <SignalCard icon={MessageCircle} label="Próximo passo" value="Avisar família" tone="green" />
+                </div>
+
+                {/* Media types bar */}
+                <div className="mt-5 flex items-center justify-center gap-3 rounded-xl border border-[#1B3A4B] bg-[#04080C] p-3">
+                  <FileSearch size={16} className="text-[#00D4FF]" />
+                  <span className="font-mono text-[10px] uppercase tracking-[.12em] text-[#8AA2B4]">
+                    Texto · links · imagens · áudio
+                  </span>
+                </div>
+              </div>
             </div>
-         </div>
-      </section>
+          </div>
+        </section>
+
+        {/* ── MEDIA TYPES BANNER ─────────────────────────────────── */}
+        <section className="border-b border-[#132435] bg-[#07111A] px-5 py-6 sm:px-8">
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-10 gap-y-4 text-center">
+            {MEDIA_TYPES.map(({ icon: Icon, label }) => (
+              <span
+                key={label}
+                className="inline-flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[.14em] text-[#8AA2B4]"
+              >
+                <Icon size={15} className="text-[#00D4FF]" />
+                {label}
+              </span>
+            ))}
+          </div>
+        </section>
+
+        {/* ── HOW IT WORKS ───────────────────────────────────────── */}
+        <section
+          id="como-funciona"
+          className="mx-auto max-w-7xl px-5 py-20 sm:px-8 sm:py-28"
+        >
+          {/* Header */}
+          <div className="mb-12 max-w-2xl">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-[.2em] text-[#00D4FF]">
+              Processo simples
+            </span>
+            <h2 className="mt-4 font-syne text-3xl font-black leading-tight tracking-tight sm:text-5xl">
+              Três passos para checar com mais segurança.
+            </h2>
+          </div>
+
+          {/* Step cards */}
+          <div className="grid gap-6 md:grid-cols-3">
+            {STEPS.map(({ number, title, text, color }) => (
+              <article
+                key={number}
+                className="group rounded-3xl border border-[#132435] bg-[#0A1520] p-8 transition-colors hover:border-[#00D4FF]/50"
+              >
+                <span
+                  className="font-mono text-sm font-bold"
+                  style={{ color }}
+                >
+                  {number}
+                </span>
+                <h3 className="mt-10 font-syne text-xl font-bold">{title}</h3>
+                <p className="mt-4 font-mono text-sm leading-7 text-[#8AA2B4]">
+                  {text}
+                </p>
+                <ArrowRight
+                  size={18}
+                  className="mt-8 transition-transform group-hover:translate-x-1"
+                  style={{ color }}
+                />
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {/* ── PROTECTION ─────────────────────────────────────────── */}
+        <section
+          id="protege"
+          className="border-y border-[#132435] bg-[#08131D] px-5 py-20 sm:px-8 sm:py-28"
+        >
+          <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[.75fr_1.25fr] lg:items-start">
+            {/* Left: text */}
+            <div>
+              <span className="font-mono text-[10px] font-bold uppercase tracking-[.2em] text-[#00FF87]">
+                Proteção prática
+              </span>
+              <h2 className="mt-4 font-syne text-3xl font-black leading-tight tracking-tight sm:text-5xl">
+                Mais contexto antes de uma decisão.
+              </h2>
+              <p className="mt-6 font-mono text-sm leading-8 text-[#8AA2B4]">
+                A melhor proteção é uma pausa: não pagar, não clicar e
+                confirmar a informação em uma fonte independente.
+              </p>
+            </div>
+
+            {/* Right: feature cards */}
+            <div className="grid gap-5 sm:grid-cols-3">
+              {FEATURES.map(({ icon: Icon, title, text, color }) => (
+                <article
+                  key={title}
+                  className="rounded-3xl border border-[#183347] bg-[#0A1520] p-7"
+                >
+                  <Icon size={26} style={{ color }} />
+                  <h3 className="mt-7 font-syne text-base font-bold">{title}</h3>
+                  <p className="mt-3 font-mono text-xs leading-6 text-[#8AA2B4]">
+                    {text}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── CTA ────────────────────────────────────────────────── */}
+        <section className="px-5 py-20 sm:px-8 sm:py-28">
+          <div className="mx-auto max-w-5xl overflow-hidden rounded-3xl border border-[#00D4FF]/30 bg-gradient-to-br from-[#0E2A3A] via-[#0A1520] to-[#0A3324] p-10 text-center shadow-[0_20px_70px_rgba(0,212,255,.09)] sm:p-16">
+            <div className="mx-auto mb-6 grid h-16 w-16 place-items-center rounded-2xl bg-[#00D4FF]/15 text-[#00D4FF]">
+              <ShieldCheck size={32} />
+            </div>
+            <h2 className="font-syne text-3xl font-black sm:text-5xl">
+              Recebeu algo suspeito?
+            </h2>
+            <p className="mx-auto mt-6 max-w-xl font-mono text-sm leading-8 text-[#A6C0CE]">
+              Faça uma checagem antes de compartilhar. Leva poucos passos e
+              pode evitar que um golpe se espalhe pela sua família.
+            </p>
+            <Link
+              to={appPath}
+              className="mt-10 inline-flex min-h-14 items-center gap-2 rounded-xl bg-[#00D4FF] px-8 font-syne text-sm font-black uppercase tracking-wider text-[#04080C] transition-transform hover:-translate-y-0.5"
+            >
+              Checar agora <ArrowRight size={17} />
+            </Link>
+          </div>
+        </section>
+      </main>
 
       <Footer />
     </div>
