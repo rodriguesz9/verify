@@ -147,10 +147,13 @@ export default function LandingPage() {
             <p className="font-mono text-[18px] md:text-[20px] leading-relaxed mb-12 text-[#3A6070] max-w-xl">
               Não se deixe enganar. O Verify usa inteligência artificial para checar notícias, sites e fotos para você, rápido e fácil.
             </p>
-            <div className="flex flex-col sm:flex-row gap-6">
-              <Link to={user ? "/app" : "/register"} className="px-14 py-6 rounded-3xl bg-gradient-to-r from-[#00D4FF] to-[#00FF87] text-[#04080C] font-syne font-black text-[16px] tracking-[4px] shadow-[0_20px_50px_rgba(0,212,255,0.3)] hover:scale-105 active:scale-95 transition-all text-center no-underline">
-                {user ? "IR PARA O APP →" : "COMEÇAR AGORA →"}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Link to="/app" className="px-10 py-5 rounded-2xl bg-gradient-to-r from-[#00D4FF] to-[#00FF87] text-[#04080C] font-syne font-black text-sm tracking-[3px] shadow-[0_20px_50px_rgba(0,212,255,0.3)] hover:scale-105 active:scale-95 transition-all text-center no-underline">
+                {user ? "IR PARA O APP →" : "🔍 CHECAR NOTÍCIA GRÁTIS →"}
               </Link>
+              <a href="#como-funciona" className="px-8 py-5 rounded-2xl bg-[#0A1520] border border-[#132435] text-[#CDE8F0] font-mono font-bold text-xs tracking-widest hover:border-[#00D4FF] transition-all text-center no-underline flex items-center justify-center gap-2">
+                <span>💬</span> Usar no WhatsApp
+              </a>
             </div>
           </div>
 

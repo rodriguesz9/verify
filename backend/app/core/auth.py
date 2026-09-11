@@ -19,7 +19,19 @@ from app.models.user import User, UserTier
 from app.models.history import Verification, ContentType
 
 _GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
-_ACCESS_COOKIE = "verifai_access"
+_ACCESS_COOKIES = ["verify_access", "verifai_access"]
+
+def _extract_token_from_request(request: Request) -> str | None:
+    # 1. Cookie
+    for c_name in _ACCESS_COOKIES:
+        tok = request.cookies.get(c_name)
+        if tok:
+            return tok
+    # 2. Authorization header
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        return auth_header[7:].strip()
+    return None
 
 # Tiers-based DAILY LIMITS
 DAILY_LIMITS = {
@@ -27,6 +39,29 @@ DAILY_LIMITS = {
     UserTier.PREMIUM:    {"TEXTUAL": 10000, "MEDIA": 5000},
     UserTier.ENTERPRISE: {"TEXTUAL": 9999, "MEDIA": 9999},
 }
+
+
+async def get_optional_user(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> User | None:
+    token = _extract_token_from_request(request)
+    if not token:
+        return None
+    try:
+        payload = decode_token(token)
+        if payload.get("type") != "access":
+            return None
+        user_id: str = payload.get("sub")
+        if not user_id:
+            return None
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        if not user or not user.is_active:
+            return None
+        return user
+    except Exception:
+        return None
 
 
 async def get_current_user(
@@ -37,10 +72,10 @@ async def get_current_user(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Sessão inválida ou expirada.",
     )
+    token = _extract_token_from_request(request)
+    if not token:
+        raise cred_exc
     try:
-        token = request.cookies.get(_ACCESS_COOKIE)
-        if not token:
-            raise cred_exc
         payload = decode_token(token)
         if payload.get("type") != "access":
             raise cred_exc
@@ -57,10 +92,13 @@ async def get_current_user(
     return user
 
 
-async def verify_limit(user: User, db: AsyncSession, category: str):
+async def verify_limit(user: User | None, db: AsyncSession, category: str):
     """
-    Checks daily usage limits based on user tier.
+    Checks daily usage limits based on user tier. If user is None (guest), allow up to 30 requests.
     """
+    if not user:
+        return # Free guest quota
+
     today_start = datetime.combine(date.today(), datetime.min.time()).replace(tzinfo=timezone.utc)
     
     # Filter by content type category

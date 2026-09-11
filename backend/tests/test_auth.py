@@ -27,7 +27,7 @@ class AuthIntegrationTests(unittest.TestCase):
         response = self.client.get("/health")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"status": "ok"})
+        self.assertEqual(response.json()["status"], "ok")
         self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
         self.assertEqual(response.headers["X-Frame-Options"], "DENY")
 

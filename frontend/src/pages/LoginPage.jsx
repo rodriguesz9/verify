@@ -29,9 +29,13 @@ export default function LoginPage() {
   const handleGoogleCallback = async (response) => {
     setLoading(true); setError("");
     try {
-      await googleAuth({ id_token: response.credential });
+      const tokens = await googleAuth({ id_token: response.credential });
+      if (tokens?.access_token) {
+        localStorage.setItem("verify_access", tokens.access_token);
+        localStorage.setItem("verify_refresh", tokens.refresh_token);
+      }
       const me = await getMe();
-      signIn(me);
+      signIn(tokens, me);
       navigate("/app");
     } catch (err) {
       setError("Falha ao entrar com Google.");
@@ -46,9 +50,13 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await login({ email: email.trim().toLowerCase(), password });
+      const tokens = await login({ email: email.trim().toLowerCase(), password });
+      if (tokens?.access_token) {
+        localStorage.setItem("verify_access", tokens.access_token);
+        localStorage.setItem("verify_refresh", tokens.refresh_token);
+      }
       const me = await getMe();
-      signIn(me);
+      signIn(tokens, me);
       navigate("/app");
     } catch (err) {
       console.error("Login error:", err);

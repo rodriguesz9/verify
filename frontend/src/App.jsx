@@ -38,14 +38,14 @@ export default function App() {
         <Route path="/privacy"     element={<><Navbar/><Privacidade/></>} />
         <Route path="/limitations" element={<><Navbar/><LimitacoesIA/></>} />
 
-        <Route path="/app"       element={<ProtectedRoute><><Navbar/><Home/></></ProtectedRoute>} />
-        <Route path="/dashboard" element={<ProtectedRoute><><Navbar/><Dashboard/></></ProtectedRoute>} />
-        <Route path="/history"   element={<ProtectedRoute><><Navbar/><HistoryPage/></></ProtectedRoute>} />
-        <Route path="/report"    element={<ProtectedRoute><><Navbar/><ReportPage/></></ProtectedRoute>} />
-        <Route path="/report/:id" element={<ProtectedRoute><><Navbar/><ReportPage/></></ProtectedRoute>} />
-        <Route path="/plans"     element={<ProtectedRoute><><Navbar/><PricingPage/></></ProtectedRoute>} />
-        <Route path="/mission"   element={<ProtectedRoute><><Navbar/><Missao/></></ProtectedRoute>} />
-        <Route path="/suggestions" element={<ProtectedRoute><><Navbar/><Sugestoes/></></ProtectedRoute>} />
+        <Route path="/app"        element={<><Navbar/><Home/></>} />
+        <Route path="/report"     element={<><Navbar/><ReportPage/></>} />
+        <Route path="/report/:id" element={<><Navbar/><ReportPage/></>} />
+        <Route path="/plans"      element={<><Navbar/><PricingPage/></>} />
+        <Route path="/mission"    element={<><Navbar/><Missao/></>} />
+        <Route path="/suggestions" element={<><Navbar/><Sugestoes/></>} />
+        <Route path="/dashboard"  element={<ProtectedRoute><><Navbar/><Dashboard/></></ProtectedRoute>} />
+        <Route path="/history"    element={<ProtectedRoute><><Navbar/><HistoryPage/></></ProtectedRoute>} />
       </Routes>
     </AuthProvider>
   );

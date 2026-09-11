@@ -15,8 +15,8 @@ export default function Privacidade() {
           <section>
             <h2 className="text-cyan mb-3 tracking-widest text-[11px] uppercase">1. Coleta de Dados</h2>
             <p>
-              O VerifAI coleta apenas informações essenciais para a autenticação (via Google OAuth) e os dados submetidos 
-              voluntariamente para auditoria. Não comercializamos dados de usuários com terceiros.
+              O Verify coleta apenas informações essenciais para a autenticação (quando você opta por criar conta) e os dados submetidos 
+              voluntariamente para checagem. Não comercializamos dados de usuários com terceiros e respeitamos sua privacidade.
             </p>
           </section>
 

@@ -22,9 +22,13 @@ export default function RegisterPage() {
   const handleGoogleCallback = async (response) => {
     setLoading(true); setError("");
     try {
-      await googleAuth({ id_token: response.credential });
+      const tokens = await googleAuth({ id_token: response.credential });
+      if (tokens?.access_token) {
+        localStorage.setItem("verify_access", tokens.access_token);
+        localStorage.setItem("verify_refresh", tokens.refresh_token);
+      }
       const me = await getMe();
-      signIn(me);
+      signIn(tokens, me);
       navigate("/app");
     } catch (err) {
       setError("Falha ao entrar com Google.");
@@ -38,9 +42,13 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      await register(form);
+      const tokens = await register(form);
+      if (tokens?.access_token) {
+        localStorage.setItem("verify_access", tokens.access_token);
+        localStorage.setItem("verify_refresh", tokens.refresh_token);
+      }
       const me = await getMe();
-      signIn(me);
+      signIn(tokens, me);
       navigate("/app");
     } catch (err) {
       const data = err?.response?.data;

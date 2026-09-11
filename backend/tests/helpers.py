@@ -7,9 +7,9 @@ from types import SimpleNamespace
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
-os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://verifai:verifai_pass@localhost:5432/verifai_test")
+os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///./test_verify.db")
 
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, get_optional_user
 from app.core.database import get_db
 from app.main import app
 from app.models.user import UserTier
@@ -108,4 +108,5 @@ def override_auth_and_db(user, db):
         yield db
 
     app.dependency_overrides[get_current_user] = current_user_override
+    app.dependency_overrides[get_optional_user] = current_user_override
     app.dependency_overrides[get_db] = db_override

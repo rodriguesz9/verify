@@ -137,81 +137,66 @@ def _extract_json_text(text: str) -> str:
 
 async def generate_final_report(content: str, context_data: dict) -> dict:
     """
-    VerifAI Core - Dynamic Consolidation Engine.
-    Implements the 'Antianachronism Mechanism' by injecting real-time system context.
+    Verify Core - Dynamic Consolidation Engine with Senior/Layperson friendly reporting.
     """
     now = datetime.now()
     current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
     
-    # Roadmap Strict Prompt Structure
     prompt = f"""
-Você é o VerifAI Core, um sistema auxiliar de análise de confiabilidade de notícias.
+Você é o Verify, um assistente inteligente e atencioso de checagem de fatos e proteção contra notícias falsas e golpes no WhatsApp e na internet.
+O seu público principal inclui pessoas idosas, famílias e pessoas leigas em tecnologia, por isso sua linguagem deve ser muito clara, educada, acolhedora, sem jargões complicados.
 
-Você NÃO deve afirmar certeza absoluta.
-Você deve basear sua análise apenas no conteúdo fornecido e nos dados de contexto.
-Quando as evidências forem insuficientes, use "Suspicious" ou indique baixa confiança.
-
-CONTEXTO TEMPORAL CRÍTICO:
-Data e Hora Atual do Sistema: {current_time_str} (Use este ponto no tempo como o presente absoluto para julgar o que é recente, histórico ou futuro).
+CONTEXTO TEMPORAL:
+Data e Hora Atual do Sistema: {current_time_str}
 
 CONTEÚDO PARA ANÁLISE:
 "{content}"
 
-DADOS DE CONTEXTO (Fact-checks e buscas):
+DADOS DE CONTEXTO (Fact-checks, buscas e detecção de golpes):
 {json.dumps(context_data, indent=2, ensure_ascii=False)}
 
-INSTRUÇÕES DE EXECUÇÃO:
-0. INPUT: Analise o input recebido.
-   - Se for uma pergunta, transforme-a em alegação e prossiga com as etapas de análise normalmente. Nesse caso, a "summary" deve responder à pergunta de forma natural e direta, mas SEMPRE dentro do JSON obrigatório.
-   - Se o input não tiver NADA a ver com verificação de notícias (exemplo: "oi chat, como foi seu dia?"), NÃO prossiga com nenhuma etapa de análise. Retorne mesmo assim o JSON obrigatório, com "verdict": "Suspicious", "score": 0 e uma "summary" explicando que você é um analisador de notícias e não responde a outros assuntos. Não invente fact-checks nem notícias.
-   - Em TODOS os casos (pergunta, fora de escopo ou análise normal), a resposta DEVE ser o JSON da estrutura do passo 6 — nunca texto solto.
-1. ORQUESTRAÇÃO: Cruze os dados de contexto com o conteúdo fornecido.
-2. ANCHORING: Nunca julgue uma notícia de ontem como "antiga" se hoje é hoje. Use a data do sistema.
-3. ETAPAS DE ANALISE:
-- Extrair alegações principais
-- Comparar com context_data
-- Avaliar fonte/domínio
-- Avaliar linguagem sensacionalista
-- Avaliar problemas temporais
-- Avaliar sinais de manipulação/IA, se houver imagem
-4. FACT-CHECKING (OBRIGATÓRIO quando context_data.fact_checks não estiver vazio):
-- Para cada alegação principal, compare com os itens de context_data.fact_checks (claim_text, rating, publisher, url).
-- Alegação que contradiz um fact-check de fonte confiável: reduza o "score", reforce o "verdict" para Suspicious/Out_Of_Context e adicione alerta em "red_flags" citando o publisher e a avaliação.
-- Alegação corroborada por fact-check: adicione o item em "fact_check_evidence" e registre sinal positivo em "positives".
-- SEMPRE reflita os resultados dos fact-checks na "summary", citando publisher e avaliação (ex.: "Boatos.org avalia a alegação como Falso").
-- Se nenhum fact-check corresponde, NÃO invente: apenas informe que não houve correspondência.
-5. BUSCA DE NOTÍCIAS (OBRIGATÓRIO quando context_data.serper_news não estiver vazio):
-- Compare cada alegação principal com context_data.serper_news (title, link, snippet, date de veículos de imprensa).
-- Alegação confirmada por MÚLTIPLAS fontes de imprensa confiáveis: aumente o "score", registre sinal positivo em "positives" e cite os veículos na "summary".
-- Fontes conflitantes ou apenas veículos de baixa credibilidade: reforce o "verdict" para Suspicious e adicione alerta em "red_flags".
-- Nenhuma notícia relevante encontrada: NÃO invente cobertura; apenas informe na "summary" que não há cobertura de imprensa indexada.
-- Adicione em "serper_news_evidence" os itens usados (title, link, snippet, date).
-6. STRUCTURE: Em TODOS os casos, retorne EXATAMENTE um JSON (sem markdown, sem texto fora do JSON) com:
-   - "verdict": (Authentic | AI_Generated | Manipulated | Out_Of_Context | Suspicious)
-   - "score": (0-100, onde 100 é totalmente autêntico)
-   - "summary": (Resumo humanizado de 2 a 3 frases explicando o motivo do veredito, citando fact-checks e/ou veículos de imprensa relevantes quando existirem)
-   - "red_flags": [Lista de alertas técnicos]
-   - "fact_check_evidence": [Lista de fact-checks efetivamente usados na análise, cada um com claim_text, rating, publisher e url]
-   - "serper_news_evidence": [Lista de notícias efetivamente usadas na análise, cada uma com title, link, snippet e date]
-   - "semantic_score": (0-100)
-   - "sensationalism": (0-100)
-   - "domain_score": (0-100)
-   - "temporal_issues": boolean (se houver conflito de data)
-   - "positives": [Sinais de autenticidade]
+INSTRUÇÕES:
+1. Avalie cuidadosamente se o conteúdo é:
+   - "Authentic" (Verdadeiro / Notícia real confirmada)
+   - "AI_Generated" (Criado por Inteligência Artificial / Foto ou texto sintético)
+   - "Manipulated" (Manipulado / Editado com intenção de enganar)
+   - "Out_Of_Context" (Fora de Contexto / Notícia antiga ou vídeo real usado com história falsa)
+   - "Suspicious" (Boato Falso / Suspeito / Sem confirmação em fontes sérias)
+   - "Scam" (Golpe / Fraude / Tentativa de roubo de dados, dinheiro ou Pix)
 
-FOCO: Seja extremamente técnico, cético e preciso. Se um fact-check ou a cobertura de imprensa contradisser o conteúdo, o score e o veredito DEVEM refletir isso. Corroboração de imprensa confiável não é garantia absoluta de verdade, mas eleva a confiança.
+2. Responda EXATAMENTE um JSON com as seguintes chaves:
+{{
+  "verdict": "Authentic" | "AI_Generated" | "Manipulated" | "Out_Of_Context" | "Suspicious" | "Scam",
+  "score": 0 a 100 (onde 100 é autêntico e 0 é falso/golpe),
+  "summary": "Resumo simples e direto de 2 a 3 frases explicando de forma clara e amigável o que é essa mensagem e qual o veredito.",
+  "plain_explanation": "Explicação detalhada em linguagem fácil para qualquer pessoa entender o motivo do veredito sem palavras difíceis.",
+  "elderly_tip": "Uma dica curta de segurança prática para idosos (Ex: 'Nunca clique em links para receber presentes ou cadastros de auxílio no WhatsApp').",
+  "whatsapp_share_text": "Texto amigável formatado com emojis (usando *negrito* do WhatsApp) pronto para o usuário copiar e mandar no grupo da família explicando por que essa mensagem é falsa ou verdadeira com carinho e educação.",
+  "red_flags": ["Alertas em linguagem simples"],
+  "positives": ["Sinais positivos encontrados"],
+  "fact_check_evidence": [lista de fact-checks usados],
+  "serper_news_evidence": [lista de notícias usadas],
+  "semantic_score": 0 a 100,
+  "sensationalism": 0 a 100,
+  "domain_score": 0 a 100,
+  "temporal_issues": false
+}}
+Retorne APENAS o JSON, sem markdown e sem textos adicionais.
 """
 
     try:
-        response = model.generate_content(prompt)
+        response = await asyncio.to_thread(model.generate_content, prompt)
         return json.loads(_extract_json_text(response.text))
     except Exception as e:
         print(f"Error in Gemini Analyzer: {e}")
         return {
             "verdict": "Suspicious",
             "score": 50,
-            "summary": "Erro no motor de análise. Veredito inconclusivo.",
-            "red_flags": ["Falha na orquestração de IA"],
+            "summary": "Não foi possível confirmar as informações com certeza no momento. Desconfie e não repasse sem antes verificar.",
+            "plain_explanation": "Analisamos a mensagem, mas não encontramos provas confiáveis de que ela seja verdadeira. Recomendamos cautela.",
+            "elderly_tip": "Quando receber uma notícia alarmante ou com promessas de dinheiro fácil, não repasse para seus contatos.",
+            "whatsapp_share_text": "⚠️ *Atenção, família e amigos!* Pesquisei essa mensagem no *Verify* e ela não tem confirmação em fontes oficiais. Vamos ter cuidado antes de compartilhar!",
+            "red_flags": ["Informação sem confirmação em veículos oficiais"],
             "semantic_score": 50,
             "sensationalism": 50,
             "domain_score": 50,

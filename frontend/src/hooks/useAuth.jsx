@@ -13,6 +13,10 @@ export function AuthProvider({ children }) {
       setUser(me);
     } catch {
       setUser(null);
+      localStorage.removeItem("verify_access");
+      localStorage.removeItem("verify_refresh");
+      localStorage.removeItem("verifai_access");
+      localStorage.removeItem("verifai_refresh");
     } finally {
       setLoading(false);
     }
@@ -20,11 +24,20 @@ export function AuthProvider({ children }) {
 
   useEffect(() => { loadUser(); }, [loadUser]);
 
-  const signIn = (me) => {
+  const signIn = (tokensOrMe, maybeMe) => {
+    const me = maybeMe || tokensOrMe;
+    if (tokensOrMe && tokensOrMe.access_token) {
+      localStorage.setItem("verify_access", tokensOrMe.access_token);
+      localStorage.setItem("verify_refresh", tokensOrMe.refresh_token);
+    }
     setUser(me);
   };
 
   const signOut = () => {
+    localStorage.removeItem("verify_access");
+    localStorage.removeItem("verify_refresh");
+    localStorage.removeItem("verifai_access");
+    localStorage.removeItem("verifai_refresh");
     setUser(null);
     apiLogout("/");
   };
