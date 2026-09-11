@@ -18,6 +18,7 @@ import Sugestoes    from "./pages/Sugestoes";
 import Termos       from "./pages/Termos";
 import Privacidade  from "./pages/Privacidade";
 import LimitacoesIA from "./pages/LimitacoesIA";
+import BancaDemoPage from "./pages/BancaDemoPage";
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -44,6 +45,8 @@ export default function App() {
         <Route path="/plans"      element={<><Navbar/><PricingPage/></>} />
         <Route path="/mission"    element={<><Navbar/><Missao/></>} />
         <Route path="/suggestions" element={<><Navbar/><Sugestoes/></>} />
+        <Route path="/demo"       element={<BancaDemoPage />} />
+        <Route path="/banca"      element={<BancaDemoPage />} />
         <Route path="/dashboard"  element={<ProtectedRoute><><Navbar/><Dashboard/></></ProtectedRoute>} />
         <Route path="/history"    element={<ProtectedRoute><><Navbar/><HistoryPage/></></ProtectedRoute>} />
       </Routes>

@@ -9,7 +9,7 @@ import os
 
 load_dotenv()
 
-from app.api import check_text, check_url, upload, auth, history, whatsapp
+from app.api import check_text, check_url, upload, auth, history, whatsapp, verificacao
 from app.core.database import init_db
 
 # ── Rate limiter (IP-based via slowapi) ───────────────────────────────────────
@@ -57,6 +57,8 @@ app.include_router(check_url.router,   prefix="/api",     tags=["Analysis"])
 app.include_router(upload.router,      prefix="/api",     tags=["Analysis"])
 app.include_router(history.router,     prefix="/api",     tags=["History"])
 app.include_router(whatsapp.router,    prefix="/api",     tags=["WhatsApp"])
+app.include_router(verificacao.router, prefix="/api",     tags=["Verificacao & Banca"])
+app.include_router(verificacao.router,                    tags=["Verificacao & Banca"])
 
 # ── Login rate-limit endpoint (5 attempts per 15 min per IP) ─────────────────
 @app.post("/api/auth/login-rl")

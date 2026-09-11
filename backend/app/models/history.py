@@ -60,3 +60,20 @@ class CacheRegistry(Base):
     file_hash_md5     = Column(String(32), primary_key=True)
     cached_verdict_id = Column(GUID, ForeignKey("verifications.id", ondelete="CASCADE"), nullable=False)
     expires_at        = Column(DateTime(timezone=True), nullable=False)
+
+
+class AuthenticitySeal(Base):
+    """
+    Tamper-evident authenticity seal (C2PA caseiro).
+    Binds media SHA-256 hash with cryptographic HMAC signature and server timestamp.
+    """
+    __tablename__ = "authenticity_seals"
+
+    id               = Column(GUID, primary_key=True, default=uuid.uuid4)
+    file_hash_sha256 = Column(String(64), unique=True, nullable=False, index=True)
+    file_name        = Column(String(255), nullable=True)
+    media_type       = Column(String(50), default="image")
+    file_size_bytes  = Column(Integer, nullable=True)
+    signature_hmac   = Column(String(64), nullable=False)
+    captured_at      = Column(DateTime(timezone=True), server_default=func.now())
+    metadata_json    = Column(JSON, nullable=True)

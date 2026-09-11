@@ -64,6 +64,42 @@ export const analyzeUpload = (file) => {
   return api.post("/upload", form, { headers: { "Content-Type": "multipart/form-data" } }).then(r => r.data);
 };
 
+// ── Verification & Banca Demo ───────────────────────────────────────────────
+export const verifyAudioQuick = (file) => {
+  const form = new FormData();
+  form.append("file", file);
+  return api.post("/verificar/audio-rapido", form, { headers: { "Content-Type": "multipart/form-data" } }).then(r => r.data);
+};
+
+export const captureSeal = (file) => {
+  const form = new FormData();
+  form.append("file", file);
+  return api.post("/capturar/selo", form, { headers: { "Content-Type": "multipart/form-data" } }).then(r => r.data);
+};
+
+export const verifySeal = (file) => {
+  const form = new FormData();
+  form.append("file", file);
+  return api.post("/verificar/selo", form, { headers: { "Content-Type": "multipart/form-data" } }).then(r => r.data);
+};
+
+export const verifyComplete = (file) => {
+  const form = new FormData();
+  form.append("file", file);
+  return api.post("/verificar/completo", form, { headers: { "Content-Type": "multipart/form-data" } }).then(r => r.data);
+};
+
+export const downloadPdfReport = async (file, filename) => {
+  const form = new FormData();
+  form.append("file", file);
+  if (filename) form.append("filename", filename);
+  const resp = await api.post("/verificar/relatorio-pdf", form, {
+    responseType: "blob",
+    headers: { "Content-Type": "multipart/form-data" }
+  });
+  return resp.data;
+};
+
 // ── WhatsApp ──────────────────────────────────────────────────────────────────
 export const simulateWhatsApp = (message) => api.post("/whatsapp/simulate", { message }).then(r => r.data);
 

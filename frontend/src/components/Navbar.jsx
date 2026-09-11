@@ -40,6 +40,9 @@ export default function Navbar() {
             <Link to="/app" className="font-mono text-[13px] tracking-[2px] text-[#CDE8F0] hover:text-[#00D4FF] font-bold no-underline transition-colors uppercase">
               🔍 Checar Notícia
             </Link>
+            <Link to="/demo" className="font-mono text-[12px] tracking-[2px] text-[#00FF87] hover:text-[#00D4FF] font-bold no-underline transition-colors uppercase flex items-center gap-1 px-3 py-1 rounded-full bg-[#00FF87]/10 border border-[#00FF87]/30">
+              🎯 Modo Banca
+            </Link>
             <Link to="/dashboard" className="font-mono text-[12px] tracking-[2px] text-[#3A6070] hover:text-[#00D4FF] no-underline transition-colors uppercase">
               Painel
             </Link>

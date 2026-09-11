@@ -114,7 +114,7 @@ async def verify_limit(user: User | None, db: AsyncSession, category: str):
             Verification.content_type.in_(q_types)
         )
     )
-    daily_count = count_result.scalar_one()
+    daily_count = count_result.scalar_one() or 0
     
     tier_limits = DAILY_LIMITS.get(user.tier, DAILY_LIMITS[UserTier.STANDARD])
     limit = tier_limits.get(category, 0)
