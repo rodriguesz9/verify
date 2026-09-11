@@ -20,6 +20,7 @@ from app.models.user import User, UserTier
 from app.models.history import Verification, ContentType
 
 _bearer = HTTPBearer(auto_error=True)
+_optional_bearer = HTTPBearer(auto_error=False)
 _GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 
 # Tiers-based DAILY LIMITS
@@ -28,6 +29,28 @@ DAILY_LIMITS = {
     UserTier.PREMIUM:    {"TEXTUAL": 10000, "MEDIA": 5000},
     UserTier.ENTERPRISE: {"TEXTUAL": 9999, "MEDIA": 9999},
 }
+
+
+async def get_optional_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_optional_bearer),
+    db: AsyncSession = Depends(get_db),
+) -> User | None:
+    if not credentials:
+        return None
+    try:
+        payload = decode_token(credentials.credentials)
+        if payload.get("type") != "access":
+            return None
+        user_id: str = payload.get("sub")
+        if not user_id:
+            return None
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        if not user or not user.is_active:
+            return None
+        return user
+    except Exception:
+        return None
 
 
 async def get_current_user(
@@ -56,10 +79,13 @@ async def get_current_user(
     return user
 
 
-async def verify_limit(user: User, db: AsyncSession, category: str):
+async def verify_limit(user: User | None, db: AsyncSession, category: str):
     """
-    Checks daily usage limits based on user tier.
+    Checks daily usage limits based on user tier. If user is None (guest), allow up to 30 requests.
     """
+    if not user:
+        return # Free guest quota
+
     today_start = datetime.combine(date.today(), datetime.min.time()).replace(tzinfo=timezone.utc)
     
     # Filter by content type category

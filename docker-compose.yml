@@ -3,27 +3,27 @@ version: "3.9"
 services:
   db:
     image: postgres:16-alpine
-    container_name: verifai-db
+    container_name: verify-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: verifai
-      POSTGRES_PASSWORD: verifai_pass
-      POSTGRES_DB: verifai
+      POSTGRES_USER: verify
+      POSTGRES_PASSWORD: verify_pass
+      POSTGRES_DB: verify
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - verifai-net
+      - verify-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U verifai"]
+      test: ["CMD-SHELL", "pg_isready -U verify"]
       interval: 5s
       timeout: 5s
       retries: 10
 
   backend:
     build: ./backend
-    container_name: verifai-backend
+    container_name: verify-backend
     ports:
       - "8000:8000"
     volumes:
@@ -36,14 +36,14 @@ services:
       db:
         condition: service_healthy
     networks:
-      - verifai-net
+      - verify-net
     restart: unless-stopped
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
-    container_name: verifai-frontend
+    container_name: verify-frontend
     ports:
       - "5173:5173"
     volumes:
@@ -56,12 +56,12 @@ services:
     depends_on:
       - backend
     networks:
-      - verifai-net
+      - verify-net
     restart: unless-stopped
 
 volumes:
   postgres_data:
 
 networks:
-  verifai-net:
+  verify-net:
     driver: bridge

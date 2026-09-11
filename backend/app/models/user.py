@@ -1,7 +1,6 @@
 from sqlalchemy import Column, String, DateTime, Enum as SAEnum, Boolean
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
-from app.core.database import Base
+from app.core.database import Base, GUID
 import uuid
 import enum
 
@@ -15,7 +14,7 @@ class UserTier(str, enum.Enum):
 class User(Base):
     __tablename__ = "users"
 
-    id              = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    id              = Column(GUID, primary_key=True, default=uuid.uuid4, index=True)
     google_id       = Column(String(255), nullable=True, index=True) 
     email           = Column(String(254), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=True) # Allowed null for OAuth only users

@@ -4,15 +4,19 @@ from app.core.fact_checker import query_fact_check_api
 from app.core.domain_checker import check_domain_reputation
 from app.core.gptzero_client import detect_ai_text
 from app.core.serper_client import search_news
+from app.core.scam_detector import analyze_scam_indicators
 
 
 async def run_pipeline(text: str, url: str | None = None) -> dict:
     """
-    Antigravity Core Pipeline (TEXT/URL).
-    Returns raw analysis data and the final report.
+    Verify Core Pipeline (TEXT/URL).
+    Returns raw analysis data, scam detection, and final friendly report.
     """
     source_url = url
     analysis_text = text
+
+    # Scam & Phishing quick heuristics
+    scam_info = analyze_scam_indicators(analysis_text, source_url)
 
     ai_task = asyncio.create_task(detect_ai_text(analysis_text))
     domain_task = (
@@ -64,6 +68,7 @@ async def run_pipeline(text: str, url: str | None = None) -> dict:
             serper_news_results.append(item)
 
     context = {
+        "scam_analysis": scam_info,
         "gptzero": ai_forensics,
         "domain": domain_info,
         "claims": claims,
@@ -74,8 +79,20 @@ async def run_pipeline(text: str, url: str | None = None) -> dict:
 
     ai = await generate_final_report(analysis_text, context)
     ai["claims"] = claims
+    ai["scam_analysis"] = scam_info
 
-    # Return structured dict for DB & API
+    # If scam detector flagged critical patterns, ensure score and verdict reflect danger
+    if scam_info["is_scam"]:
+        if ai.get("verdict") not in ["Scam", "Manipulated", "Suspicious"]:
+            ai["verdict"] = "Scam"
+            ai["score"] = min(ai.get("score", 10), 15)
+        for pattern in scam_info["detected_patterns"]:
+            red_flag = f"Alerta de Golpe: {pattern['category']} - {pattern['description']}"
+            if "red_flags" in ai and red_flag not in ai["red_flags"]:
+                ai["red_flags"].append(red_flag)
+        if scam_info.get("suspicious_url") and scam_info.get("suspicious_url_reason"):
+            ai.setdefault("red_flags", []).append(f"Link Suspeito: {scam_info['suspicious_url_reason']}")
+
     return {
         "report": ai,
         "claims": claims,
@@ -88,5 +105,6 @@ async def run_pipeline(text: str, url: str | None = None) -> dict:
         },
         "fact_checks": fact_checks,
         "serper_news": serper_news_results,
-        "domain_info": domain_info
+        "domain_info": domain_info,
+        "scam_analysis": scam_info
     }

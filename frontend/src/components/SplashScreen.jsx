@@ -47,11 +47,11 @@ export default function SplashScreen() {
         <div className="text-center overflow-hidden">
           <div className="animate-slide-up">
             <h1 className="font-syne font-black text-4xl tracking-[18px] text-[#CDE8F0] mb-3 translate-x-[9px] select-none">
-              VERIFAI
+              VERIFY
             </h1>
             <div className="flex flex-col items-center" style={{ gap: "0.5rem" }}>
-              <p className="font-mono text-[9px] tracking-[6px] text-[#3A6070] uppercase opacity-70">
-                A verdade ao seu alcance
+              <p className="font-mono text-[9px] tracking-[6px] text-[#00FF87] uppercase font-bold">
+                A verdade ao alcance de todos
               </p>
               <div className="h-[1px] w-12 mt-1" style={{ background: "linear-gradient(to right, transparent, rgba(0,212,255,0.25), transparent)" }} />
             </div>

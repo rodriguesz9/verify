@@ -9,26 +9,27 @@ import os
 
 load_dotenv()
 
-from app.api import check_text, check_url, upload, auth, history
+from app.api import check_text, check_url, upload, auth, history, whatsapp
 from app.core.database import init_db
 
 # ── Rate limiter (IP-based via slowapi) ───────────────────────────────────────
 limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(
-    title="VerifAI API",
-    description="Sistema de Auditoria Digital e Combate à Desinformação",
-    version="0.2.0",
+    title="Verify API",
+    description="Sistema Inteligente de Checagem de Fatos, Proteção contra Golpes e Auditoria Digital",
+    version="1.0.0",
 )
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
-origins = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
+origins = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=origins if origins != ["*"] else ["*"],
+    allow_origin_regex=r"https://.*\.vercel\.app" if origins == ["*"] or any("localhost" in o for o in origins) else None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -42,7 +43,6 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"]           = "DENY"
     response.headers["X-XSS-Protection"]          = "1; mode=block"
     response.headers["Referrer-Policy"]           = "strict-origin-when-cross-origin"
-    response.headers["Permissions-Policy"]        = "geolocation=(), microphone=(), camera=()"
     return response
 
 # ── Startup: create DB tables ─────────────────────────────────────────────────
@@ -56,6 +56,7 @@ app.include_router(check_text.router,  prefix="/api",     tags=["Analysis"])
 app.include_router(check_url.router,   prefix="/api",     tags=["Analysis"])
 app.include_router(upload.router,      prefix="/api",     tags=["Analysis"])
 app.include_router(history.router,     prefix="/api",     tags=["History"])
+app.include_router(whatsapp.router,    prefix="/api",     tags=["WhatsApp"])
 
 # ── Login rate-limit endpoint (5 attempts per 15 min per IP) ─────────────────
 @app.post("/api/auth/login-rl")
@@ -66,8 +67,8 @@ async def login_rate_limited(request: Request):
 
 @app.get("/", tags=["Health"])
 def root():
-    return {"status": "online", "service": "VerifAI v0.2"}
+    return {"status": "online", "service": "Verify v1.0", "app": "Verify"}
 
 @app.get("/health", tags=["Health"])
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "service": "Verify"}

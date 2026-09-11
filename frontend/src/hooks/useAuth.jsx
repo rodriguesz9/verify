@@ -8,12 +8,14 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   const loadUser = useCallback(async () => {
-    const token = localStorage.getItem("verifai_access");
+    const token = localStorage.getItem("verify_access") || localStorage.getItem("verifai_access");
     if (!token) { setLoading(false); return; }
     try {
       const me = await getMe();
       setUser(me);
     } catch {
+      localStorage.removeItem("verify_access");
+      localStorage.removeItem("verify_refresh");
       localStorage.removeItem("verifai_access");
       localStorage.removeItem("verifai_refresh");
     } finally {
@@ -24,12 +26,14 @@ export function AuthProvider({ children }) {
   useEffect(() => { loadUser(); }, [loadUser]);
 
   const signIn = (tokens, me) => {
-    localStorage.setItem("verifai_access",  tokens.access_token);
-    localStorage.setItem("verifai_refresh", tokens.refresh_token);
+    localStorage.setItem("verify_access",  tokens.access_token);
+    localStorage.setItem("verify_refresh", tokens.refresh_token);
     setUser(me);
   };
 
   const signOut = () => {
+    localStorage.removeItem("verify_access");
+    localStorage.removeItem("verify_refresh");
     localStorage.removeItem("verifai_access");
     localStorage.removeItem("verifai_refresh");
     setUser(null);

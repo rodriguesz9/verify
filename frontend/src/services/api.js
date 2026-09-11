@@ -1,10 +1,11 @@
 import axios from "axios";
 
-const api = axios.create({ baseURL: "/api", timeout: 60000 });
+const baseURL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api` : "/api";
+const api = axios.create({ baseURL, timeout: 60000 });
 
 // Attach JWT from localStorage on every request
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("verifai_access");
+  const token = localStorage.getItem("verify_access") || localStorage.getItem("verifai_access");
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -16,12 +17,12 @@ api.interceptors.response.use(
     const orig = err.config;
     if (err.response?.status === 401 && !orig._retry) {
       orig._retry = true;
-      const refresh = localStorage.getItem("verifai_refresh");
+      const refresh = localStorage.getItem("verify_refresh") || localStorage.getItem("verifai_refresh");
       if (refresh) {
         try {
-          const { data } = await axios.post("/api/auth/refresh", { refresh_token: refresh });
-          localStorage.setItem("verifai_access",  data.access_token);
-          localStorage.setItem("verifai_refresh", data.refresh_token);
+          const { data } = await axios.post(`${baseURL}/auth/refresh`, { refresh_token: refresh });
+          localStorage.setItem("verify_access",  data.access_token);
+          localStorage.setItem("verify_refresh", data.refresh_token);
           orig.headers.Authorization = `Bearer ${data.access_token}`;
           return api(orig);
         } catch { logout(); }
@@ -32,6 +33,8 @@ api.interceptors.response.use(
 );
 
 export const logout = () => {
+  localStorage.removeItem("verify_access");
+  localStorage.removeItem("verify_refresh");
   localStorage.removeItem("verifai_access");
   localStorage.removeItem("verifai_refresh");
   window.location.href = "/login";
@@ -52,6 +55,9 @@ export const analyzeUpload = (file) => {
   form.append("file", file);
   return api.post("/upload", form, { headers: { "Content-Type": "multipart/form-data" } }).then(r => r.data);
 };
+
+// ── WhatsApp ──────────────────────────────────────────────────────────────────
+export const simulateWhatsApp = (message) => api.post("/whatsapp/simulate", { message }).then(r => r.data);
 
 // ── History ───────────────────────────────────────────────────────────────────
 export const getHistory = (page = 1) => api.get(`/history?page=${page}&limit=20`).then(r => r.data);

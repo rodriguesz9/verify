@@ -20,9 +20,9 @@ export default function Missao() {
             A Verdade em <span className="text-cyan">Código-Fonte</span>
           </h1>
           <p className="font-mono text-[14px] max-w-2xl mx-auto leading-relaxed" style={{ color: "#3A6070" }}>
-            O VerifAI nasceu da necessidade urgente de restaurar a confiança no ecossistema digital. 
-            Em um mundo inundado por deepfakes, desinformação e conteúdos gerados por IA, nossa missão é democratizar 
-            a análise forense digital.
+            O Verify nasceu da necessidade urgente de restaurar a confiança no ecossistema digital e proteger a população contra golpes e fake news. 
+            Em um mundo inundado por boatos, fraudes no WhatsApp e conteúdos gerados por IA, nossa missão é democratizar 
+            a checagem de fatos com uma linguagem simples e acessível para todos.
           </p>
         </div>
 

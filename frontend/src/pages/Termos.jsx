@@ -15,26 +15,22 @@ export default function Termos() {
           <section>
             <h2 className="text-cyan mb-3 tracking-widest text-[11px] uppercase">1. Escopo do Serviço</h2>
             <p>
-              O VerifAI fornece uma plataforma de análise probabilística de arquivos, textos e links para identificação 
-              de mídias sintéticas e desinformação. O serviço processa os dados enviados com base em parâmetros matemáticos 
-              fornecidos por sistemas de inteligência integrados.
+              O Verify fornece uma plataforma de análise probabilística de arquivos, textos, links e áudios para identificação 
+              de fraudes, golpes e desinformação, auxiliando na proteção digital do cidadão.
             </p>
           </section>
 
           <section>
             <h2 className="text-cyan mb-3 tracking-widest text-[11px] uppercase">2. Responsabilidade de Uso</h2>
             <p>
-              O usuário retém os direitos autorais e a total responsabilidade legal sobre os arquivos enviados à plataforma. 
-              É expressamente proibido utilizar o VerifAI para processar mídias obtidas por meios ilícitos que violem 
-              a privacidade de terceiros.
+              O usuário retém os direitos e a total responsabilidade legal sobre os conteúdos enviados à plataforma para checagem.
             </p>
           </section>
 
           <section>
             <h2 className="text-cyan mb-3 tracking-widest text-[11px] uppercase">3. Natureza dos Relatórios</h2>
             <p>
-              Os vereditos emitidos pela plataforma são relatórios técnicos de suporte analítico e não constituem pareceres 
-              jurídicos definitivos ou testemunhos periciais absolutos.
+              Os relatórios e vereditos emitidos pela plataforma têm caráter informativo e preventivo para conscientização sobre fraudes e fake news.
             </p>
           </section>
         </div>

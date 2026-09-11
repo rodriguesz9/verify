@@ -30,6 +30,8 @@ export default function LoginPage() {
     setLoading(true); setError("");
     try {
       const tokens = await googleAuth({ id_token: response.credential });
+      localStorage.setItem("verify_access", tokens.access_token);
+      localStorage.setItem("verify_refresh", tokens.refresh_token);
       localStorage.setItem("verifai_access", tokens.access_token);
       localStorage.setItem("verifai_refresh", tokens.refresh_token);
       const me = await getMe();
@@ -49,6 +51,8 @@ export default function LoginPage() {
 
     try {
       const tokens = await login({ email: email.trim().toLowerCase(), password });
+      localStorage.setItem("verify_access", tokens.access_token);
+      localStorage.setItem("verify_refresh", tokens.refresh_token);
       localStorage.setItem("verifai_access", tokens.access_token);
       localStorage.setItem("verifai_refresh", tokens.refresh_token);
       const me = await getMe();

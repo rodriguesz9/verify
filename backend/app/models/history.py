@@ -1,7 +1,6 @@
 from sqlalchemy import Column, String, DateTime, Integer, Text, ForeignKey, JSON, Enum as SAEnum, Float
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
-from app.core.database import Base
+from app.core.database import Base, GUID
 import uuid
 import enum
 
@@ -24,8 +23,8 @@ class VerdictLabel(str, enum.Enum):
 class Verification(Base):
     __tablename__ = "verifications"
 
-    id              = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id         = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    id              = Column(GUID, primary_key=True, default=uuid.uuid4)
+    user_id         = Column(GUID, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
     content_type    = Column(SAEnum(ContentType), nullable=False)
     source_url      = Column(String(512), nullable=True)
@@ -44,8 +43,8 @@ class Verification(Base):
 class AnalysisMetrics(Base):
     __tablename__ = "analysis_metrics"
 
-    id                       = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    verification_id          = Column(UUID(as_uuid=True), ForeignKey("verifications.id", ondelete="CASCADE"), nullable=False)
+    id                       = Column(GUID, primary_key=True, default=uuid.uuid4)
+    verification_id          = Column(GUID, ForeignKey("verifications.id", ondelete="CASCADE"), nullable=False)
 
     sightengine_ai_score     = Column(Float, nullable=True)
     sightengine_deepfake_score = Column(Float, nullable=True)
@@ -59,5 +58,5 @@ class CacheRegistry(Base):
     __tablename__ = "cache_registry"
 
     file_hash_md5     = Column(String(32), primary_key=True)
-    cached_verdict_id = Column(UUID(as_uuid=True), ForeignKey("verifications.id", ondelete="CASCADE"), nullable=False)
+    cached_verdict_id = Column(GUID, ForeignKey("verifications.id", ondelete="CASCADE"), nullable=False)
     expires_at        = Column(DateTime(timezone=True), nullable=False)
