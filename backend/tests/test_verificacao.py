@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from helpers import app, fake_user, override_auth_and_db, FakeSession, ScalarResult
 
 
-class VerificacaoBancaIntegrationTests(unittest.TestCase):
+class VerificacaoDemonstracaoIntegrationTests(unittest.TestCase):
     def setUp(self):
         self.user = fake_user()
         self.db = FakeSession()
@@ -21,7 +21,7 @@ class VerificacaoBancaIntegrationTests(unittest.TestCase):
         
         resp_cap = self.client.post(
             "/api/capturar/selo",
-            files={"file": ("foto_banca.jpg", original_image, "image/jpeg")}
+            files={"file": ("foto_demonstracao.jpg", original_image, "image/jpeg")}
         )
         self.assertEqual(resp_cap.status_code, 200)
         cap_data = resp_cap.json()
@@ -33,7 +33,7 @@ class VerificacaoBancaIntegrationTests(unittest.TestCase):
         self.db.execute_results = [ScalarResult(self.db.added[0])]
         resp_ver = self.client.post(
             "/api/verificar/selo",
-            files={"file": ("foto_banca.jpg", original_image, "image/jpeg")}
+            files={"file": ("foto_demonstracao.jpg", original_image, "image/jpeg")}
         )
         self.assertEqual(resp_ver.status_code, 200)
         ver_data = resp_ver.json()
@@ -45,14 +45,14 @@ class VerificacaoBancaIntegrationTests(unittest.TestCase):
         tampered_image = b"RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00TAMPERED_PHOTO_PIXELS_XYZ_999"
         resp_tampered = self.client.post(
             "/api/verificar/selo",
-            files={"file": ("foto_banca.jpg", tampered_image, "image/jpeg")}
+            files={"file": ("foto_demonstracao.jpg", tampered_image, "image/jpeg")}
         )
         self.assertEqual(resp_tampered.status_code, 200)
         tamp_data = resp_tampered.json()
         self.assertFalse(tamp_data["autentico"])
         self.assertEqual(tamp_data["status"], "TAMPERED_OR_UNKNOWN")
 
-    def test_audio_rapido_banca(self):
+    def test_audio_rapido_demonstracao(self):
         sample_audio = b"RIFF....WAVEfmt ....fake_audio_clonado_data"
         resp = self.client.post(
             "/api/verificar/audio-rapido",

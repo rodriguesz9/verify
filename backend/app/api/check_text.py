@@ -21,6 +21,9 @@ async def check_text(
     
     result = await run_pipeline(text=clean_text)
     ai = result["report"]
+    # Keep the original submission available to the user's own history. This
+    # avoids using the generated summary as the label for text checks.
+    ai["query_input"] = clean_text
     ai["fact_checks"] = [fc.model_dump() for fc in result.get("fact_checks", [])]
     ai["serper_news"] = result.get("serper_news", [])
     metrics = result["metrics"]

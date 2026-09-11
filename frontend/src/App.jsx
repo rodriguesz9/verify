@@ -10,7 +10,6 @@ import Home         from "./pages/Home";
 import Dashboard    from "./pages/Dashboard";
 import ReportPage   from "./pages/ReportPage";
 import HistoryPage  from "./pages/HistoryPage";
-import PricingPage  from "./pages/PricingPage";
 import LoginPage    from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import Missao       from "./pages/Missao";
@@ -18,7 +17,7 @@ import Sugestoes    from "./pages/Sugestoes";
 import Termos       from "./pages/Termos";
 import Privacidade  from "./pages/Privacidade";
 import LimitacoesIA from "./pages/LimitacoesIA";
-import BancaDemoPage from "./pages/BancaDemoPage";
+import DemonstracaoPage from "./pages/DemonstracaoPage";
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -42,11 +41,10 @@ export default function App() {
         <Route path="/app"        element={<><Navbar/><Home/></>} />
         <Route path="/report"     element={<><Navbar/><ReportPage/></>} />
         <Route path="/report/:id" element={<><Navbar/><ReportPage/></>} />
-        <Route path="/plans"      element={<><Navbar/><PricingPage/></>} />
         <Route path="/mission"    element={<><Navbar/><Missao/></>} />
         <Route path="/suggestions" element={<><Navbar/><Sugestoes/></>} />
-        <Route path="/demo"       element={<BancaDemoPage />} />
-        <Route path="/banca"      element={<BancaDemoPage />} />
+        <Route path="/demo"       element={<DemonstracaoPage />} />
+        <Route path="/demonstracao" element={<DemonstracaoPage />} />
         <Route path="/dashboard"  element={<ProtectedRoute><><Navbar/><Dashboard/></></ProtectedRoute>} />
         <Route path="/history"    element={<ProtectedRoute><><Navbar/><HistoryPage/></></ProtectedRoute>} />
       </Routes>

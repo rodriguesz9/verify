@@ -33,7 +33,7 @@ RESPONDA EXCLUSIVAMENTE EM JSON VÁLIDO no seguinte formato:
   "camadas_concordantes": ["Lista das camadas que apontam para o mesmo veredito"],
   "camadas_contraditorias": ["Lista de eventuais divergências entre camadas"],
   "evidencias_chave": ["Evidência 1 objetiva", "Evidência 2 objetiva"],
-  "explicacao_forense": "Explicação técnica detalhada para a banca",
+  "explicacao_forense": "Explicação técnica detalhada para análise",
   "explicacao_leiga": "Explicação clara e acolhedora em uma frase simples para o público leigo e idosos",
   "dica_seguranca": "Dica prática de segurança sobre como agir",
   "recomendacao": "aceitar|revisar_manualmente|rejeitar"

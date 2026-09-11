@@ -90,3 +90,4 @@ async def verify_c2pa(file_bytes: bytes, filename: str = "upload.jpg") -> Dict[s
 
     # Fallback to binary JUMBF scan
     return _scan_binary_c2pa_markers(file_bytes)
+

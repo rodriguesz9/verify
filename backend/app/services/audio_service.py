@@ -111,7 +111,7 @@ async def transcribe_with_assemblyai(file_bytes: bytes) -> Dict[str, Any]:
         return {"available": True, "status": "error", "error": str(exc)[:80]}
 
 
-async def analyze_audio_quick_for_banca(file_bytes: bytes, filename: str = "audio.wav") -> Dict[str, Any]:
+async def analyze_audio_quick_for_demonstration(file_bytes: bytes, filename: str = "audio.wav") -> Dict[str, Any]:
     """
     Ultra-fast (< 3s) audio analysis endpoint specifically optimized for live stage presentations.
     Combines rapid acoustic heuristic detection with Gemini Multimodal Audio analysis.

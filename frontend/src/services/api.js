@@ -3,14 +3,8 @@ import axios from "axios";
 const baseURL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api` : "/api";
 const api = axios.create({ baseURL, timeout: 60000, withCredentials: true });
 
-// Attach JWT from localStorage on every request as fallback
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("verify_access") || localStorage.getItem("verifai_access");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
-// Auto-refresh on 401
+// Authentication remains in HTTP-only cookies; JavaScript never receives a JWT.
+// Retry once after the server rotates the refresh cookie.
 api.interceptors.response.use(
   (r) => r,
   async (err) => {
@@ -19,17 +13,8 @@ api.interceptors.response.use(
     if (err.response?.status === 401 && !orig._retry && !orig._skipAuthRefresh && !skipRefresh) {
       orig._retry = true;
       try {
-        const refresh = localStorage.getItem("verify_refresh") || localStorage.getItem("verifai_refresh");
-        if (refresh) {
-          const { data } = await axios.post(`${baseURL}/auth/refresh`, { refresh_token: refresh }, { withCredentials: true });
-          localStorage.setItem("verify_access",  data.access_token);
-          localStorage.setItem("verify_refresh", data.refresh_token);
-          orig.headers.Authorization = `Bearer ${data.access_token}`;
-          return api(orig);
-        } else {
-          await api.post("/auth/refresh", {}, { _skipAuthRefresh: true });
-          return api(orig);
-        }
+        await api.post("/auth/refresh", {}, { _skipAuthRefresh: true });
+        return api(orig);
       } catch {
         if (!orig._skipLogoutRedirect) logout();
       }
@@ -64,7 +49,7 @@ export const analyzeUpload = (file) => {
   return api.post("/upload", form, { headers: { "Content-Type": "multipart/form-data" } }).then(r => r.data);
 };
 
-// ── Verification & Banca Demo ───────────────────────────────────────────────
+// ── Verification & interactive demonstration ───────────────────────────────
 export const verifyAudioQuick = (file) => {
   const form = new FormData();
   form.append("file", file);

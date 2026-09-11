@@ -2,6 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 import httpx
 from bs4 import BeautifulSoup
 import re
+import asyncio
+import ipaddress
+import socket
+from urllib.parse import urljoin, urlsplit
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.schemas import UrlRequest
@@ -14,13 +18,63 @@ from app.models.history import Verification, AnalysisMetrics, ContentType
 
 router = APIRouter()
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; AntigravityBot/1.0)"}
+MAX_REDIRECTS = 5
+
+
+def _is_public_ip(address: str) -> bool:
+    """Allow only globally routable IP addresses for user-supplied URLs."""
+    try:
+        return ipaddress.ip_address(address).is_global
+    except ValueError:
+        return False
+
+
+def _resolve_public_host(hostname: str) -> None:
+    normalized = hostname.rstrip(".").lower()
+    if normalized in {"localhost", "localhost.localdomain"}:
+        raise HTTPException(status_code=400, detail="Endereço local não pode ser verificado.")
+
+    try:
+        addresses = {
+            item[4][0]
+            for item in socket.getaddrinfo(normalized, None, type=socket.SOCK_STREAM)
+        }
+    except socket.gaierror as exc:
+        raise HTTPException(status_code=400, detail="Não foi possível localizar o domínio informado.") from exc
+
+    if not addresses or any(not _is_public_ip(address) for address in addresses):
+        raise HTTPException(status_code=400, detail="Endereço privado ou reservado não pode ser verificado.")
+
+
+async def _validate_public_url(url: str) -> None:
+    parsed = urlsplit(url)
+    if (
+        parsed.scheme not in {"http", "https"}
+        or not parsed.hostname
+        or parsed.username
+        or parsed.password
+    ):
+        raise HTTPException(status_code=400, detail="Informe uma URL pública válida com http ou https.")
+    await asyncio.to_thread(_resolve_public_host, parsed.hostname)
 
 
 async def fetch_page_text(url: str) -> dict:
     """Robust scraper for Antigravity Core."""
-    async with httpx.AsyncClient(timeout=15, headers=HEADERS, follow_redirects=True) as client:
-        resp = await client.get(url)
-        resp.raise_for_status()
+    current_url = url
+    async with httpx.AsyncClient(timeout=15, headers=HEADERS, follow_redirects=False) as client:
+        for _ in range(MAX_REDIRECTS + 1):
+            await _validate_public_url(current_url)
+            resp = await client.get(current_url)
+            if resp.is_redirect:
+                location = resp.headers.get("location")
+                if not location:
+                    raise HTTPException(status_code=400, detail="Redirecionamento sem destino válido.")
+                current_url = urljoin(current_url, location)
+                continue
+            resp.raise_for_status()
+            break
+        else:
+            raise HTTPException(status_code=400, detail="A URL excedeu o limite de redirecionamentos.")
     
     soup = BeautifulSoup(resp.text, "html.parser")
     
@@ -62,6 +116,8 @@ async def check_url(
     try:
         scraped = await fetch_page_text(url)
         page_text = scraped["text"]
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Acesso negado ou erro na URL: {str(exc)[:100]}")
 
@@ -70,6 +126,7 @@ async def check_url(
 
     result = await run_pipeline(text=page_text, url=url)
     ai = result["report"]
+    ai["query_input"] = url
     ai["fact_checks"] = [fc.model_dump() for fc in result.get("fact_checks", [])]
     ai["serper_news"] = result.get("serper_news", [])
     metrics = result["metrics"]

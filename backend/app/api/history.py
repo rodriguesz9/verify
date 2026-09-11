@@ -11,6 +11,21 @@ from app.models.history import Verification
 router = APIRouter(prefix="/history")
 
 
+def _query_input(row: Verification) -> str:
+    """Return the user's original input where it is available.
+
+    Historical rows created before `query_input` was added only have a summary,
+    so they remain readable without a database migration.
+    """
+    if row.source_url:
+        return row.source_url
+    if isinstance(row.raw_result, dict):
+        query = row.raw_result.get("query_input") or row.raw_result.get("filename")
+        if isinstance(query, str) and query.strip():
+            return query
+    return row.ai_summary or "Conteúdo enviado"
+
+
 @router.get("")
 async def get_history(
     page:  int  = Query(1, ge=1),
@@ -42,7 +57,7 @@ async def get_history(
             {
                 "id":            str(r.id),
                 "content_type":  r.content_type.value,
-                "query_input":   r.ai_summary[:100] if not r.source_url else r.source_url,
+                "query_input":   _query_input(r)[:100],
                 "verdict_score": r.verdict_score,
                 "verdict_label": r.verdict_label.value,
                 "ai_summary":    r.ai_summary,
@@ -110,7 +125,7 @@ async def get_verification(
     return {
         "id":            str(row.id),
         "content_type":  row.content_type.value,
-        "query_input":   row.source_url or "Conteúdo Direto",
+        "query_input":   _query_input(row),
         "verdict_score": row.verdict_score,
         "verdict_label": row.verdict_label.value,
         "ai_summary":    row.ai_summary,

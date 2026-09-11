@@ -18,6 +18,7 @@ class VerdictLabel(str, enum.Enum):
     MANIPULATED    = "Manipulated"
     OUT_OF_CONTEXT = "Out_Of_Context"
     SUSPICIOUS     = "Suspicious"
+    SCAM           = "Scam"
 
 
 class Verification(Base):

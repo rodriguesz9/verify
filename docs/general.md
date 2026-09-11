@@ -55,7 +55,7 @@ verify/
     └── src/
         ├── main.jsx / App.jsx      # Entry + routes
         ├── components/             # Navbar, Dropzone, GaugeChart, ProtectedRoute...
-        ├── pages/                  # Landing, Dashboard, Report, History, Pricing...
+        ├── pages/                  # Landing, Dashboard, Report, History, Demonstracao...
         ├── hooks/useAuth.jsx       # Auth context
         └── services/api.js         # Axios client + endpoint wrappers
 ```
@@ -89,7 +89,7 @@ verify/
 - `huggingface_client.py` — `check_ai_image_hf` (community model second check).
 - `serpapi_client.py` — Google Reverse Image search wrapper.
 - `hive_moderation.py` — Hive moderation API wrapper.
-- `auth.py` — `get_current_user` (JWT from HTTP-only access cookie), `verify_limit` (tier-based daily quota: Standard 300 textual/100 media, Premium 10k/5k, Enterprise 9999), Google token verify.
+- `auth.py` — `get_current_user` (JWT from HTTP-only access cookie), `verify_limit` (daily usage quotas), Google token verify.
 - `security.py` — Argon2 hashing, JWT create/decode, bleach-based XSS sanitize, password/email validation.
 - `cache.py` — caching helpers.
 - `database.py` — async engine, `get_db` dependency, `init_db`.
@@ -110,7 +110,7 @@ verify/
 - `services/api.js` — axios instance, base `/api`, sends same-site cookies, auto-refreshes on 401, calls cookie-clearing logout, then redirects to `/login`. Exports auth/analysis/history wrappers.
 - `hooks/useAuth.jsx` — AuthProvider context (user state, login/register/logout).
 - `components/` — `Navbar`, `Footer`, `ProtectedRoute`, `Dropzone`, `GaugeChart`, `MetricBar`, `UsageBar`, `LoadingScreen`, `SplashScreen`.
-- `pages/` — Public: `LandingPage`, `LoginPage`, `RegisterPage`, `Termos`, `Privacidade`, `LimitacoesIA`. Protected (`ProtectedRoute` + Navbar): `Home`, `Dashboard`, `HistoryPage`, `ReportPage` (incl. `/report/:id`), `PricingPage`, `Missao`, `Sugestoes`.
+- `pages/` — Public: `LandingPage`, `LoginPage`, `RegisterPage`, `Termos`, `Privacidade`, `LimitacoesIA`. Protected (`ProtectedRoute` + Navbar): `Home`, `Dashboard`, `HistoryPage`, `ReportPage` (incl. `/report/:id`), `DemonstracaoPage`, `Missao`, `Sugestoes`.
 - `App.jsx` — route table; splash screen shows 2.5s on load.
 
 ---

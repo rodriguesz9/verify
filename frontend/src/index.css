@@ -92,31 +92,6 @@ div {
   border-radius: 999px;
 }
 
-.price-row {
-  display: grid;
-  grid-template-columns: max-content max-content;
-  align-items: end;
-  justify-content: center;
-  column-gap: 0.5rem;
-  width: 100%;
-  overflow: visible;
-}
-
-.price-row > span:first-child {
-  min-width: max-content;
-  font-size: clamp(2.75rem, 4.6vw, 3.5rem);
-  line-height: 0.95;
-  white-space: nowrap;
-}
-
-.price-row > span:last-child {
-  min-width: max-content;
-  padding-bottom: 0.4rem;
-  font-size: clamp(0.75rem, 1.2vw, 0.875rem);
-  line-height: 1;
-  white-space: nowrap;
-}
-
 .font-mono {
   font-family: 'JetBrains Mono', monospace;
 }

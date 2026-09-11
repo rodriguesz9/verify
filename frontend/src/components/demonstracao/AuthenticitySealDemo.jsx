@@ -26,7 +26,7 @@ export default function AuthenticitySealDemo() {
       setError("");
     } catch (err) {
       // Fallback: draw a synthesized photo on the canvas if webcam not permitted
-      drawFallbackCanvas("Foto da Apresentação (Banca FUNEC)");
+      drawFallbackCanvas("Foto da Demonstração");
       setStreamActive(false);
     }
   };
@@ -91,7 +91,7 @@ export default function AuthenticitySealDemo() {
       canvas.height = videoRef.current.videoHeight || 480;
       ctx.drawImage(videoRef.current, 0, 0);
     } else {
-      drawFallbackCanvas("Foto da Banca FUNEC");
+      drawFallbackCanvas("Foto da Demonstração");
     }
 
     canvas.toBlob(async (blob) => {
@@ -284,7 +284,7 @@ export default function AuthenticitySealDemo() {
             </div>
           </div>
 
-          {/* Test Buttons for the Banca */}
+          {/* Controles de teste da demonstração */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
             <button
               type="button"
@@ -345,7 +345,7 @@ export default function AuthenticitySealDemo() {
               onClick={handleReset}
               className="px-8 py-4 rounded-xl bg-[#132435] text-[#CDE8F0] font-syne font-bold text-xs uppercase tracking-widest hover:bg-[#1C364F] transition-all cursor-pointer"
             >
-              🔄 REINICIAR DEMONSTRAÇÃO DO SELO
+              REINICIAR DEMONSTRAÇÃO DO SELO
             </button>
           </div>
         </div>

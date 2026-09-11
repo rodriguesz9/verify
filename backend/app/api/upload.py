@@ -94,6 +94,8 @@ async def analyze_upload(
     if _has_ai_orchestration_failure(ai):
         raise HTTPException(status_code=502, detail="Falha na analise de IA")
 
+    ai["query_input"] = file.filename or "Arquivo enviado"
+
     # 3. Save Verification (if user logged in)
     if user:
         v = Verification(

@@ -85,7 +85,7 @@ export default function WhatsAppSimulator() {
           Bot de WhatsApp <span className="text-[#25D366]">(Simulador na Tela)</span>
         </h2>
         <p className="font-mono text-sm text-[#3A6070] mt-3 max-w-2xl mx-auto">
-          A banca e a plateia podem participar enviando mensagens para ver o bot respondendo ao vivo como se estivesse no smartphone.
+          Experimente mensagens de exemplo e veja o bot responder ao vivo como se estivesse no smartphone.
         </p>
       </div>
 
@@ -164,7 +164,7 @@ export default function WhatsAppSimulator() {
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            placeholder="Digite uma mensagem para a banca testar..."
+            placeholder="Digite uma mensagem para testar..."
             className="flex-1 bg-[#2A3942] text-[#E9EDEF] text-xs font-sans rounded-full px-4 py-2.5 outline-none placeholder-[#8696A0]"
           />
           <button

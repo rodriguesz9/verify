@@ -4,7 +4,7 @@ from typing import Dict, Any, List
 SCAM_PATTERNS = [
     {
         "category": "Golpe do Pix / Dinheiro Fácil",
-        "regex": r"(pix.*aprovado|pague\s+a\s+taxa.*liberar|devolu[cç][aã]o\s+do\s+pix|resgate\s+de\s+valores|saldo\s+esquecido|pix\s+em\s+dobro|multiplicador\s+de\s+pix|taxa\s+para\s+liberar\s+saldo|taxa\s+de\s+r\$\s*\d+.*liberar|chave\s+pix.*ganhe)",
+        "regex": r"(pix.*aprovado|pague\s+(uma\s+)?taxa|taxa.*(liberar|receber|resgatar)|devolu[cç][aã]o\s+do\s+pix|resgate\s+(de\s+)?valores|valores\s+esquecidos?.*pix|saldo\s+esquecido|pix\s+em\s+dobro|multiplicador\s+de\s+pix|taxa\s+para\s+liberar\s+saldo|taxa\s+de\s+r\$\s*\d+.*liberar|chave\s+pix.*ganhe)",
         "risk_level": "ALTO",
         "description": "Promessa de resgate de valores ou multiplicação via Pix. Bancos e governo nunca cobram taxa para devolver dinheiro."
     },

@@ -24,12 +24,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => { loadUser(); }, [loadUser]);
 
-  const signIn = (tokensOrMe, maybeMe) => {
-    const me = maybeMe || tokensOrMe;
-    if (tokensOrMe && tokensOrMe.access_token) {
-      localStorage.setItem("verify_access", tokensOrMe.access_token);
-      localStorage.setItem("verify_refresh", tokensOrMe.refresh_token);
-    }
+  const signIn = (me) => {
     setUser(me);
   };
 

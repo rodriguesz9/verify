@@ -153,3 +153,4 @@ def generate_forensic_pdf(report: Dict[str, Any], filename: str, file_hash_sha25
     pdf_bytes = buffer.getvalue()
     buffer.close()
     return pdf_bytes
+

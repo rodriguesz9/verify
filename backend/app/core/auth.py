@@ -125,7 +125,7 @@ async def verify_limit(user: User | None, db: AsyncSession, category: str):
             status_code=429,
             detail={
                 "error": "limite_diario",
-                "message": f"Limite atingido ({limit}/{cat_name}). Faça upgrade para Premium para continuar.",
+                "message": f"Limite diário atingido ({limit}/{cat_name}). Tente novamente amanhã.",
             },
         )
 

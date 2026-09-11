@@ -83,9 +83,10 @@ async def run_pipeline(text: str, url: str | None = None) -> dict:
 
     # If scam detector flagged critical patterns, ensure score and verdict reflect danger
     if scam_info["is_scam"]:
-        if ai.get("verdict") not in ["Scam", "Manipulated", "Suspicious"]:
-            ai["verdict"] = "Scam"
-            ai["score"] = min(ai.get("score", 10), 15)
+        # A confirmed local fraud pattern is stronger than the generic fallback
+        # produced when an external LLM or fact-check provider is unavailable.
+        ai["verdict"] = "Scam"
+        ai["score"] = min(ai.get("score", 10), 15)
         for pattern in scam_info["detected_patterns"]:
             red_flag = f"Alerta de Golpe: {pattern['category']} - {pattern['description']}"
             if "red_flags" in ai and red_flag not in ai["red_flags"]:

@@ -1,5 +1,6 @@
 import os
 import uuid
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.types import TypeDecorator, CHAR
@@ -82,3 +83,10 @@ async def init_db():
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Existing PostgreSQL databases were created before the Scam verdict was
+        # persisted. Keep the upgrade idempotent so deployments need no manual
+        # migration for this additive enum value.
+        if not is_sqlite:
+            # SQLAlchemy persists enum member names for this column (for example
+            # ``SUSPICIOUS``), rather than their human-readable values.
+            await conn.execute(text("ALTER TYPE verdictlabel ADD VALUE IF NOT EXISTS 'SCAM'"))

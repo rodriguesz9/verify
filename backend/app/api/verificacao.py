@@ -17,21 +17,29 @@ from sqlalchemy import select
 from app.core.database import get_db
 from app.core.auth import get_optional_user, verify_limit
 from app.models.user import User
-from app.models.history import AuthenticitySeal, Verification, ContentType
+from app.models.history import AuthenticitySeal, Verification, ContentType, VerdictLabel
 
 from app.services.metadata_service import extract_metadata
 from app.services.c2pa_service import verify_c2pa
 from app.services.hive_service import check_hive_media
 from app.services.reverse_search_service import search_context_and_provenance
-from app.services.audio_service import analyze_audio_quick_for_banca
+from app.services.audio_service import analyze_audio_quick_for_demonstration
 from app.services.gemini_service import consolidate_forensic_report
 from app.services.pdf_report_service import generate_forensic_pdf
 from app.core.sightengine_client import check_deepfake
 
 router = APIRouter()
 
-HMAC_SECRET = os.getenv("HMAC_SECRET_KEY", "verify_secret_banca_funec_key").encode()
+HMAC_SECRET = os.getenv("HMAC_SECRET_KEY", "verify_local_demo_only").encode()
 MAX_FILE_SIZE = 35 * 1024 * 1024
+
+FORENSIC_VERDICTS = {
+    "autentico": VerdictLabel.AUTHENTIC,
+    "gerado_ia": VerdictLabel.AI_GENERATED,
+    "deepfake": VerdictLabel.MANIPULATED,
+    "montagem": VerdictLabel.MANIPULATED,
+    "inconclusivo": VerdictLabel.SUSPICIOUS,
+}
 
 
 @router.post("/verificar/completo")
@@ -64,7 +72,7 @@ async def verificar_completo(
     ]
 
     if is_audio:
-        tasks.append(analyze_audio_quick_for_banca(file_bytes, filename))
+        tasks.append(analyze_audio_quick_for_demonstration(file_bytes, filename))
     else:
         tasks.append(asyncio.sleep(0, result=None))
 
@@ -95,6 +103,7 @@ async def verificar_completo(
     result_payload = {
         "file_hash_sha256": file_hash_sha256,
         "filename": filename,
+        "query_input": filename,
         "metadata": metadata_res,
         "c2pa": c2pa_res,
         "deteccao_ia": detection_res,
@@ -111,7 +120,10 @@ async def verificar_completo(
                 content_type=ContentType.AUDIO if is_audio else ContentType.IMAGE,
                 file_hash_md5=hashlib.md5(file_bytes).hexdigest(),
                 verdict_score=report.get("score", 75),
-                verdict_label=report.get("veredito_final", "Suspicious").capitalize(),
+                verdict_label=FORENSIC_VERDICTS.get(
+                    report.get("veredito_final", "").lower(),
+                    VerdictLabel.SUSPICIOUS,
+                ),
                 ai_summary=report.get("explicacao_leiga", ""),
                 raw_result=result_payload
             )
@@ -128,13 +140,13 @@ async def verificar_audio_rapido(
     file: UploadFile = File(...)
 ):
     """
-    Ultra-fast (< 3s) audio analysis endpoint optimized for live stage presentations (Banca).
+    Ultra-fast (< 3s) audio analysis endpoint optimized for interactive demonstrations.
     """
     file_bytes = await file.read()
     if len(file_bytes) > MAX_FILE_SIZE:
         raise HTTPException(status_code=413, detail="Arquivo de áudio muito grande.")
 
-    result = await analyze_audio_quick_for_banca(file_bytes, file.filename or "audio.wav")
+    result = await analyze_audio_quick_for_demonstration(file_bytes, file.filename or "audio.wav")
     return result
 
 

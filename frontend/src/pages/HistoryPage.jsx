@@ -1,147 +1,18 @@
-import Footer from "../components/Footer";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ArrowLeft, ArrowRight, FileSearch, Image, Link2, Mic, Plus, TableProperties } from "lucide-react";
+import Footer from "../components/Footer";
 import { getHistory, getStats } from "../services/api";
-import { scoreColor } from "../components/GaugeChart";
+
+const LIMIT = 20;
+const COLORS = { Authentic: "#00FF87", AI_Generated: "#00D4FF", Manipulated: "#FF3B5C", Out_Of_Context: "#FFB830", Suspicious: "#8AA2B4", Scam: "#FF3B5C" };
+const ICONS = { Text: FileSearch, text: FileSearch, Url: Link2, url: Link2, Image, image: Image, Audio: Mic, audio: Mic };
 
 export default function HistoryPage() {
   const navigate = useNavigate();
-  const [items,   setItems]   = useState([]);
-  const [stats,   setStats]   = useState(null);
-  const [page,    setPage]    = useState(1);
-  const [total,   setTotal]   = useState(0);
-  const [loading, setLoading] = useState(true);
-
-  const LIMIT = 20;
-
-  useEffect(() => {
-    setLoading(true);
-    Promise.all([getHistory(page), getStats()])
-      .then(([hist, st]) => {
-        setItems(hist.items || []);
-        setTotal(hist.total || 0);
-        setStats(st);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [page]);
-
-  const TYPE_ICON = { text: "💬", url: "🔗", image: "🖼️", audio: "🎙️", video: "📺" };
-
-  return (
-    <div className="relative min-h-screen pb-20">
-      <div className="pointer-events-none fixed inset-0 opacity-10"
-        style={{
-          backgroundImage: "linear-gradient(#00D4FF 1px,transparent 1px),linear-gradient(90deg,#00D4FF 1px,transparent 1px)",
-          backgroundSize: "60px 60px",
-        }}/>
-
-      <div className="relative z-10 max-w-4xl mx-auto px-5 pt-10">
-        <div className="flex items-center justify-between mb-12">
-          <div>
-            <h1 className="font-syne font-extrabold text-3xl tracking-tight mb-2 text-[#CDE8F0]">Histórico de Verificações</h1>
-            <p className="font-mono text-[11px] text-[#3A6070] uppercase tracking-[4px] font-bold">
-              Todas as suas descobertas salvas
-            </p>
-          </div>
-          <button onClick={() => navigate("/app")}
-            className="font-syne font-bold text-[12px] tracking-[4px] px-8 py-3.5 rounded-2xl transition-all shadow-[0_10px_30px_rgba(0,212,255,0.2)] uppercase"
-            style={{ 
-              background: "linear-gradient(135deg,#00D4FF,#00FF87)", 
-              color: "#04080C", border: "none", cursor: "pointer",
-            }}>
-            + VERIFICAR NOVO
-          </button>
-        </div>
-
-        {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-            {[
-              { label: "TOTAL",       value: stats.total,      col: "#CDE8F0" },
-              { label: "HOJE",        value: `${stats.daily_used}/${stats.daily_limit}`, col: stats.daily_used >= stats.daily_limit ? "#FF3B5C" : "#00FF87" },
-              { label: "PRECISÃO",    value: stats.avg_score ? `${stats.avg_score}%` : "—", col: "#00D4FF" },
-              { label: "PLANO",       value: stats.plan || "GRÁTIS", col: "#FFB830" },
-            ].map(({ label, value, col }) => (
-              <div key={label} className="rounded-2xl p-6 text-center border border-[#132435] bg-[#0A1520] shadow-sm">
-                <span className="data-token font-syne font-black text-3xl block mb-1" style={{ color: col }}>{value}</span>
-                <span className="font-mono text-[9px] tracking-[5px] block font-bold uppercase text-[#3A6070]">{label}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {loading ? (
-          <div className="flex justify-center py-24 opacity-20">
-            <div className="anim-spin-cw w-10 h-10 rounded-full border-2"
-              style={{ borderColor: "transparent", borderTopColor: "#00D4FF" }}/>
-          </div>
-        ) : items.length === 0 ? (
-          <div className="text-center py-32 bg-[#0A1520] rounded-[2rem] border border-[#132435]">
-            <p className="font-mono text-[12px] text-[#1A3A50] tracking-widest font-bold">
-              Sua lista está vazia. Que tal fazer uma checagem?
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-             {items.map((item, i) => {
-               const col = scoreColor(item.score);
-               const dt  = new Date(item.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" });
-               return (
-                 <div key={item.id}
-                   className="p-5 rounded-2xl bg-[#0A1520] border border-[#132435] flex items-center gap-6 hover:bg-[#0F1E2E] hover:border-white/10 transition-all cursor-pointer group"
-                   onClick={() => navigate(`/report/${item.id}`)}
-                 >
-                   <div className="w-12 h-12 rounded-xl bg-[#04080C] flex items-center justify-center text-2xl group-hover:scale-110 transition-transform shadow-inner">
-                     {TYPE_ICON[item.query_type] || "📄"}
-                   </div>
-
-                   <div className="flex-1 min-w-0">
-                     <div className="flex items-center gap-3 mb-2">
-                        <span className="font-mono text-[10px] text-[#1A3A50] font-bold">{dt}</span>
-                        <span className="font-mono text-[9px] font-bold px-2.5 py-0.5 rounded border border-[#132435] text-[#3A6070] uppercase">
-                          {item.query_type}
-                        </span>
-                     </div>
-                     <p className="data-token font-mono text-[14px] font-black text-[#CDE8F0] tracking-tight">
-                       {item.query_input}
-                     </p>
-                   </div>
-
-                   <div className="text-right">
-                     <span className="font-mono text-[9px] tracking-widest px-3 py-1 rounded-full font-bold uppercase mb-2 inline-block"
-                       style={{ background: col + "18", color: col, border: `1px solid ${col}33` }}>
-                       {item.verdict}
-                     </span>
-                     <div className="data-token font-syne font-black text-3xl tracking-tighter" style={{ color: col }}>
-                       {item.score}%
-                     </div>
-                   </div>
-                 </div>
-               );
-             })}
-
-             {/* pagination */}
-             {total > LIMIT && (
-               <div className="flex items-center justify-center gap-6 mt-12 bg-[#0A1520] p-4 rounded-2xl border border-[#132435]">
-                 <button disabled={page === 1} onClick={() => setPage(p => p - 1)}
-                   className="font-mono text-[10px] tracking-widest px-6 py-2 rounded-xl transition-all"
-                   style={{ background: "#04080C", border: "1px solid #132435", color: page === 1 ? "#1A3A50" : "#CDE8F0", cursor: page === 1 ? "not-allowed" : "pointer" }}>
-                   ← ANTERIOR
-                 </button>
-                 <span className="font-mono text-[12px] font-bold text-[#3A6070]">
-                   {page} de {Math.ceil(total / LIMIT)}
-                 </span>
-                 <button disabled={page * LIMIT >= total} onClick={() => setPage(p => p + 1)}
-                   className="font-mono text-[10px] tracking-widest px-6 py-2 rounded-xl transition-all"
-                   style={{ background: "#04080C", border: "1px solid #132435", color: page * LIMIT >= total ? "#1A3A50" : "#CDE8F0", cursor: page * LIMIT >= total ? "not-allowed" : "pointer" }}>
-                   PRÓXIMA →
-                 </button>
-               </div>
-             )}
-          </div>
-        )}
-      </div>
-      <Footer />
-    </div>
-  );
+  const [items, setItems] = useState([]); const [stats, setStats] = useState(null); const [page, setPage] = useState(1); const [total, setTotal] = useState(0); const [loading, setLoading] = useState(true);
+  useEffect(() => { setLoading(true); Promise.all([getHistory(page), getStats()]).then(([history, metrics]) => { setItems(history.items || []); setTotal(history.total || 0); setStats(metrics); }).catch(console.error).finally(() => setLoading(false)); }, [page]);
+  const pages = Math.max(1, Math.ceil(total / LIMIT));
+  const metrics = [["Registros", total], ["Precisão média", `${stats?.avg_score ?? 0}%`], ["Página", `${page} / ${pages}`]];
+  return <div className="min-h-screen bg-[#04080C] pb-16 text-[#CDE8F0]"><main className="mx-auto max-w-7xl px-5 pt-10 sm:px-8"><header className="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end"><div><span className="font-mono text-[10px] font-bold uppercase tracking-[3px] text-[#00D4FF]">Arquivo de consultas</span><h1 className="mt-2 font-syne text-3xl font-black">Histórico</h1><p className="mt-2 font-mono text-xs text-[#8AA2B4]">Todos os relatórios disponíveis para consulta.</p></div><button onClick={() => navigate("/app")} className="flex items-center justify-center gap-2 rounded-lg bg-[#00D4FF] px-4 py-3 font-mono text-xs font-bold uppercase tracking-wider text-[#04080C]"><Plus size={16} /> Nova checagem</button></header><section className="mb-8 grid grid-cols-3 border border-[#132435] bg-[#0A1520]">{metrics.map(([label, value]) => <div key={label} className="border-r border-[#132435] p-4 last:border-0"><span className="font-mono text-[10px] uppercase tracking-wider text-[#8AA2B4]">{label}</span><strong className="mt-1 block font-syne text-xl">{value}</strong></div>)}</section><section className="overflow-hidden rounded-xl border border-[#132435] bg-[#0A1520]"><div className="flex items-center justify-between border-b border-[#132435] px-5 py-4"><span className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-wider"><TableProperties size={15} className="text-[#00D4FF]" /> Registros</span><span className="font-mono text-[10px] text-[#8AA2B4]">{total} no total</span></div>{loading ? <p className="p-10 text-center font-mono text-xs text-[#8AA2B4]">Carregando histórico...</p> : items.length === 0 ? <p className="p-10 text-center font-mono text-xs text-[#8AA2B4]">Nenhum registro encontrado.</p> : <div className="overflow-x-auto"><table className="min-w-full text-left"><thead className="border-b border-[#132435] bg-[#070F17] font-mono text-[10px] uppercase tracking-wider text-[#8AA2B4]"><tr><th className="px-5 py-3 font-medium">Tipo</th><th className="px-5 py-3 font-medium">Conteúdo</th><th className="px-5 py-3 font-medium">Veredito</th><th className="px-5 py-3 font-medium">Índice</th><th className="px-5 py-3 font-medium">Registrado em</th></tr></thead><tbody>{items.map(item => { const Icon = ICONS[item.content_type] || FileSearch; const color = COLORS[item.verdict_label] || "#8AA2B4"; return <tr key={item.id} onClick={() => navigate(`/report/${item.id}`)} className="cursor-pointer border-b border-[#132435] last:border-0 hover:bg-[#0F1E2E]"><td className="px-5 py-4"><Icon size={17} className="text-[#00D4FF]" /></td><td className="max-w-[420px] truncate px-5 py-4 font-mono text-xs">{item.query_input || "Arquivo ou conteúdo enviado"}</td><td className="px-5 py-4"><span className="font-mono text-[10px] font-bold uppercase tracking-wider" style={{ color }}>{item.verdict_label || "Em análise"}</span></td><td className="px-5 py-4 font-mono text-xs" style={{ color }}>{item.verdict_score ?? "—"}%</td><td className="whitespace-nowrap px-5 py-4 font-mono text-[11px] text-[#8AA2B4]">{item.created_at ? new Date(item.created_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "—"}</td></tr>; })}</tbody></table></div>}<div className="flex items-center justify-between border-t border-[#132435] px-5 py-3"><span className="font-mono text-[10px] text-[#8AA2B4]">Página {page} de {pages}</span><div className="flex gap-2"><button disabled={page === 1} onClick={() => setPage(current => current - 1)} className="rounded border border-[#132435] p-2 text-[#CDE8F0] disabled:opacity-30"><ArrowLeft size={15} /></button><button disabled={page >= pages} onClick={() => setPage(current => current + 1)} className="rounded border border-[#132435] p-2 text-[#CDE8F0] disabled:opacity-30"><ArrowRight size={15} /></button></div></div></section></main><Footer /></div>;
 }

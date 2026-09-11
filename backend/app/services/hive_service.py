@@ -130,3 +130,4 @@ async def check_hive_text(text: str) -> Dict[str, Any]:
             }
     except Exception as exc:
         return {"available": True, "status": "error", "error": str(exc)[:80]}
+

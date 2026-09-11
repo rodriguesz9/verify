@@ -124,3 +124,4 @@ async def extract_metadata(file_bytes: bytes, filename: str = "upload.jpg") -> D
         "raw_keys_count": len(metadata),
         "raw_preview": {k: str(v)[:80] for k, v in list(metadata.items())[:12]}
     }
+

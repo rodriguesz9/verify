@@ -40,6 +40,8 @@ class AiWorkflowIntegrationTests(unittest.TestCase):
         self.assertEqual(self.db.commits, 1)
         self.assertTrue(any(isinstance(item, Verification) for item in self.db.added))
         self.assertTrue(any(isinstance(item, AnalysisMetrics) for item in self.db.added))
+        verification = next(item for item in self.db.added if isinstance(item, Verification))
+        self.assertEqual(verification.raw_result["query_input"], "The Earth is flat according to one viral claim.")
 
     def test_upload_analyzes_image_and_caches_result(self):
         report = fake_report(score=61, verdict="Authentic", summary="Image analysis complete.")

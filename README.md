@@ -1,121 +1,205 @@
-# Verify 🛡️
+# Verify
 
-> Sistema Inteligente e Acessível de Checagem de Fatos, Proteção contra Golpes no WhatsApp e Auditoria Digital.
-> **Focado em Idosos, Famílias e Usuários Leigos.**
+> Checagem acessível de mensagens, links, imagens e áudios para ajudar pessoas e famílias a reconhecerem golpes e desinformação antes de compartilhar.
 
----
+O Verify combina sinais de risco, fontes de checagem e explicações claras. O resultado é apoio à decisão — não substitui confirmação em canais oficiais, perícia humana ou orientação jurídica.
 
-## 🌟 O que há de novo no Verify?
+## O que ele faz
 
-1. **Interface Ultra-Simples e Acessível:**
-   - Textos claros, botões grandes e linguagem acolhedora sem termos difíceis.
-   - Botão **"Ouvir Explicação" (Voz em Português)** para idosos ouvirem o veredito sem precisar ler telas longas.
-   - Botão **"Avisar a Família no WhatsApp"** que já prepara a mensagem explicativa com emojis com 1 clique.
-   - Controle de tamanho de texto (**A- / A+ / Padrão / Grande / Muito Grande**).
-   - Abas dedicadas para: **Texto da Mensagem**, **Link de Site**, **Foto/Imagem** e **Áudio do WhatsApp**.
+- Checa texto e URLs suspeitas.
+- Analisa imagens e áudios quando os provedores opcionais estão configurados.
+- Identifica padrões comuns de golpe, como falso resgate de Pix e pedido urgente de dinheiro.
+- Salva histórico por conta e gera relatórios de fácil leitura.
+- Inclui uma [demonstração de uso](#demonstração-de-áudio) com voz falada no navegador e gravação de áudio real.
 
-2. **Detector de Golpes e Fraudes Brasileiras:**
-   - Detecção especializada de falsos resgates de Pix, falsas taxas dos Correios, golpes do parente com número novo, falsas promoções e páginas falsas de auxílios e INSS.
+## Tecnologias
 
-3. **Suporte a Áudios de WhatsApp (.ogg / .mp3 / .m4a):**
-   - Transcrição e checagem de fatos automática de áudios encaminhados usando IA Multimodal.
+| Camada | Tecnologia |
+| --- | --- |
+| Interface | React, Vite, Tailwind CSS, Lucide |
+| API | FastAPI, SQLAlchemy assíncrono |
+| Banco | PostgreSQL 16 |
+| Autenticação | Cookies HTTP-only, JWT, Argon2 |
+| Execução local | Docker Compose |
+| Publicação | Vercel (interface) + Railway (API e banco) |
 
-4. **Bot do WhatsApp:**
-   - Webhook pronto para integrar com serviços de WhatsApp (Evolution API, Baileys, Z-API, Meta Cloud API) e responder diretamente no aplicativo com laudos formatados.
+## Executar com Docker
 
----
+1. Crie o arquivo local de configuração:
 
-## 🚀 Como Rodar o Projeto Localmente
+   ```bash
+   cp backend/.env.example backend/.env
+   ```
 
-### Pré-requisitos
-- Python 3.10+
-- Node.js 18+ (ou Docker)
+2. Informe pelo menos uma chave Gemini nova no `backend/.env`. Nunca publique este arquivo.
 
-### 1. Backend (FastAPI)
+3. Inicie os serviços:
 
-```bash
-cd backend
+   ```bash
+   docker-compose up --build
+   ```
 
-# Crie o ambiente virtual (opcional mas recomendado)
-python3 -m venv venv
-source venv/bin/activate  # No Windows: venv\Scripts\activate
+No conjunto de portas deste repositório:
 
-# Instale as dependências
-pip install -r requirements.txt
+| Serviço | Endereço |
+| --- | --- |
+| Interface | `http://localhost:5174` |
+| API | `http://localhost:8001` |
+| Saúde da API | `http://localhost:8001/health` |
+| PostgreSQL | `localhost:5433` |
 
-# Configure as variáveis no arquivo .env
-cp .env.example .env
-# Adicione sua chave GEMINI_API_KEY no .env
-
-# Inicie o backend
-uvicorn app.main:app --reload --port 8000
-```
-O backend rodará em `http://localhost:8000` (com documentação interativa em `http://localhost:8000/docs`).
-
----
-
-### 2. Frontend (React + Vite + Tailwind)
+Para encerrar sem apagar o banco local:
 
 ```bash
-cd frontend
-
-# Instale as dependências
-npm install
-
-# Inicie o frontend
-npm run dev
+docker-compose down
 ```
-O frontend abrirá em `http://localhost:5173`.
 
----
+## Variáveis de ambiente
 
-## 🤖 Como Funciona o Bot do WhatsApp
+Use [`backend/.env.example`](backend/.env.example) como a lista canônica. Não use prefixo `VITE_` em variáveis secretas: tudo que começa com `VITE_` é enviado ao navegador.
 
-O Verify possui endpoints dedicados para integração com WhatsApp:
-- `POST /api/whatsapp/webhook`: Recebe mensagens de instâncias do WhatsApp e devolve a resposta formatada.
-- `POST /api/whatsapp/simulate`: Permite simular o envio e receber a resposta do WhatsApp formatada.
+### Necessárias em produção
 
-### Formato de Resposta do Bot:
+| Variável | Finalidade |
+| --- | --- |
+| `DATABASE_URL` | URL interna do PostgreSQL Railway |
+| `GEMINI_API_KEY` | Orquestração e análise de texto/áudio |
+| `JWT_SECRET` | Assinatura de sessões HTTP-only |
+| `HMAC_SECRET_KEY` | Assinatura dos selos de autenticidade |
+| `CORS_ORIGINS` | Domínio exato da interface Vercel |
+| `COOKIE_SECURE` | `true` em HTTPS |
+| `COOKIE_SAME_SITE` | `none` em domínios separados; `lax` sob domínio próprio compartilhado |
+
+Gere os dois segredos locais, únicos e longos:
+
+```bash
+openssl rand -hex 32
+```
+
+### Integrações opcionais
+
+Sem elas, o Verify permanece funcional, mas mostra menos evidências ou usa respostas de contingência.
+
+| Variável | Serviço | Onde criar |
+| --- | --- | --- |
+| `GEMINI_API_KEY` | Google AI Studio | [Criar chave](https://aistudio.google.com/app/apikey) |
+| `GOOGLE_FACT_CHECK_KEY` | Google Fact Check Tools | [Ativar API](https://console.cloud.google.com/apis/library/factchecktools.googleapis.com) e [criar chave](https://console.cloud.google.com/apis/credentials) |
+| `SERPERAPI_KEY` | Serper, busca de notícias | [Serper](https://serper.dev/) |
+| `SERPAPI_KEY` | SerpApi, busca reversa | [SerpApi](https://serpapi.com/manage-api-key) |
+| `SIGHTENGINE_API_USER` + `SIGHTENGINE_API_SECRET` | Sightengine, análise de mídia | [Credenciais Sightengine](https://dashboard.sightengine.com/api-credentials) |
+| `HUGGINGFACE_API_TOKEN` | Hugging Face, segunda análise de imagem | [Tokens Hugging Face](https://huggingface.co/settings/tokens) |
+| `HIVE_API_KEY` | Hive, análise multimídia | [Hive](https://thehive.ai/) |
+| `TINEYE_API_KEY` | TinEye, origem de imagens | [TinEye API](https://services.tineye.com/) é PAGA, Não consegui pegar, temq ser aceito pelos devs do projeto deles|
+| `ASSEMBLYAI_API_KEY` | AssemblyAI, transcrição e áudio | [Chave AssemblyAI](https://www.assemblyai.com/docs/faq/how-to-get-your-api-key) |
+| `GPTZERO_API_KEY` | GPTZero, análise complementar de texto | [GPTZero API](https://gptzero.me/api) |
+| `GOOGLE_CLIENT_ID` | Login Google no backend | [Credenciais OAuth](https://console.cloud.google.com/apis/credentials) |
+| `VITE_GOOGLE_CLIENT_ID` | Login Google na interface | Mesmo cliente OAuth acima |
+
+O Fact Check Tools oferece busca de alegações verificadas pela API oficial do Google. Veja a [referência oficial](https://developers.google.com/fact-check/tools/api/reference/rest/). O Serper fornece resultados de busca e notícias em tempo real; a página oficial oferece uma cota inicial gratuita. [Saiba mais no Serper](https://serper.dev/).
+
+### Aviso de segurança: chave Gemini antiga
+
+Uma chave Gemini foi encontrada anteriormente em uma versão do arquivo de exemplo e foi removida. Considere-a comprometida: **revogue-a e crie outra** no Google AI Studio antes de publicar. Também limite cada chave ao serviço correspondente no painel do provedor e nunca a envie para o GitHub, Vercel ou navegador.
+
+## Publicar: Railway + Vercel
+
+### 1. API e banco no Railway
+
+1. Crie um projeto no [Railway](https://railway.app/).
+2. Adicione um serviço **PostgreSQL**.
+3. Crie um serviço a partir deste repositório GitHub, usando `backend` como diretório-raiz.
+4. O arquivo [`backend/railway.toml`](backend/railway.toml) já informa Docker, comando de início e health check.
+5. Em **Variables** do serviço da API, configure:
+
+   ```dotenv
+   DATABASE_URL=${{Postgres.DATABASE_URL}}
+   GEMINI_API_KEY=chave_nova_do_google_ai_studio
+   JWT_SECRET=valor_gerado_com_openssl
+   HMAC_SECRET_KEY=outro_valor_gerado_com_openssl
+   COOKIE_SECURE=true
+   COOKIE_SAME_SITE=none
+   CORS_ORIGINS=https://SEU-PROJETO.vercel.app
+   CORS_ORIGIN_REGEX=https://.*\\.vercel\\.app
+   ```
+
+   Ajuste `Postgres` para o nome real do serviço PostgreSQL no projeto Railway. Não defina `PORT`: o Railway o fornece automaticamente.
+
+6. Em **Networking**, gere o domínio público. Confirme `https://SEU-DOMINIO-RAILWAY/health` após o deploy.
+
+O Railway oferece PostgreSQL gerenciado e expõe a URL de conexão do serviço; confira a [documentação de PostgreSQL](https://docs.railway.com/databases/postgresql) e de [variáveis](https://docs.railway.com/variables).
+
+### 2. Interface no Vercel
+
+1. Importe o mesmo repositório no [Vercel](https://vercel.com/new).
+2. Defina `frontend` como **Root Directory**. O Vercel detecta Vite; o build é `npm run build` e a saída é `dist`.
+3. Em **Environment Variables**, para Production e Preview, adicione:
+
+   ```dotenv
+   VITE_API_URL=https://SEU-DOMINIO-RAILWAY
+   # Opcional, somente se login Google estiver habilitado
+   VITE_GOOGLE_CLIENT_ID=seu_client_id.apps.googleusercontent.com
+   ```
+
+4. Publique. [`frontend/vercel.json`](frontend/vercel.json) já mantém as rotas React funcionando em recargas.
+
+O guia oficial do Vercel para Vite está [aqui](https://vercel.com/docs/frameworks/frontend/vite), e o de variáveis de ambiente [aqui](https://vercel.com/docs/deployments/environments).
+
+### Sessões entre Vercel e Railway
+
+Com o domínio padrão `*.vercel.app` e `*.up.railway.app`, cookies são de terceiros. A configuração acima usa `SameSite=None; Secure`, mas navegadores podem restringir cookies de terceiros. Para produção, prefira domínios próprios sob o mesmo domínio-base, por exemplo:
+
 ```text
-━━━━━━━━━━━━━━━━━━
-🔍 *VERIFY - Checagem de Fatos*
-━━━━━━━━━━━━━━━━━━
-
-📊 *Veredito:* ❌ *CONTEÚDO FALSO / GOLPE*
-📈 *Risco: ALTO*
-
-📝 *O QUE VOCÊ PRECISA SABER:*
-Essa mensagem sobre resgate de dinheiro do Pix é falsa. O Banco Central não cobra taxas para devolver valores.
-
-💡 *DICA DE SEGURANÇA:*
-Nunca clique em links nem envie Pix para promessas de dinheiro fácil.
-
-━━━━━━━━━━━━━━━━━━
-🛡️ *Dica:* Antes de repassar qualquer notícia, verifique sempre no *Verify*.
-🌐 *Acesse:* https://verify.vercel.app
+app.seudominio.com  → Vercel
+api.seudominio.com  → Railway
 ```
 
----
+Nesse caso use `CORS_ORIGINS=https://app.seudominio.com` e `COOKIE_SAME_SITE=lax`.
 
-## ☁️ Como Fazer o Deploy Online
+### Publicação pela linha de comando
 
-### 1. Frontend na Vercel (1-Click Deploy)
-1. Conecte seu repositório no [Vercel](https://vercel.com).
-2. Defina o diretório raiz como `frontend`.
-3. Adicione a variável de ambiente:
-   - `VITE_API_URL`: URL do seu backend hospedado (ex: `https://verify-api.onrender.com`).
-4. O arquivo `frontend/vercel.json` já está configurado para gerenciar as rotas SPA!
+Após entrar nas duas contas, os comandos equivalentes são:
 
-### 2. Backend no Render / Railway / Fly.io / Koyeb
-1. Conecte o repositório e aponte para a pasta `backend`.
-2. O arquivo `backend/render.yaml` e `backend/Procfile` já contêm os comandos de build e start.
-3. Configure as variáveis de ambiente:
-   - `GEMINI_API_KEY`: Sua chave gratuita do Google AI Studio.
-   - `GEMINI_MODEL_NAME`: `gemini-1.5-flash`
-   - `DATABASE_URL`: URL do seu banco PostgreSQL (ou deixe vazio para SQLite local).
-   - `CORS_ORIGINS`: `*` ou a URL do seu domínio na Vercel.
+```bash
+# Interface
+cd frontend
+vercel login
+vercel --prod
 
----
+# API: crie/associe antes o projeto e o PostgreSQL no Railway
+cd ../backend
+railway login
+railway up
+```
 
-## 📄 Licença e Créditos
-Desenvolvido com o compromisso de combater a desinformação e proteger cidadãos na era digital.
+Os comandos de login abrem uma autorização no navegador. A documentação oficial do Railway CLI está em [CLI](https://docs.railway.com/cli) e [Deploy](https://docs.railway.com/cli/deploy).
+
+## Demonstração de áudio
+
+As duas amostras da tela de demonstração foram feitas para explicar sinais de risco. O botão **Ouvir voz** usa a voz disponível no navegador, portanto há fala audível em vez de um som curto. O resultado delas é explicitamente marcado como educativo.
+
+Para análise real, use **Enviar áudio** ou **Gravar minha voz**. A gravação preserva o tipo capturado pelo navegador (`webm` ou `ogg`) e encerra o microfone ao parar.
+
+## Testes e qualidade
+
+```bash
+# Interface
+cd frontend
+npm run build
+
+# API, dentro do ambiente Docker
+cd ../backend
+docker-compose -f ../docker-compose.yml exec -T backend python -m unittest discover -s tests -v
+```
+
+Última validação local: **21 testes aprovados**, 2 testes de integração com banco externo opcionalmente ignorados, compilação Vite concluída e fluxo visível de cadastro, análise, relatório, histórico, painel e demonstração exercitado no navegador.
+
+## Estrutura resumida
+
+```text
+frontend/  React, páginas, componentes e cliente HTTP
+backend/   FastAPI, pipeline de análise, autenticação e modelos
+docs/      arquitetura e notas de integração
+docker-compose.yml  desenvolvimento local completo
+```
+
+Detalhes da arquitetura: [`docs/general.md`](docs/general.md).

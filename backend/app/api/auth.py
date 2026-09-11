@@ -13,6 +13,7 @@ from app.core.security import (
     sanitize, validate_email, validate_password_strength
 )
 from app.core.auth import get_current_user, verify_google_id_token
+from app.core.rate_limit import limiter
 from app.models.user import User, UserTier
 
 router = APIRouter(prefix="/auth")
@@ -55,6 +56,9 @@ _REFRESH_COOKIE = "verifai_refresh"
 _ACCESS_MAX_AGE = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60")) * 60
 _REFRESH_MAX_AGE = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7")) * 24 * 60 * 60
 _COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() in {"1", "true", "yes"}
+_COOKIE_SAME_SITE = os.getenv("COOKIE_SAME_SITE", "lax").lower()
+if _COOKIE_SAME_SITE not in {"lax", "strict", "none"}:
+    _COOKIE_SAME_SITE = "lax"
 
 
 def _set_auth_cookies(response: Response, user_id: str) -> None:
@@ -67,7 +71,7 @@ def _set_auth_cookies(response: Response, user_id: str) -> None:
         path="/",
         httponly=True,
         secure=_COOKIE_SECURE,
-        samesite="lax",
+        samesite=_COOKIE_SAME_SITE,
     )
     response.set_cookie(
         key=_REFRESH_COOKIE,
@@ -76,7 +80,7 @@ def _set_auth_cookies(response: Response, user_id: str) -> None:
         path="/api/auth/refresh",
         httponly=True,
         secure=_COOKIE_SECURE,
-        samesite="lax",
+        samesite=_COOKIE_SAME_SITE,
     )
 
 
@@ -124,7 +128,8 @@ async def register(body: RegisterBody, response: Response, db: AsyncSession = De
 
 
 @router.post("/login", response_model=AuthOut)
-async def login(body: LoginBody, response: Response, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/15minutes")
+async def login(request: Request, body: LoginBody, response: Response, db: AsyncSession = Depends(get_db)):
     res = await db.execute(select(User).where(User.email == body.email.lower()))
     user = res.scalar_one_or_none()
     

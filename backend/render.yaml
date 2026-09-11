@@ -14,4 +14,6 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: CORS_ORIGINS
-        value: "*"
+        sync: false
+      - key: CORS_ORIGIN_REGEX
+        value: "https://.*\\.vercel\\.app"
