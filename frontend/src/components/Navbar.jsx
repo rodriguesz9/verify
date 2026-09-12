@@ -1,14 +1,21 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import { Search, LayoutDashboard, Clock, Info, Zap, LogOut, Menu, X, Shield, MessageCircle } from "lucide-react";
+import { Search, LayoutDashboard, Info, Zap, LogOut, Menu, X, Shield, MessageCircle, ChevronDown, Wifi, WifiOff } from "lucide-react";
+import { getOfflineCount } from "../services/offlineCache";
 
 const NAV_LINKS = [
   { to: "/app", label: "Checar", icon: Search },
   { to: "/dashboard", label: "Painel", icon: LayoutDashboard },
-  { to: "/history", label: "Histórico", icon: Clock },
   { to: "/demo", label: "Demonstração", icon: Zap },
   { to: "/mission", label: "Sobre Nós", icon: Info },
+  { to: "/limitacoes", label: "Limitações", icon: Menu },
+];
+
+const DROPDOWN_ITEMS = [
+  { to: "/limitacoes", label: "Limitações de Uso" },
+  { to: "/termos", label: "Termos de Serviço" },
+  { to: "/privacidade", label: "Política de Privacidade" },
 ];
 
 export default function Navbar() {
@@ -16,6 +23,9 @@ export default function Navbar() {
   const navigate = useNavigate();
   const [fontSize, setFontSize] = useState(() => localStorage.getItem("verify_font_size") || "normal");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [offlineCount, setOfflineCount] = useState(0);
 
   useEffect(() => {
     if (fontSize === "normal") {
@@ -25,6 +35,18 @@ export default function Navbar() {
     }
     localStorage.setItem("verify_font_size", fontSize);
   }, [fontSize]);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    setOfflineCount(getOfflineCount());
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
 
   const toggleFontSize = () => {
     if (fontSize === "normal") setFontSize("large");
@@ -57,6 +79,17 @@ export default function Navbar() {
             </Link>
           ))}
 
+          {/* Offline indicator */}
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider"
+            style={{
+              color: isOnline ? "#00FF87" : "#FFB830",
+              backgroundColor: isOnline ? "rgba(0,255,135,0.08)" : "rgba(255,184,48,0.12)",
+              border: `1px solid ${isOnline ? "rgba(0,255,135,0.2)" : "rgba(255,184,48,0.3)"}`,
+            }}>
+            {isOnline ? <Wifi size={12} /> : <WifiOff size={12} />}
+            {isOnline ? "Online" : `Offline${offlineCount > 0 ? ` (${offlineCount})` : ""}`}
+          </div>
+
           {user ? (
             <div className="flex items-center gap-4 pl-6 border-l border-[#132435]">
               <div className="text-right hidden sm:block">
@@ -88,6 +121,11 @@ export default function Navbar() {
               <Icon size={16} /> {label}
             </Link>
           ))}
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-[11px] font-mono font-bold uppercase"
+            style={{ color: isOnline ? "#00FF87" : "#FFB830" }}>
+            {isOnline ? <Wifi size={14} /> : <WifiOff size={14} />}
+            {isOnline ? "Online" : `Offline${offlineCount > 0 ? ` (${offlineCount} cacheadas)` : ""}`}
+          </div>
           <button onClick={toggleFontSize} className="font-mono text-[11px] text-[#00D4FF] uppercase text-left">
             Ajustar Tamanho do Texto
           </button>

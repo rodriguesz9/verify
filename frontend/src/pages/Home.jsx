@@ -4,10 +4,11 @@ import { useAuth } from "../hooks/useAuth";
 import {
   FileText, Link2, Image, Mic, Upload, Search, Shield, CheckCircle,
   AlertTriangle, ArrowRight, Volume2, Phone, ChevronDown, ChevronUp,
-  FileJson, Menu, X,
+  FileJson, Menu, X, Layers, Clipboard,
 } from "lucide-react";
 import Footer from "../components/Footer";
-import { analyzeText, analyzeUrl, analyzeUpload } from "../services/api";
+import { analyzeText, analyzeUrl, analyzeUpload, analyzeTextBatch } from "../services/api";
+import { saveToOfflineCache } from "../services/offlineCache";
 
 const TABS = [
   { id: 0, label: "Texto", icon: FileText, desc: "Cole o texto da mensagem que você recebeu" },
@@ -33,6 +34,13 @@ const EXAMPLES = [
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
+function parseBatchText(raw) {
+  return raw
+    .split(/\n{2,}|---+|===+|mensagens?:/)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 8);
+}
+
 export default function Home() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -47,12 +55,22 @@ export default function Home() {
   const [stage, setStage] = useState(0);
   const [error, setError] = useState("");
 
+  const [batchMode, setBatchMode] = useState(false);
+  const [batchResults, setBatchResults] = useState(null);
+  const [batchLoading, setBatchLoading] = useState(false);
+
   const canSubmit = () => {
     if (tab === 0) return text.trim().length >= 8;
     if (tab === 1) return url.trim().length >= 5;
     if (tab === 2) return !!imageFile;
     if (tab === 3) return !!audioFile;
     return false;
+  };
+
+  const canBatchSubmit = () => {
+    if (tab !== 0) return false;
+    const msgs = parseBatchText(text);
+    return msgs.length >= 2 && msgs.length <= 10;
   };
 
   const handleAnalyze = async () => {
@@ -78,6 +96,8 @@ export default function Home() {
       }
 
       setStage(3); await sleep(400);
+      result.query_input = queryLabel;
+      saveToOfflineCache(result);
       sessionStorage.setItem("verify_result", JSON.stringify(result));
       sessionStorage.setItem("verify_query", queryLabel);
       sessionStorage.setItem("verifai_result", JSON.stringify(result));
@@ -95,6 +115,26 @@ export default function Home() {
       setLoading(false);
       setStage(0);
     }
+  };
+
+  const handleBatchAnalyze = async () => {
+    if (!canBatchSubmit()) return;
+    const msgs = parseBatchText(text);
+    setBatchLoading(true); setError(""); setBatchResults(null);
+    try {
+      const data = await analyzeTextBatch(msgs);
+      setBatchResults(data.results || []);
+    } catch (e) {
+      console.error("Batch error:", e);
+      setError("Erro ao analisar mensagens em lote. Tente novamente.");
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+
+  const VERDICT_COLORS = {
+    Authentic: "#00FF87", AI_Generated: "#00D4FF", Manipulated: "#FF3B5C",
+    Out_Of_Context: "#FFB830", Suspicious: "#8AA2B4", Scam: "#FF3B5C",
   };
 
   const tabs = TABS;
@@ -123,7 +163,7 @@ export default function Home() {
             {tabs.map((t) => (
               <button
                 key={t.id}
-                onClick={() => { setTab(t.id); setError(""); }}
+                onClick={() => { setTab(t.id); setError(""); setBatchResults(null); setBatchMode(false); }}
                 className={`flex flex-col items-center justify-center gap-1.5 py-4 px-2 sm:px-4 text-center transition-all cursor-pointer ${
                   tab === t.id ? "bg-[#0F1E2E] text-[#00D4FF]" : "bg-[#070F17] text-[#5A7E94]"
                 }`}
@@ -134,8 +174,22 @@ export default function Home() {
             ))}
           </div>
 
-          <div className="px-6 pt-5 pb-3 text-xs text-[#00FF87] font-mono font-bold flex items-center gap-2">
-            <span className="inline-flex"><ArrowRight size={12} /></span> {tabs[tab].desc}
+          <div className="px-6 pt-5 pb-3 text-xs text-[#00FF87] font-mono font-bold flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <span className="inline-flex"><ArrowRight size={12} /></span> {tabs[tab].desc}
+            </span>
+            {tab === 0 && (
+              <button
+                onClick={() => { setBatchMode(!batchMode); setBatchResults(null); }}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-md font-mono text-[10px] font-bold uppercase tracking-wider transition-all ${
+                  batchMode
+                    ? "bg-[#00D4FF] text-[#04080C]"
+                    : "bg-[#132435] text-[#8AA2B4] hover:text-[#00D4FF]"
+                }`}
+              >
+                <Layers size={12} /> Lote
+              </button>
+            )}
           </div>
 
           <div className="p-6 sm:p-8 pt-2">
@@ -145,10 +199,23 @@ export default function Home() {
                 <textarea
                   value={text}
                   onChange={(e) => setText(e.target.value)}
-                  placeholder="Cole aqui o texto da mensagem, boato ou notícia..."
-                  rows={5}
+                  placeholder={batchMode
+                    ? "Cole várias mensagens separadas por linha dupla (Enter duplo):\n\nMensagem 1\n\nMensagem 2\n\nMensagem 3"
+                    : "Cole aqui o texto da mensagem, boato ou notícia..."
+                  }
+                  rows={batchMode ? 10 : 5}
                   className="w-full font-mono text-sm sm:text-base leading-relaxed p-4 rounded-lg bg-[#04080C] border border-[#132435] text-[#CDE8F0] placeholder-[#3A6070] focus:border-[#00D4FF] focus:outline-none resize-none transition-all"
                 />
+
+                {batchMode && (
+                  <div className="flex items-center gap-2 text-[10px] font-mono text-[#5A7E94]">
+                    <Clipboard size={12} />
+                    {parseBatchText(text).length} de 10 mensagens detectadas
+                    {parseBatchText(text).length > 10 && (
+                      <span className="text-[#FF3B5C]">(máximo 10)</span>
+                    )}
+                  </div>
+                )}
 
                 <div className="flex flex-wrap items-center gap-2 pt-1">
                   <span className="text-xs text-[#5A7E94] font-mono">Testar exemplo:</span>
@@ -239,25 +306,81 @@ export default function Home() {
               <span className="text-[#00FF87]">Inteligência Verify</span>
             </div>
 
-            <button
-              disabled={!canSubmit() || loading}
-              onClick={handleAnalyze}
-              className="w-full sm:w-auto font-syne font-extrabold text-sm sm:text-base tracking-wider px-8 py-4 rounded-lg transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
-              style={{
-                background: canSubmit() && !loading ? "linear-gradient(135deg,#00D4FF,#00FF87)" : "#132435",
-                color: canSubmit() && !loading ? "#04080C" : "#5A7E94",
-                cursor: canSubmit() && !loading ? "pointer" : "not-allowed",
-              }}
-            >
-              <Search size={16} />
-              <span>{loading ? "ANALISANDO..." : "VERIFICAR AGORA"}</span>
-            </button>
+            {batchMode ? (
+              <button
+                disabled={!canBatchSubmit() || batchLoading}
+                onClick={handleBatchAnalyze}
+                className="w-full sm:w-auto font-syne font-extrabold text-sm sm:text-base tracking-wider px-8 py-4 rounded-lg transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                style={{
+                  background: canBatchSubmit() && !batchLoading ? "linear-gradient(135deg,#00D4FF,#00FF87)" : "#132435",
+                  color: canBatchSubmit() && !batchLoading ? "#04080C" : "#5A7E94",
+                  cursor: canBatchSubmit() && !batchLoading ? "pointer" : "not-allowed",
+                }}
+              >
+                <Layers size={16} />
+                <span>{batchLoading ? "ANALISANDO LOTE..." : `VERIFICAR ${parseBatchText(text).length} MENSAGENS`}</span>
+              </button>
+            ) : (
+              <button
+                disabled={!canSubmit() || loading}
+                onClick={handleAnalyze}
+                className="w-full sm:w-auto font-syne font-extrabold text-sm sm:text-base tracking-wider px-8 py-4 rounded-lg transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                style={{
+                  background: canSubmit() && !loading ? "linear-gradient(135deg,#00D4FF,#00FF87)" : "#132435",
+                  color: canSubmit() && !loading ? "#04080C" : "#5A7E94",
+                  cursor: canSubmit() && !loading ? "pointer" : "not-allowed",
+                }}
+              >
+                <Search size={16} />
+                <span>{loading ? "ANALISANDO..." : "VERIFICAR AGORA"}</span>
+              </button>
+            )}
           </div>
         </div>
 
         {error && (
           <div className="mt-6 p-4 rounded-lg bg-[#FF3B5C10] border border-[#FF3B5C30] text-[#FF3B5C] text-sm text-center font-mono flex items-center justify-center gap-2">
             <AlertTriangle size={14} /> <strong>Atenção:</strong> {error}
+          </div>
+        )}
+
+        {batchResults && (
+          <div className="mt-8 space-y-3">
+            <div className="flex items-center gap-2 mb-4">
+              <Layers size={16} className="text-[#00D4FF]" />
+              <h3 className="font-syne font-bold text-lg text-[#CDE8F0]">Resultados do Lote</h3>
+              <span className="font-mono text-[10px] text-[#8AA2B4]">({batchResults.length} mensagens)</span>
+            </div>
+            {batchResults.map((r, i) => {
+              const color = VERDICT_COLORS[r.verdict] || "#8AA2B4";
+              return (
+                <div
+                  key={i}
+                  className="rounded-lg border border-[#132435] bg-[#0A1520] p-4 hover:border-[#00D4FF]/50 transition-colors cursor-pointer"
+                  onClick={() => {
+                    sessionStorage.setItem("verify_result", JSON.stringify(r));
+                    sessionStorage.setItem("verify_query", r.query_input || "");
+                    navigate("/report");
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-mono text-xs text-[#CDE8F0] truncate">{r.query_input || `Mensagem ${i + 1}`}</p>
+                      <p className="font-mono text-[11px] text-[#8AA2B4] mt-1 line-clamp-2">{r.summary || r.plain_explanation || "—"}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span
+                        className="font-mono text-[10px] font-bold uppercase tracking-wider"
+                        style={{ color }}
+                      >
+                        {r.verdict || "—"}
+                      </span>
+                      <div className="font-mono text-xs mt-1" style={{ color }}>{r.score ?? "—"}%</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 

@@ -7,16 +7,59 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Configure Gemini
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel(os.getenv("GEMINI_MODEL_NAME", "gemini-1.5-flash-lite-8b"))
+MODEL_ROTATION = [
+    "gemini-3.7-flash",
+    "gemini-3.6-flash",
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-lite",
+]
+
+class GeminiModelRotator:
+    _index = 0
+    _lock = asyncio.Lock()
+
+    @classmethod
+    async def get_model(cls) -> genai.GenerativeModel:
+        async with cls._lock:
+            model_name = MODEL_ROTATION[cls._index % len(MODEL_ROTATION)]
+            cls._index = (cls._index + 1) % len(MODEL_ROTATION)
+            return genai.GenerativeModel(model_name)
+
+    @classmethod
+    def get_current_model_name(cls) -> str:
+        return MODEL_ROTATION[cls._index % len(MODEL_ROTATION)]
+
+
+async def _generate_with_rotation(prompt: str, system_instruction: str = None, temperature: float = 0.1) -> str:
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        return '{"error": "GEMINI_API_KEY não configurada"}'
+
+    genai.configure(api_key=api_key)
+    
+    try:
+        model = await GeminiModelRotator.get_model()
+        if system_instruction:
+            model = genai.GenerativeModel(
+                model_name=model._model_name,
+                system_instruction=system_instruction
+            )
+        
+        response = await asyncio.to_thread(
+            model.generate_content,
+            prompt,
+            generation_config=genai.types.GenerationConfig(
+                temperature=temperature,
+                response_mime_type="application/json"
+            )
+        )
+        return response.text
+    except Exception as e:
+        print(f"Error generating with rotation: {e}")
+        raise
 
 
 async def extract_claims_with_ai(content: str) -> list[str]:
-    """
-    Extract factual claims from text using Gemini.
-    Returns a plain list of short, searchable claims.
-    """
     prompt = f"""
 Você é um extrator de claims para um sistema de fact-checking.
 
@@ -44,9 +87,8 @@ TEXTO:
 """
 
     try:
-        response = await asyncio.to_thread(model.generate_content, prompt)
-        response_text = _extract_json_text(response.text)
-        claims = json.loads(response_text)
+        response_text = await _generate_with_rotation(prompt)
+        claims = json.loads(_extract_json_text(response_text))
     except Exception as e:
         print(f"Error extracting claims with Gemini: {e}")
         return []
@@ -59,9 +101,6 @@ TEXTO:
 
 
 async def decontextualize_claims(original_text: str, claims: list[str]) -> list[str]:
-    """
-    Rewrite extracted claims into standalone, searchable claims using the source text.
-    """
     clean_input_claims = _clean_claims(claims)
     if not clean_input_claims:
         return []
@@ -91,9 +130,8 @@ CLAIMS:
 """
 
     try:
-        response = await asyncio.to_thread(model.generate_content, prompt)
-        response_text = _extract_json_text(response.text)
-        decontextualized_claims = json.loads(response_text)
+        response_text = await _generate_with_rotation(prompt)
+        decontextualized_claims = json.loads(_extract_json_text(response_text))
     except Exception as e:
         print(f"Error decontextualizing claims with Gemini: {e}")
         return clean_input_claims
@@ -136,9 +174,6 @@ def _extract_json_text(text: str) -> str:
 
 
 async def generate_final_report(content: str, context_data: dict) -> dict:
-    """
-    Verify Core - Dynamic Consolidation Engine with Senior/Layperson friendly reporting.
-    """
     now = datetime.now()
     current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
     
@@ -185,8 +220,10 @@ Retorne APENAS o JSON, sem markdown e sem textos adicionais.
 """
 
     try:
-        response = await asyncio.to_thread(model.generate_content, prompt)
-        return json.loads(_extract_json_text(response.text))
+        response_text = await _generate_with_rotation(prompt, temperature=0.2)
+        result = json.loads(_extract_json_text(response_text))
+        result["model_used"] = GeminiModelRotator.get_current_model_name()
+        return result
     except Exception as e:
         print(f"Error in Gemini Analyzer: {e}")
         return {
@@ -201,5 +238,6 @@ Retorne APENAS o JSON, sem markdown e sem textos adicionais.
             "sensationalism": 50,
             "domain_score": 50,
             "temporal_issues": False,
-            "positives": []
+            "positives": [],
+            "model_used": "fallback"
         }

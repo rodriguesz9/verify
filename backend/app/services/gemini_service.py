@@ -1,13 +1,35 @@
-"""
-Gemini Forensic Consolidation Service (Layer 5)
-Orchestrates and consolidates evidence across metadata, C2PA, Hive, Sightengine and Reverse Search.
-"""
-
 import os
 import json
 import asyncio
 from typing import Dict, Any, List
+from datetime import datetime
 import google.generativeai as genai
+from dotenv import load_dotenv
+
+load_dotenv()
+
+MODEL_ROTATION = [
+    "gemini-3.7-flash",
+    "gemini-3.6-flash",
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-lite",
+]
+
+class GeminiModelRotator:
+    _index = 0
+    _lock = asyncio.Lock()
+
+    @classmethod
+    async def get_next_model(cls) -> str:
+        async with cls._lock:
+            model = MODEL_ROTATION[cls._index % len(MODEL_ROTATION)]
+            cls._index = (cls._index + 1) % len(MODEL_ROTATION)
+            return model
+
+    @classmethod
+    def get_current_model(cls) -> str:
+        return MODEL_ROTATION[cls._index % len(MODEL_ROTATION)]
+
 
 SYSTEM_PROMPT_V2 = """Você é um especialista forense em verificação de mídia digital.
 
@@ -48,9 +70,6 @@ async def consolidate_forensic_report(
     context_res: Dict[str, Any],
     audio_res: Dict[str, Any] = None
 ) -> Dict[str, Any]:
-    """
-    Consolidates Layer 1 to 4 results using Gemini 3.7 Flash into a unified forensic report.
-    """
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     model_name = os.getenv("GEMINI_MODEL_NAME", "gemini-3.7-flash")
 
@@ -64,7 +83,6 @@ async def consolidate_forensic_report(
     }
 
     if not api_key:
-        # Heuristic fallback if Gemini API key not present
         is_ai = (
             metadata_res.get("is_suspicious")
             or c2pa_res.get("generative_ai_flag")
@@ -120,9 +138,9 @@ async def consolidate_forensic_report(
         parsed = json.loads(cleaned_text.strip())
         if "score" not in parsed:
             parsed["score"] = int(parsed.get("confianca_geral", 0.8) * 100)
+        parsed["model_used"] = model_name
         return parsed
     except Exception as exc:
-        # Robust fallback
         return {
             "veredito_final": "inconclusivo",
             "confianca_geral": 0.5,
@@ -133,5 +151,62 @@ async def consolidate_forensic_report(
             "explicacao_forense": "As camadas de evidência foram calculadas com sucesso, mas a consolidação por LLM operou em modo de contingência.",
             "explicacao_leiga": "Análise realizada com sucesso pelas camadas técnicas do sistema.",
             "dica_seguranca": "Verifique sempre em canais oficiais antes de repassar.",
-            "recomendacao": "revisar_manualmente"
+            "recomendacao": "revisar_manualmente",
+            "model_used": model_name
+        }
+
+
+async def get_ai_voice_speech(text: str = "Olá! Esta é uma demonstração de voz gerada por inteligência artificial.") -> Dict[str, Any]:
+    """
+    Gera fala via Gemini TTS (Text-to-Speech) para demonstração.
+    """
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        return {
+            "available": False,
+            "status": "no_api_key",
+            "message": "Chave Gemini não configurada"
+        }
+
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel("gemini-3.7-flash")
+        
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: model.generate_content(
+                f"Gere uma resposta falada natural em português do Brasil: {text}",
+                generation_config=genai.types.GenerationConfig(
+                    response_mime_type="audio/mp3",
+                    speech_config=genai.types.SpeechConfig(
+                        voice_name="Ao",
+                        language_code="pt-BR"
+                    )
+                )
+            )
+        )
+        
+        if hasattr(response, 'candidates') and response.candidates:
+            for part in response.candidates[0].content.parts:
+                if hasattr(part, 'inline_data') and part.inline_data:
+                    audio_data = part.inline_data.data
+                    return {
+                        "available": True,
+                        "status": "success",
+                        "audio_data": audio_data,
+                        "mime_type": "audio/mp3",
+                        "duration_sec": len(audio_data) / 1000
+                    }
+        
+        return {
+            "available": False,
+            "status": "no_audio",
+            "message": "Gemini não retornou áudio"
+        }
+    except Exception as exc:
+        return {
+            "available": False,
+            "status": "error",
+            "message": str(exc)[:80]
         }

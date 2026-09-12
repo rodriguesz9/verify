@@ -42,6 +42,7 @@ export const getMe      = ()  => api.get ("/auth/me", { _skipLogoutRedirect: tru
 
 // ── Analysis ──────────────────────────────────────────────────────────────────
 export const analyzeText   = (text) => api.post("/check-text", { text }    ).then(r => r.data);
+export const analyzeTextBatch = (texts) => api.post("/check-text-batch", { texts }, { timeout: 180000 }).then(r => r.data);
 export const analyzeUrl    = (url)  => api.post("/check-url",  { url }     ).then(r => r.data);
 export const analyzeUpload = (file) => {
   const form = new FormData();

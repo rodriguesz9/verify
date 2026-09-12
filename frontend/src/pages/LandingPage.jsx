@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import Footer from "../components/Footer";
 import {
@@ -7,14 +7,18 @@ import {
   ArrowRight,
   BadgeCheck,
   CheckCircle2,
+  ChevronDown,
   FileSearch,
   Image,
+  Info,
   Link2,
   LogOut,
   Menu,
   MessageCircle,
   Mic,
   ScanSearch,
+  Search,
+  Shield,
   ShieldCheck,
   Sparkles,
   Volume2,
@@ -101,130 +105,149 @@ function SignalCard({ icon: Icon, label, value, tone = "cyan" }) {
 
 export default function LandingPage() {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [fontSize, setFontSize] = useState(() => localStorage.getItem("verify_font_size") || "normal");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    if (fontSize === "normal") {
+      document.documentElement.removeAttribute("data-font-size");
+    } else {
+      document.documentElement.setAttribute("data-font-size", fontSize);
+    }
+    localStorage.setItem("verify_font_size", fontSize);
+  }, [fontSize]);
+
+  const toggleFontSize = () => {
+    if (fontSize === "normal") setFontSize("large");
+    else if (fontSize === "large") setFontSize("xlarge");
+    else setFontSize("normal");
+  };
 
   const appPath = user ? "/app" : "/register";
   const closeMenu = () => setMenuOpen(false);
 
+  const NAV_LINKS = [
+    { href: "#como-funciona", label: "Como Funciona", icon: Search },
+    { href: "#protege", label: "Proteção", icon: Shield },
+    { to: "/demo", label: "Demonstração", icon: Sparkles },
+    { to: "/mission", label: "Sobre Nós", icon: Info },
+  ];
+
+  const DROPDOWN_ITEMS = [
+    { to: "/limitacoes", label: "Limitações de Uso" },
+    { to: "/terms", label: "Termos de Serviço" },
+    { to: "/privacy", label: "Privacidade" },
+  ];
+
   return (
     <div className="min-h-screen overflow-x-clip bg-[#04080C] text-[#CDE8F0]">
       {/* ── NAVBAR ──────────────────────────────────────────────── */}
-      <nav className="sticky top-0 z-[100] border-b border-[#132435] bg-[#04080C]/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-5 sm:px-8">
+      <nav className="sticky top-0 left-0 right-0 z-[100] border-b border-[#132435] backdrop-blur-xl bg-[rgba(4,8,12,0.9)]">
+        <div className="max-w-7xl mx-auto px-5 sm:px-8 flex items-center justify-between h-20">
           {/* Logo */}
-          <Link
-            to="/"
-            className="flex items-center gap-3"
-            aria-label="Verify, página inicial"
-          >
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#00D4FF] text-[#04080C] shadow-[0_0_25px_#00D4FF55]">
-              <ShieldCheck size={21} />
-            </span>
-            <span className="font-syne text-xl font-black tracking-[.2em] sm:text-2xl">
-              VERIFY
-            </span>
+          <Link to="/" className="flex items-center gap-3 no-underline group">
+            <div className="w-10 h-10 rounded-lg bg-[#00D4FF] flex items-center justify-center font-syne font-black text-base group-hover:scale-105 transition-transform shadow-[0_0_20px_#00D4FF66]">
+              <Shield size={20} />
+            </div>
+            <div className="flex flex-col">
+              <span className="font-syne font-black text-2xl tracking-[4px] text-[#CDE8F0] leading-none">VERIFY</span>
+              <span className="font-mono text-[9px] text-[#00FF87] tracking-widest uppercase font-bold mt-0.5">Checagem Fácil</span>
+            </div>
           </Link>
 
           {/* Desktop nav */}
-          <div className="hidden items-center gap-7 md:flex">
-            <a
-              href="#como-funciona"
-              className="font-mono text-[10px] font-bold uppercase tracking-[.15em] text-[#8AA2B4] hover:text-[#00D4FF] transition-colors"
-            >
-              Como funciona
-            </a>
-            <a
-              href="#protege"
-              className="font-mono text-[10px] font-bold uppercase tracking-[.15em] text-[#8AA2B4] hover:text-[#00D4FF] transition-colors"
-            >
-              Proteção
-            </a>
-            <Link
-              to="/demo"
-              className="font-mono text-[10px] font-bold uppercase tracking-[.15em] text-[#8AA2B4] hover:text-[#00D4FF] transition-colors"
-            >
-              Demonstração
-            </Link>
-            {user ? (
-              <>
-                <Link
-                  to="/app"
-                  className="font-mono text-[10px] font-bold uppercase tracking-[.15em] text-[#00D4FF]"
-                >
-                  Abrir Verify
+          <div className="hidden md:flex items-center gap-8">
+            {NAV_LINKS.map(({ to, href, label, icon: Icon }) => (
+              to ? (
+                <Link key={to} to={to} className="font-mono text-[13px] tracking-[2px] text-[#CDE8F0] hover:text-[#00D4FF] font-bold no-underline transition-colors uppercase flex items-center gap-2">
+                  <Icon size={14} /> {label}
                 </Link>
+              ) : (
+                <a key={href} href={href} className="font-mono text-[13px] tracking-[2px] text-[#CDE8F0] hover:text-[#00D4FF] font-bold no-underline transition-colors uppercase flex items-center gap-2">
+                  <Icon size={14} /> {label}
+                </a>
+              )
+            ))}
+
+            {/* Dropdown Limitações */}
+            <div className="relative">
+              <button
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                className="font-mono text-[13px] tracking-[2px] text-[#CDE8F0] hover:text-[#00D4FF] font-bold no-underline transition-colors uppercase flex items-center gap-2"
+              >
+                <Menu size={14} /> {dropdownOpen ? <X size={14} /> : <ChevronDown size={14} />}
+              </button>
+              {dropdownOpen && (
+                <div className="absolute right-0 mt-2 w-56 rounded-xl bg-[#0A1520] border border-[#132435] shadow-xl z-[50] overflow-hidden">
+                  {DROPDOWN_ITEMS.map((item, index) => (
+                    <Link
+                      key={index}
+                      to={item.to}
+                      onClick={() => setDropdownOpen(false)}
+                      className="block px-4 py-3 text-sm font-mono text-[#CDE8F0] hover:bg-[#0F1E2E] hover:text-[#00D4FF] no-underline transition-colors"
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {user ? (
+              <div className="flex items-center gap-4 pl-6 border-l border-[#132435]">
+                <div className="text-right hidden sm:block">
+                  <div className="font-mono text-[12px] text-[#CDE8F0] font-bold leading-none">{user.name}</div>
+                  <div className="font-mono text-[9px] text-[#00FF87] tracking-widest uppercase mt-1">Conectado</div>
+                </div>
                 <button
-                  onClick={signOut}
-                  className="inline-flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[.15em] text-[#FF8195] hover:text-[#FF3B5C] transition-colors"
+                  onClick={() => { signOut(); navigate("/"); }}
+                  className="font-mono text-[11px] px-4 py-2 rounded-xl hover:bg-[#FF3B5C22] transition-all uppercase font-bold flex items-center gap-2 cursor-pointer"
+                  style={{ color: "#FF3B5C", backgroundColor: "rgba(255,59,92,0.07)", border: "1px solid rgba(255,59,92,0.2)" }}
                 >
-                  <LogOut size={14} /> Sair
+                  <LogOut size={12} /> Sair
                 </button>
-              </>
+              </div>
             ) : (
               <Link
                 to="/login"
-                className="rounded-lg border border-[#00D4FF55] px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-[.15em] hover:bg-[#00D4FF] hover:text-[#04080C] transition-colors"
+                className="font-mono text-[12px] tracking-[2px] px-6 py-2.5 rounded-xl font-bold no-underline shadow-[0_0_20px_rgba(0,212,255,0.27)] hover:scale-105 transition-transform flex items-center gap-2"
+                style={{ backgroundColor: "#00D4FF", color: "#04080C" }}
               >
-                Entrar
+                <MessageCircle size={12} /> ENTRAR
               </Link>
             )}
           </div>
 
-          {/* Mobile menu toggle */}
-          <div className="flex items-center gap-2 md:hidden">
-            <Link
-              to={appPath}
-              className="rounded-lg bg-[#00D4FF] px-3 py-2 font-mono text-[10px] font-bold uppercase text-[#04080C]"
-            >
-              Começar
-            </Link>
-            <button
-              type="button"
-              onClick={() => setMenuOpen((o) => !o)}
-              aria-expanded={menuOpen}
-              aria-label="Abrir navegação"
-              className="rounded-lg border border-[#284258] p-2 text-[#CDE8F0]"
-            >
-              {menuOpen ? <X size={19} /> : <Menu size={19} />}
-            </button>
-          </div>
+          {/* Mobile */}
+          <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden text-[#CDE8F0] cursor-pointer">
+            {menuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
         </div>
 
         {/* Mobile dropdown */}
         {menuOpen && (
-          <div className="border-t border-[#132435] bg-[#07111A] px-5 py-4 md:hidden">
-            <div className="mx-auto flex max-w-7xl flex-col gap-1">
-              <a
-                onClick={() => setMenuOpen(false)}
-                href="#como-funciona"
-                className="rounded-lg px-3 py-3 font-mono text-xs font-bold uppercase tracking-wider text-[#CDE8F0] hover:bg-[#0A1520]"
-              >
-                Como funciona
-              </a>
-              <a
-                onClick={() => setMenuOpen(false)}
-                href="#protege"
-                className="rounded-lg px-3 py-3 font-mono text-xs font-bold uppercase tracking-wider text-[#CDE8F0] hover:bg-[#0A1520]"
-              >
-                Proteção
-              </a>
-              <Link
-                onClick={() => setMenuOpen(false)}
-                to="/demo"
-                className="rounded-lg px-3 py-3 font-mono text-xs font-bold uppercase tracking-wider text-[#CDE8F0] hover:bg-[#0A1520]"
-              >
-                Ver demonstração
-              </Link>
-              {!user && (
-                <Link
-                  onClick={() => setMenuOpen(false)}
-                  to="/login"
-                  className="rounded-lg px-3 py-3 font-mono text-xs font-bold uppercase tracking-wider text-[#00D4FF] hover:bg-[#0A1520]"
-                >
-                  Entrar
+          <div className="md:hidden border-t border-[#132435] bg-[#0A1520] p-6 flex flex-col gap-4">
+            {NAV_LINKS.map(({ to, href, label, icon: Icon }) => (
+              to ? (
+                <Link key={to} to={to} onClick={closeMenu} className="font-mono text-[13px] tracking-[2px] text-[#CDE8F0] hover:text-[#00D4FF] font-bold no-underline uppercase flex items-center gap-3">
+                  <Icon size={16} /> {label}
                 </Link>
-              )}
-            </div>
+              ) : (
+                <a key={href} href={href} onClick={closeMenu} className="font-mono text-[13px] tracking-[2px] text-[#CDE8F0] hover:text-[#00D4FF] font-bold no-underline uppercase flex items-center gap-3">
+                  <Icon size={16} /> {label}
+                </a>
+              )
+            ))}
+            {DROPDOWN_ITEMS.map((item, index) => (
+              <Link key={index} to={item.to} onClick={closeMenu} className="font-mono text-[13px] tracking-[2px] text-[#8AA2B4] hover:text-[#00D4FF] font-bold no-underline uppercase flex items-center gap-3 pl-6">
+                {item.label}
+              </Link>
+            ))}
+            <button onClick={toggleFontSize} className="font-mono text-[11px] text-[#00D4FF] uppercase text-left mt-2">
+              Ajustar Tamanho do Texto
+            </button>
           </div>
         )}
       </nav>

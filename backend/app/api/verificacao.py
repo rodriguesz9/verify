@@ -42,16 +42,19 @@ FORENSIC_VERDICTS = {
 }
 
 
+async def _safe_task(coro):
+    try:
+        return await coro
+    except Exception:
+        return {}
+
+
 @router.post("/verificar/completo")
 async def verificar_completo(
     file: UploadFile = File(...),
     user: Optional[User] = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Multi-layer verification pipeline (Layers 1-5):
-    Runs Metadata, C2PA, Hive, Sightengine, Reverse Search and consolidates via Gemini.
-    """
     await verify_limit(user, db, "MEDIA")
     file_bytes = await file.read()
     if len(file_bytes) > MAX_FILE_SIZE:
@@ -62,35 +65,30 @@ async def verificar_completo(
     filename = file.filename or "upload.bin"
     is_audio = content_type.startswith("audio/") or filename.endswith((".wav", ".mp3", ".ogg", ".m4a", ".aac"))
 
-    # Execute Layers 1-4 in parallel
     tasks = [
-        extract_metadata(file_bytes, filename),
-        verify_c2pa(file_bytes, filename),
-        check_hive_media(file_bytes, filename, "audio" if is_audio else "image"),
-        check_deepfake(file_bytes) if not is_audio else asyncio.sleep(0, result={"genai_probability": 0}),
-        search_context_and_provenance(image_bytes=file_bytes if not is_audio else None, filename=filename)
+        _safe_task(extract_metadata(file_bytes, filename)),
+        _safe_task(verify_c2pa(file_bytes, filename)),
+        _safe_task(check_hive_media(file_bytes, filename, "audio" if is_audio else "image")),
+        _safe_task(check_deepfake(file_bytes)) if not is_audio else asyncio.sleep(0),
+        _safe_task(search_context_and_provenance(image_bytes=file_bytes if not is_audio else b"", filename=filename)),
     ]
 
     if is_audio:
-        tasks.append(analyze_audio_quick_for_demonstration(file_bytes, filename))
+        tasks.append(_safe_task(analyze_audio_quick_for_demonstration(file_bytes, filename)))
     else:
-        tasks.append(asyncio.sleep(0, result=None))
+        tasks.append(asyncio.sleep(0))
 
-    (
-        metadata_res,
-        c2pa_res,
-        hive_res,
-        sightengine_res,
-        context_res,
-        audio_res
-    ) = await asyncio.gather(*tasks)
+    results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    detection_res = {
-        "hive": hive_res,
-        "sightengine": sightengine_res
-    }
+    metadata_res = results[0] if not isinstance(results[0], Exception) else {}
+    c2pa_res = results[1] if not isinstance(results[1], Exception) else {}
+    hive_res = results[2] if not isinstance(results[2], Exception) else {}
+    sightengine_res = results[3] if not isinstance(results[3], Exception) else {"genai_probability": 0}
+    context_res = results[4] if not isinstance(results[4], Exception) else {}
+    audio_res = results[5] if len(results) > 5 and not isinstance(results[5], Exception) else None
 
-    # Layer 5: Consolidation via Gemini
+    detection_res = {"hive": hive_res, "sightengine": sightengine_res}
+
     report = await consolidate_forensic_report(
         filename=filename,
         metadata_res=metadata_res,
@@ -112,7 +110,6 @@ async def verificar_completo(
         "veredito": report
     }
 
-    # Save to history if user is authenticated
     if user:
         try:
             v = Verification(
@@ -136,30 +133,16 @@ async def verificar_completo(
 
 
 @router.post("/verificar/audio-rapido")
-async def verificar_audio_rapido(
-    file: UploadFile = File(...)
-):
-    """
-    Ultra-fast (< 3s) audio analysis endpoint optimized for interactive demonstrations.
-    """
+async def verificar_audio_rapido(file: UploadFile = File(...)):
     file_bytes = await file.read()
     if len(file_bytes) > MAX_FILE_SIZE:
         raise HTTPException(status_code=413, detail="Arquivo de áudio muito grande.")
-
-    result = await analyze_audio_quick_for_demonstration(file_bytes, file.filename or "audio.wav")
-    return result
+    return await analyze_audio_quick_for_demonstration(file_bytes, file.filename or "audio.wav")
 
 
 @router.post("/capturar/selo")
 @router.post("/selo/capturar")
-async def capturar_selo(
-    file: UploadFile = File(...),
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Generates a cryptographic authenticity seal (C2PA caseiro) at capture time.
-    Binds SHA-256 hash + server timestamp + HMAC signature.
-    """
+async def capturar_selo(file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
     file_bytes = await file.read()
     file_hash = hashlib.sha256(file_bytes).hexdigest()
     timestamp_utc = datetime.now(timezone.utc)
@@ -171,7 +154,6 @@ async def capturar_selo(
         hashlib.sha256
     ).hexdigest()
 
-    # Check if seal already exists
     res = await db.execute(select(AuthenticitySeal).where(AuthenticitySeal.file_hash_sha256 == file_hash))
     existing = res.scalar_one_or_none()
 
@@ -202,13 +184,7 @@ async def capturar_selo(
 
 
 @router.post("/verificar/selo")
-async def verificar_selo_upload(
-    file: UploadFile = File(...),
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Verifies if uploaded file matches a registered authenticity seal without tampering.
-    """
+async def verificar_selo_upload(file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
     file_bytes = await file.read()
     current_hash = hashlib.sha256(file_bytes).hexdigest()
 
@@ -222,23 +198,18 @@ async def verificar_selo_upload(
             "file_hash_sha256": current_hash,
             "captured_at": seal.captured_at.isoformat(),
             "signature_hmac": seal.signature_hmac,
-            "mensagem": "✅ SELO VÁLIDO: Imagem 100% original e autêntica! Nenhuma alteração de pixels detectada."
+            "mensagem": "SELO VALIDO: Imagem 100% original e autentica! Nenhuma alteracao de pixels detectada."
         }
-    else:
-        return {
-            "autentico": False,
-            "status": "TAMPERED_OR_UNKNOWN",
-            "current_hash_sha256": current_hash,
-            "mensagem": "🚨 ALERTA DE VIOLAÇÃO: Hash não cadastrado ou arquivo adulterado! A foto foi editada, cortada ou manipulada após a captura original."
-        }
+    return {
+        "autentico": False,
+        "status": "TAMPERED_OR_UNKNOWN",
+        "current_hash_sha256": current_hash,
+        "mensagem": "ALERTA DE VIOLACAO: Hash nao cadastrado ou arquivo adulterado!"
+    }
 
 
 @router.get("/verificar/selo/{file_hash}")
-async def verificar_selo_por_hash(
-    file_hash: str,
-    db: AsyncSession = Depends(get_db)
-):
-    """Public GET endpoint to check seal by SHA-256 hash."""
+async def verificar_selo_por_hash(file_hash: str, db: AsyncSession = Depends(get_db)):
     clean_hash = file_hash.strip().lower()
     res = await db.execute(select(AuthenticitySeal).where(AuthenticitySeal.file_hash_sha256 == clean_hash))
     seal = res.scalar_one_or_none()
@@ -252,7 +223,7 @@ async def verificar_selo_por_hash(
         }
     return {
         "autentico": False,
-        "motivo": "Nenhum selo registrado para este hash. O conteúdo pode ser sintético ou ter sido modificado."
+        "motivo": "Nenhum selo registrado para este hash."
     }
 
 
@@ -261,14 +232,10 @@ async def exportar_relatorio_pdf(
     file: UploadFile = File(...),
     filename: Optional[str] = Form(None)
 ):
-    """
-    Runs multi-layer verification and returns a court-admissible PDF audit report.
-    """
     file_bytes = await file.read()
     file_hash_sha256 = hashlib.sha256(file_bytes).hexdigest()
     target_filename = filename or file.filename or "evidencia_auditada.jpg"
 
-    # Rapid metadata + C2PA + heuristic check for instant PDF generation
     metadata_res = await extract_metadata(file_bytes, target_filename)
     c2pa_res = await verify_c2pa(file_bytes, target_filename)
     report = await consolidate_forensic_report(
