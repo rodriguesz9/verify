@@ -6,67 +6,44 @@ import {
   AlertTriangle,
   ArrowRight,
   BadgeCheck,
+  BarChart3,
   CheckCircle2,
   ChevronDown,
+  Clock,
   FileSearch,
+  Globe,
   Image,
   Info,
   Link2,
+  Lock,
   LogOut,
   Menu,
   MessageCircle,
   Mic,
+  Phone,
   ScanSearch,
   Search,
   Shield,
   ShieldCheck,
   Sparkles,
+  Users,
   Volume2,
+  Zap,
   X,
 } from "lucide-react";
 
 /* ─── Static data ─────────────────────────────────────────────────── */
 
 const STEPS = [
-  {
-    number: "01",
-    title: "Envie o conteúdo",
-    text: "Cole uma mensagem, um link ou envie uma imagem e um áudio suspeito.",
-    color: "#00D4FF",
-  },
-  {
-    number: "02",
-    title: "Veja os sinais",
-    text: "O Verify aponta alertas, contexto e referências para você conferir.",
-    color: "#00FF87",
-  },
-  {
-    number: "03",
-    title: "Decida com calma",
-    text: "Receba uma explicação clara e uma orientação prática antes de compartilhar.",
-    color: "#FFB800",
-  },
+  { number: "01", title: "Envie o conteúdo", text: "Cole uma mensagem, um link ou envie uma imagem e um áudio suspeito.", color: "#00D4FF" },
+  { number: "02", title: "Veja os sinais", text: "O Verify aponta alertas, contexto e referências para você conferir.", color: "#00FF87" },
+  { number: "03", title: "Decida com calma", text: "Receba uma explicação clara e uma orientação prática antes de compartilhar.", color: "#FFB800" },
 ];
 
 const FEATURES = [
-  {
-    icon: MessageCircle,
-    title: "Linguagem direta",
-    text: "Sem jargão: o resultado explica o risco em palavras simples e sugere o próximo passo.",
-    color: "#00D4FF",
-  },
-  {
-    icon: ScanSearch,
-    title: "Mais contexto",
-    text: "A análise reúne sinais de fraude, checagens e informações de apoio.",
-    color: "#00FF87",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Proteção compartilhável",
-    text: "Transforme a orientação em uma mensagem simples para proteger sua família.",
-    color: "#FFB800",
-  },
+  { icon: MessageCircle, title: "Linguagem direta", text: "Sem jargão: o resultado explica o risco em palavras simples e sugere o próximo passo.", color: "#00D4FF" },
+  { icon: ScanSearch, title: "Mais contexto", text: "A análise reúne sinais de fraude, checagens e informações de apoio.", color: "#00FF87" },
+  { icon: ShieldCheck, title: "Proteção compartilhável", text: "Transforme a orientação em uma mensagem simples para proteger sua família.", color: "#FFB800" },
 ];
 
 const MEDIA_TYPES = [
@@ -76,15 +53,35 @@ const MEDIA_TYPES = [
   { icon: Mic, label: "Áudios" },
 ];
 
+const STATS = [
+  { value: "100%", label: "Gratuito", icon: Zap },
+  { value: "< 30s", label: "Tempo de análise", icon: Clock },
+  { value: "4", label: "Tipos de mídia", icon: BarChart3 },
+  { value: "24/7", label: "Sempre disponível", icon: Globe },
+];
+
+const GOLPES = [
+  { icon: ShieldCheck, title: "Golpe do Pix falso", desc: "Mensagens pedindo taxas, resgates ou cadastros falsos do Pix para roubar dinheiro.", color: "#FF3B5C" },
+  { icon: AlertTriangle, title: "Boatos de saúde", desc: "Remédios milagrosos, curas caseiras e informações falsas sobre vacinas e tratamentos.", color: "#FFB830" },
+  { icon: MessageCircle, title: "Falsas promoções", text: "Ofertas boas demais para ser verdade, links para sites falsos de lojas conhecidas.", color: "#00D4FF" },
+  { icon: Phone, title: "Golpe do sequestro", desc: "Mensagens falsas dizendo que um familiar está preso e precisa de dinheiro urgente.", color: "#FF3B5C" },
+];
+
+const FAQ = [
+  { q: "O Verify é realmente gratuito?", a: "Sim. O Verify é um projeto de interesse público. Não há planos pagos, assinaturas ou cobranças ocultas." },
+  { q: "Meus dados estão seguros?", a: "Sim. Suas verificações são criptografadas e armazenadas de forma segura. Não compartilhamos seus dados com terceiros." },
+  { q: "Preciso criar conta para usar?", a: "Não. A demonstração é aberta. Só criamos conta se você quiser guardar seu histórico de verificações." },
+  { q: "O Verify substitui um fact-checker profissional?", a: "Não. O Verify é uma ferramenta de apoio. Para decisões importantes, sempre consulte fontes oficiais e jornalistas verificados." },
+  { q: "Funciona no celular?", a: "Sim. O Verify é responsivo e funciona em qualquer dispositivo com navegador: celular, tablet ou computador." },
+];
+
 /* ─── Sub-components ──────────────────────────────────────────────── */
 
 function SignalCard({ icon: Icon, label, value, tone = "cyan" }) {
   const colors =
-    tone === "red"
-      ? "border-[#FF3B5C]/35 bg-[#FF3B5C]/10 text-[#FF9CAF]"
-      : tone === "green"
-      ? "border-[#00FF87]/35 bg-[#00FF87]/10 text-[#6DFFB4]"
-      : "border-[#00D4FF]/35 bg-[#00D4FF]/10 text-[#63E4FF]";
+    tone === "red" ? "border-[#FF3B5C]/35 bg-[#FF3B5C]/10 text-[#FF9CAF]"
+    : tone === "green" ? "border-[#00FF87]/35 bg-[#00FF87]/10 text-[#6DFFB4]"
+    : "border-[#00D4FF]/35 bg-[#00D4FF]/10 text-[#63E4FF]";
 
   return (
     <div className={`flex items-center gap-3 rounded-xl border p-3 ${colors}`}>
@@ -92,11 +89,24 @@ function SignalCard({ icon: Icon, label, value, tone = "cyan" }) {
         <Icon size={18} />
       </span>
       <div className="min-w-0">
-        <p className="font-mono text-[9px] font-bold uppercase tracking-[.16em] opacity-75">
-          {label}
-        </p>
+        <p className="font-mono text-[9px] font-bold uppercase tracking-[.16em] opacity-75">{label}</p>
         <p className="mt-0.5 truncate font-syne text-sm font-bold">{value}</p>
       </div>
+    </div>
+  );
+}
+
+function FaqItem({ q, a }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border-b border-[#132435] last:border-0">
+      <button onClick={() => setOpen(!open)} className="flex w-full items-center justify-between py-5 text-left cursor-pointer">
+        <span className="font-syne text-sm font-bold text-[#CDE8F0] pr-4">{q}</span>
+        <ChevronDown size={18} className={`shrink-0 text-[#00D4FF] transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <p className="pb-5 font-mono text-xs leading-7 text-[#8AA2B4]">{a}</p>
+      )}
     </div>
   );
 }
@@ -146,7 +156,6 @@ export default function LandingPage() {
       {/* ── NAVBAR ──────────────────────────────────────────────── */}
       <nav className="sticky top-0 left-0 right-0 z-[100] border-b border-[#132435] backdrop-blur-xl bg-[rgba(4,8,12,0.9)]">
         <div className="max-w-7xl mx-auto px-5 sm:px-8 flex items-center justify-between h-20">
-          {/* Logo */}
           <Link to="/" className="flex items-center gap-3 no-underline group">
             <div className="w-10 h-10 rounded-lg bg-[#00D4FF] flex items-center justify-center font-syne font-black text-base group-hover:scale-105 transition-transform shadow-[0_0_20px_#00D4FF66]">
               <Shield size={20} />
@@ -157,7 +166,6 @@ export default function LandingPage() {
             </div>
           </Link>
 
-          {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-8">
             {NAV_LINKS.map(({ to, href, label, icon: Icon }) => (
               to ? (
@@ -171,23 +179,14 @@ export default function LandingPage() {
               )
             ))}
 
-            {/* Dropdown Limitações */}
             <div className="relative">
-              <button
-                onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="font-mono text-[13px] tracking-[2px] text-[#CDE8F0] hover:text-[#00D4FF] font-bold no-underline transition-colors uppercase flex items-center gap-2"
-              >
+              <button onClick={() => setDropdownOpen(!dropdownOpen)} className="font-mono text-[13px] tracking-[2px] text-[#CDE8F0] hover:text-[#00D4FF] font-bold no-underline transition-colors uppercase flex items-center gap-2">
                 <Menu size={14} /> {dropdownOpen ? <X size={14} /> : <ChevronDown size={14} />}
               </button>
               {dropdownOpen && (
                 <div className="absolute right-0 mt-2 w-56 rounded-xl bg-[#0A1520] border border-[#132435] shadow-xl z-[50] overflow-hidden">
                   {DROPDOWN_ITEMS.map((item, index) => (
-                    <Link
-                      key={index}
-                      to={item.to}
-                      onClick={() => setDropdownOpen(false)}
-                      className="block px-4 py-3 text-sm font-mono text-[#CDE8F0] hover:bg-[#0F1E2E] hover:text-[#00D4FF] no-underline transition-colors"
-                    >
+                    <Link key={index} to={item.to} onClick={() => setDropdownOpen(false)} className="block px-4 py-3 text-sm font-mono text-[#CDE8F0] hover:bg-[#0F1E2E] hover:text-[#00D4FF] no-underline transition-colors">
                       {item.label}
                     </Link>
                   ))}
@@ -201,32 +200,22 @@ export default function LandingPage() {
                   <div className="font-mono text-[12px] text-[#CDE8F0] font-bold leading-none">{user.name}</div>
                   <div className="font-mono text-[9px] text-[#00FF87] tracking-widest uppercase mt-1">Conectado</div>
                 </div>
-                <button
-                  onClick={() => { signOut(); navigate("/"); }}
-                  className="font-mono text-[11px] px-4 py-2 rounded-xl hover:bg-[#FF3B5C22] transition-all uppercase font-bold flex items-center gap-2 cursor-pointer"
-                  style={{ color: "#FF3B5C", backgroundColor: "rgba(255,59,92,0.07)", border: "1px solid rgba(255,59,92,0.2)" }}
-                >
+                <button onClick={() => { signOut(); navigate("/"); }} className="font-mono text-[11px] px-4 py-2 rounded-xl hover:bg-[#FF3B5C22] transition-all uppercase font-bold flex items-center gap-2 cursor-pointer" style={{ color: "#FF3B5C", backgroundColor: "rgba(255,59,92,0.07)", border: "1px solid rgba(255,59,92,0.2)" }}>
                   <LogOut size={12} /> Sair
                 </button>
               </div>
             ) : (
-              <Link
-                to="/login"
-                className="font-mono text-[12px] tracking-[2px] px-6 py-2.5 rounded-xl font-bold no-underline shadow-[0_0_20px_rgba(0,212,255,0.27)] hover:scale-105 transition-transform flex items-center gap-2"
-                style={{ backgroundColor: "#00D4FF", color: "#04080C" }}
-              >
+              <Link to="/login" className="font-mono text-[12px] tracking-[2px] px-6 py-2.5 rounded-xl font-bold no-underline shadow-[0_0_20px_rgba(0,212,255,0.27)] hover:scale-105 transition-transform flex items-center gap-2" style={{ backgroundColor: "#00D4FF", color: "#04080C" }}>
                 <MessageCircle size={12} /> ENTRAR
               </Link>
             )}
           </div>
 
-          {/* Mobile */}
           <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden text-[#CDE8F0] cursor-pointer">
             {menuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
 
-        {/* Mobile dropdown */}
         {menuOpen && (
           <div className="md:hidden border-t border-[#132435] bg-[#0A1520] p-6 flex flex-col gap-4">
             {NAV_LINKS.map(({ to, href, label, icon: Icon }) => (
@@ -255,24 +244,11 @@ export default function LandingPage() {
       <main>
         {/* ── HERO ───────────────────────────────────────────────── */}
         <section className="relative isolate overflow-hidden border-b border-[#132435] px-5 pb-20 pt-16 sm:px-8 sm:pb-28 sm:pt-24">
-          {/* Background gradients */}
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 -z-10 opacity-70"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle at 78% 24%, rgba(0,212,255,.16), transparent 27rem)," +
-                "radial-gradient(circle at 25% 82%, rgba(0,255,135,.1), transparent 22rem)," +
-                "linear-gradient(rgba(19,36,53,.6) 1px, transparent 1px)," +
-                "linear-gradient(90deg, rgba(19,36,53,.6) 1px, transparent 1px)",
-              backgroundSize: "auto, auto, 48px 48px, 48px 48px",
-            }}
-          />
+          <div aria-hidden="true" className="absolute inset-0 -z-10 opacity-70" style={{ backgroundImage: "radial-gradient(circle at 78% 24%, rgba(0,212,255,.16), transparent 27rem),radial-gradient(circle at 25% 82%, rgba(0,255,135,.1), transparent 22rem),linear-gradient(rgba(19,36,53,.6) 1px, transparent 1px),linear-gradient(90deg, rgba(19,36,53,.6) 1px, transparent 1px)", backgroundSize: "auto, auto, 48px 48px, 48px 48px" }} />
 
           <div className="mx-auto grid max-w-7xl items-center gap-14 lg:grid-cols-[1.05fr_.95fr] lg:gap-20">
             {/* Left: headline */}
             <div className="max-w-3xl">
-              {/* Badge */}
               <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-[#00D4FF33] bg-[#00D4FF0D] px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-[.16em] text-[#00D4FF]">
                 <Sparkles size={13} /> Verificação digital para todos
               </div>
@@ -288,39 +264,27 @@ export default function LandingPage() {
                 decidir com mais segurança.
               </p>
 
-              {/* CTAs */}
               <div className="mt-9 flex flex-col gap-4 sm:flex-row">
-                <Link
-                  to={appPath}
-                  className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#00FF87] px-7 font-syne text-sm font-black uppercase tracking-wider text-[#04080C] shadow-[0_12px_35px_rgba(0,212,255,.22)] transition-transform hover:-translate-y-0.5"
-                >
+                <Link to={appPath} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#00FF87] px-7 font-syne text-sm font-black uppercase tracking-wider text-[#04080C] shadow-[0_12px_35px_rgba(0,212,255,.22)] transition-transform hover:-translate-y-0.5">
                   <FileSearch size={18} />
                   {user ? "Fazer uma checagem" : "Começar agora"}
                   <ArrowRight size={17} />
                 </Link>
-
-                <Link
-                  to="/demo"
-                  className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl border border-[#284258] bg-[#091622]/80 px-7 font-mono text-xs font-bold uppercase tracking-wider text-[#CDE8F0] transition-colors hover:border-[#00D4FF] hover:text-[#00D4FF]"
-                >
+                <Link to="/demo" className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl border border-[#284258] bg-[#091622]/80 px-7 font-mono text-xs font-bold uppercase tracking-wider text-[#CDE8F0] transition-colors hover:border-[#00D4FF] hover:text-[#00D4FF]">
                   <Volume2 size={16} /> Ver demonstração
                 </Link>
               </div>
 
               <p className="mt-5 flex items-center gap-2 font-mono text-[10px] leading-5 text-[#6F8B9F]">
                 <CheckCircle2 size={13} className="shrink-0 text-[#00FF87]" />
-                A demonstração é aberta. Crie uma conta quando quiser guardar o
-                histórico.
+                A demonstração é aberta. Crie uma conta quando quiser guardar o histórico.
               </p>
             </div>
 
-            {/* Right: mock analysis card */}
-            <div className="relative mx-auto w-full max-w-[540px]">
-              <div
-                aria-hidden="true"
-                className="absolute -inset-4 -z-10 rounded-[2.4rem] bg-[#00D4FF]/10 blur-3xl"
-              />
-              <div className="overflow-hidden rounded-[1.8rem] border border-[#2A5269] bg-[#07111A]/95 p-5 shadow-[0_25px_80px_rgba(0,0,0,.45)] sm:p-7">
+            {/* Right: mock analysis card — contained, no overflow */}
+            <div className="relative mx-auto w-full max-w-[520px] overflow-visible">
+              <div aria-hidden="true" className="absolute -inset-4 -z-10 rounded-[2.4rem] bg-[#00D4FF]/10 blur-3xl pointer-events-none" />
+              <div className="relative overflow-hidden rounded-[1.8rem] border border-[#2A5269] bg-[#07111A]/95 p-5 shadow-[0_25px_80px_rgba(0,0,0,.45)] sm:p-7">
                 {/* Window bar */}
                 <div className="flex items-center justify-between border-b border-[#183347] pb-4">
                   <div className="flex items-center gap-2">
@@ -336,24 +300,17 @@ export default function LandingPage() {
                 {/* Alert card */}
                 <div className="mt-5 rounded-2xl border border-[#FF3B5C]/35 bg-gradient-to-br from-[#FF3B5C]/15 to-[#0A1520] p-5">
                   <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-mono text-[10px] font-bold uppercase tracking-[.16em] text-[#FF9CAF]">
-                        Mensagem recebida
-                      </p>
-                      <p className="mt-3 font-syne text-lg font-bold leading-snug text-white">
-                        "Pague uma taxa agora para liberar seu Pix."
-                      </p>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-mono text-[10px] font-bold uppercase tracking-[.16em] text-[#FF9CAF]">Mensagem recebida</p>
+                      <p className="mt-3 font-syne text-lg font-bold leading-snug text-white break-words">"Pague uma taxa agora para liberar seu Pix."</p>
                     </div>
                     <AlertTriangle className="shrink-0 text-[#FF8195]" size={25} />
                   </div>
 
-                  {/* Risk bar */}
                   <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-[#132435]">
                     <div className="h-full w-[84%] rounded-full bg-gradient-to-r from-[#FFB800] to-[#FF3B5C]" />
                   </div>
-                  <p className="mt-2 font-mono text-[10px] text-[#FFB2BF]">
-                    Sinais de risco identificados — 84%
-                  </p>
+                  <p className="mt-2 font-mono text-[10px] text-[#FFB2BF]">Sinais de risco identificados — 84%</p>
                 </div>
 
                 {/* Signal cards */}
@@ -375,14 +332,28 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* ── STATS BAR ─────────────────────────────────────────── */}
+        <section className="border-b border-[#132435] bg-[#07111A] px-5 py-8 sm:px-8">
+          <div className="mx-auto grid max-w-7xl grid-cols-2 gap-6 md:grid-cols-4">
+            {STATS.map(({ value, label, icon: Icon }) => (
+              <div key={label} className="flex items-center gap-4 rounded-xl border border-[#132435] bg-[#0A1520] p-4">
+                <div className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-[#00D4FF]/10 text-[#00D4FF]">
+                  <Icon size={20} />
+                </div>
+                <div>
+                  <p className="font-syne text-xl font-black text-[#CDE8F0]">{value}</p>
+                  <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#8AA2B4]">{label}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* ── MEDIA TYPES BANNER ─────────────────────────────────── */}
         <section className="border-b border-[#132435] bg-[#07111A] px-5 py-6 sm:px-8">
           <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-10 gap-y-4 text-center">
             {MEDIA_TYPES.map(({ icon: Icon, label }) => (
-              <span
-                key={label}
-                className="inline-flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[.14em] text-[#8AA2B4]"
-              >
+              <span key={label} className="inline-flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[.14em] text-[#8AA2B4]">
                 <Icon size={15} className="text-[#00D4FF]" />
                 {label}
               </span>
@@ -391,82 +362,125 @@ export default function LandingPage() {
         </section>
 
         {/* ── HOW IT WORKS ───────────────────────────────────────── */}
-        <section
-          id="como-funciona"
-          className="mx-auto max-w-7xl px-5 py-20 sm:px-8 sm:py-28"
-        >
-          {/* Header */}
+        <section id="como-funciona" className="mx-auto max-w-7xl px-5 py-20 sm:px-8 sm:py-28">
           <div className="mb-12 max-w-2xl">
-            <span className="font-mono text-[10px] font-bold uppercase tracking-[.2em] text-[#00D4FF]">
-              Processo simples
-            </span>
+            <span className="font-mono text-[10px] font-bold uppercase tracking-[.2em] text-[#00D4FF]">Processo simples</span>
             <h2 className="mt-4 font-syne text-3xl font-black leading-tight tracking-tight sm:text-5xl">
               Três passos para checar com mais segurança.
             </h2>
           </div>
 
-          {/* Step cards */}
           <div className="grid gap-6 md:grid-cols-3">
             {STEPS.map(({ number, title, text, color }) => (
-              <article
-                key={number}
-                className="group rounded-3xl border border-[#132435] bg-[#0A1520] p-8 transition-colors hover:border-[#00D4FF]/50"
-              >
-                <span
-                  className="font-mono text-sm font-bold"
-                  style={{ color }}
-                >
-                  {number}
-                </span>
+              <article key={number} className="group rounded-3xl border border-[#132435] bg-[#0A1520] p-8 transition-colors hover:border-[#00D4FF]/50">
+                <span className="font-mono text-sm font-bold" style={{ color }}>{number}</span>
                 <h3 className="mt-10 font-syne text-xl font-bold">{title}</h3>
-                <p className="mt-4 font-mono text-sm leading-7 text-[#8AA2B4]">
-                  {text}
-                </p>
-                <ArrowRight
-                  size={18}
-                  className="mt-8 transition-transform group-hover:translate-x-1"
-                  style={{ color }}
-                />
+                <p className="mt-4 font-mono text-sm leading-7 text-[#8AA2B4]">{text}</p>
+                <ArrowRight size={18} className="mt-8 transition-transform group-hover:translate-x-1" style={{ color }} />
               </article>
             ))}
           </div>
         </section>
 
         {/* ── PROTECTION ─────────────────────────────────────────── */}
-        <section
-          id="protege"
-          className="border-y border-[#132435] bg-[#08131D] px-5 py-20 sm:px-8 sm:py-28"
-        >
+        <section id="protege" className="border-y border-[#132435] bg-[#08131D] px-5 py-20 sm:px-8 sm:py-28">
           <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[.75fr_1.25fr] lg:items-start">
-            {/* Left: text */}
             <div>
-              <span className="font-mono text-[10px] font-bold uppercase tracking-[.2em] text-[#00FF87]">
-                Proteção prática
-              </span>
+              <span className="font-mono text-[10px] font-bold uppercase tracking-[.2em] text-[#00FF87]">Proteção prática</span>
               <h2 className="mt-4 font-syne text-3xl font-black leading-tight tracking-tight sm:text-5xl">
                 Mais contexto antes de uma decisão.
               </h2>
               <p className="mt-6 font-mono text-sm leading-8 text-[#8AA2B4]">
-                A melhor proteção é uma pausa: não pagar, não clicar e
-                confirmar a informação em uma fonte independente.
+                A melhor proteção é uma pausa: não pagar, não clicar e confirmar a informação em uma fonte independente.
               </p>
             </div>
 
-            {/* Right: feature cards */}
             <div className="grid gap-5 sm:grid-cols-3">
               {FEATURES.map(({ icon: Icon, title, text, color }) => (
-                <article
-                  key={title}
-                  className="rounded-3xl border border-[#183347] bg-[#0A1520] p-7"
-                >
+                <article key={title} className="rounded-3xl border border-[#183347] bg-[#0A1520] p-7">
                   <Icon size={26} style={{ color }} />
                   <h3 className="mt-7 font-syne text-base font-bold">{title}</h3>
-                  <p className="mt-3 font-mono text-xs leading-6 text-[#8AA2B4]">
-                    {text}
-                  </p>
+                  <p className="mt-3 font-mono text-xs leading-6 text-[#8AA2B4]">{text}</p>
                 </article>
               ))}
             </div>
+          </div>
+        </section>
+
+        {/* ── GOLPES COMUNS ──────────────────────────────────────── */}
+        <section className="mx-auto max-w-7xl px-5 py-20 sm:px-8 sm:py-28">
+          <div className="mb-12 max-w-2xl">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-[.2em] text-[#FF3B5C]">Tipos de golpe</span>
+            <h2 className="mt-4 font-syne text-3xl font-black leading-tight tracking-tight sm:text-5xl">
+              O que o Verify detecta.
+            </h2>
+            <p className="mt-4 font-mono text-sm leading-7 text-[#8AA2B4]">
+              Nossa IA analisa o conteúdo, cruza com fontes confiáveis e identifica padrões conhecidos de fraude.
+            </p>
+          </div>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            {GOLPES.map(({ icon: Icon, title, desc, color }, i) => (
+              <article key={i} className="flex items-start gap-5 rounded-3xl border border-[#132435] bg-[#0A1520] p-7 transition-colors hover:border-[#00D4FF]/30">
+                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl" style={{ backgroundColor: `${color}15`, color }}>
+                  <Icon size={22} />
+                </div>
+                <div>
+                  <h3 className="font-syne text-base font-bold">{title}</h3>
+                  <p className="mt-2 font-mono text-xs leading-6 text-[#8AA2B4]">{desc}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {/* ── PRIVACIDADE ────────────────────────────────────────── */}
+        <section className="border-y border-[#132435] bg-[#08131D] px-5 py-20 sm:px-8 sm:py-28">
+          <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-2">
+            <div>
+              <span className="font-mono text-[10px] font-bold uppercase tracking-[.2em] text-[#00D4FF]">Privacidade primeiro</span>
+              <h2 className="mt-4 font-syne text-3xl font-black leading-tight tracking-tight sm:text-5xl">
+                Seus dados ficam com você.
+              </h2>
+              <p className="mt-6 font-mono text-sm leading-8 text-[#8AA2B4]">
+                O Verify foi pensado para ser útil sem ser invasivo. Não rastreamos
+                seus contatos, não acessamos suas conversas e não vendemos dados.
+              </p>
+              <Link to="/privacy" className="mt-8 inline-flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-wider text-[#00D4FF] hover:text-[#00FF87] transition-colors">
+                Ler nossa política de privacidade <ArrowRight size={14} />
+              </Link>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[
+                { icon: Lock, title: "Criptografia", desc: "Dados protegidos em trânsito e em repouso." },
+                { icon: Shield, title: "Sem rastreamento", desc: "Não monitoramos sua navegação ou contatos." },
+                { icon: Users, title: "Controle total", desc: "Exclua seu histórico quando quiser." },
+                { icon: Globe, title: "Código aberto", desc: "Transparência total sobre como funciona." },
+              ].map(({ icon: Icon, title, desc }, i) => (
+                <div key={i} className="rounded-2xl border border-[#132435] bg-[#0A1520] p-5">
+                  <Icon size={20} className="text-[#00D4FF]" />
+                  <h4 className="mt-3 font-syne text-sm font-bold">{title}</h4>
+                  <p className="mt-2 font-mono text-[11px] leading-5 text-[#8AA2B4]">{desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── FAQ ────────────────────────────────────────────────── */}
+        <section className="mx-auto max-w-3xl px-5 py-20 sm:px-8 sm:py-28">
+          <div className="mb-12 text-center">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-[.2em] text-[#00FF87]">Dúvidas</span>
+            <h2 className="mt-4 font-syne text-3xl font-black tracking-tight sm:text-5xl">
+              Perguntas frequentes
+            </h2>
+          </div>
+
+          <div className="rounded-3xl border border-[#132435] bg-[#0A1520] px-6 sm:px-8">
+            {FAQ.map((item, i) => (
+              <FaqItem key={i} q={item.q} a={item.a} />
+            ))}
           </div>
         </section>
 
@@ -480,13 +494,9 @@ export default function LandingPage() {
               Recebeu algo suspeito?
             </h2>
             <p className="mx-auto mt-6 max-w-xl font-mono text-sm leading-8 text-[#A6C0CE]">
-              Faça uma checagem antes de compartilhar. Leva poucos passos e
-              pode evitar que um golpe se espalhe pela sua família.
+              Faça uma checagem antes de compartilhar. Leva poucos passos e pode evitar que um golpe se espalhe pela sua família.
             </p>
-            <Link
-              to={appPath}
-              className="mt-10 inline-flex min-h-14 items-center gap-2 rounded-xl bg-[#00D4FF] px-8 font-syne text-sm font-black uppercase tracking-wider text-[#04080C] transition-transform hover:-translate-y-0.5"
-            >
+            <Link to={appPath} className="mt-10 inline-flex min-h-14 items-center gap-2 rounded-xl bg-[#00D4FF] px-8 font-syne text-sm font-black uppercase tracking-wider text-[#04080C] transition-transform hover:-translate-y-0.5">
               Checar agora <ArrowRight size={17} />
             </Link>
           </div>
