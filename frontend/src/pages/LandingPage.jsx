@@ -281,10 +281,9 @@ export default function LandingPage() {
               </p>
             </div>
 
-            {/* Right: mock analysis card — contained, no overflow */}
-            <div className="relative mx-auto w-full max-w-[520px] overflow-visible">
-              <div aria-hidden="true" className="absolute -inset-4 -z-10 rounded-[2.4rem] bg-[#00D4FF]/10 blur-3xl pointer-events-none" />
-              <div className="relative overflow-hidden rounded-[1.8rem] border border-[#2A5269] bg-[#07111A]/95 p-5 shadow-[0_25px_80px_rgba(0,0,0,.45)] sm:p-7">
+            {/* Right: mock analysis card */}
+            <div className="relative mx-auto w-full max-w-[520px]">
+              <div className="relative overflow-hidden rounded-[1.8rem] border border-[#2A5269] bg-[#07111A]/95 p-5 shadow-[0_25px_80px_rgba(0,0,0,.45),0_0_60px_rgba(0,212,255,.08)] sm:p-7">
                 {/* Window bar */}
                 <div className="flex items-center justify-between border-b border-[#183347] pb-4">
                   <div className="flex items-center gap-2">
