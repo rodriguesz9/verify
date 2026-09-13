@@ -86,8 +86,13 @@ def _set_auth_cookies(response: Response, user_id: str) -> None:
 
 def _clear_auth_cookies(response: Response) -> None:
     response.headers["Cache-Control"] = "no-store"
-    response.delete_cookie(_ACCESS_COOKIE, path="/")
-    response.delete_cookie(_REFRESH_COOKIE, path="/api/auth/refresh")
+    for cookie_name, path in [(_ACCESS_COOKIE, "/"), (_REFRESH_COOKIE, "/api/auth/refresh")]:
+        response.delete_cookie(
+            cookie_name,
+            path=path,
+            secure=_COOKIE_SECURE,
+            samesite=_COOKIE_SAME_SITE,
+        )
 
 
 def _user_to_dict(user: User) -> dict:
