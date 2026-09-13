@@ -65,8 +65,11 @@ export default function GoogleButton({ onSuccess, onError }) {
   }, [initGoogle]);
 
   return (
-    <div className="relative">
-      <div ref={containerRef} className={scriptLoaded ? "" : "hidden"} />
+    <div className="flex justify-center">
+      <div
+        ref={containerRef}
+        className={scriptLoaded ? "flex justify-center w-full" : "hidden"}
+      />
       {!scriptLoaded && (
         <button
           type="button"
