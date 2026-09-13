@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, LockKeyhole, Mail, ShieldCheck, UserRound, X } from "lucide-react";
 import { register, googleAuth, getMe } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
+import GoogleButton from "../components/GoogleButton";
 
 function Field({ label, icon: Icon, type, value, onChange, placeholder }) {
   return (
@@ -27,39 +28,13 @@ export default function RegisterPage() {
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const googleButtonRef = useRef(null);
-
   const update = key => event => setForm(current => ({ ...current, [key]: event.target.value }));
   const completeRegistration = async () => { signIn(await getMe()); navigate("/app"); };
 
-  useEffect(() => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (!clientId || !window.google) return;
-
-    google.accounts.id.initialize({
-      client_id: clientId,
-      callback: async (response) => {
-        setGoogleLoading(true); setError("");
-        try {
-          await googleAuth({ id_token: response.credential });
-          await completeRegistration();
-        } catch {
-          setError("Não foi possível criar a conta com Google.");
-          setGoogleLoading(false);
-        }
-      },
-    });
-
-    if (googleButtonRef.current) {
-      google.accounts.id.renderButton(googleButtonRef.current, {
-        theme: "filled_black",
-        size: "large",
-        width: "100%",
-        shape: "rectangular",
-      });
-    }
-  }, []);
+  const handleGoogleSuccess = async (credential) => {
+    await googleAuth({ id_token: credential });
+    await completeRegistration();
+  };
 
   const handleSubmit = async event => {
     event.preventDefault(); setError("");
@@ -86,11 +61,9 @@ export default function RegisterPage() {
         </header>
 
         <section className="rounded-2xl border border-[#132435] bg-[#0A1520] p-6 shadow-2xl sm:p-8">
-          {/* Google Sign In */}
-          <div ref={googleButtonRef} className="w-full mb-3" />
-          <p className="text-xs text-[#8AA2B4] text-center mb-4">
-            Entrar com Google para criar sua conta mais rápido.
-          </p>
+          <div className="mb-4">
+            <GoogleButton onSuccess={handleGoogleSuccess} onError={(msg) => setError(msg)} />
+          </div>
 
           <div className="mb-6 flex items-center gap-3">
             <span className="h-px flex-1 bg-[#132435]" /><span className="font-mono text-[9px] uppercase tracking-wider text-[#8AA2B4]">ou por e-mail</span><span className="h-px flex-1 bg-[#132435]" />
