@@ -246,7 +246,7 @@ export default function LandingPage() {
         <section className="relative isolate overflow-hidden border-b border-[#132435] px-5 pb-20 pt-16 sm:px-8 sm:pb-28 sm:pt-24">
           <div aria-hidden="true" className="absolute inset-0 -z-10 opacity-70" style={{ backgroundImage: "radial-gradient(circle at 78% 24%, rgba(0,212,255,.16), transparent 27rem),radial-gradient(circle at 25% 82%, rgba(0,255,135,.1), transparent 22rem),linear-gradient(rgba(19,36,53,.6) 1px, transparent 1px),linear-gradient(90deg, rgba(19,36,53,.6) 1px, transparent 1px)", backgroundSize: "auto, auto, 48px 48px, 48px 48px" }} />
 
-          <div className="mx-auto grid max-w-7xl items-center gap-14 lg:grid-cols-[1.05fr_.95fr] lg:gap-20">
+          <div className="mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-[1fr_420px] lg:gap-16 xl:gap-20">
             {/* Left: headline */}
             <div className="max-w-3xl">
               <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-[#00D4FF33] bg-[#00D4FF0D] px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-[.16em] text-[#00D4FF]">
@@ -282,7 +282,7 @@ export default function LandingPage() {
             </div>
 
             {/* Right: mock analysis card */}
-            <div className="relative mx-auto w-full max-w-[520px]">
+            <div className="relative mx-auto w-full max-w-[420px]">
               <div className="relative overflow-hidden rounded-[1.8rem] border border-[#2A5269] bg-[#07111A]/95 p-5 shadow-[0_25px_80px_rgba(0,0,0,.45),0_0_60px_rgba(0,212,255,.08)] sm:p-7">
                 {/* Window bar */}
                 <div className="flex items-center justify-between border-b border-[#183347] pb-4">
