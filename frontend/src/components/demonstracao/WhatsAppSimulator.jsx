@@ -48,7 +48,7 @@ export default function WhatsAppSimulator() {
 
     try {
       const data = await simulateWhatsApp(text.trim());
-      const botResponse = data.whatsapp_response || "Erro ao processar verificação.";
+      const botResponse = data.whatsapp_reply || data.whatsapp_response || "Erro ao processar verificação.";
 
       setTimeout(() => {
         setMessages((prev) => [

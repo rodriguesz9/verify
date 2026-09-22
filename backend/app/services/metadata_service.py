@@ -15,15 +15,30 @@ from PIL import Image, ExifTags
 AI_SOFTWARE_SIGNATURES = [
     "midjourney", "dall-e", "stable diffusion", "stablediffusion",
     "comfyui", "automatic1111", "firefly", "novelai", "invokeai",
-    "bing image creator", "leonardo.ai", "photoshop", "gimp"
+    "bing image creator", "leonardo.ai", "flux.1", "flux-schnell", "flux-dev"
+]
+
+CONVENTIONAL_EDITING_SIGNATURES = [
+    "photoshop", "adobe photoshop", "lightroom", "adobe lightroom",
+    "gimp", "canva", "snapseed", "affinity photo", "capture one", "coreldraw"
 ]
 
 
 def _scan_for_ai_signatures(metadata_dict: Dict[str, Any]) -> List[str]:
-    """Finds mentions of generative AI or heavy manipulation software."""
+    """Finds mentions of generative AI models (excluding normal editing tools)."""
     found = []
     text_values = " ".join([str(v).lower() for v in metadata_dict.values() if isinstance(v, (str, int, float))])
     for sig in AI_SOFTWARE_SIGNATURES:
+        if sig in text_values:
+            found.append(sig)
+    return list(set(found))
+
+
+def _scan_for_editing_signatures(metadata_dict: Dict[str, Any]) -> List[str]:
+    """Finds mentions of conventional graphic or photo editing software."""
+    found = []
+    text_values = " ".join([str(v).lower() for v in metadata_dict.values() if isinstance(v, (str, int, float))])
+    for sig in CONVENTIONAL_EDITING_SIGNATURES:
         if sig in text_values:
             found.append(sig)
     return list(set(found))
@@ -104,7 +119,19 @@ async def extract_metadata(file_bytes: bytes, filename: str = "upload.jpg") -> D
     gps = str(metadata.get("GPSPosition") or metadata.get("GPSLatitude") or "")
 
     ai_signatures = _scan_for_ai_signatures(metadata)
-    is_suspicious = len(ai_signatures) > 0 or ("photoshop" in software.lower() and not make)
+    editing_signatures = _scan_for_editing_signatures(metadata)
+    is_suspicious = len(ai_signatures) > 0
+
+    if ai_signatures:
+        summary_msg = f"Assinatura de IA encontrada nos metadados: {', '.join(ai_signatures)}"
+    elif make:
+        summary_msg = f"Metadados de câmera válidos identificados ({make} {model})."
+        if editing_signatures:
+            summary_msg += f" Imagem tratada em {editing_signatures[0].capitalize()}."
+    elif editing_signatures:
+        summary_msg = f"Imagem exportada em software convencional ({editing_signatures[0].capitalize()}). Sem indícios de IA nos metadados."
+    else:
+        summary_msg = "Sem metadados de câmera original (comum em mídias comprimidas ou salvas de redes sociais/WhatsApp)."
 
     return {
         "source": "exiftool" if (is_exiftool_enabled and exiftool_bin) else "pil",
@@ -115,12 +142,9 @@ async def extract_metadata(file_bytes: bytes, filename: str = "upload.jpg") -> D
         "date_original": date_original or None,
         "gps_position": gps or None,
         "ai_signatures_found": ai_signatures,
+        "editing_signatures_found": editing_signatures,
         "is_suspicious": is_suspicious,
-        "summary": (
-            f"Assinatura de IA encontrada nos metadados: {', '.join(ai_signatures)}"
-            if ai_signatures
-            else ("Metadados de câmera válidos identificados" if make else "Sem metadados de câmera original (comum em mídias baixadas da web)")
-        ),
+        "summary": summary_msg,
         "raw_keys_count": len(metadata),
         "raw_preview": {k: str(v)[:80] for k, v in list(metadata.items())[:12]}
     }

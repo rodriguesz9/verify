@@ -118,6 +118,35 @@ export default function ReportPage() {
     navigator.clipboard.writeText(shareText);
   };
 
+  const [speaking, setSpeaking] = useState(false);
+
+  useEffect(() => () => {
+    window.speechSynthesis?.cancel();
+  }, []);
+
+  const handleSpeak = () => {
+    if (!window.speechSynthesis) return;
+    if (speaking) {
+      window.speechSynthesis.cancel();
+      setSpeaking(false);
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const textToRead = `${badge.headline}. O que você precisa saber: ${result.summary || ""}. ${result.plain_explanation || ""}. Dica de segurança: ${result.elderly_tip || ""}`;
+    const utterance = new SpeechSynthesisUtterance(textToRead);
+    utterance.lang = "pt-BR";
+    utterance.rate = 0.92;
+    utterance.onend = () => setSpeaking(false);
+    utterance.onerror = () => setSpeaking(false);
+    setSpeaking(true);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const handleShareWhatsAppDirect = () => {
+    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+    window.open(url, "_blank");
+  };
+
   return (
     <div className="relative min-h-screen bg-[#04080C] text-[#CDE8F0] pb-20">
       <div className="pointer-events-none fixed inset-0" style={{ backgroundImage: "linear-gradient(#132435 1px,transparent 1px),linear-gradient(90deg,#132435 1px,transparent 1px)", backgroundSize: "48px 48px", opacity: .15 }}/>
@@ -137,7 +166,7 @@ export default function ReportPage() {
               onClick={() => setViewMode("simple")}
               className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${viewMode === "simple" ? "bg-[#00D4FF] text-[#04080C]" : "text-[#5A7E94]"}`}
             >
-              Visão Simples
+              Visão Simples (Idosos e Família)
             </button>
             <button
               onClick={() => setViewMode("technical")}
@@ -162,6 +191,51 @@ export default function ReportPage() {
             </div>
           </div>
           <p className="text-base text-[#CDE8F0] leading-relaxed mt-2">{badge.headline}</p>
+
+          <div className="mt-5 flex flex-wrap gap-3 pt-4 border-t border-white/10">
+            <button
+              type="button"
+              onClick={handleSpeak}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#00D4FF]/20 border border-[#00D4FF] text-[#00D4FF] hover:bg-[#00D4FF]/30 font-mono text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
+            >
+              <Volume2 size={16} className={speaking ? "animate-pulse text-[#00FF87]" : ""} />
+              {speaking ? "Parar leitura de voz" : "🔊 Ouvir explicação em voz alta"}
+            </button>
+            <button
+              type="button"
+              onClick={handleShareWhatsAppDirect}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#25D366]/20 border border-[#25D366] text-[#25D366] hover:bg-[#25D366]/30 font-mono text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
+            >
+              <Phone size={15} />
+              Avisar família no WhatsApp
+            </button>
+          </div>
+        </div>
+
+        {/* Actionable Steps for Seniors */}
+        <div className="mb-8">
+          {verdict === "Scam" || verdict === "Manipulated" || verdict === "Suspicious" ? (
+            <div className="p-6 rounded-2xl bg-[#FF3B5C]/10 border border-[#FF3B5C]/30 text-[#CDE8F0]">
+              <h4 className="font-syne font-bold text-base text-[#FF8195] mb-3 flex items-center gap-2">
+                <AlertTriangle size={18} /> O QUE VOCÊ DEVE FAZER AGORA:
+              </h4>
+              <ol className="space-y-2.5 font-mono text-sm leading-6 list-decimal list-inside text-[#CDE8F0]">
+                <li><strong>NÃO transfira dinheiro nem faça Pix</strong> sob nenhuma circunstância.</li>
+                <li><strong>NÃO clique em links</strong> nem forneça senhas ou códigos recebidos por SMS.</li>
+                <li><strong>Se disseram que é um parente ou filho</strong>, ligue para o número de telefone antigo dele para confirmar.</li>
+                <li><strong>Compartilhe este aviso</strong> no grupo da família para proteger outras pessoas.</li>
+              </ol>
+            </div>
+          ) : (
+            <div className="p-6 rounded-2xl bg-[#00FF87]/10 border border-[#00FF87]/30 text-[#CDE8F0]">
+              <h4 className="font-syne font-bold text-base text-[#00FF87] mb-2 flex items-center gap-2">
+                <Shield size={18} /> INFORMAÇÃO SEGURA:
+              </h4>
+              <p className="font-mono text-sm leading-6 text-[#CDE8F0]">
+                Esta informação possui sinais consistentes de autenticidade e fontes confiáveis. Você pode ler e compartilhar com tranquilidade.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="space-y-4 mb-8">

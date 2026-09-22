@@ -29,7 +29,11 @@ def _scan_binary_c2pa_markers(file_bytes: bytes) -> Dict[str, Any]:
             "summary": "Nenhuma credencial C2PA encontrada (normal para fotos comuns sem Content Credentials)."
         }
 
-    has_ai_marker = b"c2pa.generative-ai" in file_bytes or b"generative" in file_bytes.lower()
+    has_ai_marker = (
+        b"c2pa.generative-ai" in file_bytes
+        or b"trainedAlgorithmicMedia" in file_bytes
+        or b"c2pa.actions.created" in file_bytes
+    )
     return {
         "has_c2pa": True,
         "validation_state": "present_unverified_tool",

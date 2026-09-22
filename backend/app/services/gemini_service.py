@@ -47,6 +47,11 @@ Se houver CONTRADIÇÃO entre camadas (ex: C2PA diz que é real mas Sightengine 
 aponta 90% de chance de IA), destaque isso explicitamente — contradições são
 o sinal mais valioso de manipulação sofisticada.
 
+ATENÇÃO RIGOROSA PARA EVITAR FALSOS POSITIVOS EM IMAGENS VERDADEIRAS:
+- Fotos reais tiradas por smartphones sofrem compressão intensa (especialmente ao transitar pelo WhatsApp) e possuem processamento computacional embutido (HDR, redução de ruído, modo retrato). Detectores de IA podem acusar falsos positivos entre 50% e 75% em fotos genuínas por confundir compressão com ruído de difusão.
+- O uso de softwares convencionais como Photoshop, Lightroom, GIMP ou Canva indica edição, corte ou retoque comum, NÃO geração por IA.
+- Havendo metadados de câmera (Canon, Nikon, iPhone, Samsung, etc.), fotos históricas encontradas na web ou ausência de traços claros de geradores como Midjourney/DALL-E/Flux, emita "autentico" ou no máximo "inconclusivo", JAMAIS "gerado_ia" sem evidência inequívoca.
+
 RESPONDA EXCLUSIVAMENTE EM JSON VÁLIDO no seguinte formato:
 {
   "veredito_final": "autentico|gerado_ia|deepfake|montagem|inconclusivo",
@@ -83,12 +88,18 @@ async def consolidate_forensic_report(
     }
 
     if not api_key:
+        ai_scores = [
+            float(detection_res.get("sightengine", {}).get("genai_probability", 0) or 0),
+            float(detection_res.get("hive", {}).get("ai_generated_score", 0) or 0),
+            float(detection_res.get("huggingface", {}).get("ai_probability", 0) or 0),
+        ]
+        high_ai_count = sum(1 for s in ai_scores if s >= 0.80)
         is_ai = (
-            metadata_res.get("is_suspicious")
-            or c2pa_res.get("generative_ai_flag")
-            or (detection_res.get("hive", {}).get("is_ai_detected"))
-            or (detection_res.get("sightengine", {}).get("genai_probability", 0) > 0.6)
-            or (audio_res and audio_res.get("verdict") == "sintetica")
+            bool(metadata_res.get("is_suspicious"))
+            or bool(c2pa_res.get("generative_ai_flag"))
+            or high_ai_count >= 2
+            or any(s >= 0.92 for s in ai_scores)
+            or (bool(audio_res) and audio_res.get("verdict") == "sintetica")
         )
         return {
             "veredito_final": "gerado_ia" if is_ai else "autentico",

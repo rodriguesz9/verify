@@ -45,7 +45,8 @@ class AuthIntegrationTests(unittest.TestCase):
         self.assertNotIn("access_token", response.json())
         self.assertNotIn("refresh_token", response.json())
         cookies = response.headers.get_list("set-cookie")
-        self.assertTrue(any("verifai_access=" in cookie and "HttpOnly" in cookie and "SameSite=lax" in cookie for cookie in cookies))
+        from app.api.auth import _COOKIE_SAME_SITE
+        self.assertTrue(any("verifai_access=" in cookie and "HttpOnly" in cookie and f"SameSite={_COOKIE_SAME_SITE}".lower() in cookie.lower() for cookie in cookies))
         self.assertTrue(any("verifai_refresh=" in cookie and "HttpOnly" in cookie and "Path=/api/auth/refresh" in cookie for cookie in cookies))
 
     def test_logout_clears_auth_cookies(self):

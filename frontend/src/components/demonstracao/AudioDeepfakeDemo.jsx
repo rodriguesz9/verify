@@ -4,56 +4,18 @@ import { verifyAudioQuick } from "../../services/api";
 
 const SAMPLES = {
   cloned: {
-    label: "Fala de IA (Sintetizada)",
-    filename: "amostra_golpe_de_pix.wav",
+    label: "Fala Sintética / Clonada (Golpe do Pix)",
+    filename: "voz_golpe_clonado.mp3",
+    audioSrc: "/audio/voz_golpe_clonado.mp3",
     text: "Mãe, caí na rua e perdi meu celular. Faz um Pix urgente para o guincho, por favor.",
-    result: {
-      verdict: "sintetica", score_percent: 96, tempo_processamento_ms: 380,
-      short_explanation: "Esta é uma amostra educativa que combina pedido urgente de Pix e sinais típicos de voz sintetizada por IA.",
-      indicators: [
-        "Pedido financeiro urgente usando vínculo familiar",
-        "Ritmo muito regular, usado aqui para representar síntese de voz",
-        "Ausência de uma confirmação por outro canal"
-      ]
-    }
   },
   authentic: {
-    label: "Fala Humana (Real)",
-    filename: "amostra_conversa_cotidiana.wav",
+    label: "Voz Humana Real (Conversa Autêntica)",
+    filename: "voz_humana_real.mp3",
+    audioSrc: "/audio/voz_humana_real.mp3",
     text: "Oi vó, tudo bem? Estou saindo da aula agora. Te vejo mais tarde para o café.",
-    result: {
-      verdict: "autentica", score_percent: 89, tempo_processamento_ms: 360,
-      short_explanation: "Esta é uma amostra educativa de conversa cotidiana real, sem pedido financeiro nem sinal de urgência.",
-      indicators: [
-        "Tom de conversa cotidiana, sem pressão emocional",
-        "Não há pedido de senha, código ou transferência",
-        "Confirmação por outro canal continua sendo recomendada"
-      ]
-    }
   }
 };
-
-function createDemoAudioFile(name) {
-  // A valid WAV keeps sample selection compatible with uploads. Audible preview
-  // uses SpeechSynthesis below, so a voice is never faked with a beep.
-  const sampleRate = 16000;
-  const durationSeconds = 2;
-  const samples = sampleRate * durationSeconds;
-  const buffer = new ArrayBuffer(44 + samples * 2);
-  const view = new DataView(buffer);
-  const write = (offset, value) => [...value].forEach((character, index) => view.setUint8(offset + index, character.charCodeAt(0)));
-  write(0, "RIFF"); view.setUint32(4, 36 + samples * 2, true); write(8, "WAVE"); write(12, "fmt ");
-  view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
-  view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2, true);
-  view.setUint16(32, 2, true); view.setUint16(34, 16, true); write(36, "data"); view.setUint32(40, samples * 2, true);
-  for (let index = 0; index < samples; index += 1) {
-    const time = index / sampleRate;
-    const envelope = Math.min(1, time * 10, (durationSeconds - time) * 10);
-    const wave = Math.sin(2 * Math.PI * 145 * time) + 0.45 * Math.sin(2 * Math.PI * 530 * time) + 0.2 * Math.sin(2 * Math.PI * 1550 * time);
-    view.setInt16(44 + index * 2, Math.max(-32767, Math.min(32767, wave * envelope * 4800)), true);
-  }
-  return new File([buffer], name, { type: "audio/wav" });
-}
 
 export default function AudioDeepfakeDemo() {
   const [selectedScenario, setSelectedScenario] = useState(null);
@@ -67,44 +29,55 @@ export default function AudioDeepfakeDemo() {
   const mediaRecorderRef = useRef(null);
   const mediaStreamRef = useRef(null);
   const audioChunksRef = useRef([]);
+  const audioPlayerRef = useRef(null);
 
   useEffect(() => () => {
-    window.speechSynthesis?.cancel();
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
+    }
     mediaStreamRef.current?.getTracks().forEach(track => track.stop());
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    if (previewUrl && previewUrl.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
   }, [previewUrl]);
 
   const clearPreview = () => {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
+    }
+    if (previewUrl && previewUrl.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
     setPreviewUrl("");
   };
 
-  const selectSample = (scenario) => {
-    window.speechSynthesis?.cancel();
+  const selectSample = async (scenario) => {
     clearPreview();
     setError(""); setResult(null); setPreviewing(null); setSelectedScenario(scenario);
-    setAudioFile(createDemoAudioFile(SAMPLES[scenario].filename));
+    try {
+      const resp = await fetch(SAMPLES[scenario].audioSrc);
+      const blob = await resp.blob();
+      const file = new File([blob], SAMPLES[scenario].filename, { type: "audio/mp3" });
+      setAudioFile(file);
+      setPreviewUrl(SAMPLES[scenario].audioSrc);
+    } catch {
+      setError("Não foi possível carregar o arquivo de áudio real.");
+    }
   };
 
-  const speakSample = (scenario) => {
-    const synth = window.speechSynthesis;
-    if (!synth) {
-      setError("Este navegador não oferece prévia falada. Você ainda pode enviar ou gravar um áudio.");
+  const playSampleAudio = (scenario) => {
+    if (previewing === scenario) {
+      audioPlayerRef.current?.pause();
+      setPreviewing(null);
       return;
     }
-    if (previewing === scenario) {
-      synth.cancel(); setPreviewing(null); return;
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
     }
-    synth.cancel();
-    const utterance = new SpeechSynthesisUtterance(SAMPLES[scenario].text);
-    const voices = synth.getVoices();
-    utterance.voice = voices.find(voice => voice.lang.toLowerCase().startsWith("pt-br")) || voices.find(voice => voice.lang.toLowerCase().startsWith("pt")) || null;
-    utterance.lang = "pt-BR";
-    utterance.rate = scenario === "cloned" ? 1.12 : 0.95;
-    utterance.pitch = scenario === "cloned" ? 1.25 : 1;
-    utterance.onend = () => setPreviewing(current => current === scenario ? null : current);
-    utterance.onerror = () => setPreviewing(null);
-    setPreviewing(scenario); synth.speak(utterance);
+    const audio = new Audio(SAMPLES[scenario].audioSrc);
+    audioPlayerRef.current = audio;
+    audio.onended = () => setPreviewing(null);
+    audio.onerror = () => {
+      setPreviewing(null);
+      setError("Erro ao reproduzir o áudio.");
+    };
+    audio.play().then(() => setPreviewing(scenario)).catch(() => setPreviewing(null));
   };
 
   const handleFileUpload = (event) => {
@@ -152,12 +125,8 @@ export default function AudioDeepfakeDemo() {
     if (!audioFile) return setError("Selecione uma amostra, envie um arquivo ou grave sua voz.");
     setAnalyzing(true); setError(""); setResult(null);
     try {
-      if (selectedScenario === "cloned" || selectedScenario === "authentic") {
-        await new Promise(resolve => window.setTimeout(resolve, 700));
-        setResult({ ...SAMPLES[selectedScenario].result, isDemo: true });
-      } else {
-        setResult({ ...(await verifyAudioQuick(audioFile)), isDemo: false });
-      }
+      const data = await verifyAudioQuick(audioFile);
+      setResult(data);
     } catch {
       setError("Não foi possível analisar este arquivo agora. Tente um áudio menor ou outro formato.");
     } finally {
@@ -171,7 +140,7 @@ export default function AudioDeepfakeDemo() {
       <header className="mb-8 text-center">
         <span className="mb-2 block font-mono text-[10px] font-bold uppercase tracking-[.2em] text-[#00D4FF]">Recurso 1 · demonstração de uso</span>
         <h2 className="font-syne text-2xl font-black tracking-tight text-[#CDE8F0] sm:text-4xl">Comparação: <span className="text-[#00FF87]">Fala Humana</span> vs <span className="text-[#FF8195]">Fala de IA</span></h2>
-        <p className="mx-auto mt-3 max-w-2xl font-mono text-xs leading-6 text-[#8BAAC0] sm:text-sm">Ouça a diferença entre uma fala real e uma voz clonada por IA. Compare os padrões, tom e urgência. Em qualquer pedido de Pix, confirme a pessoa por outro canal antes de agir.</p>
+        <p className="mx-auto mt-3 max-w-2xl font-mono text-xs leading-6 text-[#8BAAC0] sm:text-sm">Ouça a diferença entre uma fala real gravada e uma voz clonada/sintetizada por IA. Compare os padrões, tom e urgência. Em qualquer pedido de Pix, confirme a pessoa por outro canal antes de agir.</p>
       </header>
 
       <div className="mb-5 grid gap-4 md:grid-cols-2">
@@ -181,7 +150,7 @@ export default function AudioDeepfakeDemo() {
           return <article key={scenario} className={`rounded-2xl border p-5 transition-all ${selected ? (danger ? "border-[#FF3B5C] bg-[#FF3B5C]/10" : "border-[#00FF87] bg-[#00FF87]/10") : "border-[#132435] bg-[#060D14]"}`}>
             <div className="flex items-start justify-between gap-3"><div><span className={`font-mono text-[10px] font-bold uppercase tracking-widest ${danger ? "text-[#FF8195]" : "text-[#00FF87]"}`}>{sample.label}</span><h3 className="mt-2 font-syne text-base font-bold text-[#CDE8F0]">{danger ? "Voz sintetizada por IA" : "Voz real humana"}</h3></div><AudioLines size={22} className={danger ? "text-[#FF8195]" : "text-[#00FF87]"} /></div>
             <p className="mt-3 min-h-12 font-mono text-xs leading-5 text-[#8BAAC0]">“{sample.text}”</p>
-            <div className="mt-5 flex flex-wrap gap-2"><button type="button" onClick={() => selectSample(scenario)} className={`rounded-lg px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-wider ${danger ? "bg-[#FF3B5C] text-white" : "bg-[#00FF87] text-[#04080C]"}`}>Usar esta voz</button><button type="button" onClick={() => speakSample(scenario)} className="inline-flex items-center gap-2 rounded-lg border border-[#284258] px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-[#CDE8F0] hover:border-[#00D4FF] hover:text-[#00D4FF]">{previewing === scenario ? <Square size={12} /> : <Play size={12} />}{previewing === scenario ? "Parar" : "Ouvir fala"}</button></div>
+            <div className="mt-5 flex flex-wrap gap-2"><button type="button" onClick={() => selectSample(scenario)} className={`rounded-lg px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-wider ${danger ? "bg-[#FF3B5C] text-white" : "bg-[#00FF87] text-[#04080C]"}`}>Usar esta voz</button><button type="button" onClick={() => playSampleAudio(scenario)} className="inline-flex items-center gap-2 rounded-lg border border-[#284258] px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-[#CDE8F0] hover:border-[#00D4FF] hover:text-[#00D4FF]">{previewing === scenario ? <Square size={12} /> : <Play size={12} />}{previewing === scenario ? "Pausar" : "Ouvir gravação real"}</button></div>
           </article>;
         })}
       </div>

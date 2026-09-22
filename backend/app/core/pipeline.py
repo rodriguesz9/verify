@@ -7,6 +7,68 @@ from app.core.domain_checker import check_domain_reputation
 from app.core.gptzero_client import detect_ai_text
 from app.core.serper_client import search_news
 from app.core.scam_detector import analyze_scam_indicators
+from app.core.openrouter_service import analyze_with_openrouter
+
+
+def _verdicts_agree(v1: str, v2: str) -> bool:
+    """Check if two verdicts point to the same direction."""
+    a = v1.lower().strip() if v1 else ""
+    b = v2.lower().strip() if v2 else ""
+    positive = {"authentic", "true", "verdadeiro"}
+    negative = {"ai_generated", "manipulated", "suspicious", "scam", "fake", "falso", "enganoso"}
+    a_pos = a in positive
+    a_neg = a in negative
+    b_pos = b in positive
+    b_neg = b in negative
+    if a_pos and b_pos:
+        return True
+    if a_neg and b_neg:
+        return True
+    return False
+
+
+def _merge_verdicts(gemini_result: dict, openrouter_result: dict) -> dict:
+    """Merge Gemini and OpenRouter results using consensus."""
+    if not openrouter_result or openrouter_result.get("error"):
+        return gemini_result
+
+    g_verdict = gemini_result.get("verdict", "Suspicious").lower()
+    o_verdict = openrouter_result.get("verdict", "Suspicious").lower()
+    g_score = float(gemini_result.get("score", 50))
+    o_score = float(openrouter_result.get("score", 50))
+    agree = _verdicts_agree(g_verdict, o_verdict)
+
+    if agree:
+        final_score = min(100, max(0, int((g_score + o_score) / 2 * 1.1)))
+        note = "Ambos os modelos concordam na análise."
+    else:
+        final_score = int(g_score * 0.85)
+        note = "Modelos divergentes. Aplicação com Gemini (primário). Revise manualmente."
+
+    merged = dict(gemini_result)
+    merged["score"] = final_score
+    merged["divergent"] = not agree
+    merged["agreement_note"] = note
+    merged["model_used"] = f"gemini+openrouter ({gemini_result.get('model_used', 'gemini')}/{openrouter_result.get('model_used', 'openrouter')})" if agree else f"gemini (openrouter divergente)"
+    merged["openrouter_summary"] = openrouter_result.get("summary", "")
+    merged["openrouter_explanation"] = openrouter_result.get("plain_explanation", "")
+
+    return merged
+
+
+async def _run_openrouter_check(text: str) -> dict | None:
+    """Run OpenRouter analysis as secondary check."""
+    try:
+        result = await asyncio.wait_for(analyze_with_openrouter(text), timeout=45.0)
+        return result if result else None
+    except Exception as e:
+        print(f"OpenRouter cross-check failed: {e}")
+        return None
+
+
+async def _run_gemini_check(text: str, context: dict) -> dict:
+    """Run Gemini final report."""
+    return await generate_final_report(text, context)
 
 
 def extract_dates_from_text(text: str) -> list[str]:
@@ -157,7 +219,11 @@ async def run_pipeline(text: str, url: str | None = None) -> dict:
         "source_info": source_info,
     }
 
-    ai = await generate_final_report(analysis_text, context)
+    ai_task = asyncio.create_task(_run_gemini_check(analysis_text, context))
+    openrouter_task = asyncio.create_task(_run_openrouter_check(analysis_text))
+
+    ai, openrouter_result = await asyncio.gather(ai_task, openrouter_task)
+    ai = _merge_verdicts(ai, openrouter_result)
     ai["claims"] = claims
     ai["scam_analysis"] = scam_info
 
@@ -182,6 +248,10 @@ async def run_pipeline(text: str, url: str | None = None) -> dict:
             "earliest_known_date": (temporal_info.get("dates_found") or [None])[0],
             "temporal_info": temporal_info,
             "source_info": source_info,
+            "openrouter_available": openrouter_result is not None and not openrouter_result.get("error"),
+            "divergent": ai.get("divergent", False),
+            "agreement_note": ai.get("agreement_note", ""),
+            "model_used": ai.get("model_used", "gemini"),
         },
         "fact_checks": fact_checks,
         "serper_news": serper_news_results,

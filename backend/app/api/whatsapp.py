@@ -125,5 +125,6 @@ async def simulate_whatsapp_check(req: WhatsAppMessageRequest):
     
     return {
         "report": report,
-        "whatsapp_reply": formatted_reply
+        "whatsapp_reply": formatted_reply,
+        "whatsapp_response": formatted_reply
     }

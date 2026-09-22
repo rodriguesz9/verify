@@ -81,7 +81,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#04080C] pb-16 text-[#CDE8F0]">
-      <main className="mx-auto max-w-7xl px-5 pt-10 sm:px-8">
+      <main className="mx-auto max-w-7xl px-5 pt-28 sm:px-8">
 
         {/* Header */}
         <header className="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
