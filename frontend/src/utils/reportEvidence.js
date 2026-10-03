@@ -6,6 +6,12 @@ export function normalizeScore(value) {
     ? Math.min(100, Math.max(0, value)) : null;
 }
 
+export function visibleDetectorScore(layer, field = "ai_score") {
+  if (layer?.voting_eligible === false || layer?.decision_role === "experimental_signal") return null;
+  const score = layer?.[field];
+  return typeof score === "number" && Number.isFinite(score) && score >= 0 && score <= 1 ? score : null;
+}
+
 export function animatedScoreAt(target, progress) {
   const score = normalizeScore(target);
   if (score === null) return 0;
@@ -140,9 +146,22 @@ export function buildReportEvidence(result = {}, query = "") {
   const factChecks = [...(Array.isArray(result.fact_checks) ? result.fact_checks : []),
     ...(content !== result && Array.isArray(content.fact_checks) ? content.fact_checks : [])];
   const news = Array.isArray(result.serper_news) ? result.serper_news : [];
+  const acceptedUrls = new Set(claimAssessments.flatMap((claim) => Array.isArray(claim.evidence)
+    ? claim.evidence.map((source) => safeSourceUrl(source?.url)).filter(Boolean) : []));
+  const excludedReasons = new Map();
+  for (const claim of claimAssessments) {
+    for (const source of Array.isArray(claim.excluded_evidence) ? claim.excluded_evidence : []) {
+      const url = safeSourceUrl(source?.url);
+      if (url && typeof source?.exclusion_reason === "string") excludedReasons.set(url, source.exclusion_reason);
+    }
+  }
   const sources = [
     ...factChecks.filter((item) => item && typeof item === "object").map((item, index) => ({
-      id: `fact-${index}`, kind: "Checagem encontrada",
+      id: `fact-${index}`, kind: claimAssessments.length
+        ? acceptedUrls.has(safeSourceUrl(item.url)) ? "Checagem correspondente à afirmação" : "Resultado da busca · não usado na decisão"
+        : "Checagem encontrada · confira a correspondência",
+      note: claimAssessments.length && !acceptedUrls.has(safeSourceUrl(item.url))
+        ? excludedReasons.get(safeSourceUrl(item.url)) || "Não há correspondência validada com uma afirmação enviada. Não fundamenta este veredito." : "",
       title: typeof item.claim_text === "string" ? item.claim_text : "Afirmação consultada",
       publisher: typeof item.publisher === "string" ? item.publisher : "Fonte de checagem",
       rating: typeof item.rating === "string" ? item.rating : "",

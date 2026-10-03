@@ -68,7 +68,7 @@ HUGGINGFACE_AI_LABEL=ai
 Resultado final nesta etapa:
 
 - Backend: **178 testes e 93 subtestes aprovados**; dois avisos de descontinuação de dependências, nenhum erro.
-- Frontend: **29 casos aprovados**, distribuídos em cinco arquivos; build de produção aprovado.
+- Frontend: **30 casos aprovados**, distribuídos em cinco arquivos; build de produção aprovado.
 - HTTP local: **25 controles aprovados** (24 respostas esperadas e uma comparação comportamental). Incluem texto/lote, mídia inválida, imagem/vídeo, áudio invariável ao nome do arquivo, PDF, simulador WhatsApp, cadastro/login/refresh/logout, histórico e selo.
 - Interface: fluxo real do exemplo Pix até o relatório; Modo Fácil em 320 px sem rolagem horizontal. Ajustes de quebra de texto, botões e cabeçalho do indicador; sem novos erros no console nesse fluxo.
 - As suítes e controles HTTP usaram banco descartável local e **chaves externas desligadas**. Não foram usados dados ou banco de produção.

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {animatedScoreAt, normalizeScore, safeSourceUrl, buildReportEvidence} from "../src/utils/reportEvidence.js";
+import {animatedScoreAt, normalizeScore, safeSourceUrl, buildReportEvidence, visibleDetectorScore} from "../src/utils/reportEvidence.js";
 
 test("experimental detector response is not described as evidence weighing on verdict", () => {
   const report = buildReportEvidence({content_type: "image", provider_coverage: {
@@ -9,6 +9,21 @@ test("experimental detector response is not described as evidence weighing on ve
   assert.equal(report.findings.length, 1);
   assert.match(report.findings[0].detail, /não participa do veredito/);
   assert.doesNotMatch(report.findings[0].detail, /99/);
+  assert.equal(visibleDetectorScore({ai_score: 1, voting_eligible: false}), null);
+  assert.equal(visibleDetectorScore({ai_score: 1, decision_role: "experimental_signal"}), null);
+  assert.equal(visibleDetectorScore({ai_score: .99}), .99);
+  assert.equal(visibleDetectorScore({ai_score: Infinity}), null);
+});
+
+test("unrelated retrieved checks are labelled excluded, never as evidence supporting verdict", () => {
+  const accepted = {url: "https://example.com/matched", claim_text: "Afirmação enviada", rating: "Verdadeiro"};
+  const unrelated = {url: "https://example.com/other", claim_text: "Outra afirmação", rating: "Falso"};
+  const report = buildReportEvidence({claim_assessments: [{claim: "Afirmação enviada", status: "unverified", evidence: [accepted],
+    excluded_evidence: [{...unrelated, exclusion_reason: "Afirmação diferente; similaridade não basta."}]}], fact_checks: [accepted, unrelated]});
+  assert.match(report.sources[0].kind, /correspondente/);
+  assert.equal(report.sources[0].note, "");
+  assert.match(report.sources[1].kind, /não usado na decisão/);
+  assert.match(report.sources[1].note, /Afirmação diferente/);
 });
 
 test("refuted claims show attributed evidence, dates and exclusions", () => {

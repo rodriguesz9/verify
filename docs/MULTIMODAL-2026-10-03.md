@@ -11,7 +11,7 @@ Correções testadas com controles públicos e fictícios. Não é avaliação e
 | Gemini transcrição | Controle novo de fala portuguesa: prazo de 20 s atingido, inclusive após normalização | Continua não confiável nesse caminho. Preferência por AssemblyAI evita depender desse resultado. Não comprar quota para esconder a falha. |
 | Proteção de silêncio | Antes: Gemini inventou seis palavras num WAV silencioso. Depois: bloqueio local, nenhuma chamada de transcrição, zero palavras | Corrige silêncio/quase silêncio; não é um detector geral de voz nem resolve toda alucinação em gravações ruidosas. |
 | AssemblyAI | Nova fala sintética portuguesa, 16 palavras esperadas: 16 recuperadas; WER 0 nesse controle; 4,28 s | Integração/transcrição funcional, não reconhecimento de clonagem ou identidade. Usa somente os créditos gratuitos autorizados. |
-| Hugging Face | Endpoint compartilhado respondeu. Imagem declaradamente sintética: sinal IA 0,002527 — falso negativo | Conectado, porém experimental e **sem voto no veredito**, inclusive em quadros de vídeo. Não confundir acesso com qualidade. |
+| Hugging Face | Endpoint compartilhado respondeu. Imagem declaradamente sintética: sinal IA 0,002527 — falso negativo. Em produção, gráfico impresso local: sinal exibido de 100,0% (arredondado) — falso positivo | Conectado, porém experimental e **sem voto no veredito**, inclusive em quadros de vídeo. Não confundir acesso com qualidade. |
 | Sightengine imagem | Imagem sintética: `genai` 0,99; controle gráfico impresso: 0,001; sinal facial 0,02/0,001 respectivamente | Dois controles de integração, não benchmark. Manipulação facial e fotografias humanas diversas não validadas. |
 | SerpAPI | Nova chave privada autenticada: Account API HTTP 200, sem consumir uma pesquisa | Credencial válida nessa tentativa. Busca Lens completa não revalidada; uploads privados não são publicados para obter URL. |
 | Hive | Nenhuma chamada nova nesta etapa | Teste anterior de imagem permanece registrado. Áudio, face-swap e lip-sync não validados. Chamadas pagas continuam pausadas. |
@@ -41,13 +41,14 @@ Manter `OPENROUTER_MODEL=openrouter/free`, preço máximo zero, `HIVE_V3_MEDIA_T
 - Polling AssemblyAI dentro de prazo único de 25 s, sem reenviar automaticamente uma tarefa pendente. Camada de áudio com prazo de 50 s; entrada permanece limitada a dois minutos. Há distinção entre erro, ausência de fala e sucesso.
 - Respostas estruturadas de OCR/transcrição, modelo efetivo e tentativas registradas, sem respostas brutas ou credenciais.
 - HF exige URL oficial HTTPS, classe positiva exata e scores finitos; não segue redirecionamentos autenticados. Resultado experimental fica visível, mas não determina origem.
+- A visão simples não apresenta porcentagens de detectores experimentais. O valor bruto permanece no diagnóstico técnico. Fontes recuperadas sem correspondência validada são rotuladas como não usadas na decisão, com o motivo; uma checagem de outro assunto marcada “Falso” não prova falsidade do conteúdo enviado.
 - “Urgente” isolado e “não pague uma taxa” deixam de gerar esses falsos alarmes. Negação é tratada por regras conservadoras, não compreensão semântica completa: citações, ironia e relatos ainda podem exigir análise humana.
 - Demonstração impede trocar arquivo durante análise/carregamento/gravação; não apresenta resultado de uma amostra como se fosse de outra.
 - Atalhos e título da demonstração corrigidos no Modo Fácil: largura de conteúdo 305 px em viewport 320 px com área reservada à barra de rolagem; sem rolagem lateral nesse controle.
 
 ## Verificação reproduzível
 
-Backend: **178 testes + 93 subtestes aprovados**; frontend: **29 casos aprovados**; build de produção aprovado. Docker inclui Tesseract português/inglês e FFmpeg. Controle visual percorreu envio de imagem → OCR → consulta factual → relatório, sem erro de console; conteúdo sem evidência correspondente permaneceu inconclusivo.
+Backend: **178 testes + 93 subtestes aprovados**; frontend: **30 casos aprovados**; build de produção aprovado. Docker inclui Tesseract português/inglês e FFmpeg. Controle visual percorreu envio de imagem → OCR → consulta factual → relatório, sem erro de console; conteúdo sem evidência correspondente permaneceu inconclusivo.
 
 HTTP local: **25 controles aprovados**, com chaves externas desligadas e banco SQLite descartável. O primeiro lote atingiu corretamente o limite 429; a repetição usou limites maiores **somente no contêiner de testes**, sem alterar produção. Cadastro, login, refresh, logout, histórico, PDF, lote, WhatsApp simulado e selos passaram; isso não valida transporte WhatsApp real nem todos os fornecedores.
 
@@ -65,6 +66,16 @@ PYTHONPATH=backend python backend/scripts/multimodal_probe.py \
 ```
 
 O probe não inclui chamadas Hive, não contrata endpoints e não imprime chaves. `hf_image` usa o controle sintético conhecido e registra eventual erro de classificação. `gemini_pt` não usa AssemblyAI escondido para transformar uma falha Gemini em sucesso. As amostras são controles de desenvolvimento, nunca conjunto independente de validação.
+
+## Controle público após publicação
+
+Commit de backend `addbf27`: deployment Railway `5010379a-bfa7-4da1-afaf-32f0d2b9661e` confirmou `SUCCESS`, aplicação iniciada na porta 8080. Variáveis não secretas acima aplicadas. Vercel apresentou os WAVs e rótulos novos. Não houve alteração de segredos, plano ou banco de produção.
+
+- Áudio pelo navegador público: `POST /api/verificar/audio-rapido` HTTP 200, 2.889 ms totais; transcrição exatamente igual às 16 palavras da conversa portuguesa. Origem da voz permaneceu inconclusiva, com Hive/Sightengine áudio pausados. Nenhum erro de console observado.
+- Imagem pelo navegador público: `POST /api/upload` HTTP 200, 6.657 ms totais; quatro linhas lidas por Tesseract. Sightengine/HF/Gemini visual responderam; HF experimental não alterou o veredito. Sem novo erro de console. Google Fact Check trouxe resultados de outro assunto, rejeitados pela correspondência conservadora: não se tornaram prova de falsidade.
+- A leitura direta da rota de capacidades foi bloqueada na navegação deste ambiente; o proxy Railway registrou HTTP 200. A conferência dos fluxos públicos foi feita pela interface e pelos logs, sem contornar proteções do navegador.
+
+Esses são controles limitados, não uma homologação de todas as modalidades ou uma garantia para futuros pedidos. Os ajustes de exibição posteriores preservam os mesmos dados/política; não adicionam votos nem atribuem precisão ao HF.
 
 ## O que ainda falta para avaliar precisão
 

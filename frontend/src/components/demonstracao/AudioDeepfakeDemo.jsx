@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AudioLines, FileAudio, Mic, Play, ShieldAlert, Square, Upload, Volume2 } from "lucide-react";
 import { verifyAudioQuick } from "../../services/api";
+import { visibleDetectorScore } from "../../utils/reportEvidence";
 
 const SAMPLES = {
   cloned: {
@@ -187,7 +188,7 @@ export default function AudioDeepfakeDemo() {
         {result.isDemo && <p className="mb-5 rounded-lg border border-[#FFB800]/30 bg-[#FFB800]/10 p-3 text-center font-mono text-[10px] leading-5 text-[#FFDB85]">Resultado educativo da comparação. Para uma análise forense real, envie ou grave um áudio de verdade.</p>}
         <div className="border-b border-white/10 pb-5"><span className="font-mono text-[10px] text-[#8BAAC0]">Processamento da transcrição: {result.tempo_processamento_ms ?? 0} ms</span><h3 className="mt-2 font-syne text-2xl font-black text-[#FFCB55]">{inconclusive ? "Origem da voz inconclusiva" : "Indícios de fala sintética"}</h3></div>
         <p className="mt-3 text-sm text-[#8BAAC0]">Resultado acústico não comprova identidade nem falsidade da fala. Detectores podem errar.</p>
-        {result.provider_coverage && <ul className="mt-3 text-xs text-[#8BAAC0] space-y-2">{Object.entries(result.provider_coverage).map(([name, layer]) => <li key={name}>{name}: {layer.status === "success" ? "respondeu" : "indisponível"}{typeof layer.ai_score === "number" ? ` · sinal ${(layer.ai_score * 100).toFixed(1)}% (não calibrado)` : ""}</li>)}</ul>}
+        {result.provider_coverage && <ul className="mt-3 text-xs text-[#8BAAC0] space-y-2">{Object.entries(result.provider_coverage).map(([name, layer]) => <li key={name}>{name}: {layer.status === "success" ? "respondeu" : "indisponível"}{visibleDetectorScore(layer) !== null ? ` · sinal ${(visibleDetectorScore(layer) * 100).toFixed(1)}% (não calibrado)` : ""}</li>)}</ul>}
         <p className="mt-5 font-syne text-base font-bold leading-relaxed text-[#CDE8F0]">{result.short_explanation}</p>
         {result.transcription && <p className="mt-4 text-sm text-[#CDE8F0]">Transcrição: {result.transcription}</p>}
         {result.indicators?.length > 0 && <ul className="mt-5 space-y-3">{result.indicators.map((indicator, index) => <li key={index} className="flex gap-3 font-mono text-xs leading-5 text-[#CDE8F0]"><span className={isSynthetic ? "text-[#FF8195]" : "text-[#00FF87]"}>{isSynthetic ? "!" : "✓"}</span>{indicator}</li>)}</ul>}

@@ -4,6 +4,7 @@ import { getLog } from "../services/api";
 import Footer from "../components/Footer";
 import AnimatedScore from "../components/report/AnimatedScore";
 import EvidenceExplanation from "../components/report/EvidenceExplanation";
+import { visibleDetectorScore } from "../utils/reportEvidence";
 import { Shield, AlertTriangle, ArrowRight, Volume2, Phone, ChevronDown, ChevronUp, FileJson } from "lucide-react";
 
 const BADGE_STYLES = {
@@ -190,8 +191,8 @@ export default function ReportPage() {
                 <strong className="capitalize">{name}</strong>
                 <p className="mt-1">{layer.status === "success" ? "Respondeu" : layer.status === "partial" ? "Cobertura parcial" : layer.status === "no_results" ? "Consulta sem resultados" : "Não disponível"}</p>
                 {typeof layer.reason === "string" && <p className="mt-2 text-[#8AA2B4]">{layer.reason}</p>}
-                {typeof layer.ai_score === "number" && <p>Sinal de IA: {(layer.ai_score * 100).toFixed(1)}% · não calibrado</p>}
-                {typeof layer.deepfake_score === "number" && <p>Sinal de manipulação facial: {(layer.deepfake_score * 100).toFixed(1)}% · não calibrado</p>}
+                {visibleDetectorScore(layer) !== null && <p>Sinal de IA: {(visibleDetectorScore(layer) * 100).toFixed(1)}% · não calibrado</p>}
+                {visibleDetectorScore(layer, "deepfake_score") !== null && <p>Sinal de manipulação facial: {(visibleDetectorScore(layer, "deepfake_score") * 100).toFixed(1)}% · não calibrado</p>}
               </div>)}</div>
           </section>}
           {result.media_details?.duration_seconds && <p className="mt-4 text-sm">Duração: {result.media_details.duration_seconds.toFixed(1)} s. {result.content_type === "video" ? `Análise de ${result.forensics?.video?.sampled_frames ?? "alguns"} quadros amostrados, não do vídeo inteiro.` : ""}</p>}

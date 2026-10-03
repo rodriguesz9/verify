@@ -66,6 +66,7 @@ export default function EvidenceExplanation({result, query}) {
           <div className="space-y-3">{evidence.sources.map((source) => <article key={source.id} className="p-4 rounded-xl bg-[#070F17] border border-[#1D3B4D]">
             <p className="text-xs text-[#8AA2B4] mb-2">{source.kind} · {source.publisher}{source.date ? ` · ${source.date}` : ""}</p>
             <p className="text-sm font-bold leading-6">{source.title}</p>
+            {source.note && <p className="mt-2 text-sm text-[#A7BFCD]">Não usada como evidência: {source.note}</p>}
             {source.rating && <p className="text-sm text-[#FFCB55] mt-2">Avaliação da fonte para essa afirmação: {source.rating}</p>}
             {source.url && <a href={source.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 mt-3 text-sm text-[#00D4FF] underline underline-offset-4">
               Abrir fonte original <ExternalLink size={13} aria-hidden="true" />
