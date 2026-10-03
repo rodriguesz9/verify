@@ -54,6 +54,8 @@ class FreeRouterTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(post.call_args.kwargs["json"]["model"], "openrouter/free")
         self.assertTrue(all(value == 0 for value in post.call_args.kwargs["json"]["provider"]["max_price"].values()))
         self.assertEqual(post.call_args.kwargs["json"]["provider"]["sort"], "latency")
+        self.assertTrue(post.call_args.kwargs["json"]["provider"]["require_parameters"])
+        self.assertEqual(post.call_args.kwargs["json"]["response_format"], router.CLAIMS_FORMAT)
         self.assertEqual(result["model_used"], "vendor/model:free")
         self.assertEqual(result["decision_role"], "search_hints_only")
         self.assertNotIn("verdict", result)
@@ -65,6 +67,23 @@ class FreeRouterTests(unittest.IsolatedAsyncioTestCase):
             result = await router.analyze_with_openrouter(text)
         self.assertEqual(result["claims"], [text])
         self.assertNotIn("score", result)
+
+    async def test_single_complete_json_fence_is_accepted_without_repair_call(self):
+        text = "O Brasil está na América do Sul."
+        body = "```json\n" + json.dumps({"claims": [text]}) + "\n```"
+        with patch("httpx.AsyncClient.post", new=AsyncMock(return_value=httpx.Response(200, json=router_response(body)))) as post:
+            result = await router.analyze_with_openrouter(text)
+        self.assertTrue(result["available"])
+        self.assertEqual(result["claims"], [text])
+        self.assertEqual(post.await_count, 1)
+
+    async def test_ambiguous_prose_or_multiple_json_objects_are_rejected(self):
+        for value in ('Aqui está: {"claims": []}', '{"claims": []}{"claims": []}', '```python\n{"claims": []}\n```'):
+            with self.subTest(value=value), patch("httpx.AsyncClient.post", new=AsyncMock(return_value=httpx.Response(200, json=router_response(value)))):
+                result = await router.analyze_with_openrouter("Uma afirmação literal de controle.")
+                self.assertFalse(result["available"])
+                self.assertEqual(result["response_issue"], "invalid_json")
+                self.assertEqual(result["model_used"], "vendor/model:free")
 
     async def test_invalid_and_truncated_responses_are_not_success(self):
         for body in ([], {"choices": []}, router_response(choices=[{"finish_reason": "length", "message": {"content": "{}"}}]),
@@ -125,6 +144,7 @@ class FreeRouterTests(unittest.IsolatedAsyncioTestCase):
         uri = content[1]["image_url"]["url"]
         self.assertEqual(base64.b64decode(uri.split(",", 1)[1]), valid_png())
         self.assertEqual(result["decision_role"], "ocr_only")
+        self.assertEqual(post.call_args.kwargs["json"]["response_format"], router.OCR_FORMAT)
         self.assertEqual(result["text"], "Pague uma taxa")
         self.assertNotIn("verdict", result)
 

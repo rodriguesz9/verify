@@ -251,7 +251,7 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
                   next((q["reason"] for q in queries if q["reason"]), None)}}
     if use_ai_extraction:
         ai["provider_coverage"]["openrouter"] = {key: value for key, value in openrouter_result.items()
-            if key in {"available", "status", "reason", "model_used", "decision_role", "free_only"}}
+            if key in {"available", "status", "reason", "model_used", "decision_role", "free_only", "response_issue"}}
     news_queries = [{"status": "error" if task.exception() else getattr(task.result(), "status", "success" if task.result() else "no_results"),
                      "reason": "Falha na busca de contexto." if task.exception() else getattr(task.result(), "reason", None)}
                     for task in serper_news_tasks]

@@ -9,7 +9,7 @@ O código das integrações foi atualizado. **Isso não significa que todas as A
 | Gemini — texto | Uma resposta JSON válida com `gemini-3.7-flash` | Funcionou no controle mínimo. Foram observados timeouts em tentativas anteriores. Não é validação de todas as análises. |
 | Gemini — leitura de imagem | HTTP 503 no último controle | Indisponível nessa tentativa; OCR alternativo gratuito do OpenRouter foi implementado, mas precisa de validação com chave. |
 | Gemini — transcrição | Prazo de 12 s atingido | Não foi possível transcrever nesse controle. O relatório conserva esse motivo, sem inventar fala ou autenticidade. |
-| OpenRouter | Chave local ausente; chamada pública no Railway não concluiu em 12 s | Prazo corrigido para 25 s de HTTP/27 s da camada, com prioridade de menor latência e preço máximo zero. A resposta real precisa ser conferida após esse ajuste. |
+| OpenRouter | Chave local ausente; no Railway houve timeout inicial e, após ampliar o prazo, resposta fora do formato esperado | Prazo de 25 s de HTTP/27 s da camada, prioridade de menor latência, preço máximo zero e contrato JSON Schema estrito. A resposta real precisa ser conferida após reforçar o contrato. |
 | Hive v3 — imagem | Uma chamada com a imagem sintética de controle | Resposta válida: sinal de geração por IA próximo de 1; sinal de deepfake próximo de 0. Não valida reconhecimento de face-swap nem sensibilidade geral. |
 | Hive v3 — áudio/vídeo | Não executado | Sem gasto adicional autorizado. As duas saídas visuais usam a mesma chamada, não dois votos independentes. |
 | Hugging Face | Sem endpoint de detecção configurado | Token sozinho não disponibiliza um detector. Não foi contratado servidor/GPU pago. |
@@ -41,6 +41,7 @@ VIDEO_MAX_FRAMES=3
 - HTTP 402/429 interrompe a tentativa e pausa o provedor; não tenta outro modelo para contornar quota.
 - O modelo efetivamente escolhido é registrado. No free router ele pode variar.
 - A seleção prioriza menor latência sem liberar provedores pagos. O limite inicial de 12 s interrompeu a extração no teste público e foi ampliado de forma limitada; isso não garante disponibilidade dos modelos gratuitos.
+- A requisição exige suporte aos parâmetros e usa JSON Schema com campos explícitos. Localmente, aceita somente JSON completo ou um único envelope Markdown completo; não tenta executar/reparar código, extrair objetos de prosa arbitrária ou comprar outra resposta. Saída inválida registra categoria e modelo, sem vazar resposta bruta.
 - A IA extrai trechos literais para pesquisa ou lê texto de imagens. Sua opinião não define verdade/falsidade, identidade, clonagem de voz ou origem da mídia.
 - Provedores gratuitos podem ter políticas próprias de retenção/uso de dados. Evite conteúdo pessoal sensível e consulte a página de privacidade.
 
@@ -57,7 +58,7 @@ VIDEO_MAX_FRAMES=3
 
 Resultado final nesta etapa:
 
-- Backend: **162 testes e 90 subtestes aprovados**; dois avisos de descontinuação de dependências, nenhum erro.
+- Backend: **164 testes e 93 subtestes aprovados**; dois avisos de descontinuação de dependências, nenhum erro.
 - Frontend: **27 casos aprovados**, distribuídos em quatro arquivos; build de produção aprovado.
 - HTTP local: **25 controles aprovados** (24 respostas esperadas e uma comparação comportamental). Incluem texto/lote, mídia inválida, imagem/vídeo, áudio invariável ao nome do arquivo, PDF, simulador WhatsApp, cadastro/login/refresh/logout, histórico e selo.
 - Interface: fluxo real do exemplo Pix até o relatório; Modo Fácil em 320 px sem rolagem horizontal. Ajustes de quebra de texto, botões e cabeçalho do indicador; sem novos erros no console nesse fluxo.
@@ -67,7 +68,7 @@ As amostras sintéticas de imagem/vídeo verificam decodificação e fluxo, não
 
 Publicação do commit de integrações `ac727ee`: Railway confirmou `SUCCESS`, build com Dockerfile e instalação de FFmpeg/ExifTool, aplicação iniciada na porta 8080. No Vercel foram conferidos CSS e identificadores públicos do JavaScript atualizados. A interface pública enviou o exemplo Pix e recebeu relatório (`POST /api/check-text` HTTP 200), com Google Fact Check e Serper respondendo. Tentativas diretas deste ambiente ao backend tiveram falha de conexão, mas o fluxo pelo navegador funcionou; elas não provam indisponibilidade do serviço.
 
-O ajuste subsequente de latência tem sua própria suíte aprovada e precisa ser publicado/conferido. OCR/transcrição passam à consulta literal de evidências, sem uma segunda extração por LLM que gastaria quota e poderia atrasar/cancelar a busca factual. O estado `not_tested` em `/api/capabilities` é proposital: presença de variável não é um teste ativo, nem dispara cobrança.
+O ajuste de latência `1fd2157` também teve deploy Railway `SUCCESS` e controle público concluído: OpenRouter respondeu, mas a saída não atendia ao formato esperado, sem alterar o veredito. O contrato JSON foi reforçado em seguida, com nova suíte aprovada. OCR/transcrição passam à consulta literal de evidências, sem uma segunda extração por LLM que gastaria quota e poderia atrasar/cancelar a busca factual. O estado `not_tested` em `/api/capabilities` é proposital: presença de variável não é um teste ativo, nem dispara cobrança.
 
 ## Limites dos vereditos
 
@@ -78,6 +79,7 @@ Mídia separa origem/produção do conteúdo factual. Os limiares experimentais 
 ## Referências oficiais
 
 - [OpenRouter free router](https://openrouter.ai/openrouter/free), [limites gratuitos](https://openrouter.ai/docs/api_reference/limits) e [seleção/preço máximo de provedores](https://openrouter.ai/docs/guides/routing/provider-selection).
+- [OpenRouter: contrato JSON Schema e suporte por endpoint](https://openrouter.ai/docs/guides/features/structured-outputs).
 - [Aviso sobre cobrança com auto:free](https://openrouter.zendesk.com/hc/en-us/articles/51679572756123-I-used-openrouter-auto-free-or-auto-and-still-got-charged).
 - [Hive v3: modelo, classes e requisição](https://docs.thehive.ai/docs/ai-generated-and-deepfake-content-detection-playground) e [tarifa do modelo](https://thehive.ai/models/hive/ai-generated-and-deepfake-content-detection).
 - [Gemini 3.7 Flash](https://ai.google.dev/gemini-api/docs/models/gemini-3.7-flash) e [thinkingLevel](https://ai.google.dev/gemini-api/docs/thinking).
