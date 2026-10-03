@@ -88,12 +88,12 @@ async def _generate(prompt, system_instruction, temperature, max_tokens, json_ou
     messages.append({"role": "user", "content": prompt})
     headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json",
                "HTTP-Referer": "https://verifybr.vercel.app", "X-OpenRouter-Title": "Verify"}
-    async with httpx.AsyncClient(timeout=12, trust_env=False, follow_redirects=False) as client:
+    async with httpx.AsyncClient(timeout=25, trust_env=False, follow_redirects=False) as client:
         for index, model in enumerate(models):
             _reserve_request()
             payload = {"model": model, "messages": messages, "temperature": temperature,
                        "max_tokens": max(64, min(2048, max_tokens)),
-                       "provider": {"max_price": {"prompt": 0, "completion": 0, "request": 0, "image": 0}}}
+                       "provider": {"sort": "latency", "max_price": {"prompt": 0, "completion": 0, "request": 0, "image": 0}}}
             if json_output:
                 payload["response_format"] = {"type": "json_object"}
             try:

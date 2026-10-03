@@ -9,11 +9,13 @@ O código das integrações foi atualizado. **Isso não significa que todas as A
 | Gemini — texto | Uma resposta JSON válida com `gemini-3.7-flash` | Funcionou no controle mínimo. Foram observados timeouts em tentativas anteriores. Não é validação de todas as análises. |
 | Gemini — leitura de imagem | HTTP 503 no último controle | Indisponível nessa tentativa; OCR alternativo gratuito do OpenRouter foi implementado, mas precisa de validação com chave. |
 | Gemini — transcrição | Prazo de 12 s atingido | Não foi possível transcrever nesse controle. O relatório conserva esse motivo, sem inventar fala ou autenticidade. |
-| OpenRouter | Chave local ausente; variável mascarada existe no Railway | Integração gratuita implementada e testada com respostas controladas. A chamada real ainda precisa ser validada. |
+| OpenRouter | Chave local ausente; chamada pública no Railway não concluiu em 12 s | Prazo corrigido para 25 s de HTTP/27 s da camada, com prioridade de menor latência e preço máximo zero. A resposta real precisa ser conferida após esse ajuste. |
 | Hive v3 — imagem | Uma chamada com a imagem sintética de controle | Resposta válida: sinal de geração por IA próximo de 1; sinal de deepfake próximo de 0. Não valida reconhecimento de face-swap nem sensibilidade geral. |
 | Hive v3 — áudio/vídeo | Não executado | Sem gasto adicional autorizado. As duas saídas visuais usam a mesma chamada, não dois votos independentes. |
 | Hugging Face | Sem endpoint de detecção configurado | Token sozinho não disponibiliza um detector. Não foi contratado servidor/GPU pago. |
-| Google Fact Check, Serper, Sightengine, AssemblyAI e SerpAPI | Não revalidados ao vivo nesta etapa | Adaptadores e políticas têm controles automatizados; acesso, modelo e quota reais ainda precisam ser confirmados. |
+| Google Fact Check | Consulta pública concluída, sem checagens correspondentes ao exemplo Pix | Sem correspondência não significa verdadeiro/falso. Não valida resultados para outras afirmações. |
+| Serper | Uma notícia relacionada retornada no relatório público do exemplo Pix | Funcionou nesse controle; notícia relacionada não é automaticamente prova sobre a mensagem. |
+| Sightengine, AssemblyAI e SerpAPI | Não revalidados ao vivo nesta etapa | Adaptadores e políticas têm controles automatizados; acesso, modelo e quota reais ainda precisam ser confirmados. |
 
 O Hive foi testado **uma única vez**, dentro da autorização de US$ 0,01. O custo nominal estimado foi **US$ 0,006**, pela tarifa exibida no playground; não houve conferência do lançamento no extrato. Não houve recarga, cartão novo, chamada de áudio/vídeo ou repetição automática. `HIVE_V3_MEDIA_TYPES` fica vazio em produção: a autorização de um teste não autoriza gasto contínuo com visitantes.
 
@@ -38,6 +40,7 @@ VIDEO_MAX_FRAMES=3
 - Limite preventivo de 40 tentativas/dia UTC e 10/minuto **por processo**; tentativas com erro contam. Reinícios e múltiplas réplicas não compartilham esse contador. A quota da conta OpenRouter continua sendo o limite externo efetivo.
 - HTTP 402/429 interrompe a tentativa e pausa o provedor; não tenta outro modelo para contornar quota.
 - O modelo efetivamente escolhido é registrado. No free router ele pode variar.
+- A seleção prioriza menor latência sem liberar provedores pagos. O limite inicial de 12 s interrompeu a extração no teste público e foi ampliado de forma limitada; isso não garante disponibilidade dos modelos gratuitos.
 - A IA extrai trechos literais para pesquisa ou lê texto de imagens. Sua opinião não define verdade/falsidade, identidade, clonagem de voz ou origem da mídia.
 - Provedores gratuitos podem ter políticas próprias de retenção/uso de dados. Evite conteúdo pessoal sensível e consulte a página de privacidade.
 
@@ -46,7 +49,7 @@ VIDEO_MAX_FRAMES=3
 1. **OpenRouter:** gere/use a chave em [Settings → Keys](https://openrouter.ai/settings/keys). Mantenha-a somente no backend/Railway. Para o teste local, preencha `OPENROUTER_API_KEY` no `.env` privado do backend e avise; não cole no chat nem use variável `VITE_` para segredos.
 2. **Hive:** a chave v3 é a **Secret Key**, não o Access Key ID da captura. Use `HIVE_V3_API_KEY` ou a `HIVE_API_KEY` existente com `HIVE_API_VERSION=v3`. Só preencha `HIVE_V3_MEDIA_TYPES=image,audio` se decidir autorizar o consumo contínuo. Isso é pago; vídeo também consome análises de quadros. A plataforma não dispõe aqui de um teto financeiro global do Hive.
 3. **Hugging Face:** configure um endpoint compatível com o contrato documentado em [ATIVAR-DETECTORES.md](ATIVAR-DETECTORES.md). Não foi confirmado um detector hospedado gratuito adequado. Deixe desativado se exigir pagamento; ausência dessa camada gera resultado inconclusivo quando faltarem evidências.
-4. **Gemini:** a chave funcionou para texto, mas OCR/transcrição tiveram indisponibilidade/prazo. Confira a [quota do projeto](https://aistudio.google.com/usage) e não ative faturamento só para ocultar o erro. O fallback de transcrição AssemblyAI usa `universal-2`, requer chave e crédito próprios.
+4. **Gemini:** a chave funcionou para texto, mas OCR/transcrição tiveram indisponibilidade/prazo. A janela de transcrição passou de 12 para 20 s; OCR usa até 12 s no Gemini e 20 s no fallback gratuito, sem certificado de funcionamento de todas as modalidades. Confira a [quota do projeto](https://aistudio.google.com/usage) e não ative faturamento só para ocultar o erro. O fallback de transcrição AssemblyAI usa `universal-2`, requer chave e crédito próprios.
 5. **SerpAPI:** a chave apareceu inteira em uma captura enviada. **Revogue e gere outra em [Manage API key](https://serpapi.com/manage-api-key)**, depois atualize o `.env` privado e Railway. Não reutilize a chave exposta.
 6. **Demais serviços:** confirme créditos gratuitos/entitlements antes dos testes reais. Não habilite `SIGHTENGINE_AUDIO_ENABLED` só porque a chave de imagem existe. Google Fact Check e buscas não garantem checagens correspondentes para toda mensagem.
 
@@ -54,7 +57,7 @@ VIDEO_MAX_FRAMES=3
 
 Resultado final nesta etapa:
 
-- Backend: **161 testes e 90 subtestes aprovados**; dois avisos de descontinuação de dependências, nenhum erro.
+- Backend: **162 testes e 90 subtestes aprovados**; dois avisos de descontinuação de dependências, nenhum erro.
 - Frontend: **27 casos aprovados**, distribuídos em quatro arquivos; build de produção aprovado.
 - HTTP local: **25 controles aprovados** (24 respostas esperadas e uma comparação comportamental). Incluem texto/lote, mídia inválida, imagem/vídeo, áudio invariável ao nome do arquivo, PDF, simulador WhatsApp, cadastro/login/refresh/logout, histórico e selo.
 - Interface: fluxo real do exemplo Pix até o relatório; Modo Fácil em 320 px sem rolagem horizontal. Ajustes de quebra de texto, botões e cabeçalho do indicador; sem novos erros no console nesse fluxo.
@@ -62,7 +65,9 @@ Resultado final nesta etapa:
 
 As amostras sintéticas de imagem/vídeo verificam decodificação e fluxo, não são um conjunto representativo de deepfakes. O simulador WhatsApp não comprova entrega para um número real. Os testes anteriores de PostgreSQL e Docker continuam registrados no README; não equivalem a confirmar o runtime do novo deployment Railway.
 
-O endpoint público do backend não pôde ser acessado deste ambiente na tentativa inicial (timeout de conexão). Publicação/deployment deve ser conferido após o push. O estado `not_tested` em `/api/capabilities` é proposital: presença de variável não é um teste ativo, nem dispara cobrança.
+Publicação do commit de integrações `ac727ee`: Railway confirmou `SUCCESS`, build com Dockerfile e instalação de FFmpeg/ExifTool, aplicação iniciada na porta 8080. No Vercel foram conferidos CSS e identificadores públicos do JavaScript atualizados. A interface pública enviou o exemplo Pix e recebeu relatório (`POST /api/check-text` HTTP 200), com Google Fact Check e Serper respondendo. Tentativas diretas deste ambiente ao backend tiveram falha de conexão, mas o fluxo pelo navegador funcionou; elas não provam indisponibilidade do serviço.
+
+O ajuste subsequente de latência tem sua própria suíte aprovada e precisa ser publicado/conferido. OCR/transcrição passam à consulta literal de evidências, sem uma segunda extração por LLM que gastaria quota e poderia atrasar/cancelar a busca factual. O estado `not_tested` em `/api/capabilities` é proposital: presença de variável não é um teste ativo, nem dispara cobrança.
 
 ## Limites dos vereditos
 

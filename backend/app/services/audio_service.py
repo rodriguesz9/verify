@@ -144,7 +144,7 @@ async def analyze_audio_quick_for_demonstration(file_bytes: bytes, filename: str
     try:
         transcription = await asyncio.wait_for(
             transcribe_and_extract_audio(file_bytes, mime_type),
-            timeout=12
+            timeout=20
         )
         if transcription:
             transcription_provider = "gemini"

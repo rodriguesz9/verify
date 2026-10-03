@@ -53,6 +53,7 @@ class FreeRouterTests(unittest.IsolatedAsyncioTestCase):
             result = await router.analyze_with_openrouter("O Brasil está na América do Sul.")
         self.assertEqual(post.call_args.kwargs["json"]["model"], "openrouter/free")
         self.assertTrue(all(value == 0 for value in post.call_args.kwargs["json"]["provider"]["max_price"].values()))
+        self.assertEqual(post.call_args.kwargs["json"]["provider"]["sort"], "latency")
         self.assertEqual(result["model_used"], "vendor/model:free")
         self.assertEqual(result["decision_role"], "search_hints_only")
         self.assertNotIn("verdict", result)
@@ -102,6 +103,19 @@ class FreeRouterTests(unittest.IsolatedAsyncioTestCase):
             result = await run_pipeline("O Brasil está na América do Sul.")
         self.assertEqual(result["report"]["analysis_status"], "inconclusive")
         self.assertEqual(result["report"]["veracity_status"], "unverified")
+
+    async def test_media_text_retrieval_does_not_wait_or_spend_on_second_extraction(self):
+        from app.services.media_analysis import check_content
+        with patch("app.core.pipeline.analyze_with_openrouter", new=AsyncMock()) as ai, \
+             patch("app.core.pipeline.extract_claims_with_ai", new=AsyncMock()) as gemini, \
+             patch("app.core.pipeline.query_fact_check_api", new=AsyncMock(return_value=[])) as facts, \
+             patch("app.core.pipeline.search_news", new=AsyncMock(return_value=[])):
+            report = await check_content("O Brasil está na América do Sul.", "ocr")
+        ai.assert_not_awaited()
+        gemini.assert_not_awaited()
+        self.assertEqual(facts.call_args_list[0].args[0], "O Brasil está na América do Sul.")
+        self.assertEqual(report["veracity_status"], "unverified")
+        self.assertNotIn("openrouter", report["provider_coverage"])
 
     async def test_free_vision_ocr_sends_real_bytes_not_filename(self):
         import base64

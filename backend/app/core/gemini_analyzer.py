@@ -162,7 +162,7 @@ Retorne APENAS um JSON válido:
                 {"inline_data": {"mime_type": mime_type, "data": image_bytes}}
             ],
             temperature=0.0,
-        ), timeout=8)
+        ), timeout=12)
         result = json.loads(_extract_json_text(response))
         if not isinstance(result, dict) or not isinstance(result.get("text"), str):
             raise ValueError("OCR inválido")
@@ -178,7 +178,7 @@ Retorne APENAS um JSON válido:
         from app.core.gemini_client import GeminiError
         primary_status = getattr(exc, "status", "timeout" if isinstance(exc, asyncio.TimeoutError) else "error")
         try:
-            alternate = await asyncio.wait_for(extract_image_text(image_bytes, mime_type), timeout=8)
+            alternate = await asyncio.wait_for(extract_image_text(image_bytes, mime_type), timeout=20)
             if alternate.get("available"):
                 return {**alternate, "fallback_from": "gemini_unavailable", "gemini_status": primary_status}
             return {**alternate, "status": primary_status, "gemini_status": primary_status,

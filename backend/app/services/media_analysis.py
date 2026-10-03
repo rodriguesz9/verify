@@ -20,7 +20,7 @@ async def check_content(text: str, origin: str, timeout: float = 30) -> dict:
                 "origin": origin, "summary": "Texto extraído ausente ou fora dos limites para checagem."}
     from app.core.pipeline import run_pipeline
     try:
-        result = await asyncio.wait_for(run_pipeline(text.strip()), timeout)
+        result = await asyncio.wait_for(run_pipeline(text.strip(), use_ai_extraction=False), timeout)
         return {**result["report"], "origin": origin,
                 "limitations": [*result["report"].get("limitations", []), "OCR/transcrição podem conter erros: compare com o arquivo original."]}
     except Exception:
@@ -34,7 +34,7 @@ async def audio_layers(data: bytes, mime_type: str) -> dict:
     jobs = {"audio": analyze_audio_quick_for_demonstration(data, "evidence.audio", mime_type),
             "hive": check_hive_media(data, f"evidence.{suffix}", "audio", mime_type),
             "sightengine_audio": detect_synthetic_speech(data, mime_type)}
-    return dict(zip(jobs, await asyncio.gather(*(safe_layer(job, timeout=26 if name == "audio" else 18)
+    return dict(zip(jobs, await asyncio.gather(*(safe_layer(job, timeout=34 if name == "audio" else 18)
                                                for name, job in jobs.items()))))
 
 
@@ -58,7 +58,8 @@ async def image_layers(data: bytes, mime_type: str, filename: str, auxiliary=Tru
                      "context": search_context_and_provenance(image_bytes=data, filename="evidence.jpg"),
                      "ocr": extract_text_from_image(data, mime_type),
                      "gemini_vision": analyze_image_with_vision(data, mime_type, {})})
-    values = await asyncio.gather(*(safe_layer(job) for job in jobs.values()))
+    values = await asyncio.gather(*(safe_layer(job, timeout=35 if name == "ocr" else 18)
+                                  for name, job in jobs.items()))
     result = dict(zip(jobs, values))
     if hive_v3_enabled():
         # Same result, same provider family: never a second independent vote.

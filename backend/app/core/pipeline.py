@@ -61,7 +61,7 @@ def _merge_verdicts(gemini_result: dict, openrouter_result: dict) -> dict:
 async def _run_openrouter_check(text: str) -> dict | None:
     """Free auxiliary extraction, not a second opinion on truth."""
     try:
-        return await asyncio.wait_for(analyze_with_openrouter(text), timeout=12.0)
+        return await asyncio.wait_for(analyze_with_openrouter(text), timeout=27.0)
     except Exception:
         return {"available": False, "status": "timeout", "claims": [],
                 "reason": "Extração auxiliar OpenRouter indisponível.", "decision_role": "search_hints_only", "free_only": True}
@@ -148,7 +148,7 @@ def analyze_temporal_context(serper_news: list, scrape_date: str = None) -> dict
     }
 
 
-async def run_pipeline(text: str, url: str | None = None) -> dict:
+async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: bool = True) -> dict:
     source_url = url
     analysis_text = text
 
@@ -156,15 +156,19 @@ async def run_pipeline(text: str, url: str | None = None) -> dict:
 
     openrouter_result = {"available": False, "status": "not_configured", "claims": [],
                          "decision_role": "search_hints_only", "free_only": True}
-    if os.getenv("OPENROUTER_API_KEY", "").strip() and os.getenv("OPENROUTER_ENABLED", "true").lower() == "true":
+    if use_ai_extraction and os.getenv("OPENROUTER_API_KEY", "").strip() and os.getenv("OPENROUTER_ENABLED", "true").lower() == "true":
         openrouter_result = await _run_openrouter_check(analysis_text)
     if openrouter_result.get("available"):
         claims = openrouter_result["claims"]
-    else:
+    elif use_ai_extraction:
         try:
             claims = await asyncio.wait_for(extract_claims_with_ai(analysis_text), 12)
         except Exception:
             claims = []
+    else:
+        # OCR/transcription is already extraction. Do not spend another LLM
+        # request or let a slow helper cancel literal evidence retrieval.
+        claims = []
     # Retrieve literal input as well as extraction. Model paraphrases are search
     # hints only: they cannot change the statement that receives the verdict.
     fact_check_queries = list(dict.fromkeys([analysis_text, *input_claims(analysis_text), *claims]))[:5]
@@ -245,8 +249,9 @@ async def run_pipeline(text: str, url: str | None = None) -> dict:
         "status": status, "queries": queries, "matches_returned": len(fact_checks),
         "reason": "Consulta concluída sem checagens correspondentes." if status == "no_results" else
                   next((q["reason"] for q in queries if q["reason"]), None)}}
-    ai["provider_coverage"]["openrouter"] = {key: value for key, value in openrouter_result.items()
-        if key in {"available", "status", "reason", "model_used", "decision_role", "free_only"}}
+    if use_ai_extraction:
+        ai["provider_coverage"]["openrouter"] = {key: value for key, value in openrouter_result.items()
+            if key in {"available", "status", "reason", "model_used", "decision_role", "free_only"}}
     news_queries = [{"status": "error" if task.exception() else getattr(task.result(), "status", "success" if task.result() else "no_results"),
                      "reason": "Falha na busca de contexto." if task.exception() else getattr(task.result(), "reason", None)}
                     for task in serper_news_tasks]
