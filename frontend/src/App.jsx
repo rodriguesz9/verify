@@ -4,6 +4,7 @@ import { AuthProvider } from "./hooks/useAuth";
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SplashScreen from "./components/SplashScreen";
+import { useAccessibility } from "./hooks/useAccessibility";
 
 import LandingPage  from "./pages/LandingPage";
 import Home         from "./pages/Home";
@@ -31,7 +32,9 @@ function PageWrapper({ children }) {
 }
 
 export default function App() {
+  const { easyMode } = useAccessibility();
   const [showSplash, setShowSplash] = useState(true);
+  const [reducedMotion] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 2500);
@@ -40,7 +43,7 @@ export default function App() {
 
   return (
     <AuthProvider>
-      {showSplash && <SplashScreen />}
+      {showSplash && !easyMode && !reducedMotion && <SplashScreen />}
       <Routes>
         <Route path="/"            element={<PageWrapper><LandingPage /></PageWrapper>} />
         <Route path="/login"       element={<PageWrapper><LoginPage /></PageWrapper>} />

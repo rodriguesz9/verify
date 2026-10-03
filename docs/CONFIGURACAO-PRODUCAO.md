@@ -48,6 +48,8 @@ Você pode gerar dois segredos em um gerenciador de senhas. Não use senhas de e
 
 ## 2. Chaves para cada análise
 
+Passo a passo específico: [ativar Hugging Face, Hive e Gemini e entender o papel do OpenRouter](ATIVAR-DETECTORES.md).
+
 Nome cadastrado e asteriscos no painel não comprovam valor válido, acesso ao modelo ou saldo. Não precisa contratar tudo; camadas ausentes devem permanecer explícitas/inconclusivas.
 
 | Análise | Variáveis / serviço | Onde obter |

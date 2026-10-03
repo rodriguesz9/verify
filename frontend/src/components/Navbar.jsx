@@ -1,194 +1,74 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useId, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Shield, Menu, X, LogOut, ArrowRight, Type, Wifi, WifiOff } from "lucide-react";
 import { useAuth } from "../hooks/authContext";
-import { Search, LayoutDashboard, Info, Zap, LogOut, Menu, X, Shield, MessageCircle, ChevronDown, Wifi, WifiOff, Accessibility, Volume2, Eye } from "lucide-react";
+import { useAccessibility } from "../hooks/useAccessibility";
 import { getOfflineCount } from "../services/offlineCache";
+import EasyModeButton from "./EasyModeButton";
 
-const NAV_LINKS = [
-  { to: "/app", label: "Checar", icon: Search },
-  { to: "/dashboard", label: "Painel", icon: LayoutDashboard },
-  { to: "/demo", label: "Demonstração", icon: Zap },
-  { to: "/mission", label: "Sobre Nós", icon: Info },
-  { to: "/limitacoes", label: "Limitações", icon: Menu },
-];
+const APP_LINKS = [{ to: "/app", label: "Checar" }, { to: "/dashboard", label: "Painel" }, { to: "/demo", label: "Demonstração" }, { to: "/mission", label: "Sobre nós" }];
+const LANDING_LINKS = [{ href: "#como-funciona", label: "Como funciona" }, { href: "#protege", label: "Sua proteção" }, { to: "/demo", label: "Demonstração" }, { to: "/mission", label: "Sobre nós" }];
+const MORE_LINKS = [{ to: "/limitacoes", label: "Limitações" }, { to: "/terms", label: "Termos de uso" }, { to: "/privacy", label: "Privacidade" }];
 
-const DROPDOWN_ITEMS = [
-  { to: "/limitacoes", label: "Limitações de Uso" },
-  { to: "/termos", label: "Termos de Serviço" },
-  { to: "/privacidade", label: "Política de Privacidade" },
-];
-
-export default function Navbar() {
+export default function Navbar({ variant = "app" }) {
   const { user, signOut } = useAuth();
+  const { mode, easyMode, cycleTextSize } = useAccessibility();
   const navigate = useNavigate();
-  const [fontSize, setFontSize] = useState(() => localStorage.getItem("verify_font_size") || "normal");
-  const [isElderlyMode, setIsElderlyMode] = useState(() => {
-    const saved = localStorage.getItem("verify_elderly_mode");
-    return saved === "true";
-  });
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [open, setOpen] = useState(false);
+  const [online, setOnline] = useState(navigator.onLine);
   const [offlineCount, setOfflineCount] = useState(0);
+  const menuId = useId();
+  const navRef = useRef(null);
+  const menuButton = useRef(null);
+  const links = variant === "landing" ? LANDING_LINKS : APP_LINKS;
 
   useEffect(() => {
-    if (fontSize === "normal") {
-      document.documentElement.removeAttribute("data-font-size");
-      document.documentElement.removeAttribute("data-elderly-mode");
-    } else if (fontSize === "elderly") {
-      document.documentElement.setAttribute("data-font-size", "elderly");
-      document.documentElement.setAttribute("data-elderly-mode", "true");
-    } else {
-      document.documentElement.setAttribute("data-font-size", fontSize);
-      document.documentElement.removeAttribute("data-elderly-mode");
-    }
-    localStorage.setItem("verify_font_size", fontSize);
-  }, [fontSize]);
-
-  useEffect(() => {
-    if (isElderlyMode && fontSize !== "elderly") {
-      setFontSize("elderly");
-    }
-    localStorage.setItem("verify_elderly_mode", isElderlyMode);
-    if (!isElderlyMode) {
-      document.documentElement.removeAttribute("data-elderly-mode");
-    }
-  }, [isElderlyMode]);
-
-  useEffect(() => {
-    const handleElderlyChange = (e) => {
-      setIsElderlyMode(e.detail === true);
-    };
-    window.addEventListener("elderly-mode-change", handleElderlyChange);
-    return () => window.removeEventListener("elderly-mode-change", handleElderlyChange);
+    const update = () => { setOnline(navigator.onLine); setOfflineCount(getOfflineCount()); };
+    update();
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => { window.removeEventListener("online", update); window.removeEventListener("offline", update); };
   }, []);
-
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-    setOfflineCount(getOfflineCount());
-    return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
+    if (!open) return;
+    const keydown = (event) => {
+      if (event.key === "Escape") { setOpen(false); menuButton.current?.focus(); }
     };
-  }, []);
-
-  const toggleFontSize = () => {
-    if (fontSize === "normal") setFontSize("large");
-    else if (fontSize === "large") setFontSize("xlarge");
-    else setFontSize("normal");
-  };
-
-  const handleLogout = () => {
-    signOut();
-    navigate("/");
-  };
-
+    const outside = (event) => { if (!navRef.current?.contains(event.target)) setOpen(false); };
+    document.addEventListener("keydown", keydown);
+    document.addEventListener("pointerdown", outside);
+    return () => { document.removeEventListener("keydown", keydown); document.removeEventListener("pointerdown", outside); };
+  }, [open]);
+  const renderLink = ({ to, href, label }) => to
+    ? <Link key={label} to={to} onClick={() => setOpen(false)}>{label}</Link>
+    : <a key={label} href={href} onClick={() => setOpen(false)}>{label}</a>;
+  const logout = () => { signOut(); setOpen(false); navigate("/"); };
   return (
-    <nav className="sticky top-0 left-0 right-0 z-[100] border-b border-[#132435] backdrop-blur-xl bg-[rgba(4,8,12,0.9)]">
-      <div className="max-w-7xl mx-auto px-5 sm:px-8 flex items-center justify-between h-20">
-        <Link to="/" className="flex items-center gap-3 no-underline group">
-          <div className="w-10 h-10 rounded-lg bg-[#00D4FF] flex items-center justify-center font-syne font-black text-base group-hover:scale-105 transition-transform shadow-[0_0_20px_#00D4FF66]">
-            <Shield size={20} />
-          </div>
-          <div className="flex flex-col">
-            <span className="font-syne font-black text-2xl tracking-[4px] text-[#CDE8F0] leading-none">VERIFY</span>
-            <span className="font-mono text-[9px] text-[#00FF87] tracking-widest uppercase font-bold mt-0.5">Checagem Fácil</span>
-          </div>
+    <nav className="site-nav" aria-label="Navegação principal" ref={navRef}>
+      <div className="site-nav-inner">
+        <Link to="/" className="site-brand" aria-label="Verify — página inicial">
+          <span className="site-brand-icon"><Shield size={23} aria-hidden="true" /></span>
+          <span><strong>VERIFY</strong><span className="site-brand-caption">Checagem fácil</span></span>
         </Link>
-
-        <div className="hidden md:flex items-center gap-8">
-          {NAV_LINKS.map(({ to, label, icon: Icon }) => (
-            <Link key={to} to={to} className="font-mono text-[13px] tracking-[2px] text-[#CDE8F0] hover:text-[#00D4FF] font-bold no-underline transition-colors uppercase flex items-center gap-2">
-              <Icon size={14} /> {label}
-            </Link>
-          ))}
-
-          {/* Offline indicator */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider"
-            style={{
-              color: isOnline ? "#00FF87" : "#FFB830",
-              backgroundColor: isOnline ? "rgba(0,255,135,0.08)" : "rgba(255,184,48,0.12)",
-              border: `1px solid ${isOnline ? "rgba(0,255,135,0.2)" : "rgba(255,184,48,0.3)"}`,
-            }}>
-            {isOnline ? <Wifi size={12} /> : <WifiOff size={12} />}
-{isOnline ? "Online" : `Offline${offlineCount > 0 ? ` (${offlineCount})` : ""}`}
-           </div>
-
-           {isElderlyMode ? (
-             <button
-               onClick={() => setIsElderlyMode(false)}
-               className="flex items-center gap-2 rounded-lg px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider bg-[#00FF87]/20 text-[#00FF87] hover:bg-[#00FF87]/30 transition-colors"
-             >
-               <Eye size={12} /> Modo Idoso
-             </button>
-           ) : (
-             <button
-               onClick={() => setIsElderlyMode(true)}
-               className="flex items-center gap-2 rounded-lg px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider bg-[#00D4FF]/20 text-[#00D4FF] hover:bg-[#00D4FF]/30 transition-colors"
-             >
-               <Accessibility size={12} /> Modo Fácil
-             </button>
-           )}
-
-           {user ? (
-            <div className="flex items-center gap-4 pl-6 border-l border-[#132435]">
-              <div className="text-right hidden sm:block">
-                <div className="font-mono text-[12px] text-[#CDE8F0] font-bold leading-none">{user.name}</div>
-                <div className="font-mono text-[9px] text-[#00FF87] tracking-widest uppercase mt-1">Conectado</div>
-              </div>
-              <button onClick={handleLogout} className="font-mono text-[11px] px-4 py-2 rounded-xl hover:bg-[#FF3B5C22] transition-all uppercase font-bold flex items-center gap-2 cursor-pointer"
-                style={{ color: "#FF3B5C", backgroundColor: "rgba(255,59,92,0.07)", border: "1px solid rgba(255,59,92,0.2)" }}>
-                <LogOut size={12} /> Sair
-              </button>
-            </div>
-          ) : (
-            <Link to="/login" className="font-mono text-[12px] tracking-[2px] px-6 py-2.5 rounded-xl font-bold no-underline shadow-[0_0_20px_rgba(0,212,255,0.27)] hover:scale-105 transition-transform flex items-center gap-2"
-              style={{ backgroundColor: "#00D4FF", color: "#04080C" }}>
-              <MessageCircle size={12} /> ENTRAR
-            </Link>
-          )}
-        </div>
-
-        <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden text-[#CDE8F0] cursor-pointer">
-          {menuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
-      </div>
-
-      {menuOpen && (
-        <div className="md:hidden border-t border-[#132435] bg-[#0A1520] p-6 flex flex-col gap-4">
-          {NAV_LINKS.map(({ to, label, icon: Icon }) => (
-            <Link key={to} to={to} onClick={() => setMenuOpen(false)} className="font-mono text-[13px] tracking-[2px] text-[#CDE8F0] hover:text-[#00D4FF] font-bold no-underline uppercase flex items-center gap-3">
-              <Icon size={16} /> {label}
-            </Link>
-          ))}
-<div className="flex items-center gap-2 px-3 py-2 rounded-lg text-[11px] font-mono font-bold uppercase"
-            style={{ color: isOnline ? "#00FF87" : "#FFB830" }}>
-            {isOnline ? <Wifi size={14} /> : <WifiOff size={14} />}
-            {isOnline ? "Online" : `Offline${offlineCount > 0 ? ` (${offlineCount})` : ""}`}
-          </div>
-          {isElderlyMode ? (
-            <button
-              onClick={() => setIsElderlyMode(false)}
-              className="flex items-center gap-2 rounded-lg px-4 py-2 font-mono text-[11px] font-bold uppercase bg-[#00FF87]/20 text-[#00FF87] hover:bg-[#00FF87]/30 transition-colors"
-            >
-              <Eye size={14} /> Modo Idoso
-            </button>
-          ) : (
-            <button
-              onClick={() => setIsElderlyMode(true)}
-              className="flex items-center gap-2 rounded-lg px-4 py-2 font-mono text-[11px] font-bold uppercase bg-[#00D4FF]/20 text-[#00D4FF] hover:bg-[#00D4FF]/30 transition-colors"
-            >
-              <Accessibility size={14} /> Modo Fácil
-            </button>
-          )}
-          <button onClick={toggleFontSize} className="font-mono text-[11px] text-[#00D4FF] uppercase text-left">
-            Ajustar Texto
+        <div className="site-nav-desktop">{links.map(renderLink)}</div>
+        <div className="site-nav-actions">
+          <EasyModeButton className="site-nav-easy-desktop" />
+          {user ? <button type="button" className="site-nav-account" onClick={logout}><LogOut size={19} aria-hidden="true" /> Sair</button>
+            : <Link to="/login" className="site-nav-account">Entrar <ArrowRight size={19} aria-hidden="true" /></Link>}
+          <button ref={menuButton} type="button" className="site-nav-menu-toggle" aria-expanded={open} aria-controls={menuId} onClick={() => setOpen(!open)}>
+            {open ? <X size={23} aria-hidden="true" /> : <Menu size={23} aria-hidden="true" />}<span>Menu</span>
           </button>
         </div>
-      )}
+      </div>
+      <div className="site-nav-easy-mobile"><EasyModeButton /></div>
+      <div className="site-nav-drawer" id={menuId} hidden={!open}>
+        <div className="site-nav-drawer-links">{[...links, ...MORE_LINKS].map(renderLink)}</div>
+        <div className="site-nav-drawer-tools">
+          <button type="button" onClick={cycleTextSize} disabled={easyMode}><Type size={21} aria-hidden="true" />{easyMode ? "Letras grandes já ativas" : `Texto: ${{ normal: "padrão", large: "maior", xlarge: "extra grande" }[mode]}`}</button>
+          {variant === "app" && <p className="site-connection">{online ? <Wifi size={20} aria-hidden="true" /> : <WifiOff size={20} aria-hidden="true" />}{online ? "Dispositivo conectado" : `Sem conexão${offlineCount ? ` · ${offlineCount} itens salvos` : ""}`}</p>}
+          {user ? <button type="button" onClick={logout}><LogOut size={21} aria-hidden="true" /> Sair da conta</button> : <Link to="/login" onClick={() => setOpen(false)}>Entrar na conta <ArrowRight size={20} aria-hidden="true" /></Link>}
+        </div>
+      </div>
     </nav>
   );
 }

@@ -4,6 +4,8 @@ Aplicação de apoio à checagem de mensagens, links, imagens, áudio e vídeos.
 
 Não é uma perícia, um certificado de autenticidade ou uma garantia de detecção de deepfake.
 
+Guias novos: [ativar Hugging Face, Hive e Gemini; situação do OpenRouter](docs/ATIVAR-DETECTORES.md) · [landing, Modo Fácil e testes visuais](docs/INTERFACE-MODO-FACIL.md).
+
 ## Estado atual — revisão de 3 de outubro de 2026
 
 A versão publicada foi testada em [verifybr.vercel.app](https://verifybr.vercel.app). Foram encontradas falhas de validação de mídia, erros em texto/WhatsApp e resultados de voz dependentes do nome do arquivo.
@@ -16,7 +18,7 @@ A revisão corrige esses comportamentos e separa veracidade da informação da o
 - [Teste limitado com provedores reais](docs/audit-providers-2026-10-02.json).
 - [Origem e limites das mídias de teste](backend/tests/fixtures/README.md).
 
-Última execução: **137 testes backend + 66 subtestes, 15 testes de interface e 25 controles HTTP aprovados; build concluído**. Houve dois avisos de descontinuação de dependências (AnyIO/Starlette e python-jose), não erros. São testes funcionais, não medição da precisão dos detectores. Um HTTP 200 não significa análise conclusiva. Testes de políticas usam respostas controladas e chaves externas desligadas; resultados reais de provedores citados acima são históricos, não validação das novas integrações.
+Última execução da revisão de verificações: **137 testes backend + 66 subtestes, 15 testes de interface e 25 controles HTTP aprovados; build concluído**. Na etapa visual subsequente, o frontend passou em **21 casos** e novo build, com correções do Modo Fácil e landing. Houve dois avisos de descontinuação de dependências (AnyIO/Starlette e python-jose), não erros. São testes funcionais, não medição da precisão dos detectores. Um HTTP 200 não significa análise conclusiva. Testes de políticas usam respostas controladas e chaves externas desligadas; resultados reais de provedores citados acima são históricos, não validação das novas integrações.
 
 Preparação para o push: a suíte backend também passou com **PostgreSQL 16 descartável**. A atualização de um enum antigo foi repetida sem erro, e `FALSE` foi gravado/lido corretamente. Corrigidos isolamento de conexões e ordem dos dados nos testes reais de banco. A imagem Docker da raiz compilou, carregou a API e confirmou FFmpeg/ffprobe/ExifTool; agora ambos os contextos de build excluem `.env`, bancos locais e caches, e ambos os comandos respeitam `PORT`. Não houve acesso ao banco de produção, teste pago novo de provedores ou comprovação de precisão.
 

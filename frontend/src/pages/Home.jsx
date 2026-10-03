@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/authContext";
 import {
@@ -15,7 +15,7 @@ const TABS = [
   { id: 1, label: "Link", icon: Link2, desc: "Cole o link de uma notícia ou site duvidoso" },
   { id: 2, label: "Imagem", icon: Image, desc: "Envie uma foto ou print de tela" },
   { id: 3, label: "Áudio", icon: Mic, desc: "Envie um áudio de WhatsApp para checar" },
-  { id: 4, label: "Vídeo", icon: Video, desc: "Análise limitada a três quadros do vídeo" },
+  { id: 4, label: "Vídeo", icon: Video, desc: "Quadros amostrados e áudio, quando disponível" },
 ];
 
 const EXAMPLES = [
@@ -28,7 +28,7 @@ const EXAMPLES = [
     text: "Médico de Harvard descobre que água com limão e bicarbonato quente elimina qualquer vírus em 24 horas e hospitais tentam esconder essa receita caseira milagrosa."
   },
   {
-    label: "Notícia Confiável",
+    label: "Mensagem sobre vacinação",
     text: "Ministério da Saúde inicia campanha nacional de vacinação contra a gripe em postos de saúde de todo o Brasil para grupos prioritários."
   }
 ];
@@ -45,7 +45,6 @@ function parseBatchText(raw) {
 export default function Home() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const audioInputRef = useRef(null);
 
   const [tab, setTab] = useState(0);
   const [text, setText] = useState("");
@@ -147,10 +146,10 @@ export default function Home() {
   const tabs = TABS;
 
   return (
-    <div className="relative min-h-screen bg-[#04080C] text-[#CDE8F0] overflow-hidden pb-20">
+    <div className="check-page relative min-h-screen bg-[#04080C] text-[#CDE8F0] pb-20">
       <div className="pointer-events-none fixed inset-0" style={{ backgroundImage: "linear-gradient(#132435 1px,transparent 1px),linear-gradient(90deg,#132435 1px,transparent 1px)", backgroundSize: "48px 48px", opacity: .15 }}/>
 
-      <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 pt-20 sm:pt-28">
+      <div className="check-page-content relative z-10 max-w-3xl mx-auto px-4 sm:px-6 pt-20 sm:pt-28">
 
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-md border border-[#00D4FF33] bg-[#00D4FF0D] text-[#00D4FF] font-mono text-[10px] font-bold uppercase tracking-widest mb-6">
@@ -166,7 +165,7 @@ export default function Home() {
 
         <div className="rounded-xl overflow-hidden shadow-2xl border border-[#132435] bg-[#0A1520] transition-all">
 
-          <div className="grid grid-cols-3 sm:grid-cols-5 border-b border-[#132435] bg-[#070F17]">
+          <div className="check-type-options grid grid-cols-3 sm:grid-cols-5 border-b border-[#132435] bg-[#070F17]" role="group" aria-label="Tipo de conteúdo para checar">
             {tabs.map((t) => (
               <button
                 key={t.id}
@@ -182,7 +181,7 @@ export default function Home() {
             ))}
           </div>
 
-          <div className="px-6 pt-5 pb-3 text-xs text-[#00FF87] font-mono font-bold flex items-center justify-between">
+          <div className="check-description px-6 pt-5 pb-3 text-xs text-[#00FF87] font-mono font-bold flex items-center justify-between">
             <span className="flex items-center gap-2">
               <span className="inline-flex"><ArrowRight size={12} /></span> {tabs[tab].desc}
             </span>
@@ -200,7 +199,7 @@ export default function Home() {
             )}
           </div>
 
-          <div className="p-6 sm:p-8 pt-2">
+          <div className="check-form-content p-6 sm:p-8 pt-2">
 
             {tab === 0 && (
               <div className="space-y-4">
@@ -270,11 +269,11 @@ export default function Home() {
 
             {tab === 2 && (
               <div>
-                <label htmlFor="image-upload" className="flex flex-col items-center justify-center border-2 border-dashed border-[#132435] hover:border-[#00D4FF] rounded-lg p-10 text-center cursor-pointer bg-[#04080C] transition-all">
-                  <input id="image-upload" type="file" accept="image/*" className="hidden" onChange={(e) => setImageFile(e.target.files[0])} />
+                <label htmlFor="image-upload" className="check-upload flex flex-col items-center justify-center border-2 border-dashed border-[#132435] hover:border-[#00D4FF] rounded-lg p-10 text-center cursor-pointer bg-[#04080C] transition-all">
                   <Upload size={28} className="text-[#00D4FF] mb-3" />
                   <span className="font-syne font-bold text-sm text-[#CDE8F0] mb-1">Clique para enviar a imagem</span>
                   <span className="text-xs text-[#5A7E94] font-mono">Formatos suportados: .jpg, .png, .webp, .gif</span>
+                  <input id="image-upload" type="file" accept="image/*" className="mt-4 max-w-full text-xs" onChange={(e) => setImageFile(e.target.files[0] || null)} />
                 </label>
                 {imageFile && (
                   <div className="mt-3 p-3 rounded-lg bg-[#00D4FF10] border border-[#00D4FF30] text-xs text-[#00D4FF] flex items-center justify-between font-mono">
@@ -287,21 +286,12 @@ export default function Home() {
 
             {tab === 3 && (
               <div className="space-y-4">
-                <div
-                  onClick={() => audioInputRef.current?.click()}
-                  className="border-2 border-dashed border-[#132435] hover:border-[#00D4FF] rounded-lg p-8 text-center cursor-pointer bg-[#04080C] transition-all"
-                >
-                  <input
-                    ref={audioInputRef}
-                    type="file"
-                    accept="audio/*,.mp3,.ogg,.wav,.m4a,.aac,.opus"
-                    onChange={(e) => setAudioFile(e.target.files[0])}
-                    className="hidden"
-                  />
+                <label htmlFor="audio-upload" className="check-upload flex flex-col items-center border-2 border-dashed border-[#132435] hover:border-[#00D4FF] rounded-lg p-8 text-center cursor-pointer bg-[#04080C] transition-all">
                   <Mic size={28} className="text-[#00D4FF] mb-3 mx-auto" />
                   <div className="font-syne font-bold text-sm text-[#CDE8F0] mb-1">Clique para enviar o áudio do WhatsApp</div>
                   <div className="text-xs text-[#5A7E94] font-mono">Formatos suportados: .mp3, .ogg (WhatsApp), .m4a, .wav</div>
-                </div>
+                  <input id="audio-upload" type="file" accept="audio/*,.mp3,.ogg,.wav,.m4a,.aac,.opus" onChange={(e) => setAudioFile(e.target.files[0] || null)} className="mt-4 max-w-full text-xs" />
+                </label>
 
                 {audioFile && (
                   <div className="p-4 rounded-lg bg-[#00FF8710] border border-[#00FF8730] text-sm text-[#00FF87] flex items-center justify-between font-mono">
@@ -314,13 +304,13 @@ export default function Home() {
 
           </div>
 
-          <div className="p-6 sm:p-8 bg-[#070F17] border-t border-[#132435] flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3 text-xs font-mono text-[#5A7E94]">
+          <div className="check-submit-area p-6 sm:p-8 bg-[#070F17] border-t border-[#132435] flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center justify-center gap-3 text-xs font-mono text-[#5A7E94]">
               <span className="flex items-center gap-1 text-[#00D4FF]">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#00D4FF] animate-pulse" /> Busca em Tempo Real
+                <Shield size={16} aria-hidden="true" /> Fontes e sinais disponíveis
               </span>
               <span>•</span>
-              <span className="text-[#00FF87]">Inteligência Verify</span>
+              <span className="text-[#00FF87]">Limites no relatório</span>
             </div>
 
             {batchMode ? (

@@ -1,581 +1,76 @@
-import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../hooks/authContext";
+import { useId, useState } from "react";
+import { Link } from "react-router-dom";
+import { ArrowRight, ShieldCheck, MessageCircle, Search, FileText, Link2, Image, AudioLines, Video, TriangleAlert, HeartHandshake, LockKeyhole, ChevronDown, Check } from "lucide-react";
+import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import {
-  Accessibility,
-  AlertTriangle,
-  ArrowRight,
-  BadgeCheck,
-  BarChart3,
-  CheckCircle2,
-  ChevronDown,
-  Clock,
-  FileSearch,
-  Globe,
-  Image,
-  Info,
-  Link2,
-  Lock,
-  LogOut,
-  Menu,
-  MessageCircle,
-  Mic,
-  Phone,
-  ScanSearch,
-  Search,
-  Shield,
-  ShieldCheck,
-  Sparkles,
-  Users,
-  Volume2,
-  Video,
-  Zap,
-  X,
-} from "lucide-react";
-
-/* ─── Static data ─────────────────────────────────────────────────── */
+import EasyModeButton from "../components/EasyModeButton";
+import MessageExample from "../components/MessageExample";
+import Reveal from "../components/Reveal";
+import "./landing.css";
 
 const STEPS = [
-  { number: "01", title: "Envie o conteúdo", text: "Cole uma mensagem, um link ou envie uma imagem e um áudio suspeito.", color: "#00D4FF" },
-  { number: "02", title: "Veja os sinais", text: "O Verify aponta alertas, contexto e referências para você conferir.", color: "#00FF87" },
-  { number: "03", title: "Decida com calma", text: "Receba uma explicação clara e uma orientação prática antes de compartilhar.", color: "#FFB800" },
+  { icon: MessageCircle, title: "Envie o que recebeu", text: "Cole uma mensagem ou um link. Você também pode enviar uma imagem, um áudio ou um vídeo." },
+  { icon: Search, title: "Veja os sinais e as fontes", text: "O Verify procura evidências disponíveis e informa quais verificações conseguiu realizar." },
+  { icon: ShieldCheck, title: "Decida com mais cuidado", text: "Leia a explicação e os próximos passos. Se faltar informação, o resultado será inconclusivo." },
+];
+const PROTECTION = [
+  { icon: TriangleAlert, title: "Mensagens que pedem dinheiro", text: "Pressa, ameaças e taxas inesperadas merecem atenção. Confirme com a instituição por um canal oficial." },
+  { icon: Search, title: "Notícias fora de contexto", text: "Uma publicação antiga pode circular como nova. Consulte a data, a origem e as checagens encontradas." },
+  { icon: HeartHandshake, title: "Conteúdo que parece real", text: "Imagens e vozes podem ser alteradas. Os detectores ajudam a encontrar indícios, mas também podem errar." },
+];
+const QUESTIONS = [
+  ["Preciso entender de tecnologia?", "Não. Comece pelo botão “Começar agora” e escolha o tipo de conteúdo. O Modo Fácil aumenta as letras, mantém botões grandes e desliga animações decorativas."],
+  ["O Verify sempre sabe se algo é falso?", "Não. Nenhum detector acerta sempre. Uma checagem pode ser parcial ou inconclusiva. O relatório explica as evidências, as limitações e as verificações que não puderam ser realizadas."],
+  ["Posso analisar um vídeo inteiro?", "O sistema examina quadros amostrados e, quando disponível, a faixa de áudio. Isso não equivale a examinar todos os instantes do vídeo e não garante encontrar toda alteração."],
+  ["Os arquivos são enviados para outras empresas?", "Algumas análises usam fornecedores externos. Evite enviar documentos, fotos ou áudios com dados pessoais sensíveis. Consulte a Política de Privacidade antes de usar."],
+  ["O que faço quando não há uma conclusão?", "Não trate a ausência de evidências como prova de verdade. Procure a fonte original ou peça ajuda a alguém de confiança antes de pagar, enviar dados ou compartilhar."],
 ];
 
-const FEATURES = [
-  { icon: MessageCircle, title: "Linguagem direta", text: "Sem jargão: o resultado explica o risco em palavras simples e sugere o próximo passo.", color: "#00D4FF" },
-  { icon: ScanSearch, title: "Mais contexto", text: "A análise reúne sinais de fraude, checagens e informações de apoio.", color: "#00FF87" },
-  { icon: ShieldCheck, title: "Proteção compartilhável", text: "Transforme a orientação em uma mensagem simples para proteger sua família.", color: "#FFB800" },
-];
-
-const MEDIA_TYPES = [
-  { icon: MessageCircle, label: "Mensagens" },
-  { icon: Link2, label: "Links" },
-  { icon: Image, label: "Imagens" },
-  { icon: Mic, label: "Áudios" },
-  { icon: Video, label: "Vídeos · amostragem" },
-];
-
-const STATS = [
-  { value: "100%", label: "Gratuito", icon: Zap },
-  { value: "Variável", label: "Tempo por provedor", icon: Clock },
-  { value: "5", label: "Tipos de conteúdo", icon: BarChart3 },
-  { value: "Com limites", label: "Análise assistida", icon: Globe },
-];
-
-const GOLPES = [
-  { icon: ShieldCheck, title: "Golpe do Pix falso", desc: "Mensagens pedindo taxas, resgates ou cadastros falsos do Pix para roubar dinheiro.", color: "#FF3B5C" },
-  { icon: AlertTriangle, title: "Boatos de saúde", desc: "Remédios milagrosos, curas caseiras e informações falsas sobre vacinas e tratamentos.", color: "#FFB830" },
-  { icon: MessageCircle, title: "Falsas promoções", desc: "Ofertas boas demais para ser verdade, links para sites falsos de lojas conhecidas.", color: "#00D4FF" },
-  { icon: Phone, title: "Golpe do sequestro", desc: "Mensagens falsas dizendo que um familiar está preso e precisa de dinheiro urgente.", color: "#FF3B5C" },
-];
-
-const FAQ = [
-  { q: "O Verify é realmente gratuito?", a: "Sim. O Verify é um projeto de interesse público. Não há planos pagos, assinaturas ou cobranças ocultas." },
-  { q: "Como meus dados são usados?", a: "O conteúdo enviado pode ser processado por serviços externos de IA e checagem. Se você estiver conectado, o resultado pode ser salvo no histórico. Não envie documentos sensíveis ou dados de terceiros sem autorização." },
-  { q: "Preciso criar conta para usar?", a: "Não. A demonstração é aberta. Só criamos conta se você quiser guardar seu histórico de verificações." },
-  { q: "O Verify substitui um fact-checker profissional?", a: "Não. O Verify é uma ferramenta de apoio. Para decisões importantes, sempre consulte fontes oficiais e jornalistas verificados." },
-  { q: "Funciona no celular?", a: "Sim. O Verify é responsivo e funciona em qualquer dispositivo com navegador: celular, tablet ou computador." },
-];
-
-/* ─── Sub-components ──────────────────────────────────────────────── */
-
-function SignalCard({ icon: Icon, label, value, tone = "cyan" }) {
-  const colors =
-    tone === "red" ? "border-[#FF3B5C]/35 bg-[#FF3B5C]/10 text-[#FF9CAF]"
-    : tone === "green" ? "border-[#00FF87]/35 bg-[#00FF87]/10 text-[#6DFFB4]"
-    : "border-[#00D4FF]/35 bg-[#00D4FF]/10 text-[#63E4FF]";
-
-  return (
-    <div className={`flex items-center gap-3 rounded-xl border p-3 ${colors}`}>
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#04080C]/55">
-        <Icon size={18} />
-      </span>
-      <div className="min-w-0">
-        <p className="font-mono text-[9px] font-bold uppercase tracking-[.16em] opacity-75">{label}</p>
-        <p className="mt-0.5 truncate font-syne text-sm font-bold">{value}</p>
-      </div>
-    </div>
-  );
+function Question({ question, answer, open, onToggle }) {
+  const id = useId();
+  return <div className="landing-question"><h3><button type="button" aria-expanded={open} aria-controls={id} onClick={onToggle}>{question}<ChevronDown size={23} aria-hidden="true" /></button></h3><p id={id} hidden={!open}>{answer}</p></div>;
 }
-
-function FaqItem({ q, a }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="border-b border-[#132435] last:border-0">
-      <button onClick={() => setOpen(!open)} className="flex w-full items-center justify-between py-5 text-left cursor-pointer">
-        <span className="font-syne text-sm font-bold text-[#CDE8F0] pr-4">{q}</span>
-        <ChevronDown size={18} className={`shrink-0 text-[#00D4FF] transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
-      {open && (
-        <p className="pb-5 font-mono text-xs leading-7 text-[#8AA2B4]">{a}</p>
-      )}
-    </div>
-  );
-}
-
-/* ─── Main component ──────────────────────────────────────────────── */
 
 export default function LandingPage() {
-  const { user, signOut } = useAuth();
-  const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [fontSize, setFontSize] = useState(() => localStorage.getItem("verify_font_size") || "normal");
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-
-  useEffect(() => {
-    if (fontSize === "normal") {
-      document.documentElement.removeAttribute("data-font-size");
-    } else {
-      document.documentElement.setAttribute("data-font-size", fontSize);
-    }
-    localStorage.setItem("verify_font_size", fontSize);
-  }, [fontSize]);
-
-  useEffect(() => {
-    if (localStorage.getItem("verify_elderly_mode") === "true") {
-      document.documentElement.setAttribute("data-font-size", "elderly");
-      document.documentElement.setAttribute("data-elderly-mode", "true");
-    }
-  }, []);
-
-  const toggleFontSize = () => {
-    if (fontSize === "normal") setFontSize("large");
-    else if (fontSize === "large") setFontSize("xlarge");
-    else setFontSize("normal");
-  };
-
-  const appPath = "/app";
-  const closeMenu = () => setMenuOpen(false);
-
-  const NAV_LINKS = [
-    { href: "#como-funciona", label: "Como Funciona", icon: Search },
-    { href: "#protege", label: "Proteção", icon: Shield },
-    { to: "/demo", label: "Demonstração", icon: Sparkles },
-    { to: "/mission", label: "Sobre Nós", icon: Info },
-  ];
-
-  const DROPDOWN_ITEMS = [
-    { to: "/limitacoes", label: "Limitações de Uso" },
-    { to: "/terms", label: "Termos de Serviço" },
-    { to: "/privacy", label: "Privacidade" },
-  ];
-
+  const [openQuestion, setOpenQuestion] = useState(null);
   return (
-    <div className="min-h-screen overflow-x-clip bg-[#04080C] text-[#CDE8F0]">
-      {/* ── NAVBAR ──────────────────────────────────────────────── */}
-      <nav className="sticky top-0 left-0 right-0 z-[100] border-b border-[#132435] backdrop-blur-xl bg-[rgba(4,8,12,0.9)]">
-        <div className="max-w-7xl mx-auto px-5 sm:px-8 flex items-center justify-between h-20">
-          <Link to="/" className="flex items-center gap-3 no-underline group">
-            <div className="w-10 h-10 rounded-lg bg-[#00D4FF] flex items-center justify-center font-syne font-black text-base group-hover:scale-105 transition-transform shadow-[0_0_20px_#00D4FF66]">
-              <Shield size={20} />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-syne font-black text-2xl tracking-[4px] text-[#CDE8F0] leading-none">VERIFY</span>
-              <span className="font-mono text-[9px] text-[#00FF87] tracking-widest uppercase font-bold mt-0.5">Checagem Fácil</span>
-            </div>
-          </Link>
-
-          <div className="hidden md:flex items-center gap-8">
-            {NAV_LINKS.map(({ to, href, label, icon: Icon }) => (
-              to ? (
-                <Link key={to} to={to} className="font-mono text-[13px] tracking-[2px] text-[#CDE8F0] hover:text-[#00D4FF] font-bold no-underline transition-colors uppercase flex items-center gap-2">
-                  <Icon size={14} /> {label}
-                </Link>
-              ) : (
-                <a key={href} href={href} className="font-mono text-[13px] tracking-[2px] text-[#CDE8F0] hover:text-[#00D4FF] font-bold no-underline transition-colors uppercase flex items-center gap-2">
-                  <Icon size={14} /> {label}
-                </a>
-              )
-            ))}
-
-            <div className="relative">
-              <button onClick={() => setDropdownOpen(!dropdownOpen)} className="font-mono text-[13px] tracking-[2px] text-[#CDE8F0] hover:text-[#00D4FF] font-bold no-underline transition-colors uppercase flex items-center gap-2">
-                <Menu size={14} /> {dropdownOpen ? <X size={14} /> : <ChevronDown size={14} />}
-              </button>
-              {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-56 rounded-xl bg-[#0A1520] border border-[#132435] shadow-xl z-[50] overflow-hidden">
-                  {DROPDOWN_ITEMS.map((item, index) => (
-                    <Link key={index} to={item.to} onClick={() => setDropdownOpen(false)} className="block px-4 py-3 text-sm font-mono text-[#CDE8F0] hover:bg-[#0F1E2E] hover:text-[#00D4FF] no-underline transition-colors">
-                      {item.label}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <button
-              onClick={() => {
-                const isEnabled = localStorage.getItem("verify_elderly_mode") === "true";
-                if (!isEnabled) {
-                  localStorage.setItem("verify_elderly_mode", "true");
-                  localStorage.setItem("verify_font_size", "elderly");
-                  document.documentElement.setAttribute("data-font-size", "elderly");
-                  document.documentElement.setAttribute("data-elderly-mode", "true");
-                } else {
-                  localStorage.setItem("verify_elderly_mode", "false");
-                  localStorage.setItem("verify_font_size", "normal");
-                  document.documentElement.removeAttribute("data-font-size");
-                  document.documentElement.removeAttribute("data-elderly-mode");
-                }
-                window.dispatchEvent(new CustomEvent("elderly-mode-change", { detail: !isEnabled }));
-              }}
-              className={`hidden lg:flex items-center gap-2 rounded-lg px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors ${
-                localStorage.getItem("verify_elderly_mode") === "true"
-                  ? "bg-[#00FF87]/20 text-[#00FF87] hover:bg-[#00FF87]/30"
-                  : "bg-[#00D4FF]/20 text-[#00D4FF] hover:bg-[#00D4FF]/30"
-              }`}
-            >
-              <Accessibility size={12} /> {localStorage.getItem("verify_elderly_mode") === "true" ? "Modo Fácil Ativo" : "Modo Fácil"}
-            </button>
-
-            {user ? (
-              <div className="flex items-center gap-4 pl-6 border-l border-[#132435]">
-                <div className="text-right hidden sm:block">
-                  <div className="font-mono text-[12px] text-[#CDE8F0] font-bold leading-none">{user.name}</div>
-                  <div className="font-mono text-[9px] text-[#00FF87] tracking-widest uppercase mt-1">Conectado</div>
-                </div>
-                <button onClick={() => { signOut(); navigate("/"); }} className="font-mono text-[11px] px-4 py-2 rounded-xl hover:bg-[#FF3B5C22] transition-all uppercase font-bold flex items-center gap-2 cursor-pointer" style={{ color: "#FF3B5C", backgroundColor: "rgba(255,59,92,0.07)", border: "1px solid rgba(255,59,92,0.2)" }}>
-                  <LogOut size={12} /> Sair
-                </button>
-              </div>
-            ) : (
-              <Link to="/login" className="font-mono text-[12px] tracking-[2px] px-6 py-2.5 rounded-xl font-bold no-underline shadow-[0_0_20px_rgba(0,212,255,0.27)] hover:scale-105 transition-transform flex items-center gap-2" style={{ backgroundColor: "#00D4FF", color: "#04080C" }}>
-                <MessageCircle size={12} /> ENTRAR
-              </Link>
-            )}
-          </div>
-
-          <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden text-[#CDE8F0] cursor-pointer">
-            {menuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
-        </div>
-
-        {menuOpen && (
-          <div className="md:hidden border-t border-[#132435] bg-[#0A1520] p-6 flex flex-col gap-4">
-            {NAV_LINKS.map(({ to, href, label, icon: Icon }) => (
-              to ? (
-                <Link key={to} to={to} onClick={closeMenu} className="font-mono text-[13px] tracking-[2px] text-[#CDE8F0] hover:text-[#00D4FF] font-bold no-underline uppercase flex items-center gap-3">
-                  <Icon size={16} /> {label}
-                </Link>
-              ) : (
-                <a key={href} href={href} onClick={closeMenu} className="font-mono text-[13px] tracking-[2px] text-[#CDE8F0] hover:text-[#00D4FF] font-bold no-underline uppercase flex items-center gap-3">
-                  <Icon size={16} /> {label}
-                </a>
-              )
-            ))}
-            {DROPDOWN_ITEMS.map((item, index) => (
-              <Link key={index} to={item.to} onClick={closeMenu} className="font-mono text-[13px] tracking-[2px] text-[#8AA2B4] hover:text-[#00D4FF] font-bold no-underline uppercase flex items-center gap-3 pl-6">
-                {item.label}
-              </Link>
-            ))}
-            <button
-              onClick={() => {
-                const isEnabled = localStorage.getItem("verify_elderly_mode") === "true";
-                if (!isEnabled) {
-                  localStorage.setItem("verify_elderly_mode", "true");
-                  localStorage.setItem("verify_font_size", "elderly");
-                  document.documentElement.setAttribute("data-font-size", "elderly");
-                  document.documentElement.setAttribute("data-elderly-mode", "true");
-                } else {
-                  localStorage.setItem("verify_elderly_mode", "false");
-                  localStorage.setItem("verify_font_size", "normal");
-                  document.documentElement.removeAttribute("data-font-size");
-                  document.documentElement.removeAttribute("data-elderly-mode");
-                }
-                window.dispatchEvent(new CustomEvent("elderly-mode-change", { detail: !isEnabled }));
-              }}
-              className="font-mono text-[11px] text-[#00FF87] uppercase text-left mt-2 flex items-center gap-2"
-            >
-              <Accessibility size={14} /> Modo Fácil
-            </button>
-            <button onClick={toggleFontSize} className="font-mono text-[11px] text-[#00D4FF] uppercase text-left mt-2">
-              Ajustar Texto
-            </button>
-          </div>
-        )}
-      </nav>
-
+    <div className="landing-shell">
+      <Navbar variant="landing" />
       <main>
-        {/* ── HERO ───────────────────────────────────────────────── */}
-        <section className="relative isolate overflow-hidden border-b border-[#132435] px-5 pb-20 pt-16 sm:px-8 sm:pb-28 sm:pt-24">
-          <div aria-hidden="true" className="absolute inset-0 -z-10 opacity-70" style={{ backgroundImage: "radial-gradient(circle at 78% 24%, rgba(0,212,255,.16), transparent 27rem),radial-gradient(circle at 25% 82%, rgba(0,255,135,.1), transparent 22rem),linear-gradient(rgba(19,36,53,.6) 1px, transparent 1px),linear-gradient(90deg, rgba(19,36,53,.6) 1px, transparent 1px)", backgroundSize: "auto, auto, 48px 48px, 48px 48px" }} />
-
-          <div className="mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-[1fr_420px] lg:gap-16 xl:gap-20">
-            {/* Left: headline */}
-            <div className="max-w-3xl">
-              <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-[#00D4FF33] bg-[#00D4FF0D] px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-[.16em] text-[#00D4FF]">
-                <Sparkles size={13} /> Verificação digital para todos
-              </div>
-
-              <h1 className="font-syne text-4xl font-black leading-[1.06] tracking-tight sm:text-6xl xl:text-7xl">
-                Antes de compartilhar,{" "}
-                <span className="text-[#00D4FF]">verifique.</span>
-              </h1>
-
-              <p className="mt-7 max-w-2xl font-mono text-sm leading-8 text-[#9BB3C4] sm:text-base">
-                O Verify ajuda você a entender mensagens suspeitas, golpes e
-                conteúdo manipulado. Você recebe uma explicação clara para
-                decidir com mais segurança.
-              </p>
-
-<div className="mt-9 flex flex-col gap-4 sm:flex-row">
-                 <Link to={appPath} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#00FF87] px-7 font-syne text-sm font-black uppercase tracking-wider text-[#04080C] shadow-[0_12px_35px_rgba(0,212,255,.22)] transition-transform hover:-translate-y-0.5">
-                   <FileSearch size={18} />
-                   {user ? "Fazer uma checagem" : "Começar agora"}
-                   <ArrowRight size={17} />
-                 </Link>
-                 <Link to="/demo" className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl border border-[#284258] bg-[#091622]/80 px-7 font-mono text-xs font-bold uppercase tracking-wider text-[#CDE8F0] transition-colors hover:border-[#00D4FF] hover:text-[#00D4FF]">
-                   <Volume2 size={16} /> Ver demonstração
-                 </Link>
-               </div>
-
-               {/* Elderly mode CTA */}
-               <div className="mt-5 flex items-center gap-3 flex-wrap">
-                 <p className="font-mono text-[10px] leading-5 text-[#6F8B9F]">
-                   Dificuldade para ler? Use o modo acessível.
-                 </p>
-                 <button
-                   onClick={() => {
-                     localStorage.setItem("verify_elderly_mode", "true");
-                     localStorage.setItem("verify_font_size", "elderly");
-                     document.documentElement.setAttribute("data-font-size", "elderly");
-                     document.documentElement.setAttribute("data-elderly-mode", "true");
-                     window.dispatchEvent(new CustomEvent("elderly-mode-change", { detail: true }));
-                   }}
-                   className="inline-flex min-h-12 items-center gap-2 rounded-xl border border-[#00FF87]/30 bg-[#00FF87]/10 px-5 py-2.5 font-mono text-xs font-bold uppercase tracking-wider text-[#00FF87] transition-colors hover:bg-[#00FF87]/20 hover:border-[#00FF87]/50"
-                 >
-                   <Accessibility size={16} /> Modo Fácil — Letras Grandes
-                 </button>
-               </div>
-
-              <p className="mt-5 flex items-center gap-2 font-mono text-[10px] leading-5 text-[#6F8B9F]">
-                <CheckCircle2 size={13} className="shrink-0 text-[#00FF87]" />
-                A demonstração é aberta. Crie uma conta quando quiser guardar o histórico.
-              </p>
-            </div>
-
-            {/* Right: mock analysis card */}
-            <div className="relative mx-auto w-full max-w-[420px]">
-              <div className="relative overflow-hidden rounded-[1.8rem] border border-[#2A5269] bg-[#07111A]/95 p-5 shadow-[0_25px_80px_rgba(0,0,0,.45),0_0_60px_rgba(0,212,255,.08)] sm:p-7">
-                {/* Window bar */}
-                <div className="flex items-center justify-between border-b border-[#183347] pb-4">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full bg-[#FF3B5C]" />
-                    <span className="h-2.5 w-2.5 rounded-full bg-[#FFB800]" />
-                    <span className="h-2.5 w-2.5 rounded-full bg-[#00FF87]" />
-                  </div>
-                  <span className="font-mono text-[9px] font-bold uppercase tracking-[.2em] text-[#00D4FF]">
-                    Análise em foco
-                  </span>
-                </div>
-
-                {/* Alert card */}
-                <div className="mt-5 rounded-2xl border border-[#FF3B5C]/35 bg-gradient-to-br from-[#FF3B5C]/15 to-[#0A1520] p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-mono text-[10px] font-bold uppercase tracking-[.16em] text-[#FF9CAF]">Mensagem recebida</p>
-                      <p className="mt-3 font-syne text-lg font-bold leading-snug text-white break-words">"Pague uma taxa agora para liberar seu Pix."</p>
-                    </div>
-                    <AlertTriangle className="shrink-0 text-[#FF8195]" size={25} />
-                  </div>
-
-                  <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-[#132435]">
-                    <div className="h-full w-[84%] rounded-full bg-gradient-to-r from-[#FFB800] to-[#FF3B5C]" />
-                  </div>
-                  <p className="mt-2 font-mono text-[10px] text-[#FFB2BF]">Exemplo ilustrativo — não é uma medição de precisão</p>
-                </div>
-
-                {/* Signal cards */}
-                <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                  <SignalCard icon={ShieldCheck} label="Orientação" value="Não envie Pix" tone="red" />
-                  <SignalCard icon={BadgeCheck} label="Contexto" value="Fonte oficial" tone="cyan" />
-                  <SignalCard icon={MessageCircle} label="Próximo passo" value="Avisar família" tone="green" />
-                </div>
-
-                {/* Media types bar */}
-                <div className="mt-5 flex items-center justify-center gap-3 rounded-xl border border-[#1B3A4B] bg-[#04080C] p-3">
-                  <FileSearch size={16} className="text-[#00D4FF]" />
-                  <span className="font-mono text-[10px] uppercase tracking-[.12em] text-[#8AA2B4]">
-                    Texto · links · imagens · áudio
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
+        <section className="landing-hero landing-container" aria-labelledby="landing-title">
+          <Reveal className="landing-hero-copy">
+            <p className="landing-eyebrow"><ShieldCheck size={20} aria-hidden="true" /> Mais calma. Mais informação.</p>
+            <h1 id="landing-title">Antes de compartilhar,<br /><span>vale a pena checar.</span></h1>
+            <p className="landing-lead">Recebeu uma mensagem suspeita? O Verify ajuda você a entender os sinais de risco e encontrar evidências, com uma explicação simples.</p>
+            <div className="landing-actions"><Link className="landing-primary" to="/app">Começar agora <ArrowRight size={22} aria-hidden="true" /></Link><Link className="landing-secondary" to="/demo">Ver demonstração</Link></div>
+            <div className="landing-easy-hint"><EasyModeButton /><p>Prefere letras maiores e menos movimento? Ative o Modo Fácil.</p></div>
+            <p className="landing-honest"><Check size={19} aria-hidden="true" /> Sem certeza inventada: se faltar evidência, a gente informa.</p>
+          </Reveal>
+          <Reveal className="landing-hero-example" delay={100}><MessageExample /></Reveal>
         </section>
 
-        {/* ── STATS BAR ─────────────────────────────────────────── */}
-        <section className="border-b border-[#132435] bg-[#07111A] px-5 py-8 sm:px-8">
-          <div className="mx-auto grid max-w-7xl grid-cols-2 gap-6 md:grid-cols-4">
-            {STATS.map(({ value, label, icon: Icon }) => (
-              <div key={label} className="flex items-center gap-4 rounded-xl border border-[#132435] bg-[#0A1520] p-4">
-                <div className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-[#00D4FF]/10 text-[#00D4FF]">
-                  <Icon size={20} />
-                </div>
-                <div>
-                  <p className="font-syne text-xl font-black text-[#CDE8F0]">{value}</p>
-                  <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#8AA2B4]">{label}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="landing-container"><div className="landing-formats" aria-label="Tipos de conteúdo aceitos"><p>Checar o que chega até você</p><ul>{[[FileText, "Textos"], [Link2, "Links"], [Image, "Imagens"], [AudioLines, "Áudios"], [Video, "Vídeos"]].map(([Icon, label]) => <li key={label}><Icon size={22} aria-hidden="true" />{label}</li>)}</ul></div></div>
+
+        <section id="como-funciona" className="landing-section landing-container" aria-labelledby="how-title">
+          <Reveal className="landing-section-heading"><p className="landing-eyebrow">Um passo de cada vez</p><h2 id="how-title">Checar pode ser simples.</h2><p>Você não precisa interpretar gráficos complicados. Comece pelo conteúdo que recebeu.</p></Reveal>
+          <div className="landing-card-grid">{STEPS.map(({ icon: Icon, title, text }, index) => <Reveal as="article" className="landing-step" delay={index * 70} key={title}><div className="landing-step-top"><span className="landing-icon"><Icon size={26} aria-hidden="true" /></span><span className="landing-step-number">0{index + 1}</span></div><h3>{title}</h3><p>{text}</p></Reveal>)}</div>
         </section>
 
-        {/* ── MEDIA TYPES BANNER ─────────────────────────────────── */}
-        <section className="border-b border-[#132435] bg-[#07111A] px-5 py-6 sm:px-8">
-          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-10 gap-y-4 text-center">
-            {MEDIA_TYPES.map(({ icon: Icon, label }) => (
-              <span key={label} className="inline-flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[.14em] text-[#8AA2B4]">
-                <Icon size={15} className="text-[#00D4FF]" />
-                {label}
-              </span>
-            ))}
-          </div>
+        <section id="protege" className="landing-protection" aria-labelledby="protection-title"><div className="landing-container landing-section">
+          <Reveal className="landing-section-heading"><p className="landing-eyebrow">Cuidado no dia a dia</p><h2 id="protection-title">Uma segunda olhada faz diferença.</h2><p>Há mensagens que parecem urgentes e conteúdos que parecem verdadeiros. Pare um momento antes de agir.</p></Reveal>
+          <div className="landing-card-grid">{PROTECTION.map(({ icon: Icon, title, text }, index) => <Reveal as="article" className="landing-protection-card" delay={index * 70} key={title}><Icon size={28} aria-hidden="true" /><h3>{title}</h3><p>{text}</p></Reveal>)}</div>
+          <Reveal className="landing-limit-note"><ShieldCheck size={26} aria-hidden="true" /><div><h3>Indícios não são uma prova definitiva.</h3><p>Um conteúdo feito com IA não é necessariamente uma mentira. E uma foto real pode acompanhar uma afirmação falsa.</p><Link to="/limitacoes">Conheça os limites das verificações <ArrowRight size={19} aria-hidden="true" /></Link></div></Reveal>
+        </div></section>
+
+        <section className="landing-section landing-container landing-privacy" aria-labelledby="privacy-title">
+          <Reveal><p className="landing-eyebrow"><LockKeyhole size={20} aria-hidden="true" /> Você merece clareza</p><h2 id="privacy-title">Proteja também seus dados.</h2><p className="landing-lead">Envie apenas o necessário para checar. Não compartilhe senhas, códigos de acesso ou documentos pessoais.</p><Link className="landing-text-link" to="/privacy">Leia nossa Política de Privacidade <ArrowRight size={20} aria-hidden="true" /></Link></Reveal>
+          <Reveal className="landing-privacy-note"><h3>Na dúvida, confirme fora da mensagem.</h3><p>Abra o aplicativo oficial ou procure o telefone da instituição por conta própria. Não use um contato enviado na mensagem suspeita.</p><p>Para assuntos de saúde, dinheiro ou segurança, procure também uma pessoa ou profissional de confiança.</p></Reveal>
         </section>
 
-        {/* ── HOW IT WORKS ───────────────────────────────────────── */}
-        <section id="como-funciona" className="mx-auto max-w-7xl px-5 py-20 sm:px-8 sm:py-28">
-          <div className="mb-12 max-w-2xl">
-            <span className="font-mono text-[10px] font-bold uppercase tracking-[.2em] text-[#00D4FF]">Processo simples</span>
-            <h2 className="mt-4 font-syne text-3xl font-black leading-tight tracking-tight sm:text-5xl">
-              Três passos para checar com mais segurança.
-            </h2>
-          </div>
+        <section className="landing-section landing-container landing-faq" aria-labelledby="faq-title"><Reveal className="landing-section-heading"><p className="landing-eyebrow">Sem complicação</p><h2 id="faq-title">Dúvidas comuns.</h2></Reveal><div>{QUESTIONS.map(([question, answer], index) => <Question key={question} question={question} answer={answer} open={openQuestion === index} onToggle={() => setOpenQuestion(openQuestion === index ? null : index)} />)}</div></section>
 
-          <div className="grid gap-6 md:grid-cols-3">
-            {STEPS.map(({ number, title, text, color }) => (
-              <article key={number} className="group rounded-3xl border border-[#132435] bg-[#0A1520] p-8 transition-colors hover:border-[#00D4FF]/50">
-                <span className="font-mono text-sm font-bold" style={{ color }}>{number}</span>
-                <h3 className="mt-10 font-syne text-xl font-bold">{title}</h3>
-                <p className="mt-4 font-mono text-sm leading-7 text-[#8AA2B4]">{text}</p>
-                <ArrowRight size={18} className="mt-8 transition-transform group-hover:translate-x-1" style={{ color }} />
-              </article>
-            ))}
-          </div>
-        </section>
-
-        {/* ── PROTECTION ─────────────────────────────────────────── */}
-        <section id="protege" className="border-y border-[#132435] bg-[#08131D] px-5 py-20 sm:px-8 sm:py-28">
-          <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[.75fr_1.25fr] lg:items-start">
-            <div>
-              <span className="font-mono text-[10px] font-bold uppercase tracking-[.2em] text-[#00FF87]">Proteção prática</span>
-              <h2 className="mt-4 font-syne text-3xl font-black leading-tight tracking-tight sm:text-5xl">
-                Mais contexto antes de uma decisão.
-              </h2>
-              <p className="mt-6 font-mono text-sm leading-8 text-[#8AA2B4]">
-                A melhor proteção é uma pausa: não pagar, não clicar e confirmar a informação em uma fonte independente.
-              </p>
-            </div>
-
-            <div className="grid gap-5 sm:grid-cols-3">
-              {FEATURES.map(({ icon: Icon, title, text, color }) => (
-                <article key={title} className="rounded-3xl border border-[#183347] bg-[#0A1520] p-7">
-                  <Icon size={26} style={{ color }} />
-                  <h3 className="mt-7 font-syne text-base font-bold">{title}</h3>
-                  <p className="mt-3 font-mono text-xs leading-6 text-[#8AA2B4]">{text}</p>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── GOLPES COMUNS ──────────────────────────────────────── */}
-        <section className="mx-auto max-w-7xl px-5 py-20 sm:px-8 sm:py-28">
-          <div className="mb-12 max-w-2xl">
-            <span className="font-mono text-[10px] font-bold uppercase tracking-[.2em] text-[#FF3B5C]">Tipos de golpe</span>
-            <h2 className="mt-4 font-syne text-3xl font-black leading-tight tracking-tight sm:text-5xl">
-              O que o Verify detecta.
-            </h2>
-            <p className="mt-4 font-mono text-sm leading-7 text-[#8AA2B4]">
-              Nossa IA analisa o conteúdo, cruza com fontes confiáveis e identifica padrões conhecidos de fraude.
-            </p>
-          </div>
-
-          <div className="grid gap-5 sm:grid-cols-2">
-            {GOLPES.map(({ icon: Icon, title, desc, color }, i) => (
-              <article key={i} className="flex items-start gap-5 rounded-3xl border border-[#132435] bg-[#0A1520] p-7 transition-colors hover:border-[#00D4FF]/30">
-                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl" style={{ backgroundColor: `${color}15`, color }}>
-                  <Icon size={22} />
-                </div>
-                <div>
-                  <h3 className="font-syne text-base font-bold">{title}</h3>
-                  <p className="mt-2 font-mono text-xs leading-6 text-[#8AA2B4]">{desc}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        {/* ── PRIVACIDADE ────────────────────────────────────────── */}
-        <section className="border-y border-[#132435] bg-[#08131D] px-5 py-20 sm:px-8 sm:py-28">
-          <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-2">
-            <div>
-              <span className="font-mono text-[10px] font-bold uppercase tracking-[.2em] text-[#00D4FF]">Privacidade primeiro</span>
-              <h2 className="mt-4 font-syne text-3xl font-black leading-tight tracking-tight sm:text-5xl">
-                Saiba como seus dados são usados.
-              </h2>
-              <p className="mt-6 font-mono text-sm leading-8 text-[#8AA2B4]">
-                Você escolhe o conteúdo enviado. Serviços externos de análise podem processá-lo,
-                e resultados de usuários conectados ficam no histórico. Evite enviar informações sensíveis.
-              </p>
-              <Link to="/privacy" className="mt-8 inline-flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-wider text-[#00D4FF] hover:text-[#00FF87] transition-colors">
-                Ler nossa política de privacidade <ArrowRight size={14} />
-              </Link>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              {[
-                { icon: Lock, title: "Conexão HTTPS", desc: "O site publicado usa conexão segura; isso não impede processamento por provedores externos." },
-                { icon: Shield, title: "Sem rastreamento", desc: "Não monitoramos sua navegação ou contatos." },
-                { icon: Users, title: "Envio consciente", desc: "Envie apenas o necessário e evite informações pessoais ou bancárias." },
-                { icon: Globe, title: "Código aberto", desc: "Transparência total sobre como funciona." },
-              ].map(({ icon: Icon, title, desc }, i) => (
-                <div key={i} className="rounded-2xl border border-[#132435] bg-[#0A1520] p-5">
-                  <Icon size={20} className="text-[#00D4FF]" />
-                  <h4 className="mt-3 font-syne text-sm font-bold">{title}</h4>
-                  <p className="mt-2 font-mono text-[11px] leading-5 text-[#8AA2B4]">{desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── FAQ ────────────────────────────────────────────────── */}
-        <section className="mx-auto max-w-3xl px-5 py-20 sm:px-8 sm:py-28">
-          <div className="mb-12 text-center">
-            <span className="font-mono text-[10px] font-bold uppercase tracking-[.2em] text-[#00FF87]">Dúvidas</span>
-            <h2 className="mt-4 font-syne text-3xl font-black tracking-tight sm:text-5xl">
-              Perguntas frequentes
-            </h2>
-          </div>
-
-          <div className="rounded-3xl border border-[#132435] bg-[#0A1520] px-6 sm:px-8">
-            {FAQ.map((item, i) => (
-              <FaqItem key={i} q={item.q} a={item.a} />
-            ))}
-          </div>
-        </section>
-
-        {/* ── CTA ────────────────────────────────────────────────── */}
-        <section className="px-5 py-20 sm:px-8 sm:py-28">
-          <div className="mx-auto max-w-5xl overflow-hidden rounded-3xl border border-[#00D4FF]/30 bg-gradient-to-br from-[#0E2A3A] via-[#0A1520] to-[#0A3324] p-10 text-center shadow-[0_20px_70px_rgba(0,212,255,.09)] sm:p-16">
-            <div className="mx-auto mb-6 grid h-16 w-16 place-items-center rounded-2xl bg-[#00D4FF]/15 text-[#00D4FF]">
-              <ShieldCheck size={32} />
-            </div>
-            <h2 className="font-syne text-3xl font-black sm:text-5xl">
-              Recebeu algo suspeito?
-            </h2>
-            <p className="mx-auto mt-6 max-w-xl font-mono text-sm leading-8 text-[#A6C0CE]">
-              Faça uma checagem antes de compartilhar. Leva poucos passos e pode evitar que um golpe se espalhe pela sua família.
-            </p>
-            <Link to={appPath} className="mt-10 inline-flex min-h-14 items-center gap-2 rounded-xl bg-[#00D4FF] px-8 font-syne text-sm font-black uppercase tracking-wider text-[#04080C] transition-transform hover:-translate-y-0.5">
-              Checar agora <ArrowRight size={17} />
-            </Link>
-          </div>
-        </section>
+        <section className="landing-container landing-final"><Reveal><ShieldCheck size={35} aria-hidden="true" /><h2>Uma pausa antes de agir.<br />Um cuidado a mais com você.</h2><p>Comece com uma mensagem, um link ou um arquivo.</p><Link className="landing-primary" to="/app">Quero checar um conteúdo <ArrowRight size={22} aria-hidden="true" /></Link></Reveal></section>
       </main>
-
       <Footer />
     </div>
   );

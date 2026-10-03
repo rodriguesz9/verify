@@ -5,14 +5,14 @@ export default function Footer() {
   return (
     <footer className="relative z-10 border-t border-[#132435] mt-16 bg-[#04080C]">
       <div className="max-w-7xl mx-auto px-5 sm:px-6 py-12">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
-          <div className="md:col-span-2">
+        <div className="footer-links-grid grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
+          <div className="footer-brand md:col-span-2">
             <h3 className="font-syne font-black text-2xl tracking-[4px] text-[#CDE8F0] mb-3">
               VERIFY
             </h3>
             <p className="font-mono text-xs leading-relaxed max-w-sm text-[#8AA2B4]">
-              Protegendo famílias e cidadãos contra notícias falsas, fraudes e golpes do WhatsApp.
-              Tecnologia de ponta com linguagem simples para todos.
+              Ajuda para entender sinais de risco e consultar evidências antes de compartilhar.
+              Explicações simples, com transparência sobre o que não foi possível verificar.
             </p>
           </div>
 
