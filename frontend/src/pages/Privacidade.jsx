@@ -21,18 +21,20 @@ export default function Privacidade() {
           </section>
 
           <section>
-            <h2 className="text-cyan mb-3 tracking-widest text-[11px] uppercase">2. Armazenamento Forense</h2>
+            <h2 className="text-cyan mb-3 tracking-widest text-[11px] uppercase">2. Processamento e Armazenamento</h2>
             <p>
-               Para garantir a integridade do sistema e evitar abusos, mantemos registros de auditoria das submissões. 
-               Os arquivos de mídia originais são processados e podem ser descartados após a geração do MD5 e do relatório correspondente.
+               As camadas habilitadas podem enviar textos, imagens, quadros de vídeo ou áudio a provedores externos,
+               como Google, Sightengine, Hive e Hugging Face. As regras de retenção desses serviços também se aplicam.
+               O histórico pode armazenar o conteúdo consultado e o relatório; o registro de integridade usa SHA-256.
+               Evite enviar senhas, documentos pessoais, dados bancários e mídias privadas de terceiros.
             </p>
           </section>
 
           <section>
             <h2 className="text-cyan mb-3 tracking-widest text-[11px] uppercase">3. Direitos do Titular</h2>
             <p>
-              Você pode solicitar a exclusão de sua conta e de todo o seu histórico de auditoria a qualquer momento através do 
-              painel de configurações de conta.
+              A exclusão automática de conta e histórico ainda não está disponível nesta versão. O responsável pela
+              aplicação deve disponibilizar um canal de contato e uma política de retenção antes de oferecer o serviço em produção.
             </p>
           </section>
         </div>

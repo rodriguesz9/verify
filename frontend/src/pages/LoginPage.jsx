@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, LockKeyhole, Mail, ShieldCheck, X } from "lucide-react";
 import { login, getMe, googleAuth } from "../services/api";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "../hooks/authContext";
 import GoogleButton from "../components/GoogleButton";
 
 const MAX_ATTEMPTS = 5;

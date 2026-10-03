@@ -1,0 +1,317 @@
+{
+  "tested_at": "2026-10-03T11:33:57.126561+00:00",
+  "base_url": "http://127.0.0.1:8013",
+  "scope": "HTTP controls, not a calibrated accuracy benchmark",
+  "cases": [
+    {
+      "case": "health",
+      "http_status": 200,
+      "expected_status": 200,
+      "http_ok": true,
+      "seconds": 0.03,
+      "result": {
+        "status": "ok"
+      }
+    },
+    {
+      "case": "anonymous_history",
+      "http_status": 401,
+      "expected_status": 401,
+      "http_ok": true,
+      "seconds": 0.0,
+      "result": {}
+    },
+    {
+      "case": "private_url_rejected",
+      "http_status": 400,
+      "expected_status": 400,
+      "http_ok": true,
+      "seconds": 0.0,
+      "result": {}
+    },
+    {
+      "case": "empty_image_rejected",
+      "http_status": 422,
+      "expected_status": 422,
+      "http_ok": true,
+      "seconds": 0.0,
+      "result": {}
+    },
+    {
+      "case": "corrupt_image_rejected",
+      "http_status": 422,
+      "expected_status": 422,
+      "http_ok": true,
+      "seconds": 0.01,
+      "result": {}
+    },
+    {
+      "case": "synthetic_image_control",
+      "http_status": 200,
+      "expected_status": 200,
+      "http_ok": true,
+      "seconds": 0.15,
+      "result": {
+        "verdict": "Suspicious",
+        "analysis_status": "inconclusive",
+        "score": 50,
+        "confidence": null,
+        "summary": "Não houve resposta válida dos detectores de IA. Não é possível determinar a origem deste arquivo.",
+        "content_type": "image",
+        "coverage": {
+          "sightengine": "unavailable",
+          "huggingface": "not_configured",
+          "hive": "skipped",
+          "hive_deepfake": "skipped"
+        }
+      }
+    },
+    {
+      "case": "synthetic_video_control",
+      "http_status": 200,
+      "expected_status": 200,
+      "http_ok": true,
+      "seconds": 0.45,
+      "result": {
+        "verdict": "Suspicious",
+        "analysis_status": "inconclusive",
+        "score": 50,
+        "confidence": null,
+        "summary": "Não houve resposta válida dos detectores de IA. Não é possível determinar a origem deste arquivo.",
+        "content_type": "video",
+        "coverage": {
+          "sightengine": "unavailable",
+          "huggingface": "unavailable",
+          "hive": "unavailable",
+          "hive_deepfake": "unavailable"
+        }
+      }
+    },
+    {
+      "case": "same_audio_neutral_name",
+      "http_status": 200,
+      "expected_status": 200,
+      "http_ok": true,
+      "seconds": 0.08,
+      "result": {
+        "verdict": "inconclusiva",
+        "analysis_status": "inconclusive",
+        "score": 50,
+        "confidence": null,
+        "transcription": "",
+        "summary": "Não houve resposta válida dos detectores de IA. Não é possível determinar a origem deste arquivo.",
+        "short_explanation": "Não houve resposta válida dos detectores de IA. Não é possível determinar a origem deste arquivo.",
+        "content_type": "audio",
+        "coverage": {
+          "sightengine_audio": "disabled",
+          "hive": "skipped"
+        }
+      }
+    },
+    {
+      "case": "same_audio_fake_name",
+      "http_status": 200,
+      "expected_status": 200,
+      "http_ok": true,
+      "seconds": 0.08,
+      "result": {
+        "verdict": "inconclusiva",
+        "analysis_status": "inconclusive",
+        "score": 50,
+        "confidence": null,
+        "transcription": "",
+        "summary": "Não houve resposta válida dos detectores de IA. Não é possível determinar a origem deste arquivo.",
+        "short_explanation": "Não houve resposta válida dos detectores de IA. Não é possível determinar a origem deste arquivo.",
+        "content_type": "audio",
+        "coverage": {
+          "sightengine_audio": "disabled",
+          "hive": "skipped"
+        }
+      }
+    },
+    {
+      "case": "audio_filename_invariance",
+      "behavior_ok": true
+    },
+    {
+      "case": "scam_text",
+      "http_status": 200,
+      "expected_status": 200,
+      "http_ok": true,
+      "seconds": 0.02,
+      "result": {
+        "verdict": "Scam",
+        "analysis_status": "partial",
+        "score": 15,
+        "confidence": null,
+        "summary": "Há padrões conhecidos de possível golpe nesta mensagem. Não pague taxas nem envie dados sem confirmar pelo canal oficial.",
+        "coverage": {
+          "google_fact_check": "not_configured"
+        }
+      }
+    },
+    {
+      "case": "batch_text",
+      "http_status": 200,
+      "expected_status": 200,
+      "http_ok": true,
+      "seconds": 0.01,
+      "result": {
+        "batch_results": [
+          {
+            "verdict": "Suspicious",
+            "analysis_status": "inconclusive",
+            "error": null
+          },
+          {
+            "verdict": "Scam",
+            "analysis_status": "partial",
+            "error": null
+          }
+        ]
+      }
+    },
+    {
+      "case": "whatsapp_simulator",
+      "http_status": 200,
+      "expected_status": 200,
+      "http_ok": true,
+      "seconds": 0.0,
+      "result": {}
+    },
+    {
+      "case": "pdf",
+      "http_status": 200,
+      "expected_status": 200,
+      "http_ok": true,
+      "seconds": 0.18,
+      "result": {
+        "content_type": "application/pdf",
+        "pdf_valid": true
+      }
+    },
+    {
+      "case": "local_register",
+      "http_status": 200,
+      "expected_status": 200,
+      "http_ok": true,
+      "seconds": 0.11,
+      "result": {}
+    },
+    {
+      "case": "local_login",
+      "http_status": 200,
+      "expected_status": 200,
+      "http_ok": true,
+      "seconds": 0.09,
+      "result": {}
+    },
+    {
+      "case": "local_profile",
+      "http_status": 200,
+      "expected_status": 200,
+      "http_ok": true,
+      "seconds": 0.01,
+      "result": {}
+    },
+    {
+      "case": "local_authenticated_batch",
+      "http_status": 200,
+      "expected_status": 200,
+      "http_ok": true,
+      "seconds": 0.15,
+      "result": {
+        "batch_results": [
+          {
+            "verdict": "Suspicious",
+            "analysis_status": "inconclusive",
+            "error": null
+          },
+          {
+            "verdict": "Suspicious",
+            "analysis_status": "inconclusive",
+            "error": null
+          }
+        ]
+      }
+    },
+    {
+      "case": "local_saved_image",
+      "http_status": 200,
+      "expected_status": 200,
+      "http_ok": true,
+      "seconds": 0.24,
+      "result": {
+        "verdict": "Suspicious",
+        "analysis_status": "inconclusive",
+        "score": 50,
+        "confidence": null,
+        "summary": "Não houve resposta válida dos detectores de IA. Não é possível determinar a origem deste arquivo.",
+        "content_type": "image",
+        "coverage": {
+          "sightengine": "unavailable",
+          "huggingface": "not_configured",
+          "hive": "skipped",
+          "hive_deepfake": "skipped"
+        }
+      }
+    },
+    {
+      "case": "local_history",
+      "http_status": 200,
+      "expected_status": 200,
+      "http_ok": true,
+      "seconds": 0.01,
+      "result": {}
+    },
+    {
+      "case": "local_refresh",
+      "http_status": 200,
+      "expected_status": 200,
+      "http_ok": true,
+      "seconds": 0.01,
+      "result": {}
+    },
+    {
+      "case": "local_seal_capture",
+      "http_status": 200,
+      "expected_status": 200,
+      "http_ok": true,
+      "seconds": 0.15,
+      "result": {
+        "status": "SEALED",
+        "integridade_verificada": true
+      }
+    },
+    {
+      "case": "local_seal_verify",
+      "http_status": 200,
+      "expected_status": 200,
+      "http_ok": true,
+      "seconds": 0.09,
+      "result": {
+        "status": "VALID",
+        "integridade_verificada": true
+      }
+    },
+    {
+      "case": "local_logout",
+      "http_status": 204,
+      "expected_status": 204,
+      "http_ok": true,
+      "seconds": 0.0,
+      "result": {
+        "content_type": "application/json",
+        "pdf_valid": false
+      }
+    },
+    {
+      "case": "local_profile_after_logout",
+      "http_status": 401,
+      "expected_status": 401,
+      "http_ok": true,
+      "seconds": 0.0,
+      "result": {}
+    }
+  ]
+}

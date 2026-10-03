@@ -8,6 +8,23 @@ from app.models.history import VerdictLabel
 
 
 class ScamDetectorTests(unittest.TestCase):
+    def test_evidence_contains_the_actual_matched_excerpt(self):
+        text = "Atenção: Pague uma taxa para receber seu dinheiro."
+        result = analyze_scam_indicators(text)
+        self.assertIn(result["detected_patterns"][0]["matched_excerpt"], text)
+
+    def test_unfamiliar_tld_alone_is_not_a_scam_verdict(self):
+        self.assertFalse(analyze_scam_indicators("Um artigo de tecnologia", "https://example.site/article")["is_scam"])
+
+    def test_tld_in_query_does_not_misclassify_official_domain(self):
+        result = analyze_scam_indicators("Consulta de informação", "https://www.gov.br/search?q=.site")
+        self.assertFalse(result["is_scam"])
+        self.assertFalse(result["suspicious_url"])
+
+    def test_official_name_in_unrelated_domain_does_not_bypass_the_check(self):
+        self.assertTrue(analyze_scam_indicators("Consulta de informação", "https://correios-falso.com.br")["is_scam"])
+        self.assertFalse(analyze_scam_indicators("Consulta de informação", "https://bbc.com/news")["is_scam"])
+
     def test_detects_values_owed_pix_fee_variant(self):
         result = analyze_scam_indicators(
             "URGENTE: Banco Central libera valores esquecidos no Pix. "

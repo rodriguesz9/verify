@@ -30,10 +30,7 @@ def detect_acoustic_scam_heuristics(text: str, audio_bytes: bytes) -> Dict[str, 
         if re.search(pattern, text_lower):
             matched_scams.append(pattern)
 
-    # File size and duration indicators
-    size_kb = len(audio_bytes) / 1024.0
-    
-    # Synthetic TTS audio typically has very low noise floor and no ambient room reverb
+    # Speech-content triage only. File size/noise do not establish voice origin.
     is_suspicious_speech = len(matched_scams) > 0 or ("mãe" in text_lower and "pix" in text_lower)
     
     indicators = []
@@ -67,7 +64,7 @@ async def transcribe_with_assemblyai(file_bytes: bytes) -> Dict[str, Any]:
 
     try:
         # 1. Upload audio to AssemblyAI
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=10.0, trust_env=False) as client:
             upload_resp = await client.post(
                 f"{ASSEMBLYAI_API_URL}/upload",
                 headers=headers,
@@ -77,6 +74,8 @@ async def transcribe_with_assemblyai(file_bytes: bytes) -> Dict[str, Any]:
                 return {"available": True, "status": "error", "error": "Upload failed"}
 
             audio_url = upload_resp.json().get("upload_url")
+            if not isinstance(audio_url, str) or not audio_url.startswith("https://"):
+                raise ValueError("Upload inválido")
 
             # 2. Submit transcription job
             transcript_resp = await client.post(
@@ -85,6 +84,8 @@ async def transcribe_with_assemblyai(file_bytes: bytes) -> Dict[str, Any]:
                 json={"audio_url": audio_url, "language_code": "pt"}
             )
             transcript_id = transcript_resp.json().get("id")
+            if transcript_resp.status_code not in {200, 201} or not isinstance(transcript_id, str) or not re.fullmatch(r"[a-zA-Z0-9-]{1,100}", transcript_id):
+                raise ValueError("Job inválido")
 
             # 3. Poll for result (up to 8 seconds for demo responsiveness)
             for _ in range(8):
@@ -94,24 +95,26 @@ async def transcribe_with_assemblyai(file_bytes: bytes) -> Dict[str, Any]:
                     headers=headers
                 )
                 poll_data = poll_resp.json()
+                if poll_resp.status_code != 200:
+                    raise ValueError("Consulta indisponível")
                 if poll_data.get("status") == "completed":
                     return {
                         "available": True,
                         "status": "success",
-                        "transcription": poll_data.get("text", ""),
+                        "transcription": poll_data.get("text") or "",
                         "confidence": poll_data.get("confidence", 0.0),
                         "words_count": len(poll_data.get("words", [])),
                         "audio_duration_sec": poll_data.get("audio_duration", 0)
                     }
                 elif poll_data.get("status") == "error":
-                    return {"available": True, "status": "error", "error": poll_data.get("error")}
+                    return {"available": False, "status": "error", "reason": "Transcrição recusada pelo provedor."}
 
         return {"available": True, "status": "timeout", "transcription": ""}
-    except Exception as exc:
-        return {"available": True, "status": "error", "error": str(exc)[:80]}
+    except Exception:
+        return {"available": False, "status": "error", "reason": "Resposta de transcrição indisponível ou inválida."}
 
 
-async def analyze_audio_quick_for_demonstration(file_bytes: bytes, filename: str = "audio.wav") -> Dict[str, Any]:
+async def analyze_audio_quick_for_demonstration(file_bytes: bytes, filename: str = "audio.wav", mime_type: str = "audio/wav") -> Dict[str, Any]:
     """
     Ultra-fast (< 3s) audio analysis endpoint specifically optimized for live stage presentations.
     Combines rapid acoustic heuristic detection with Gemini Multimodal Audio analysis.
@@ -119,59 +122,45 @@ async def analyze_audio_quick_for_demonstration(file_bytes: bytes, filename: str
     import time
     start_time = time.time()
 
-    # Step 1: Use Gemini or internal audio transcription
+    # Actual bytes only. Fallback is transcription, never an authenticity vote.
     from app.core.audio_checker import transcribe_and_extract_audio
     transcription = ""
+    transcription_provider = None
     try:
-        # Run audio extraction with strict 3-second timeout
         transcription = await asyncio.wait_for(
-            transcribe_and_extract_audio(file_bytes, "audio/wav"),
-            timeout=3.5
+            transcribe_and_extract_audio(file_bytes, mime_type),
+            timeout=8
         )
+        if transcription:
+            transcription_provider = "gemini"
     except Exception:
         transcription = ""
-
-    if not transcription:
-        # Fallback text check
-        transcription = "Mãe, caí na rua e perdi meu celular, faz um Pix urgente pro guincho!" if "clonado" in filename.lower() or "golpe" in filename.lower() else "Oi vó, tudo bem? Tô saindo da aula agora, te vejo mais tarde pro café."
+    if not transcription and os.getenv("ASSEMBLYAI_API_KEY", "").strip():
+        try:
+            alternate = await asyncio.wait_for(transcribe_with_assemblyai(file_bytes), 8)
+            if alternate.get("status") == "success" and isinstance(alternate.get("transcription"), str):
+                transcription = alternate["transcription"]
+                transcription_provider = "assemblyai"
+        except Exception:
+            pass
 
     heuristics = detect_acoustic_scam_heuristics(transcription, file_bytes)
-    
-    is_cloned = (
-        heuristics["is_scam_pattern"]
-        or "clonado" in filename.lower()
-        or "sintet" in filename.lower()
-        or "fake" in filename.lower()
-    )
-
     elapsed_ms = int((time.time() - start_time) * 1000)
-    confidence = 0.96 if is_cloned else 0.88
-    
-    indicators = heuristics["indicators"]
-    if is_cloned:
-        indicators.extend([
-            "Ausência de micro-pausas respiratórias humanas naturais",
-            "Assinatura espectral característica de modelo de clonagem vocal TTS (XTTS/VITS)",
-            "Tom vocal excessivamente linear sem variação emotiva natural"
-        ])
-    else:
-        indicators.extend([
-            "Frequências harmônicas naturais preservadas",
-            "Micro-ruído ambiente e respiração humana coerentes",
-            "Padrão de fala coloquial sem indução de pânico financeiro"
-        ])
-
     return {
-        "verdict": "sintetica" if is_cloned else "autentica",
-        "confidence": confidence,
-        "score_percent": int(confidence * 100),
+        "verdict": "inconclusiva",
+        "analysis_status": "inconclusive",
+        "confidence": None,
+        "score_percent": None,
         "transcription": transcription,
-        "short_explanation": (
-            "🚨 VOZ CLONADA POR IA DETECTADA: Padrões de síntese artificial e tentativa de extorsão emocional urgente."
-            if is_cloned
-            else "✅ VOZ AUTÊNTICA: Características acústicas humanas e conversa natural sem indícios de clonagem."
-        ),
-        "risk_level": "CRÍTICO" if is_cloned else "SEGURO",
-        "indicators": indicators,
+        "transcription_status": "success" if transcription else "unavailable",
+        "transcription_provider": transcription_provider,
+        "short_explanation": "Há sinais de pedido financeiro suspeito na fala; isso não comprova clonagem de voz." if heuristics["is_scam_pattern"] else (
+            "A transcrição foi obtida, mas a origem da voz não pôde ser determinada." if transcription else
+            "Não foi possível transcrever este áudio. Não há resultado de detecção de clonagem."),
+        "risk_level": "ATENÇÃO" if heuristics["is_scam_pattern"] else "INDETERMINADO",
+        "indicators": heuristics["indicators"],
+        "content_risk": heuristics,
+        "limitations": ["Análise do conteúdo da fala não é análise acústica de autenticidade.",
+                        "Confirme pedidos de dinheiro com a pessoa por outro canal."],
         "tempo_processamento_ms": elapsed_ms
     }

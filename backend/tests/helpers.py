@@ -8,11 +8,39 @@ from types import SimpleNamespace
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///./test_verify.db")
+os.environ["ANALYSIS_REQUESTS_PER_MINUTE"] = "2000"
+os.environ["ANALYSIS_GLOBAL_REQUESTS_PER_MINUTE"] = "4000"
+# Dedicated middleware tests exercise realistic small limits independently.
+# Regression tests never call paid services or depend on the developer's .env.
+for key in ("GEMINI_API_KEY", "OPENROUTER_API_KEY", "GOOGLE_FACT_CHECK_KEY", "SERPERAPI_KEY",
+            "SERPAPI_KEY", "SIGHTENGINE_API_USER", "SIGHTENGINE_API_SECRET", "HIVE_API_KEY",
+            "HUGGINGFACE_API_TOKEN", "GPTZERO_API_KEY", "ASSEMBLYAI_API_KEY", "TINEYE_API_KEY", "HIVE_DEEPFAKE_API_KEY",
+            "HIVE_IMAGE_API_KEY", "HIVE_VIDEO_API_KEY", "HIVE_AUDIO_API_KEY", "HIVE_TEXT_API_KEY"):
+    os.environ[key] = ""
+os.environ["SIGHTENGINE_AUDIO_ENABLED"] = "false"
 
 from app.core.auth import get_current_user, get_optional_user
 from app.core.database import get_db
 from app.main import app
 from app.models.user import UserTier
+
+
+def valid_png(color="blue"):
+    import io
+    from PIL import Image
+    output = io.BytesIO()
+    Image.new("RGB", (32, 32), color).save(output, format="PNG")
+    return output.getvalue()
+
+
+def valid_wav():
+    import io
+    import wave
+    output = io.BytesIO()
+    with wave.open(output, "wb") as wav:
+        wav.setnchannels(1); wav.setsampwidth(2); wav.setframerate(16000)
+        wav.writeframes(b"\x00\x00" * 16000)
+    return output.getvalue()
 
 
 def fake_report(**overrides):

@@ -2,29 +2,36 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getLog } from "../services/api";
 import Footer from "../components/Footer";
-import { Search, Shield, AlertTriangle, ArrowRight, Volume2, Phone, ChevronDown, ChevronUp, FileJson } from "lucide-react";
+import AnimatedScore from "../components/report/AnimatedScore";
+import EvidenceExplanation from "../components/report/EvidenceExplanation";
+import { Shield, AlertTriangle, ArrowRight, Volume2, Phone, ChevronDown, ChevronUp, FileJson } from "lucide-react";
 
 const BADGE_STYLES = {
+  False: {
+    title: "AFIRMAÇÃO REFUTADA",
+    color: "#FF3B5C", bg: "rgba(255,59,92,0.06)", border: "rgba(255,59,92,0.2)",
+    headline: "Checagens editoriais distintas refutam a mesma afirmação. Consulte os argumentos, a data e o contexto nas fontes originais.",
+  },
   Authentic: {
-    title: "AUTÊNTICO",
+    title: "INFORMAÇÃO CORROBORADA",
     color: "#00FF87",
     bg: "rgba(0,255,135,0.06)",
     border: "rgba(0,255,135,0.2)",
-    headline: "Esta informação foi confirmada e é autêntica.",
+    headline: "As fontes consultadas corroboram a informação. Confira as referências; isso não garante que uma mídia seja autêntica.",
   },
   AI_Generated: {
-    title: "GERADO POR IA",
+    title: "INDÍCIOS DE IA",
     color: "#00D4FF",
     bg: "rgba(0,212,255,0.06)",
     border: "rgba(0,212,255,0.2)",
-    headline: "Este conteúdo foi identificado como produzido por inteligência artificial.",
+    headline: "Há indícios de geração por IA nas camadas disponíveis. Confira as evidências e limitações.",
   },
   Manipulated: {
-    title: "MANIPULADO",
+    title: "INDÍCIOS DE MANIPULAÇÃO",
     color: "#FF3B5C",
     bg: "rgba(255,59,92,0.06)",
     border: "rgba(255,59,92,0.2)",
-    headline: "Este conteúdo foi manipulado para enganar.",
+    headline: "Há indícios de possível manipulação nas camadas disponíveis. Isso não comprova intenção de enganar.",
   },
   Out_Of_Context: {
     title: "FORA DE CONTEXTO",
@@ -38,33 +45,16 @@ const BADGE_STYLES = {
     color: "#5A7E94",
     bg: "rgba(90,126,148,0.06)",
     border: "rgba(90,126,148,0.2)",
-    headline: "Não encontramos confirmação dessa informação em fontes oficiais.",
+    headline: "Os sinais disponíveis exigem revisão. Consulte a fonte original e as limitações desta análise.",
   },
   Scam: {
-    title: "ALERTA: GOLPE",
+    title: "ALERTA: SINAIS DE GOLPE",
     color: "#FF3B5C",
     bg: "rgba(255,59,92,0.1)",
     border: "rgba(255,59,92,0.3)",
-    headline: "ATENÇÃO: Trata-se de uma tentativa de golpe ou fraude.",
+    headline: "Há padrões de possível golpe ou fraude. Confirme pelo canal oficial antes de agir.",
   },
 };
-
-function formatTimestamp(ts) {
-  if (!ts) return "—";
-  return new Date(ts).toLocaleString("pt-BR", {
-    day: "2-digit", month: "2-digit", year: "2-digit",
-    hour: "2-digit", minute: "2-digit"
-  });
-}
-
-function formatScore(score) {
-  return typeof score === "number" ? score : 50;
-}
-
-function truncate(str, len = 120) {
-  if (!str) return "";
-  return str.length > len ? str.slice(0, len) + "..." : str;
-}
 
 export default function ReportPage() {
   const navigate = useNavigate();
@@ -74,6 +64,11 @@ export default function ReportPage() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState("simple");
   const [technicalOpen, setTechnicalOpen] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+
+  useEffect(() => () => {
+    window.speechSynthesis?.cancel();
+  }, []);
 
   useEffect(() => {
     if (id) {
@@ -108,21 +103,18 @@ export default function ReportPage() {
   if (!result) return null;
 
   const verdict = result.verdict || "Suspicious";
-  const score = formatScore(result.score);
-  const badge = BADGE_STYLES[verdict] || BADGE_STYLES.Suspicious;
+  const inconclusive = result.analysis_status === "inconclusive";
+  const badge = inconclusive ? {
+    title: "ANÁLISE INCONCLUSIVA", color: "#FFCB55", bg: "rgba(255,203,85,.06)",
+    border: "rgba(255,203,85,.3)", headline: "Não há evidência suficiente para concluir. Isso não significa que o conteúdo seja falso ou autêntico."
+  } : BADGE_STYLES[verdict] || BADGE_STYLES.Suspicious;
 
   const shareText = result.whatsapp_share_text ||
-    `⚠️ *Alerta do Verify:* Verifiquei essa mensagem e o resultado foi: ${badge.title}.\n\n📝 *Resumo:* ${result.summary || ""}\n\n🛡️ *Checado em:* https://verify.vercel.app`;
+    `⚠️ *Alerta do Verify:* Resultado: ${badge.title}.\n\n📝 *Resumo:* ${result.summary || ""}\n\n🛡️ *Checado em:* ${window.location.origin}`;
 
   const handleCopyText = () => {
     navigator.clipboard.writeText(shareText);
   };
-
-  const [speaking, setSpeaking] = useState(false);
-
-  useEffect(() => () => {
-    window.speechSynthesis?.cancel();
-  }, []);
 
   const handleSpeak = () => {
     if (!window.speechSynthesis) return;
@@ -185,12 +177,26 @@ export default function ReportPage() {
                 {badge.title}
               </h2>
             </div>
-            <div className="bg-[#04080C88] px-4 py-3 rounded-lg border border-white/5 inline-block sm:block">
-              <span className="text-[10px] font-mono text-[#8AA2B4] uppercase tracking-wider block">Índice de Confiança</span>
-              <span className="font-syne font-black text-3xl" style={{ color: badge.color }}>{score}%</span>
-            </div>
+            <AnimatedScore value={inconclusive ? null : result.score} color={badge.color} />
           </div>
           <p className="text-base text-[#CDE8F0] leading-relaxed mt-2">{badge.headline}</p>
+
+          {result.provider_coverage && <section className="mt-5 border-t border-white/10 pt-4" aria-label="Cobertura da análise">
+            <h3 className="font-bold text-sm mb-3">O que realmente foi verificado</h3>
+            <div className="grid gap-2 sm:grid-cols-3">{Object.entries(result.provider_coverage).map(([name, layer]) =>
+              <div key={name} className="rounded-lg bg-[#04080C] p-3 text-xs break-words">
+                <strong className="capitalize">{name}</strong>
+                <p className="mt-1">{layer.status === "success" ? "Respondeu" : layer.status === "partial" ? "Cobertura parcial" : layer.status === "no_results" ? "Consulta sem resultados" : "Não disponível"}</p>
+                {typeof layer.reason === "string" && <p className="mt-2 text-[#8AA2B4]">{layer.reason}</p>}
+                {typeof layer.ai_score === "number" && <p>Sinal de IA: {(layer.ai_score * 100).toFixed(1)}% · não calibrado</p>}
+                {typeof layer.deepfake_score === "number" && <p>Sinal de manipulação facial: {(layer.deepfake_score * 100).toFixed(1)}% · não calibrado</p>}
+              </div>)}</div>
+          </section>}
+          {result.media_details?.duration_seconds && <p className="mt-4 text-sm">Duração: {result.media_details.duration_seconds.toFixed(1)} s. {result.content_type === "video" ? `Análise de ${result.forensics?.video?.sampled_frames ?? "alguns"} quadros amostrados, não do vídeo inteiro.` : ""}</p>}
+          {result.limitations?.length > 0 && <details className="mt-4 text-sm text-[#FFCB55]">
+            <summary className="cursor-pointer font-bold">Limitações desta checagem</summary>
+            <ul className="mt-3 list-disc pl-5 space-y-2">{result.limitations.map((item, index) => <li key={index}>{item}</li>)}</ul>
+          </details>}
 
           <div className="mt-5 flex flex-wrap gap-3 pt-4 border-t border-white/10">
             <button
@@ -212,15 +218,22 @@ export default function ReportPage() {
           </div>
         </div>
 
+        <EvidenceExplanation result={result} query={query} />
+
         {/* Actionable Steps for Seniors */}
         <div className="mb-8">
-          {verdict === "Scam" || verdict === "Manipulated" || verdict === "Suspicious" ? (
+          {inconclusive ? (
+            <div className="p-6 rounded-2xl bg-[#FFCB55]/10 border border-[#FFCB55]/30 text-[#CDE8F0]">
+              <h4 className="font-bold mb-2">Próximo passo: confirme a fonte</h4>
+              <p className="text-sm leading-6">Não use este resultado como prova de falsidade ou autenticidade. Procure o arquivo original e confirme a informação por um canal independente.</p>
+            </div>
+          ) : verdict === "Scam" || verdict === "Manipulated" || verdict === "Suspicious" ? (
             <div className="p-6 rounded-2xl bg-[#FF3B5C]/10 border border-[#FF3B5C]/30 text-[#CDE8F0]">
               <h4 className="font-syne font-bold text-base text-[#FF8195] mb-3 flex items-center gap-2">
                 <AlertTriangle size={18} /> O QUE VOCÊ DEVE FAZER AGORA:
               </h4>
               <ol className="space-y-2.5 font-mono text-sm leading-6 list-decimal list-inside text-[#CDE8F0]">
-                <li><strong>NÃO transfira dinheiro nem faça Pix</strong> sob nenhuma circunstância.</li>
+                <li><strong>Não envie dinheiro</strong> com base apenas nesta mensagem; confirme a identidade por outro canal.</li>
                 <li><strong>NÃO clique em links</strong> nem forneça senhas ou códigos recebidos por SMS.</li>
                 <li><strong>Se disseram que é um parente ou filho</strong>, ligue para o número de telefone antigo dele para confirmar.</li>
                 <li><strong>Compartilhe este aviso</strong> no grupo da família para proteger outras pessoas.</li>
@@ -229,10 +242,10 @@ export default function ReportPage() {
           ) : (
             <div className="p-6 rounded-2xl bg-[#00FF87]/10 border border-[#00FF87]/30 text-[#CDE8F0]">
               <h4 className="font-syne font-bold text-base text-[#00FF87] mb-2 flex items-center gap-2">
-                <Shield size={18} /> INFORMAÇÃO SEGURA:
+                <Shield size={18} /> CONFIRA O CONTEXTO:
               </h4>
               <p className="font-mono text-sm leading-6 text-[#CDE8F0]">
-                Esta informação possui sinais consistentes de autenticidade e fontes confiáveis. Você pode ler e compartilhar com tranquilidade.
+                Leia as fontes e limitações antes de compartilhar. Um conteúdo gerado por IA não é necessariamente um golpe, e nenhum resultado garante que uma informação seja verdadeira.
               </p>
             </div>
           )}
@@ -324,49 +337,24 @@ export default function ReportPage() {
               <div className="md:col-span-2 p-6 rounded-xl bg-[#0A1520] border border-[#132435]">
                 <h3 className="text-[10px] font-mono uppercase tracking-[8px] text-[#3A6070] font-bold mb-4">Métricas de Análise</h3>
                 {[
-                  { label: "Semantic Score", value: result.semantic_score || score },
-                  { label: "Domain Score", value: result.domain_score || 50 },
-                  { label: "Neutrality Index", value: 100 - (result.sensationalism || 50) },
+                  { label: "Sinal semântico · heurístico", value: result.semantic_score },
+                  { label: "Reputação do domínio · heurística", value: result.domain_score },
+                  { label: "Neutralidade do texto · heurística", value: typeof result.sensationalism === "number" ? 100 - result.sensationalism : null },
                 ].map(item => (
                   <div key={item.label} className="mb-6">
-                    <div className="flex justify-between font-mono text-[10px] mb-2 text-[#3A6070] uppercase tracking-widest">
-                      <span>{item.label}</span>
-                      <span className="text-[#CDE8F0]">{item.value}</span>
-                    </div>
-                    <div className="h-1.5 bg-[#04080C] rounded-full overflow-hidden border border-white/5">
-                      <div
-                        className="h-full rounded-full transition-all"
-                        style={{ width: `${Math.min(100, Math.max(0, item.value))}%`, backgroundColor: "#00D4FF" }}
-                      />
-                    </div>
+                    <AnimatedScore value={inconclusive ? null : item.value} label={item.label} compact />
                   </div>
                 ))}
               </div>
 
               <div className="p-6 rounded-xl bg-[#0A1520] border border-[#132435] flex flex-col items-center justify-center">
-                <div className="w-24 h-24 rounded-full border-4 border-[#00D4FF] border-t-transparent animate-spin mb-4" />
+                <Shield size={56} className="text-[#00D4FF] mb-4" aria-hidden="true" />
                 <div className="font-mono text-xs font-bold" style={{ color: badge.color }}>
                   {verdict.toUpperCase()}
                 </div>
               </div>
             </div>
 
-            {result.fact_check_evidence && result.fact_check_evidence.length > 0 && (
-              <div className="p-6 rounded-xl bg-[#0A1520] border border-[#132435]">
-                <h4 className="text-[10px] font-mono uppercase tracking-[8px] text-[#00D4FF] font-bold mb-4">Checagens de Agências Oficiais</h4>
-                <div className="space-y-3">
-                  {result.fact_check_evidence.map((fc, i) => (
-                    <div key={i} className="p-3 rounded-md bg-[#04080C] border border-[#132435]">
-                      <div className="flex justify-between font-bold text-[#CDE8F0] mb-1">
-                        <span>{fc.publisher || "Agência de Checagem"}</span>
-                        <span className="text-[#FFB800]">{fc.rating || "Avaliação"}</span>
-                      </div>
-                      <p className="text-[#8AA2B4] text-xs">{fc.claim_text}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )}
 

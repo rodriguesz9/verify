@@ -10,6 +10,9 @@
   --border: #132435;
   --card: #0A1520;
   --font-scale: 1;
+  --scrollbar-track: #070F17;
+  --scrollbar-thumb: #28758D;
+  --scrollbar-active: #00D4FF;
 }
 
 html[data-font-size="large"] {
@@ -22,6 +25,60 @@ html[data-font-size="xlarge"] {
   font-size: 120%;
 }
 
+html[data-font-size="elderly"] {
+  --font-scale: 1.6;
+  font-size: 130%;
+}
+
+html[data-font-size="elderly"] body {
+  font-size: 20px;
+  line-height: 1.8;
+}
+
+html[data-font-size="elderly"] h1 { font-size: 2.5rem; }
+html[data-font-size="elderly"] h2 { font-size: 2rem; }
+html[data-font-size="elderly"] h3 { font-size: 1.5rem; }
+html[data-font-size="elderly"] p { font-size: 1.15rem; }
+html[data-font-size="elderly"] span,
+html[data-font-size="elderly"] a,
+html[data-font-size="elderly"] button,
+html[data-font-size="elderly"] li,
+html[data-font-size="elderly"] div {
+  font-size: inherit;
+}
+
+html[data-font-size="elderly"] .font-mono {
+  font-size: 1.1em;
+}
+
+html[data-font-size="elderly"] main {
+  padding-top: 4rem;
+}
+
+html[data-font-size="elderly"] button,
+html[data-font-size="elderly"] a {
+  min-height: 48px;
+  min-width: 48px;
+}
+
+html[data-font-size="elderly"] nav {
+  font-size: 1.2em;
+}
+
+html[data-font-size="elderly"] [class*="text-"] {
+  /* Keep Tailwind classes but scale them */
+}
+
+/* High contrast elderly mode: remove gradients and simplify backgrounds */
+html[data-font-size="elderly"] body {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+html[data-font-size="elderly"] [style*="bg-"] {
+  /* Simplify backgrounds */
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -31,7 +88,37 @@ html[data-font-size="xlarge"] {
 
 html {
   scroll-behavior: smooth;
+  scrollbar-gutter: stable;
   min-height: 100%;
+}
+
+/* Native scrolling stays intact: keyboard, touch, zoom and nested panels. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border: 2px solid var(--scrollbar-track);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-active); }
+*::-webkit-scrollbar-corner { background: var(--scrollbar-track); }
+html[data-font-size="elderly"] { scrollbar-width: auto; }
+html[data-font-size="elderly"]::-webkit-scrollbar { width: 16px; }
+.report-evidence { overflow-wrap: anywhere; }
+.report-evidence p,
+.report-evidence li,
+.report-evidence blockquote,
+.report-evidence a { overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .page-transition, .animate-slide-up, .animate-fade-in { animation: none; }
+}
+@media (forced-colors: active) {
+  * { scrollbar-color: auto; }
 }
 
 body {

@@ -16,14 +16,16 @@ export default function LimitacoesIA() {
             <h2 className="text-cyan mb-3 tracking-widest text-[11px] uppercase">Natureza Probabilística</h2>
             <p>
               A detecção de conteúdos gerados por IA e checagem de fatos é baseada em modelos matemáticos e bases de jornalismo. 
-              O Verify fornece um índice de confiabilidade e alertas claros, mas incentivamos sempre a prudência e a busca por fontes oficiais.
+              Os índices são sinais heurísticos, não porcentagens de acerto comprovadas. Uma resposta sem sinais de IA
+              não comprova autenticidade. Falhas ou ausência dos detectores devem produzir um resultado inconclusivo.
             </p>
           </section>
 
           <section>
             <h2 className="text-cyan mb-3 tracking-widest text-[11px] uppercase">Atraso de Indexação</h2>
             <p>
-               Embora o sistema utilize busca em tempo real, a apuração de boatos muito recentes por agências de checagem pode levar alguns minutos ou horas.
+               A consulta depende das fontes configuradas e de sua disponibilidade. A apuração de boatos recentes pode
+               levar tempo; ausência de uma publicação não prova que a informação seja verdadeira ou falsa.
             </p>
           </section>
 
@@ -31,7 +33,9 @@ export default function LimitacoesIA() {
              <div className="p-6 rounded-xl bg-amber-500/5 border border-amber-500/20">
                 <h3 className="text-amber-500 mb-2 uppercase text-[10px] tracking-widest">Aviso Importante</h3>
                 <p className="italic">
-                   As análises do Verify devem ser utilizadas como uma ferramenta de suporte e esclarecimento contra fraudes, protegendo seu bem-estar digital.
+                   Vídeos são avaliados por três quadros amostrados, sem análise temporal completa, sincronização labial ou
+                   confirmação de identidade. Transcrição de áudio não detecta clonagem de voz. O selo SHA-256 verifica
+                   igualdade dos bytes registrados, não a veracidade da cena, autoria ou uma assinatura C2PA confiável.
                 </p>
              </div>
           </section>

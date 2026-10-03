@@ -41,7 +41,7 @@ export default function AuthenticitySealDemo() {
   };
 
   useEffect(() => {
-    startCamera();
+    drawFallbackCanvas("Imagem educativa — não é uma foto real");
     return () => stopCamera();
   }, []);
 
@@ -173,7 +173,8 @@ export default function AuthenticitySealDemo() {
     setSealData(null);
     setVerificationResult(null);
     setError("");
-    startCamera();
+    stopCamera();
+    drawFallbackCanvas("Imagem educativa — não é uma foto real");
   };
 
   return (
@@ -181,18 +182,19 @@ export default function AuthenticitySealDemo() {
       {/* Header */}
       <div className="text-center mb-8">
         <span className="font-mono text-xs text-[#00FF87] tracking-widest uppercase font-bold block mb-2">
-          FEATURE #2 • C2PA CASEIRO & PROVA CRIPTOGRÁFICA
+          RECURSO 2 • REGISTRO DE INTEGRIDADE SHA-256
         </span>
         <h2 className="font-syne font-black text-3xl md:text-4xl text-[#CDE8F0] uppercase tracking-tight">
-          Selo de Autenticidade <span className="text-[#00D4FF]">(Tamper-Evidence)</span>
+          Registro de Integridade <span className="text-[#00D4FF]">(SHA-256)</span>
         </h2>
         <p className="font-mono text-sm text-[#3A6070] mt-3 max-w-2xl mx-auto">
-          Inverte a lógica tradicional: em vez de apenas caçar manipulações, o Verify <b>carimba a foto no momento da captura</b>. Se 1 único pixel for alterado, o selo se rompe instantaneamente!
+          Registra os bytes do arquivo para comparar versões. Qualquer mudança de bytes, incluindo metadados ou recompressão, muda o hash. Não comprova que a cena seja real e não é uma credencial C2PA.
         </p>
       </div>
 
       {/* 3-Step Progress Indicators */}
-      <div className="flex items-center justify-center gap-4 mb-8">
+      <button type="button" onClick={startCamera} className="mb-5 rounded-xl border border-[#00D4FF] p-3 text-sm text-[#00D4FF]">Ativar câmera (opcional)</button>
+      <div className="flex flex-wrap items-center justify-center gap-2 mb-8">
         {[
           { num: 1, label: "1. Captura" },
           { num: 2, label: "2. Selo Digital" },
@@ -312,19 +314,19 @@ export default function AuthenticitySealDemo() {
         <div className="space-y-6 animate-fade-in">
           <div
             className={`p-8 rounded-3xl border text-center ${
-              verificationResult.autentico
+              verificationResult.integridade_verificada
                 ? "bg-[#00FF87]/10 border-[#00FF87] shadow-[0_0_50px_rgba(0,255,135,0.3)]"
                 : "bg-[#FF3B5C]/10 border-[#FF3B5C] shadow-[0_0_50px_rgba(255,59,92,0.3)]"
             }`}
           >
-            <span className="text-6xl block mb-4">{verificationResult.autentico ? "🛡️" : "🚨"}</span>
+            <span className="text-6xl block mb-4">{verificationResult.integridade_verificada ? "🛡️" : "🚨"}</span>
 
             <h3
               className={`font-syne font-black text-2xl md:text-3xl uppercase mb-3 ${
-                verificationResult.autentico ? "text-[#00FF87]" : "text-[#FF3B5C]"
+                verificationResult.integridade_verificada ? "text-[#00FF87]" : "text-[#FF3B5C]"
               }`}
             >
-              {verificationResult.autentico ? "SELO 100% VÁLIDO: CONTEÚDO AUTÊNTICO" : "SELO VIOLADO: ARQUIVO ADULTERADO"}
+              {verificationResult.integridade_verificada ? "BYTES CORRESPONDEM AO REGISTRO" : "BYTES DIFERENTES OU SEM REGISTRO"}
             </h3>
 
             <p className="font-mono text-sm text-[#CDE8F0] max-w-xl mx-auto leading-relaxed">
@@ -333,7 +335,7 @@ export default function AuthenticitySealDemo() {
 
             <div className="mt-6 p-4 rounded-xl bg-black/50 border border-white/10 max-w-lg mx-auto text-left font-mono text-xs">
               <span className="text-[#8BAAC0] block mb-1">Status Criptográfico:</span>
-              <span className={verificationResult.autentico ? "text-[#00FF87] font-bold" : "text-[#FF3B5C] font-bold"}>
+              <span className={verificationResult.integridade_verificada ? "text-[#00FF87] font-bold" : "text-[#FF3B5C] font-bold"}>
                 {verificationResult.status}
               </span>
             </div>

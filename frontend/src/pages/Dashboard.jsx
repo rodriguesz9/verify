@@ -9,7 +9,7 @@ import { getHistory, getStats } from "../services/api";
 
 const VERDICT_COLORS = {
   Authentic: "#00FF87", AI_Generated: "#00D4FF", Manipulated: "#FF3B5C",
-  Out_Of_Context: "#FFB830", Suspicious: "#8AA2B4", Scam: "#FF3B5C",
+  Out_Of_Context: "#FFB830", Suspicious: "#8AA2B4", Scam: "#FF3B5C", False: "#FF3B5C",
 };
 const TYPES = {
   Text: FileSearch, text: FileSearch, Url: Link2, url: Link2,
@@ -25,6 +25,7 @@ const TYPE_FILTERS = [
 const VERDICT_FILTERS = [
   { value: "all", label: "Todos" },
   { value: "Authentic", label: "Verdadeiro" },
+  { value: "False", label: "Refutado" },
   { value: "Suspicious", label: "Suspeito" },
   { value: "Scam", label: "Golpe" },
   { value: "AI_Generated", label: "IA" },
@@ -74,7 +75,7 @@ export default function Dashboard() {
 
   const metrics = [
     ["Total", stats?.total ?? 0],
-    ["Confiança média", `${stats?.avg_score ?? 0}%`],
+    ["Índice médio · não é precisão", `${stats?.avg_score ?? 0}/100`],
     ["Hoje", stats?.daily_used ?? 0],
     ["Limite diário", stats?.daily_limit ?? "—"],
   ];
@@ -191,7 +192,7 @@ export default function Dashboard() {
                     <th className="px-5 py-3 font-medium">Tipo</th>
                     <th className="px-5 py-3 font-medium">Consulta</th>
                     <th className="px-5 py-3 font-medium">Resultado</th>
-                    <th className="px-5 py-3 font-medium">Confiança</th>
+                    <th className="px-5 py-3 font-medium">Índice · não é precisão</th>
                     <th className="px-5 py-3 font-medium">Data</th>
                     <th />
                   </tr>
@@ -221,7 +222,7 @@ export default function Dashboard() {
                           </span>
                         </td>
                         <td className="px-5 py-4 font-mono text-xs" style={{ color }}>
-                          {item.verdict_score ?? "—"}%
+                          {item.verdict_score == null ? "Não determinado" : `${item.verdict_score}/100`}
                         </td>
                         <td className="whitespace-nowrap px-5 py-4 font-mono text-[11px] text-[#8AA2B4]">
                           {item.created_at

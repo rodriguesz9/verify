@@ -1,10 +1,10 @@
 import { useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "../hooks/authContext";
 import {
   FileText, Link2, Image, Mic, Upload, Search, Shield, CheckCircle,
   AlertTriangle, ArrowRight, Volume2, Phone, ChevronDown, ChevronUp,
-  FileJson, Menu, X, Layers, Clipboard,
+  FileJson, Menu, X, Layers, Clipboard, Video,
 } from "lucide-react";
 import Footer from "../components/Footer";
 import { analyzeText, analyzeUrl, analyzeUpload, analyzeTextBatch } from "../services/api";
@@ -15,6 +15,7 @@ const TABS = [
   { id: 1, label: "Link", icon: Link2, desc: "Cole o link de uma notícia ou site duvidoso" },
   { id: 2, label: "Imagem", icon: Image, desc: "Envie uma foto ou print de tela" },
   { id: 3, label: "Áudio", icon: Mic, desc: "Envie um áudio de WhatsApp para checar" },
+  { id: 4, label: "Vídeo", icon: Video, desc: "Análise limitada a três quadros do vídeo" },
 ];
 
 const EXAMPLES = [
@@ -38,7 +39,7 @@ function parseBatchText(raw) {
   return raw
     .split(/\n{2,}|---+|===+|mensagens?:/)
     .map((t) => t.trim())
-    .filter((t) => t.length >= 8);
+    .filter((t) => t.length >= 10);
 }
 
 export default function Home() {
@@ -51,6 +52,7 @@ export default function Home() {
   const [url, setUrl] = useState("");
   const [imageFile, setImageFile] = useState(null);
   const [audioFile, setAudioFile] = useState(null);
+  const [videoFile, setVideoFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [stage, setStage] = useState(0);
   const [error, setError] = useState("");
@@ -60,10 +62,11 @@ export default function Home() {
   const [batchLoading, setBatchLoading] = useState(false);
 
   const canSubmit = () => {
-    if (tab === 0) return text.trim().length >= 8;
+    if (tab === 0) return text.trim().length >= 10;
     if (tab === 1) return url.trim().length >= 5;
     if (tab === 2) return !!imageFile;
     if (tab === 3) return !!audioFile;
+    if (tab === 4) return !!videoFile;
     return false;
   };
 
@@ -76,8 +79,9 @@ export default function Home() {
   const handleAnalyze = async () => {
     setError(""); setLoading(true); setStage(0);
     try {
-      await sleep(800); setStage(1);
-      await sleep(800); setStage(2);
+      const selectedFile = tab === 2 ? imageFile : tab === 3 ? audioFile : tab === 4 ? videoFile : null;
+      if (selectedFile && selectedFile.size > 25 * 1024 * 1024) throw new Error("Envie um arquivo de até 25 MB.");
+      setStage(1);
       let result;
       let queryLabel = "";
 
@@ -93,6 +97,9 @@ export default function Home() {
       } else if (tab === 3) {
         result = await analyzeUpload(audioFile);
         queryLabel = audioFile?.name || "Áudio enviado";
+      } else if (tab === 4) {
+        result = await analyzeUpload(videoFile);
+        queryLabel = videoFile?.name || "Vídeo enviado";
       }
 
       setStage(3); await sleep(400);
@@ -109,7 +116,7 @@ export default function Home() {
       if (detail && typeof detail === "object" && detail.error === "limite_diario") {
         setError("Seu limite diário de consultas gratuitas foi atingido hoje.");
       } else {
-        setError("Não foi possível concluir a checagem no momento. Por favor, tente novamente.");
+        setError(typeof detail === "string" ? detail : e.message === "Envie um arquivo de até 25 MB." ? e.message : "Não foi possível concluir a checagem no momento. Por favor, tente novamente.");
       }
     } finally {
       setLoading(false);
@@ -133,7 +140,7 @@ export default function Home() {
   };
 
   const VERDICT_COLORS = {
-    Authentic: "#00FF87", AI_Generated: "#00D4FF", Manipulated: "#FF3B5C",
+    Authentic: "#00FF87", False: "#FF3B5C", AI_Generated: "#00D4FF", Manipulated: "#FF3B5C",
     Out_Of_Context: "#FFB830", Suspicious: "#8AA2B4", Scam: "#FF3B5C",
   };
 
@@ -153,16 +160,17 @@ export default function Home() {
             Descubra se é <span className="text-[#00D4FF] underline decoration-[#00FF87] underline-offset-8">Verdade</span> ou <span className="text-[#FF3B5C]">Golpe</span>
           </h1>
           <p className="font-mono text-sm sm:text-base text-[#8AA2B4] max-w-xl mx-auto leading-relaxed">
-            {user ? `Olá, ${user.name.split(" ")[0]}! ` : ""}Cole abaixo a mensagem recebida para checarmos com jornais e especialistas em tempo real.
+            {user ? `Olá, ${user.name.split(" ")[0]}! ` : ""}Envie o conteúdo para consultar sinais de risco e fontes disponíveis. Quando faltarem evidências, o resultado será inconclusivo.
           </p>
         </div>
 
         <div className="rounded-xl overflow-hidden shadow-2xl border border-[#132435] bg-[#0A1520] transition-all">
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 border-b border-[#132435] bg-[#070F17]">
+          <div className="grid grid-cols-3 sm:grid-cols-5 border-b border-[#132435] bg-[#070F17]">
             {tabs.map((t) => (
               <button
                 key={t.id}
+                aria-pressed={tab === t.id}
                 onClick={() => { setTab(t.id); setError(""); setBatchResults(null); setBatchMode(false); }}
                 className={`flex flex-col items-center justify-center gap-1.5 py-4 px-2 sm:px-4 text-center transition-all cursor-pointer ${
                   tab === t.id ? "bg-[#0F1E2E] text-[#00D4FF]" : "bg-[#070F17] text-[#5A7E94]"
@@ -246,10 +254,19 @@ export default function Home() {
                   />
                 </div>
                 <p className="text-xs text-[#5A7E94] font-mono">
-                  Checamos se o site é verdadeiro, se foi criado recentemente para aplicar golpes ou se imita páginas do governo e bancos.
+                  Analisamos o texto da página e sinais do endereço. Isso não comprova que o site é legítimo nem verifica a idade do domínio.
                 </p>
               </div>
             )}
+
+            {tab === 4 && <div className="space-y-4">
+              <label htmlFor="video-upload" className="flex flex-col items-center border-2 border-dashed border-[#132435] rounded-lg p-8 cursor-pointer bg-[#04080C] text-center">
+                <Video size={28} className="text-[#00D4FF] mb-3" />
+                <span className="font-bold">Enviar vídeo</span>
+                <input id="video-upload" type="file" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm" className="mt-4 max-w-full text-xs" onChange={e => setVideoFile(e.target.files?.[0] || null)} />
+              </label>
+              <p className="text-xs text-[#8AA2B4]">Até 25 MB e 2 minutos. Verifica quadros amostrados; não comprova identidade, voz ou sincronização labial.</p>
+            </div>}
 
             {tab === 2 && (
               <div>
@@ -375,7 +392,7 @@ export default function Home() {
                       >
                         {r.verdict || "—"}
                       </span>
-                      <div className="font-mono text-xs mt-1" style={{ color }}>{r.score ?? "—"}%</div>
+                      <div className="font-mono text-xs mt-1" style={{ color }}>{r.analysis_status === "inconclusive" || r.score == null ? "Não determinado" : `${r.score}/100 · índice não calibrado`}</div>
                     </div>
                   </div>
                 </div>
@@ -387,8 +404,8 @@ export default function Home() {
         <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
           {[
             { n: "1", t: "Cole ou Envie", d: "Copie a mensagem recebida no WhatsApp e cole aqui com um toque." },
-            { n: "2", t: "Checagem Rápida", d: "Cruzamos a informação com agências sérias de jornalismo e bancos de dados." },
-            { n: "3", t: "Resultado Fácil", d: "Você vê se é verdade, ouve a explicação e avisa a família sem complicações." },
+            { n: "2", t: "Consulta de Evidências", d: "Consultamos as fontes configuradas e mostramos quando elas não respondem." },
+            { n: "3", t: "Resultado Fácil", d: "Veja os sinais e as limitações, ouça a explicação e confirme com a fonte original." },
           ].map(item => (
             <div key={item.n} className="p-5 rounded-lg bg-[#0A1520] border border-[#132435]">
               <div className="font-mono text-sm text-[#00D4FF] mb-2">{item.n}</div>

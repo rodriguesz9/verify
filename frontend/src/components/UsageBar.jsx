@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getStats } from "../services/api";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "../hooks/authContext";
 
 export default function UsageBar() {
   const { user } = useAuth();

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, Integer, Text, ForeignKey, JSON, Enum as SAEnum, Float
+from sqlalchemy import Column, String, DateTime, Integer, Text, ForeignKey, JSON, Enum as SAEnum, Float, Boolean
 from sqlalchemy.sql import func
 from app.core.database import Base, GUID
 import uuid
@@ -19,6 +19,7 @@ class VerdictLabel(str, enum.Enum):
     OUT_OF_CONTEXT = "Out_Of_Context"
     SUSPICIOUS     = "Suspicious"
     SCAM           = "Scam"
+    FALSE          = "False"
 
 
 class Verification(Base):
@@ -78,3 +79,21 @@ class AuthenticitySeal(Base):
     signature_hmac   = Column(String(64), nullable=False)
     captured_at      = Column(DateTime(timezone=True), server_default=func.now())
     metadata_json    = Column(JSON, nullable=True)
+
+
+class WhatsAppConversation(Base):
+    """
+    Histórico anônimo das conversas do bot de WhatsApp (Módulo 2).
+    Nenhum número de telefone bruto é persistido: apenas um hash SHA-256.
+    """
+    __tablename__ = "whatsapp_conversations"
+
+    id              = Column(GUID, primary_key=True, default=uuid.uuid4)
+    sender_hash     = Column(String(64), nullable=False, index=True)
+    content_type    = Column(String(20), default="text")   # text, audio, image
+    query_preview   = Column(Text, nullable=True)
+    verdict_label   = Column(String(40), nullable=True)
+    verdict_score   = Column(Integer, nullable=True)
+    reply_text      = Column(Text, nullable=True)
+    had_audio_reply = Column(Boolean, default=False)
+    created_at      = Column(DateTime(timezone=True), server_default=func.now(), index=True)

@@ -4,13 +4,13 @@ import { verifyAudioQuick } from "../../services/api";
 
 const SAMPLES = {
   cloned: {
-    label: "Fala Sintética / Clonada (Golpe do Pix)",
+    label: "Amostra de pedido financeiro (origem não auditada)",
     filename: "voz_golpe_clonado.mp3",
     audioSrc: "/audio/voz_golpe_clonado.mp3",
     text: "Mãe, caí na rua e perdi meu celular. Faz um Pix urgente para o guincho, por favor.",
   },
   authentic: {
-    label: "Voz Humana Real (Conversa Autêntica)",
+    label: "Amostra de conversa cotidiana (origem não auditada)",
     filename: "voz_humana_real.mp3",
     audioSrc: "/audio/voz_humana_real.mp3",
     text: "Oi vó, tudo bem? Estou saindo da aula agora. Te vejo mais tarde para o café.",
@@ -52,8 +52,9 @@ export default function AudioDeepfakeDemo() {
     setError(""); setResult(null); setPreviewing(null); setSelectedScenario(scenario);
     try {
       const resp = await fetch(SAMPLES[scenario].audioSrc);
+      if (!resp.ok) throw new Error("Amostra indisponível");
       const blob = await resp.blob();
-      const file = new File([blob], SAMPLES[scenario].filename, { type: "audio/mp3" });
+      const file = new File([blob], SAMPLES[scenario].filename, { type: "audio/mpeg" });
       setAudioFile(file);
       setPreviewUrl(SAMPLES[scenario].audioSrc);
     } catch {
@@ -134,13 +135,14 @@ export default function AudioDeepfakeDemo() {
     }
   };
 
-  const isSynthetic = result?.verdict === "sintetica";
+  const isSynthetic = result?.verdict === "indicios_sintetica";
+  const inconclusive = result?.analysis_status === "inconclusive";
   return (
     <section className="mx-auto max-w-4xl rounded-3xl border border-[#132435] bg-[#0A1520] p-5 shadow-2xl sm:p-8">
       <header className="mb-8 text-center">
         <span className="mb-2 block font-mono text-[10px] font-bold uppercase tracking-[.2em] text-[#00D4FF]">Recurso 1 · demonstração de uso</span>
-        <h2 className="font-syne text-2xl font-black tracking-tight text-[#CDE8F0] sm:text-4xl">Comparação: <span className="text-[#00FF87]">Fala Humana</span> vs <span className="text-[#FF8195]">Fala de IA</span></h2>
-        <p className="mx-auto mt-3 max-w-2xl font-mono text-xs leading-6 text-[#8BAAC0] sm:text-sm">Ouça a diferença entre uma fala real gravada e uma voz clonada/sintetizada por IA. Compare os padrões, tom e urgência. Em qualquer pedido de Pix, confirme a pessoa por outro canal antes de agir.</p>
+        <h2 className="font-syne text-2xl font-black tracking-tight text-[#CDE8F0] sm:text-4xl">Comparação de <span className="text-[#00FF87]">amostras de fala</span></h2>
+        <p className="mx-auto mt-3 max-w-2xl font-mono text-xs leading-6 text-[#8BAAC0] sm:text-sm">Compare duas amostras educativas de fala. A transcrição ajuda a reconhecer pedidos suspeitos, mas não prova se a voz foi clonada. Confirme pedidos de Pix por outro canal.</p>
       </header>
 
       <div className="mb-5 grid gap-4 md:grid-cols-2">
@@ -148,7 +150,7 @@ export default function AudioDeepfakeDemo() {
           const selected = selectedScenario === scenario;
           const danger = scenario === "cloned";
           return <article key={scenario} className={`rounded-2xl border p-5 transition-all ${selected ? (danger ? "border-[#FF3B5C] bg-[#FF3B5C]/10" : "border-[#00FF87] bg-[#00FF87]/10") : "border-[#132435] bg-[#060D14]"}`}>
-            <div className="flex items-start justify-between gap-3"><div><span className={`font-mono text-[10px] font-bold uppercase tracking-widest ${danger ? "text-[#FF8195]" : "text-[#00FF87]"}`}>{sample.label}</span><h3 className="mt-2 font-syne text-base font-bold text-[#CDE8F0]">{danger ? "Voz sintetizada por IA" : "Voz real humana"}</h3></div><AudioLines size={22} className={danger ? "text-[#FF8195]" : "text-[#00FF87]"} /></div>
+            <div className="flex items-start justify-between gap-3"><div><span className={`font-mono text-[10px] font-bold uppercase tracking-widest ${danger ? "text-[#FF8195]" : "text-[#00FF87]"}`}>{sample.label}</span><h3 className="mt-2 font-syne text-base font-bold text-[#CDE8F0]">{danger ? "Pedido de Pix urgente" : "Conversa cotidiana"}</h3></div><AudioLines size={22} className={danger ? "text-[#FF8195]" : "text-[#00FF87]"} /></div>
             <p className="mt-3 min-h-12 font-mono text-xs leading-5 text-[#8BAAC0]">“{sample.text}”</p>
             <div className="mt-5 flex flex-wrap gap-2"><button type="button" onClick={() => selectSample(scenario)} className={`rounded-lg px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-wider ${danger ? "bg-[#FF3B5C] text-white" : "bg-[#00FF87] text-[#04080C]"}`}>Usar esta voz</button><button type="button" onClick={() => playSampleAudio(scenario)} className="inline-flex items-center gap-2 rounded-lg border border-[#284258] px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-[#CDE8F0] hover:border-[#00D4FF] hover:text-[#00D4FF]">{previewing === scenario ? <Square size={12} /> : <Play size={12} />}{previewing === scenario ? "Pausar" : "Ouvir gravação real"}</button></div>
           </article>;
@@ -167,13 +169,16 @@ export default function AudioDeepfakeDemo() {
 
       <button type="button" disabled={analyzing || !audioFile} onClick={handleAnalyze} className="flex w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-[#00D4FF] via-[#00FF87] to-[#00D4FF] px-6 py-5 font-syne text-sm font-black uppercase tracking-wider text-[#04080C] shadow-[0_10px_35px_rgba(0,212,255,.25)] transition-transform enabled:hover:scale-[1.01] disabled:cursor-not-allowed disabled:bg-[#132435] disabled:text-[#5A7E94] sm:text-base"><ShieldAlert size={19} />{analyzing ? "Analisando arquivo…" : "Analisar áudio"}</button>
 
-      {result && <section className={`mt-7 rounded-3xl border p-5 sm:p-7 ${isSynthetic ? "border-[#FF3B5C] bg-[#FF3B5C]/10" : "border-[#00FF87] bg-[#00FF87]/10"}`} aria-live="polite">
+      {result && <section className={`mt-7 rounded-3xl border p-5 sm:p-7 ${inconclusive ? "border-[#FFCB55] bg-[#FFCB55]/10" : isSynthetic ? "border-[#FF3B5C] bg-[#FF3B5C]/10" : "border-[#00FF87] bg-[#00FF87]/10"}`} aria-live="polite">
         {result.isDemo && <p className="mb-5 rounded-lg border border-[#FFB800]/30 bg-[#FFB800]/10 p-3 text-center font-mono text-[10px] leading-5 text-[#FFDB85]">Resultado educativo da comparação. Para uma análise forense real, envie ou grave um áudio de verdade.</p>}
-        <div className="flex flex-col gap-4 border-b border-white/10 pb-5 sm:flex-row sm:items-center sm:justify-between"><div><span className="font-mono text-[10px] font-bold uppercase tracking-widest text-[#8BAAC0]">Processamento: {result.tempo_processamento_ms || 320} ms</span><h3 className={`mt-2 font-syne text-2xl font-black sm:text-3xl ${isSynthetic ? "text-[#FF8195]" : "text-[#00FF87]"}`}>{isSynthetic ? "Alerta: voz sintetizada por IA detectada" : "Fala humana real identificada"}</h3></div><div className={`text-4xl font-black ${isSynthetic ? "text-[#FF8195]" : "text-[#00FF87]"}`}>{result.score_percent || Math.round((result.confidence || 0) * 100)}<span className="ml-1 text-lg">%</span></div></div>
+        <div className="border-b border-white/10 pb-5"><span className="font-mono text-[10px] text-[#8BAAC0]">Processamento da transcrição: {result.tempo_processamento_ms ?? 0} ms</span><h3 className="mt-2 font-syne text-2xl font-black text-[#FFCB55]">{inconclusive ? "Origem da voz inconclusiva" : "Indícios de fala sintética"}</h3></div>
+        <p className="mt-3 text-sm text-[#8BAAC0]">Resultado acústico não comprova identidade nem falsidade da fala. Detectores podem errar.</p>
+        {result.provider_coverage && <ul className="mt-3 text-xs text-[#8BAAC0] space-y-2">{Object.entries(result.provider_coverage).map(([name, layer]) => <li key={name}>{name}: {layer.status === "success" ? "respondeu" : "indisponível"}{typeof layer.ai_score === "number" ? ` · sinal ${(layer.ai_score * 100).toFixed(1)}% (não calibrado)` : ""}</li>)}</ul>}
         <p className="mt-5 font-syne text-base font-bold leading-relaxed text-[#CDE8F0]">{result.short_explanation}</p>
+        {result.transcription && <p className="mt-4 text-sm text-[#CDE8F0]">Transcrição: {result.transcription}</p>}
         {result.indicators?.length > 0 && <ul className="mt-5 space-y-3">{result.indicators.map((indicator, index) => <li key={index} className="flex gap-3 font-mono text-xs leading-5 text-[#CDE8F0]"><span className={isSynthetic ? "text-[#FF8195]" : "text-[#00FF87]"}>{isSynthetic ? "!" : "✓"}</span>{indicator}</li>)}</ul>}
       </section>}
-      <p className="mt-5 flex items-start gap-2 font-mono text-[10px] leading-5 text-[#5A7E94]"><Volume2 size={13} className="mt-1 shrink-0" />A prévia usa a voz disponível no navegador. A verificação de um arquivo enviado depende das fontes configuradas no servidor e não substitui confirmação com a pessoa por outro canal.</p>
+      <p className="mt-5 flex items-start gap-2 font-mono text-[10px] leading-5 text-[#5A7E94]"><Volume2 size={13} className="mt-1 shrink-0" />A prévia reproduz os arquivos de demonstração, cuja origem não foi certificada. A verificação depende das fontes configuradas no servidor e não substitui confirmação com a pessoa por outro canal.</p>
     </section>
   );
 }

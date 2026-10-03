@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "../hooks/authContext";
 import Footer from "../components/Footer";
 import {
+  Accessibility,
   AlertTriangle,
   ArrowRight,
   BadgeCheck,
@@ -28,6 +29,7 @@ import {
   Sparkles,
   Users,
   Volume2,
+  Video,
   Zap,
   X,
 } from "lucide-react";
@@ -51,25 +53,26 @@ const MEDIA_TYPES = [
   { icon: Link2, label: "Links" },
   { icon: Image, label: "Imagens" },
   { icon: Mic, label: "Áudios" },
+  { icon: Video, label: "Vídeos · amostragem" },
 ];
 
 const STATS = [
   { value: "100%", label: "Gratuito", icon: Zap },
-  { value: "< 30s", label: "Tempo de análise", icon: Clock },
-  { value: "4", label: "Tipos de mídia", icon: BarChart3 },
-  { value: "24/7", label: "Sempre disponível", icon: Globe },
+  { value: "Variável", label: "Tempo por provedor", icon: Clock },
+  { value: "5", label: "Tipos de conteúdo", icon: BarChart3 },
+  { value: "Com limites", label: "Análise assistida", icon: Globe },
 ];
 
 const GOLPES = [
   { icon: ShieldCheck, title: "Golpe do Pix falso", desc: "Mensagens pedindo taxas, resgates ou cadastros falsos do Pix para roubar dinheiro.", color: "#FF3B5C" },
   { icon: AlertTriangle, title: "Boatos de saúde", desc: "Remédios milagrosos, curas caseiras e informações falsas sobre vacinas e tratamentos.", color: "#FFB830" },
-  { icon: MessageCircle, title: "Falsas promoções", text: "Ofertas boas demais para ser verdade, links para sites falsos de lojas conhecidas.", color: "#00D4FF" },
+  { icon: MessageCircle, title: "Falsas promoções", desc: "Ofertas boas demais para ser verdade, links para sites falsos de lojas conhecidas.", color: "#00D4FF" },
   { icon: Phone, title: "Golpe do sequestro", desc: "Mensagens falsas dizendo que um familiar está preso e precisa de dinheiro urgente.", color: "#FF3B5C" },
 ];
 
 const FAQ = [
   { q: "O Verify é realmente gratuito?", a: "Sim. O Verify é um projeto de interesse público. Não há planos pagos, assinaturas ou cobranças ocultas." },
-  { q: "Meus dados estão seguros?", a: "Sim. Suas verificações são criptografadas e armazenadas de forma segura. Não compartilhamos seus dados com terceiros." },
+  { q: "Como meus dados são usados?", a: "O conteúdo enviado pode ser processado por serviços externos de IA e checagem. Se você estiver conectado, o resultado pode ser salvo no histórico. Não envie documentos sensíveis ou dados de terceiros sem autorização." },
   { q: "Preciso criar conta para usar?", a: "Não. A demonstração é aberta. Só criamos conta se você quiser guardar seu histórico de verificações." },
   { q: "O Verify substitui um fact-checker profissional?", a: "Não. O Verify é uma ferramenta de apoio. Para decisões importantes, sempre consulte fontes oficiais e jornalistas verificados." },
   { q: "Funciona no celular?", a: "Sim. O Verify é responsivo e funciona em qualquer dispositivo com navegador: celular, tablet ou computador." },
@@ -129,13 +132,20 @@ export default function LandingPage() {
     localStorage.setItem("verify_font_size", fontSize);
   }, [fontSize]);
 
+  useEffect(() => {
+    if (localStorage.getItem("verify_elderly_mode") === "true") {
+      document.documentElement.setAttribute("data-font-size", "elderly");
+      document.documentElement.setAttribute("data-elderly-mode", "true");
+    }
+  }, []);
+
   const toggleFontSize = () => {
     if (fontSize === "normal") setFontSize("large");
     else if (fontSize === "large") setFontSize("xlarge");
     else setFontSize("normal");
   };
 
-  const appPath = user ? "/app" : "/register";
+  const appPath = "/app";
   const closeMenu = () => setMenuOpen(false);
 
   const NAV_LINKS = [
@@ -194,6 +204,31 @@ export default function LandingPage() {
               )}
             </div>
 
+            <button
+              onClick={() => {
+                const isEnabled = localStorage.getItem("verify_elderly_mode") === "true";
+                if (!isEnabled) {
+                  localStorage.setItem("verify_elderly_mode", "true");
+                  localStorage.setItem("verify_font_size", "elderly");
+                  document.documentElement.setAttribute("data-font-size", "elderly");
+                  document.documentElement.setAttribute("data-elderly-mode", "true");
+                } else {
+                  localStorage.setItem("verify_elderly_mode", "false");
+                  localStorage.setItem("verify_font_size", "normal");
+                  document.documentElement.removeAttribute("data-font-size");
+                  document.documentElement.removeAttribute("data-elderly-mode");
+                }
+                window.dispatchEvent(new CustomEvent("elderly-mode-change", { detail: !isEnabled }));
+              }}
+              className={`hidden lg:flex items-center gap-2 rounded-lg px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                localStorage.getItem("verify_elderly_mode") === "true"
+                  ? "bg-[#00FF87]/20 text-[#00FF87] hover:bg-[#00FF87]/30"
+                  : "bg-[#00D4FF]/20 text-[#00D4FF] hover:bg-[#00D4FF]/30"
+              }`}
+            >
+              <Accessibility size={12} /> {localStorage.getItem("verify_elderly_mode") === "true" ? "Modo Fácil Ativo" : "Modo Fácil"}
+            </button>
+
             {user ? (
               <div className="flex items-center gap-4 pl-6 border-l border-[#132435]">
                 <div className="text-right hidden sm:block">
@@ -234,8 +269,28 @@ export default function LandingPage() {
                 {item.label}
               </Link>
             ))}
+            <button
+              onClick={() => {
+                const isEnabled = localStorage.getItem("verify_elderly_mode") === "true";
+                if (!isEnabled) {
+                  localStorage.setItem("verify_elderly_mode", "true");
+                  localStorage.setItem("verify_font_size", "elderly");
+                  document.documentElement.setAttribute("data-font-size", "elderly");
+                  document.documentElement.setAttribute("data-elderly-mode", "true");
+                } else {
+                  localStorage.setItem("verify_elderly_mode", "false");
+                  localStorage.setItem("verify_font_size", "normal");
+                  document.documentElement.removeAttribute("data-font-size");
+                  document.documentElement.removeAttribute("data-elderly-mode");
+                }
+                window.dispatchEvent(new CustomEvent("elderly-mode-change", { detail: !isEnabled }));
+              }}
+              className="font-mono text-[11px] text-[#00FF87] uppercase text-left mt-2 flex items-center gap-2"
+            >
+              <Accessibility size={14} /> Modo Fácil
+            </button>
             <button onClick={toggleFontSize} className="font-mono text-[11px] text-[#00D4FF] uppercase text-left mt-2">
-              Ajustar Tamanho do Texto
+              Ajustar Texto
             </button>
           </div>
         )}
@@ -264,16 +319,35 @@ export default function LandingPage() {
                 decidir com mais segurança.
               </p>
 
-              <div className="mt-9 flex flex-col gap-4 sm:flex-row">
-                <Link to={appPath} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#00FF87] px-7 font-syne text-sm font-black uppercase tracking-wider text-[#04080C] shadow-[0_12px_35px_rgba(0,212,255,.22)] transition-transform hover:-translate-y-0.5">
-                  <FileSearch size={18} />
-                  {user ? "Fazer uma checagem" : "Começar agora"}
-                  <ArrowRight size={17} />
-                </Link>
-                <Link to="/demo" className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl border border-[#284258] bg-[#091622]/80 px-7 font-mono text-xs font-bold uppercase tracking-wider text-[#CDE8F0] transition-colors hover:border-[#00D4FF] hover:text-[#00D4FF]">
-                  <Volume2 size={16} /> Ver demonstração
-                </Link>
-              </div>
+<div className="mt-9 flex flex-col gap-4 sm:flex-row">
+                 <Link to={appPath} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#00FF87] px-7 font-syne text-sm font-black uppercase tracking-wider text-[#04080C] shadow-[0_12px_35px_rgba(0,212,255,.22)] transition-transform hover:-translate-y-0.5">
+                   <FileSearch size={18} />
+                   {user ? "Fazer uma checagem" : "Começar agora"}
+                   <ArrowRight size={17} />
+                 </Link>
+                 <Link to="/demo" className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl border border-[#284258] bg-[#091622]/80 px-7 font-mono text-xs font-bold uppercase tracking-wider text-[#CDE8F0] transition-colors hover:border-[#00D4FF] hover:text-[#00D4FF]">
+                   <Volume2 size={16} /> Ver demonstração
+                 </Link>
+               </div>
+
+               {/* Elderly mode CTA */}
+               <div className="mt-5 flex items-center gap-3 flex-wrap">
+                 <p className="font-mono text-[10px] leading-5 text-[#6F8B9F]">
+                   Dificuldade para ler? Use o modo acessível.
+                 </p>
+                 <button
+                   onClick={() => {
+                     localStorage.setItem("verify_elderly_mode", "true");
+                     localStorage.setItem("verify_font_size", "elderly");
+                     document.documentElement.setAttribute("data-font-size", "elderly");
+                     document.documentElement.setAttribute("data-elderly-mode", "true");
+                     window.dispatchEvent(new CustomEvent("elderly-mode-change", { detail: true }));
+                   }}
+                   className="inline-flex min-h-12 items-center gap-2 rounded-xl border border-[#00FF87]/30 bg-[#00FF87]/10 px-5 py-2.5 font-mono text-xs font-bold uppercase tracking-wider text-[#00FF87] transition-colors hover:bg-[#00FF87]/20 hover:border-[#00FF87]/50"
+                 >
+                   <Accessibility size={16} /> Modo Fácil — Letras Grandes
+                 </button>
+               </div>
 
               <p className="mt-5 flex items-center gap-2 font-mono text-[10px] leading-5 text-[#6F8B9F]">
                 <CheckCircle2 size={13} className="shrink-0 text-[#00FF87]" />
@@ -309,7 +383,7 @@ export default function LandingPage() {
                   <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-[#132435]">
                     <div className="h-full w-[84%] rounded-full bg-gradient-to-r from-[#FFB800] to-[#FF3B5C]" />
                   </div>
-                  <p className="mt-2 font-mono text-[10px] text-[#FFB2BF]">Sinais de risco identificados — 84%</p>
+                  <p className="mt-2 font-mono text-[10px] text-[#FFB2BF]">Exemplo ilustrativo — não é uma medição de precisão</p>
                 </div>
 
                 {/* Signal cards */}
@@ -439,11 +513,11 @@ export default function LandingPage() {
             <div>
               <span className="font-mono text-[10px] font-bold uppercase tracking-[.2em] text-[#00D4FF]">Privacidade primeiro</span>
               <h2 className="mt-4 font-syne text-3xl font-black leading-tight tracking-tight sm:text-5xl">
-                Seus dados ficam com você.
+                Saiba como seus dados são usados.
               </h2>
               <p className="mt-6 font-mono text-sm leading-8 text-[#8AA2B4]">
-                O Verify foi pensado para ser útil sem ser invasivo. Não rastreamos
-                seus contatos, não acessamos suas conversas e não vendemos dados.
+                Você escolhe o conteúdo enviado. Serviços externos de análise podem processá-lo,
+                e resultados de usuários conectados ficam no histórico. Evite enviar informações sensíveis.
               </p>
               <Link to="/privacy" className="mt-8 inline-flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-wider text-[#00D4FF] hover:text-[#00FF87] transition-colors">
                 Ler nossa política de privacidade <ArrowRight size={14} />
@@ -452,9 +526,9 @@ export default function LandingPage() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               {[
-                { icon: Lock, title: "Criptografia", desc: "Dados protegidos em trânsito e em repouso." },
+                { icon: Lock, title: "Conexão HTTPS", desc: "O site publicado usa conexão segura; isso não impede processamento por provedores externos." },
                 { icon: Shield, title: "Sem rastreamento", desc: "Não monitoramos sua navegação ou contatos." },
-                { icon: Users, title: "Controle total", desc: "Exclua seu histórico quando quiser." },
+                { icon: Users, title: "Envio consciente", desc: "Envie apenas o necessário e evite informações pessoais ou bancárias." },
                 { icon: Globe, title: "Código aberto", desc: "Transparência total sobre como funciona." },
               ].map(({ icon: Icon, title, desc }, i) => (
                 <div key={i} className="rounded-2xl border border-[#132435] bg-[#0A1520] p-5">

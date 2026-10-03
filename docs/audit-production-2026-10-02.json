@@ -1,0 +1,148 @@
+{
+  "tested_at": "2026-10-02T21:34:40.209538+00:00",
+  "base_url": "https://verify-production-ead7.up.railway.app",
+  "scope": "HTTP controls, not a calibrated accuracy benchmark",
+  "cases": [
+    {
+      "case": "health",
+      "http_status": 200,
+      "expected_status": 200,
+      "http_ok": true,
+      "seconds": 15.26,
+      "result": {
+        "status": "ok"
+      }
+    },
+    {
+      "case": "anonymous_history",
+      "http_status": 401,
+      "expected_status": 401,
+      "http_ok": true,
+      "seconds": 0.22,
+      "result": {}
+    },
+    {
+      "case": "private_url_rejected",
+      "http_status": 400,
+      "expected_status": 400,
+      "http_ok": true,
+      "seconds": 0.24,
+      "result": {}
+    },
+    {
+      "case": "empty_image_rejected",
+      "http_status": 200,
+      "expected_status": 422,
+      "http_ok": false,
+      "seconds": 1.16,
+      "result": {
+        "verdict": "Suspicious",
+        "score": 50,
+        "summary": "Não foi possível confirmar as informações com certeza no momento. Desconfie e não repasse sem antes verificar."
+      }
+    },
+    {
+      "case": "corrupt_image_rejected",
+      "http_status": 200,
+      "expected_status": 422,
+      "http_ok": false,
+      "seconds": 25.23,
+      "result": {}
+    },
+    {
+      "case": "synthetic_image_control",
+      "http_status": 200,
+      "expected_status": 200,
+      "http_ok": true,
+      "seconds": 4.16,
+      "result": {
+        "verdict": "Suspicious",
+        "score": 50,
+        "summary": "Não foi possível confirmar as informações com certeza no momento. Desconfie e não repasse sem antes verificar."
+      }
+    },
+    {
+      "case": "synthetic_video_control",
+      "http_status": 200,
+      "expected_status": 200,
+      "http_ok": true,
+      "seconds": 11.24,
+      "result": {
+        "verdict": "Suspicious",
+        "score": 50,
+        "summary": "Não foi possível confirmar as informações com certeza no momento. Desconfie e não repasse sem antes verificar."
+      }
+    },
+    {
+      "case": "same_audio_neutral_name",
+      "http_status": 200,
+      "expected_status": 200,
+      "http_ok": true,
+      "seconds": 3.73,
+      "result": {
+        "verdict": "autentica",
+        "confidence": 0.88,
+        "transcription": "Oi vó, tudo bem? Tô saindo da aula agora, te vejo mais tarde pro café.",
+        "short_explanation": "✅ VOZ AUTÊNTICA: Características acústicas humanas e conversa natural sem indícios de clonagem."
+      }
+    },
+    {
+      "case": "same_audio_fake_name",
+      "http_status": 200,
+      "expected_status": 200,
+      "http_ok": true,
+      "seconds": 0.64,
+      "result": {
+        "verdict": "sintetica",
+        "confidence": 0.96,
+        "transcription": "Mãe, caí na rua e perdi meu celular, faz um Pix urgente pro guincho!",
+        "short_explanation": "🚨 VOZ CLONADA POR IA DETECTADA: Padrões de síntese artificial e tentativa de extorsão emocional urgente."
+      }
+    },
+    {
+      "case": "audio_filename_invariance",
+      "behavior_ok": false
+    },
+    {
+      "case": "scam_text",
+      "http_status": 500,
+      "expected_status": 200,
+      "http_ok": false,
+      "seconds": 14.89,
+      "result": {
+        "content_type": "text/plain; charset=utf-8",
+        "pdf_valid": false
+      }
+    },
+    {
+      "case": "batch_text",
+      "http_status": 200,
+      "expected_status": 200,
+      "http_ok": true,
+      "seconds": 0.42,
+      "result": {}
+    },
+    {
+      "case": "whatsapp_simulator",
+      "http_status": 500,
+      "expected_status": 200,
+      "http_ok": false,
+      "seconds": 21.85,
+      "result": {
+        "content_type": "text/plain; charset=utf-8",
+        "pdf_valid": false
+      }
+    },
+    {
+      "case": "pdf",
+      "http_status": 200,
+      "expected_status": 200,
+      "http_ok": true,
+      "seconds": 5.38,
+      "result": {
+        "content_type": "application/pdf",
+        "pdf_valid": true
+      }
+    }
+  ]
+}

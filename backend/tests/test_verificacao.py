@@ -2,7 +2,7 @@ import io
 import unittest
 from unittest.mock import AsyncMock, patch
 from fastapi.testclient import TestClient
-from helpers import app, fake_user, override_auth_and_db, FakeSession, ScalarResult
+from helpers import app, fake_user, override_auth_and_db, FakeSession, ScalarResult, valid_png, valid_wav
 
 
 class VerificacaoDemonstracaoIntegrationTests(unittest.TestCase):
@@ -17,7 +17,7 @@ class VerificacaoDemonstracaoIntegrationTests(unittest.TestCase):
 
     def test_capturar_selo_e_detectar_adulteracao(self):
         # 1. Captura imagem original
-        original_image = b"RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00ORIGINAL_PHOTO_PIXELS_ABC_123"
+        original_image = valid_png()
         
         resp_cap = self.client.post(
             "/api/capturar/selo",
@@ -25,7 +25,8 @@ class VerificacaoDemonstracaoIntegrationTests(unittest.TestCase):
         )
         self.assertEqual(resp_cap.status_code, 200)
         cap_data = resp_cap.json()
-        self.assertTrue(cap_data["autentico"])
+        self.assertFalse(cap_data["autentico"])
+        self.assertTrue(cap_data["integridade_verificada"])
         self.assertEqual(cap_data["status"], "SEALED")
         file_hash = cap_data["file_hash_sha256"]
 
@@ -37,12 +38,13 @@ class VerificacaoDemonstracaoIntegrationTests(unittest.TestCase):
         )
         self.assertEqual(resp_ver.status_code, 200)
         ver_data = resp_ver.json()
-        self.assertTrue(ver_data["autentico"])
+        self.assertFalse(ver_data["autentico"])
+        self.assertTrue(ver_data["integridade_verificada"])
         self.assertEqual(ver_data["status"], "VALID")
 
         # 3. Altera 1 byte da foto (simula adulteração de pixel no Photoshop) -> Deve falhar
         self.db.execute_results = [ScalarResult(None)]
-        tampered_image = b"RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00TAMPERED_PHOTO_PIXELS_XYZ_999"
+        tampered_image = valid_png("red")
         resp_tampered = self.client.post(
             "/api/verificar/selo",
             files={"file": ("foto_demonstracao.jpg", tampered_image, "image/jpeg")}
@@ -53,7 +55,7 @@ class VerificacaoDemonstracaoIntegrationTests(unittest.TestCase):
         self.assertEqual(tamp_data["status"], "TAMPERED_OR_UNKNOWN")
 
     def test_audio_rapido_demonstracao(self):
-        sample_audio = b"RIFF....WAVEfmt ....fake_audio_clonado_data"
+        sample_audio = valid_wav()
         resp = self.client.post(
             "/api/verificar/audio-rapido",
             files={"file": ("golpe_parente_clonado.wav", sample_audio, "audio/wav")}
@@ -64,10 +66,12 @@ class VerificacaoDemonstracaoIntegrationTests(unittest.TestCase):
         self.assertIn("confidence", data)
         self.assertIn("short_explanation", data)
         self.assertIn("tempo_processamento_ms", data)
-        self.assertEqual(data["verdict"], "sintetica")
+        self.assertEqual(data["verdict"], "inconclusiva")
+        self.assertEqual(data["transcription"], "")
+        self.assertIsNone(data["confidence"])
 
     def test_verificar_completo_pipeline(self):
-        sample_image = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDRfake_png"
+        sample_image = valid_png()
         resp = self.client.post(
             "/api/verificar/completo",
             files={"file": ("documento.png", sample_image, "image/png")}
@@ -81,7 +85,7 @@ class VerificacaoDemonstracaoIntegrationTests(unittest.TestCase):
         self.assertIn("veredito", data)
 
     def test_exportar_relatorio_pdf(self):
-        sample_image = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDRfake_evidence"
+        sample_image = valid_png()
         resp = self.client.post(
             "/api/verificar/relatorio-pdf",
             files={"file": ("evidencia.png", sample_image, "image/png")}

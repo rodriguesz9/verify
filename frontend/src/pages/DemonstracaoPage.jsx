@@ -8,8 +8,8 @@ import WhatsAppSimulator from "../components/demonstracao/WhatsAppSimulator";
 import ForensicTimeline from "../components/demonstracao/ForensicTimeline";
 
 const TABS = [
-  { id: "audio", label: "Voz clonada", sub: "Golpe do parente", icon: AudioLines, color: "#FF3B5C" },
-  { id: "seal", label: "Selo C2PA", sub: "Integridade do arquivo", icon: BadgeCheck, color: "#00FF87" },
+  { id: "audio", label: "Análise da fala", sub: "Sinais de golpe", icon: AudioLines, color: "#FF3B5C" },
+  { id: "seal", label: "Registro SHA-256", sub: "Integridade, não C2PA", icon: BadgeCheck, color: "#00FF87" },
   { id: "whatsapp", label: "WhatsApp", sub: "Teste interativo", icon: MessageCircle, color: "#25D366" },
   { id: "forensic", label: "Análise forense", sub: "Etapas da checagem", icon: ScanSearch, color: "#00D4FF" },
 ];

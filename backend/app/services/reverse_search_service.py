@@ -10,6 +10,21 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional
 
 
+SERP_API_URL = "https://serpapi.com/search.json"
+
+
+async def search_google_lens_reverse(image_bytes: bytes, filename: str = "image.jpg") -> Dict[str, Any]:
+    """
+    Uses SerpAPI to perform reverse image search (Google Lens equivalent).
+    Checks if the image appears elsewhere on the web and can help determine
+    if it's an old photo being reused with new context.
+    """
+    # Serper and SerpAPI are different providers; their keys are not interchangeable.
+    # Google Lens requires a public image URL or an ID from the separate upload API.
+    # Never publish private user uploads automatically just to enable this layer.
+    return {"available": False, "status": "skipped", "matches_count": None,
+            "reason": "Busca Lens exige URL pública ou upload explícito ao provedor; indisponível para este arquivo privado.",
+            "summary": "Busca reversa não realizada. Isso não significa ausência de correspondências."}
 async def check_wayback_machine(url_or_query: str) -> Dict[str, Any]:
     """
     Checks the Internet Archive (Wayback Machine) to see if a URL or resource
@@ -43,14 +58,12 @@ async def check_wayback_machine(url_or_query: str) -> Dict[str, Any]:
                     return {
                         "checked": True,
                         "found": True,
-                        "first_seen_date": formatted_date,
+                        "snapshot_date": formatted_date,
                         "raw_timestamp": timestamp_str,
                         "archive_url": closest.get("url"),
-                        "is_anachronistic_recycled": is_old,
+                        "is_anachronistic_recycled": False,
                         "summary": (
-                            f"⚠️ Este conteúdo já estava indexado na web em {formatted_date}. "
-                            "Pode se tratar de notícia/imagem antiga requentada como recente!"
-                            if is_old else f"Primeiro registro na Wayback Machine: {formatted_date}"
+                            f"Registro disponível da URL em {formatted_date}. Não comprova primeira publicação, identidade da imagem ou descontextualização."
                         )
                     }
         return {"checked": True, "found": False, "summary": "Sem registro prévio na Wayback Machine."}
@@ -111,7 +124,7 @@ async def search_context_and_provenance(
     Consolidates reverse search, fact-check tools and historical provenance.
     """
     tasks = []
-    
+
     # 1. Wayback Machine (if URL provided)
     if url:
         tasks.append(check_wayback_machine(url))
@@ -124,10 +137,16 @@ async def search_context_and_provenance(
     else:
         tasks.append(asyncio.sleep(0, result={"available": False, "matches_count": 0}))
 
-    wayback_res, tineye_res = await asyncio.gather(*tasks)
+    # 3. SerpAPI Google Lens reverse (if image bytes provided)
+    if image_bytes:
+        tasks.append(search_google_lens_reverse(image_bytes, filename))
+    else:
+        tasks.append(asyncio.sleep(0, result={"available": False, "matches_count": 0}))
+
+    wayback_res, tineye_res, lens_res = await asyncio.gather(*tasks)
 
     return {
         "wayback": wayback_res,
         "tineye": tineye_res,
+        "google_lens": lens_res,
     }
-

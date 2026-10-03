@@ -9,6 +9,9 @@ import json
 import shutil
 import asyncio
 import tempfile
+import io
+from pathlib import Path
+from app.services.media_validation import run_media_tool
 from typing import Dict, Any, List
 from PIL import Image, ExifTags
 
@@ -55,21 +58,11 @@ async def extract_metadata(file_bytes: bytes, filename: str = "upload.jpg") -> D
 
     if is_exiftool_enabled and exiftool_bin:
         try:
-            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(filename)[1]) as tmp:
-                tmp.write(file_bytes)
-                tmp_path = tmp.name
-
-            proc = await asyncio.create_subprocess_exec(
-                exiftool_bin, "-j", "-n", tmp_path,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            stdout, _ = await proc.communicate()
-
-            if os.path.exists(tmp_path):
-                os.remove(tmp_path)
-
-            if proc.returncode == 0 and stdout:
+            with tempfile.TemporaryDirectory(prefix="verify-exif-") as directory:
+                path = Path(directory) / ("asset" + Path(filename).suffix[:10])
+                path.write_bytes(file_bytes)
+                stdout = await run_media_tool(exiftool_bin, "-j", "-n", str(path))
+            if stdout:
                 parsed = json.loads(stdout.decode("utf-8", errors="ignore"))
                 if parsed and isinstance(parsed, list):
                     metadata = parsed[0]
@@ -79,11 +72,7 @@ async def extract_metadata(file_bytes: bytes, filename: str = "upload.jpg") -> D
     # PIL Fallback if exiftool not installed or yielded nothing
     if not metadata:
         try:
-            with tempfile.NamedTemporaryFile(delete=False) as tmp:
-                tmp.write(file_bytes)
-                tmp_path = tmp.name
-
-            with Image.open(tmp_path) as img:
+            with Image.open(io.BytesIO(file_bytes)) as img:
                 metadata["Format"] = img.format
                 metadata["ImageSize"] = f"{img.width}x{img.height}"
                 metadata["Mode"] = img.mode
@@ -106,8 +95,6 @@ async def extract_metadata(file_bytes: bytes, filename: str = "upload.jpg") -> D
                         if isinstance(v, (str, int, float)):
                             metadata[k] = str(v)
 
-            if os.path.exists(tmp_path):
-                os.remove(tmp_path)
         except Exception:
             pass
 
@@ -125,7 +112,7 @@ async def extract_metadata(file_bytes: bytes, filename: str = "upload.jpg") -> D
     if ai_signatures:
         summary_msg = f"Assinatura de IA encontrada nos metadados: {', '.join(ai_signatures)}"
     elif make:
-        summary_msg = f"Metadados de câmera válidos identificados ({make} {model})."
+        summary_msg = f"Metadados declaram câmera {make} {model}; esses campos podem ser alterados e não comprovam origem."
         if editing_signatures:
             summary_msg += f" Imagem tratada em {editing_signatures[0].capitalize()}."
     elif editing_signatures:
@@ -148,4 +135,3 @@ async def extract_metadata(file_bytes: bytes, filename: str = "upload.jpg") -> D
         "raw_keys_count": len(metadata),
         "raw_preview": {k: str(v)[:80] for k, v in list(metadata.items())[:12]}
     }
-

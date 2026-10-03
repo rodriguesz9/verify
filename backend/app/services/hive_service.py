@@ -1,133 +1,82 @@
-"""
-Hive API Service (Layer 2)
-Multimodal AI & Deepfake detection for images, video, audio and text.
-https://thehive.ai
-"""
-
+"""Hive v2 detection. Project-specific keys and exact documented class names."""
+import math
 import os
 import httpx
-from typing import Dict, Any, Optional
 
 HIVE_API_URL = "https://api.thehive.ai/api/v2/task/sync"
 
 
-async def check_hive_media(
-    file_bytes: bytes,
-    filename: str = "media.jpg",
-    media_type: str = "image"
-) -> Dict[str, Any]:
-    """
-    Analyzes media via Hive AI API.
-    Gracefully returns simulated/neutral response if API key is not configured.
-    """
-    api_key = os.getenv("HIVE_API_KEY", "").strip()
+def parse_hive_scores(data: dict) -> dict:
+    classes = {}
+    segments = []
+    task_errors = 0
+    if not isinstance(data, dict) or not isinstance(data.get("status"), list):
+        return {"available": False, "status": "invalid_response"}
+    for task in data["status"]:
+        if not isinstance(task, dict) or not isinstance(task.get("status"), dict) or str(task["status"].get("code")) != "0":
+            task_errors += 1
+            continue
+        response = task.get("response")
+        outputs = response.get("output") if isinstance(response, dict) else None
+        if not isinstance(outputs, list):
+            task_errors += 1
+            continue
+        for output in outputs[:50]:
+            if not isinstance(output, dict):
+                task_errors += 1
+                continue
+            faces = output.get("bounding_poly", [])
+            groups = [output, *(faces if isinstance(faces, list) else [])]
+            observations = {}
+            for group in groups:
+                items = group.get("classes", []) if isinstance(group, dict) else []
+                if not isinstance(items, list):
+                    continue
+                for item in items:
+                    if not isinstance(item, dict):
+                        continue
+                    label, score = item.get("class"), item.get("score")
+                    if isinstance(label, str) and not isinstance(score, bool) and isinstance(score, (int, float)) and math.isfinite(score) and 0 <= score <= 1:
+                        observations[label.lower()] = max(observations.get(label.lower(), 0), float(score))
+                        classes[label.lower()] = max(classes.get(label.lower(), 0), float(score))
+            start, end = output.get("time"), output.get("end_time")
+            if (all(isinstance(t, (int, float)) and not isinstance(t, bool) and math.isfinite(t) for t in (start, end))
+                    and 0 <= start <= end <= 120 and "ai_generated" in observations):
+                segments.append({"start_seconds": start, "end_seconds": end,
+                                 "ai_generated_score": observations["ai_generated"]})
+    # Never match substrings: not_ai_generated and not_deepfake are negative classes.
+    ai, deepfake = classes.get("ai_generated"), classes.get("yes_deepfake", classes.get("deepfake"))
+    available = ai is not None or deepfake is not None
+    return {"available": available, "status": "partial" if available and task_errors else "success" if available else "invalid_response",
+            "ai_generated_score": ai, "deepfake_score": deepfake,
+            "is_ai_detected": (ai is not None and ai >= .8) or (deepfake is not None and deepfake >= .8),
+            "raw_classes": classes,
+            "segments": segments, "score_aggregation": "maximum_valid_observation_not_probability_of_whole_file",
+            "reason": "Parte das tarefas Hive falhou; não usar como consenso completo." if task_errors else None if available else "Hive não retornou classes de detecção válidas para este projeto."}
+
+
+async def _request_hive(media_type: str, **payload) -> dict:
+    # Do not silently call the image/legacy project again as a deepfake model.
+    legacy = "" if media_type == "deepfake" else os.getenv("HIVE_API_KEY", "")
+    api_key = (os.getenv(f"HIVE_{media_type.upper()}_API_KEY") or legacy).strip()
     if not api_key:
-        return {
-            "available": False,
-            "status": "skipped",
-            "reason": "HIVE_API_KEY não configurada",
-            "ai_generated_score": None,
-            "deepfake_score": None,
-            "is_ai_detected": False
-        }
-
-    headers = {
-        "Authorization": f"token {api_key}",
-        "Accept": "application/json"
-    }
-
-    files = {
-        "media": (filename, file_bytes)
-    }
-
+        return {"available": False, "status": "skipped", "reason": "Chave do projeto Hive não configurada.",
+                "ai_generated_score": None, "deepfake_score": None}
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.post(HIVE_API_URL, headers=headers, files=files)
-            if resp.status_code != 200:
-                return {
-                    "available": True,
-                    "status": "error",
-                    "error": f"HTTP {resp.status_code}: {resp.text[:100]}",
-                    "ai_generated_score": None,
-                    "deepfake_score": None,
-                    "is_ai_detected": False
-                }
-
-            data = resp.json()
-            # Extract classes from Hive response
-            classes = {}
-            ai_score = 0.0
-            deepfake_score = 0.0
-
-            for output in data.get("status", [{}])[0].get("response", {}).get("output", []):
-                for c in output.get("classes", []):
-                    c_class = c.get("class", "")
-                    score = float(c.get("score", 0.0))
-                    classes[c_class] = score
-                    if "ai_generated" in c_class.lower() or "synthetic" in c_class.lower():
-                        ai_score = max(ai_score, score)
-                    if "deepfake" in c_class.lower():
-                        deepfake_score = max(deepfake_score, score)
-
-            threshold = float(os.getenv("MIN_CONFIDENCE_THRESHOLD", "0.75"))
-            return {
-                "available": True,
-                "status": "success",
-                "ai_generated_score": round(ai_score, 3),
-                "deepfake_score": round(deepfake_score, 3),
-                "is_ai_detected": ai_score >= threshold or deepfake_score >= threshold,
-                "raw_classes": classes
-            }
-    except Exception as exc:
-        return {
-            "available": True,
-            "status": "error",
-            "error": str(exc)[:100],
-            "ai_generated_score": None,
-            "deepfake_score": None,
-            "is_ai_detected": False
-        }
+        async with httpx.AsyncClient(timeout=15, trust_env=False) as client:
+            response = await client.post(HIVE_API_URL, headers={"Authorization": f"token {api_key}", "Accept": "application/json"}, **payload)
+        if response.status_code != 200:
+            return {"available": False, "status": "error", "reason": f"Hive indisponível (HTTP {response.status_code}).",
+                    "ai_generated_score": None, "deepfake_score": None}
+        return parse_hive_scores(response.json())
+    except Exception:
+        return {"available": False, "status": "error", "reason": "Não foi possível obter resposta válida do Hive.",
+                "ai_generated_score": None, "deepfake_score": None}
 
 
-async def check_hive_text(text: str) -> Dict[str, Any]:
-    """Checks if text was generated by an LLM via Hive API."""
-    api_key = os.getenv("HIVE_API_KEY", "").strip()
-    if not api_key:
-        return {"available": False, "ai_generated_score": None, "is_ai_detected": False}
+async def check_hive_media(file_bytes: bytes, filename: str = "media.jpg", media_type: str = "image") -> dict:
+    return await _request_hive(media_type, files={"media": (filename, file_bytes)})
 
-    headers = {
-        "Authorization": f"token {api_key}",
-        "Content-Type": "application/json"
-    }
 
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.post(
-                HIVE_API_URL,
-                headers=headers,
-                json={"text_data": text[:3000]}
-            )
-            if resp.status_code != 200:
-                return {"available": True, "status": "error", "ai_generated_score": None}
-
-            data = resp.json()
-            classes = {}
-            ai_score = 0.0
-            for output in data.get("status", [{}])[0].get("response", {}).get("output", []):
-                for c in output.get("classes", []):
-                    c_class = c.get("class", "")
-                    score = float(c.get("score", 0.0))
-                    classes[c_class] = score
-                    if "ai_generated" in c_class.lower():
-                        ai_score = max(ai_score, score)
-
-            return {
-                "available": True,
-                "status": "success",
-                "ai_generated_score": round(ai_score, 3),
-                "is_ai_detected": ai_score >= 0.75,
-                "raw_classes": classes
-            }
-    except Exception as exc:
-        return {"available": True, "status": "error", "error": str(exc)[:80]}
-
+async def check_hive_text(text: str) -> dict:
+    return await _request_hive("text", json={"text_data": text[:3000]})

@@ -1,4 +1,5 @@
 import unittest
+import os
 from unittest.mock import AsyncMock, patch
 from fastapi.testclient import TestClient
 
@@ -51,10 +52,14 @@ class ImageForensicsAndWhatsAppTests(unittest.TestCase):
         self.assertIn("ALERTA DE GOLPE", msg)
         self.assertIn("DICA DE SEGURANÇA", msg)
         self.assertIn("O banco nunca manda mensagem", msg)
-        self.assertIn("https://verify.vercel.app", msg)
+        self.assertIn("https://verifybr.vercel.app", msg)
 
     def test_whatsapp_webhook_empty_payload(self):
-        resp = self.client.post("/api/whatsapp/webhook", json={"message": ""})
+        with patch.dict(os.environ, {"WHATSAPP_BOT_ENABLED": "true", "WHATSAPP_WEBHOOK_SECRET": "s" * 40}):
+            resp = self.client.post(
+                "/api/whatsapp/webhook", json={"message": ""},
+                headers={"X-Verify-Webhook-Secret": "s" * 40},
+            )
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertEqual(data["status"], "ignored")
@@ -78,7 +83,8 @@ class ImageForensicsAndWhatsAppTests(unittest.TestCase):
             self.assertEqual(resp.status_code, 200)
             data = resp.json()
             self.assertIn("whatsapp_reply", data)
-            self.assertIn("VERDADEIRO", data["whatsapp_reply"])
+            self.assertIn("CORROBORADA NAS FONTES CONSULTADAS", data["whatsapp_reply"])
+            self.assertNotIn("Confiança: 90%", data["whatsapp_reply"])
 
 
 if __name__ == "__main__":

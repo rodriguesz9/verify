@@ -9,8 +9,9 @@ api.interceptors.response.use(
   (r) => r,
   async (err) => {
     const orig = err.config;
+    // A client error without an original request must not enter refresh/retry.
     const skipRefresh = ["/auth/login", "/auth/register", "/auth/google", "/auth/refresh", "/auth/logout"].includes(orig?.url);
-    if (err.response?.status === 401 && !orig._retry && !orig._skipAuthRefresh && !skipRefresh) {
+    if (orig && err.response?.status === 401 && !orig._retry && !orig._skipAuthRefresh && !skipRefresh) {
       orig._retry = true;
       try {
         await api.post("/auth/refresh", {}, { _skipAuthRefresh: true });

@@ -7,7 +7,7 @@ class AnalysisRequest(BaseModel):
 
 
 class UrlRequest(BaseModel):
-    url: str = Field(..., min_length=5)
+    url: str = Field(..., min_length=5, max_length=4096)
 
 
 class FactCheckResult(BaseModel):
@@ -15,6 +15,10 @@ class FactCheckResult(BaseModel):
     rating:     str
     publisher:  str
     url:        Optional[str] = None
+    review_date: Optional[str] = None
+    claim_date: Optional[str] = None
+    publisher_site: Optional[str] = None
+    retrieval_provider: Optional[str] = None
 
 
 class AnalysisResponse(BaseModel):

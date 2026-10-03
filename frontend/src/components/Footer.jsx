@@ -32,7 +32,7 @@ export default function Footer() {
             <ul className="flex flex-col gap-2.5 font-mono text-xs uppercase tracking-wider">
               <li><Link to="/terms" className="text-[#8AA2B4] no-underline hover:text-[#00D4FF] transition-colors flex items-center gap-2"><FileText size={12} /> Termos de Uso</Link></li>
               <li><Link to="/privacy" className="text-[#8AA2B4] no-underline hover:text-[#00D4FF] transition-colors flex items-center gap-2"><Lock size={12} /> Privacidade</Link></li>
-              <li><Link to="/limitations" className="text-[#8AA2B4] no-underline hover:text-[#00D4FF] transition-colors flex items-center gap-2"><Edit size={12} /> Limitações de IA</Link></li>
+              <li><Link to="/limitacoes" className="text-[#8AA2B4] no-underline hover:text-[#00D4FF] transition-colors flex items-center gap-2"><Edit size={12} /> Limitações de IA</Link></li>
               <li><Link to="/suggestions" className="text-[#8AA2B4] no-underline hover:text-[#00D4FF] transition-colors flex items-center gap-2"><MessageSquare size={12} /> Sugestões</Link></li>
             </ul>
           </div>

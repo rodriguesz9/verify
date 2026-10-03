@@ -1,4 +1,5 @@
 import os
+import asyncio
 import re
 import httpx
 
@@ -116,9 +117,9 @@ async def detect_ai_text(text: str) -> dict:
     results = await asyncio.gather(gptzero(), heuristic())
     gptzero_result, heuristic_result = results
 
-    available = [r for r in results if r.get("available")]
+    available = [gptzero_result] if gptzero_result.get("available") else []
     if not available:
-        return {"available": False, "reason": "Nenhum detector disponível.", "markers": heuristic_result.get("markers", {})}
+        return {"available": False, "ai_probability": None, "reason": "Detector de texto indisponível; marcadores linguísticos não determinam autoria.", "markers": heuristic_result.get("markers", {})}
 
     combined_probability = gptzero_result.get("ai_probability", 0)
     combined_probability = max(0.0, min(1.0, combined_probability))

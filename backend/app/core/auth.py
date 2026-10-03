@@ -92,7 +92,7 @@ async def get_current_user(
     return user
 
 
-async def verify_limit(user: User | None, db: AsyncSession, category: str):
+async def verify_limit(user: User | None, db: AsyncSession, category: str, requested: int = 1):
     """
     Checks daily usage limits based on user tier. If user is None (guest), allow up to 30 requests.
     """
@@ -119,7 +119,7 @@ async def verify_limit(user: User | None, db: AsyncSession, category: str):
     tier_limits = DAILY_LIMITS.get(user.tier, DAILY_LIMITS[UserTier.STANDARD])
     limit = tier_limits.get(category, 0)
 
-    if daily_count >= limit:
+    if daily_count + requested > limit:
         cat_name = "texto/URL" if category == "TEXTUAL" else "mídia"
         raise HTTPException(
             status_code=429,

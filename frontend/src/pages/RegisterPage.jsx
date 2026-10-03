@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, LockKeyhole, Mail, ShieldCheck, UserRound, X } from "lucide-react";
 import { register, googleAuth, getMe } from "../services/api";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "../hooks/authContext";
 import GoogleButton from "../components/GoogleButton";
 
 function Field({ label, icon: Icon, type, value, onChange, placeholder }) {

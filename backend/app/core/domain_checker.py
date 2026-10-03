@@ -3,10 +3,10 @@ import httpx
 import re
 
 TRUSTED_DOMAINS = [
-    "g1.globo", "globo.com", "bbc.", "cnn.", "folha.uol",
-    "reuters.", "agenciabrasil", "estadao.", "uol.com",
-    "correiobraziliense", "valor.globo", "exame.com",
-    "scielo.", "gov.br", "wikipedia.org",
+    "globo.com", "bbc.com", "bbc.co.uk", "cnn.com", "folha.uol.com.br",
+    "reuters.com", "agenciabrasil.ebc.com.br", "estadao.com.br", "uol.com.br",
+    "correiobraziliense.com.br", "valor.globo.com", "exame.com",
+    "scielo.org", "scielo.br", "gov.br", "wikipedia.org",
 ]
 
 SUSPICIOUS_PATTERNS = [
@@ -27,14 +27,14 @@ def check_domain_reputation(url: str) -> dict:
     except Exception:
         return {"score": 50, "note": "Não foi possível analisar o domínio.", "hostname": url}
 
-    hostname_lower = hostname.lower()
+    hostname_lower = hostname.lower().rstrip(".")
 
     # Trusted
     for t in TRUSTED_DOMAINS:
-        if t in hostname_lower:
+        if hostname_lower == t or hostname_lower.endswith("." + t):
             return {
                 "score": 88,
-                "note": f"Domínio reconhecido como fonte jornalística confiável ({hostname}).",
+                "note": f"Domínio reconhecido ({hostname}); isso não verifica o conteúdo desta página.",
                 "hostname": hostname,
             }
 

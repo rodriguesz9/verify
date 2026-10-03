@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 import re
 from app.core.gemini_analyzer import extract_claims_with_ai, generate_final_report
 from app.core.fact_checker import query_fact_check_api
@@ -8,6 +8,7 @@ from app.core.gptzero_client import detect_ai_text
 from app.core.serper_client import search_news
 from app.core.scam_detector import analyze_scam_indicators
 from app.core.openrouter_service import analyze_with_openrouter
+from app.services.claim_policy import text_report, input_claims
 
 
 def _verdicts_agree(v1: str, v2: str) -> bool:
@@ -29,7 +30,7 @@ def _verdicts_agree(v1: str, v2: str) -> bool:
 
 def _merge_verdicts(gemini_result: dict, openrouter_result: dict) -> dict:
     """Merge Gemini and OpenRouter results using consensus."""
-    if not openrouter_result or openrouter_result.get("error"):
+    if not openrouter_result or openrouter_result.get("error") or gemini_result.get("analysis_status") == "inconclusive":
         return gemini_result
 
     g_verdict = gemini_result.get("verdict", "Suspicious").lower()
@@ -39,10 +40,10 @@ def _merge_verdicts(gemini_result: dict, openrouter_result: dict) -> dict:
     agree = _verdicts_agree(g_verdict, o_verdict)
 
     if agree:
-        final_score = min(100, max(0, int((g_score + o_score) / 2 * 1.1)))
-        note = "Ambos os modelos concordam na análise."
+        final_score = int(g_score)
+        note = "Modelos concordam; concordância não comprova a alegação nem aumenta a precisão medida."
     else:
-        final_score = int(g_score * 0.85)
+        final_score = int(g_score)
         note = "Modelos divergentes. Aplicação com Gemini (primário). Revise manualmente."
 
     merged = dict(gemini_result)
@@ -96,12 +97,12 @@ def extract_source_from_url(url: str) -> dict:
         hostname = url.lower()
 
     trusted_domains = [
-        "g1.globo", "globo.com", "bbc", "cnn", "folha.uol",
-        "reuters", "agenciabrasil", "estadao", "uol.com",
-        "correiobraziliense", "valor.globo", "exame.com",
-        "gov.br", "wikipedia",
+        "globo.com", "bbc.com", "bbc.co.uk", "cnn.com", "cnnbrasil.com.br", "uol.com.br",
+        "reuters.com", "ebc.com.br", "estadao.com.br", "correiobraziliense.com.br", "exame.com",
+        "gov.br", "wikipedia.org",
     ]
-    is_trusted = any(t in hostname.lower() for t in trusted_domains)
+    hostname = hostname.lower().rstrip(".")
+    is_trusted = any(hostname == t or hostname.endswith("." + t) for t in trusted_domains)
     
     if is_trusted:
         return {"source_name": hostname, "is_trusted": True, "score": 88}
@@ -110,7 +111,7 @@ def extract_source_from_url(url: str) -> dict:
 
 
 def analyze_temporal_context(serper_news: list, scrape_date: str = None) -> dict:
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     dates_found = []
     
     for item in serper_news:
@@ -160,10 +161,15 @@ async def run_pipeline(text: str, url: str | None = None) -> dict:
         else None
     )
 
-    claims = await extract_claims_with_ai(analysis_text)
-    fact_check_queries = claims[:5] or [analysis_text[:200]]
+    try:
+        claims = await asyncio.wait_for(extract_claims_with_ai(analysis_text), 12)
+    except Exception:
+        claims = []
+    # Retrieve literal input as well as extraction. Model paraphrases are search
+    # hints only: they cannot change the statement that receives the verdict.
+    fact_check_queries = list(dict.fromkeys([analysis_text, *input_claims(analysis_text)]))[:5]
     fact_tasks = [
-        asyncio.create_task(query_fact_check_api(query[:200]))
+        asyncio.create_task(query_fact_check_api(query))
         for query in fact_check_queries
     ]
 
@@ -176,24 +182,29 @@ async def run_pipeline(text: str, url: str | None = None) -> dict:
     if domain_task:
         tasks.append(domain_task)
     
-    await asyncio.gather(*tasks)
+    await asyncio.gather(*tasks, return_exceptions=True)
     
     fact_checks = []
     seen_fact_checks: set[tuple[str, str | None]] = set()
     for task in fact_tasks:
+        if task.exception():
+            continue
         for fact_check in task.result():
             key = (fact_check.claim_text.casefold(), fact_check.url)
             if key in seen_fact_checks:
                 continue
             seen_fact_checks.add(key)
             fact_checks.append(fact_check)
+    fact_checks = fact_checks[:30]
 
-    ai_forensics = ai_task.result()
-    domain_info = domain_task.result() if domain_task else { "score": None, "note": "Nenhuma URL fornecida" }
+    ai_forensics = ai_task.result() if not ai_task.exception() else {"ai_probability": None}
+    domain_info = domain_task.result() if domain_task and not domain_task.exception() else { "score": None, "note": "Domínio não analisado" }
 
     serper_news_results = []
     seen_links: set[str] = set()
     for task in serper_news_tasks:
+        if task.exception():
+            continue
         for item in task.result():
             link = item.get("link")
             if link and link in seen_links:
@@ -219,16 +230,28 @@ async def run_pipeline(text: str, url: str | None = None) -> dict:
         "source_info": source_info,
     }
 
-    ai_task = asyncio.create_task(_run_gemini_check(analysis_text, context))
-    openrouter_task = asyncio.create_task(_run_openrouter_check(analysis_text))
-
-    ai, openrouter_result = await asyncio.gather(ai_task, openrouter_task)
-    ai = _merge_verdicts(ai, openrouter_result)
-    ai["claims"] = claims
+    # LLM verdicts are not evidence. Do not buy a second LLM opinion to turn
+    # correlated guesses into confidence. Decisions are deterministic/auditable.
+    ai = text_report(analysis_text, context["fact_checks"], scam_info)
+    ai["search_claims"] = claims
     ai["scam_analysis"] = scam_info
+    ai["serper_news"] = serper_news_results
+    queries = [{"status": "error" if task.exception() else getattr(task.result(), "status", "success" if task.result() else "no_results"),
+                "reason": "Falha na consulta." if task.exception() else getattr(task.result(), "reason", None)} for task in fact_tasks]
+    status = ("success" if fact_checks else "no_results" if any(q["status"] in {"success", "no_results"} for q in queries)
+              else "not_configured" if all(q["status"] == "not_configured" for q in queries) else "error")
+    ai["provider_coverage"] = {"google_fact_check": {
+        "status": status, "queries": queries, "matches_returned": len(fact_checks),
+        "reason": "Consulta concluída sem checagens correspondentes." if status == "no_results" else
+                  next((q["reason"] for q in queries if q["reason"]), None)}}
+    openrouter_result = None
 
     if scam_info["is_scam"]:
         ai["verdict"] = "Scam"
+        ai["analysis_status"] = "partial"
+        ai["summary"] = "Há padrões conhecidos de possível golpe nesta mensagem. Não pague taxas nem envie dados sem confirmar pelo canal oficial."
+        ai["plain_explanation"] = "Foram encontrados sinais no conteúdo da mensagem, não uma comprovação da identidade do remetente ou uma investigação concluída."
+        ai["whatsapp_share_text"] = "⚠️ O Verify identificou sinais de possível golpe. Não envie dinheiro nem dados antes de confirmar por um canal oficial."
         ai["score"] = min(ai.get("score", 10), 15)
         for pattern in scam_info["detected_patterns"]:
             red_flag = f"Alerta de Golpe: {pattern['category']} - {pattern['description']}"
@@ -241,7 +264,7 @@ async def run_pipeline(text: str, url: str | None = None) -> dict:
         "report": ai,
         "claims": claims,
         "metrics": {
-            "text_ai_probability": ai_forensics.get("ai_probability", 0),
+            "text_ai_probability": ai_forensics.get("ai_probability"),
             "fact_checks_count": len(fact_checks),
             "serper_news_count": len(serper_news_results),
             "domain_score": domain_info.get("score"),

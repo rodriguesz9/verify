@@ -79,7 +79,7 @@ async def get_db() -> AsyncSession:
 async def init_db():
     """Create and sync all tables for Verify Core."""
     from app.models.user import User
-    from app.models.history import Verification, AnalysisMetrics, CacheRegistry
+    from app.models.history import Verification, AnalysisMetrics, CacheRegistry, WhatsAppConversation
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -90,3 +90,4 @@ async def init_db():
             # SQLAlchemy persists enum member names for this column (for example
             # ``SUSPICIOUS``), rather than their human-readable values.
             await conn.execute(text("ALTER TYPE verdictlabel ADD VALUE IF NOT EXISTS 'SCAM'"))
+            await conn.execute(text("ALTER TYPE verdictlabel ADD VALUE IF NOT EXISTS 'FALSE'"))

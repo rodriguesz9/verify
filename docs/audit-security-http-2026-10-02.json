@@ -1,0 +1,84 @@
+{
+  "tested_at": "2026-10-02T23:12:26.674222+00:00",
+  "scope": "local HTTP security controls; no real delivery or accuracy benchmark",
+  "cases": [
+    {
+      "case": "untrusted_browser_origin",
+      "http_status": 403,
+      "passed": true,
+      "state": null
+    },
+    {
+      "case": "credential_url",
+      "http_status": 400,
+      "passed": true,
+      "state": null
+    },
+    {
+      "case": "oversized_url",
+      "http_status": 422,
+      "passed": true,
+      "state": null
+    },
+    {
+      "case": "unauthenticated_webhook",
+      "http_status": 401,
+      "passed": true,
+      "state": null
+    },
+    {
+      "case": "invalid_webhook_shape",
+      "http_status": 422,
+      "passed": true,
+      "state": null
+    },
+    {
+      "case": "self_message_ignored",
+      "http_status": 200,
+      "passed": true,
+      "state": "ignored"
+    },
+    {
+      "case": "other_event_ignored",
+      "http_status": 200,
+      "passed": true,
+      "state": "ignored"
+    },
+    {
+      "case": "invalid_base64",
+      "http_status": 422,
+      "passed": true,
+      "state": null
+    },
+    {
+      "case": "base64_image",
+      "http_status": 200,
+      "passed": true,
+      "state": "success"
+    },
+    {
+      "case": "base64_video",
+      "http_status": 200,
+      "passed": true,
+      "state": "success"
+    },
+    {
+      "case": "base64_audio",
+      "http_status": 200,
+      "passed": true,
+      "state": "success"
+    },
+    {
+      "case": "first_message",
+      "http_status": 200,
+      "passed": true,
+      "state": "success"
+    },
+    {
+      "case": "duplicate_message",
+      "http_status": 200,
+      "passed": true,
+      "state": "duplicate"
+    }
+  ]
+}

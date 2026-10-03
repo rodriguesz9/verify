@@ -10,7 +10,7 @@ const FORENSIC_LAYERS = [
     color: "#00D4FF",
     desc: "Examina o cabeçalho binário do arquivo em busca de dados de câmera original (Make/Model), GPS, timestamps, e marcas de software como Midjourney, Photoshop ou DALL-E.",
     checks: [
-      "Presença de tags EXIF autênticas de sensor fotográfico",
+      "Tags EXIF declaradas; podem ser alteradas e não comprovam autenticidade",
       "Assinatura digital C2PA (Coalition for Content Provenance)",
       "Detecção de ferramentas de IA no campo CreatorTool/Software",
       "Timestamp original de captura do arquivo"
@@ -40,7 +40,7 @@ const FORENSIC_LAYERS = [
     color: "#FFB800",
     desc: "Descobre se a imagem ou notícia divulgada como 'urgente' na verdade foi publicada anos atrás em outro contexto, desmascarando desinformação reciclada.",
     checks: [
-      "Data de primeiro arquivamento na Wayback Machine",
+      "Data de um registro disponível na Wayback; não necessariamente o primeiro",
       "Busca reversa por duplicatas exatas ou cortes na web (TinEye)",
       "Cruzamento com bases de agências de checagem (Lupa, Aos Fatos)",
       "Reputação do domínio transmissor"
@@ -49,29 +49,29 @@ const FORENSIC_LAYERS = [
   {
     id: "layer4",
     badge: "CAMADA 4",
-    title: "Forense de Áudio & Voz Clonada",
-    tech: "AssemblyAI + Heurísticas Acústicas TTS",
+    title: "Transcrição & Sinais de Golpe",
+    tech: "Gemini Audio + padrões no conteúdo da fala",
     icon: "🎙️",
     color: "#8A2BE2",
-    desc: "Avalia a prosódia, o espectrograma e a ausência de micro-pausas respiratórias humanas, além de transcrever o discurso para identificar padrões de estelionato.",
+    desc: "Transcreve a fala quando o provedor está disponível e aponta padrões de pedido financeiro suspeito. Não comprova clonagem, identidade ou origem humana da voz.",
     checks: [
-      "Ausência de ruído de respiração natural e acústica ambiente",
-      "Pitch e prosódia característicos de modelos de clonagem (XTTS/VITS)",
+      "Transcrição real ou indicação de indisponibilidade; sem texto inventado",
+      "Autenticidade da voz inconclusiva sem detector validado para essa finalidade",
       "Detecção de scripts do 'Golpe do Parente' e falsos pedidos de Pix",
-      "Confiança fonética palavra por palavra"
+      "Confirmação de identidade por outro canal continua necessária"
     ]
   },
   {
     id: "layer5",
     badge: "CAMADA 5 (ORQUESTRADOR)",
-    title: "Consolidação Forense com Gemini 3.7",
-    tech: "Google Gemini 3.7 Flash",
+    title: "Política Conservadora de Evidências",
+    tech: "Regras auditáveis + inspeção visual auxiliar",
     icon: "⚖️",
     color: "#00FF87",
     desc: "O cérebro que pondera todas as evidências das camadas 1 a 4, identifica eventuais contradições técnicas entre sinais e emite o laudo final com explicação acessível a leigos.",
     checks: [
       "Identificação de contradições (ex: C2PA diz real, mas Hive dá 90% IA)",
-      "Cálculo ponderado do score final de autenticidade (0 a 100%)",
+      "Índice heurístico não equivale à precisão estatística nem à autenticidade comprovada",
       "Geração de explicação em linguagem simples para idosos",
       "Recomendação de segurança prática para o cidadão"
     ]
@@ -92,7 +92,7 @@ export default function ForensicTimeline() {
           Pipeline Multi-Camadas <span className="text-[#00FF87]">(Multi-Layer Verification)</span>
         </h2>
         <p className="font-mono text-sm text-[#3A6070] mt-3 max-w-2xl mx-auto">
-          Veja como o Verify cruza evidências independentes para tomar a decisão mais confiável e à prova de falhas.
+          Veja quais camadas podem apoiar a análise. Disponibilidade depende da configuração e todas têm limitações; não há garantia de detecção.
         </p>
       </div>
 
@@ -174,4 +174,3 @@ export default function ForensicTimeline() {
     </div>
   );
 }
-

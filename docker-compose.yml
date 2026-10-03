@@ -62,8 +62,45 @@ services:
       - verify-net
     restart: unless-stopped
 
+  # ── Bot de WhatsApp (Evolution API self-hosted) ──────────────────────────────
+  # Ativo apenas quando WHATSAPP_BOT_ENABLED=true no backend/.env.
+  # Para parear o número, acesse http://localhost:8090 e leia o QR Code.
+  evolution-api:
+    image: atendai/evolution-api:v2.2.3
+    container_name: verify-evolution-api
+    profiles: ["whatsapp"]
+    restart: unless-stopped
+    ports:
+      - "8090:8080"
+    volumes:
+      - evolution_instances:/evolution/instances
+    environment:
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:-verify_evolution_key}
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: "postgresql"
+      DATABASE_CONNECTION_URI: postgresql://verify:verify_pass@db:5432/verify_evolution
+      DATABASE_SAVE_DATA_INSTANCE: "true"
+      DATABASE_SAVE_DATA_NEW_MESSAGE: "true"
+      DATABASE_SAVE_MESSAGE_UPDATE: "true"
+      DATABASE_SAVE_DATA_CONTACTS: "true"
+      DATABASE_SAVE_DATA_CHATS: "true"
+      DATABASE_SAVE_DATA_LABELS: "true"
+      DATABASE_SAVE_DATA_HISTORIC: "true"
+      CACHE_REDIS_ENABLED: "false"
+      WEBHOOK_GLOBAL_ENABLED: "true"
+      WEBHOOK_GLOBAL_URL: http://backend:8000/api/whatsapp/webhook
+      WEBHOOK_GLOBAL_BY_EVENTS: "false"
+      WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS: "false"
+      WEBHOOK_GLOBAL_EVENTS: MESSAGES_UPSERT, MESSAGES_UPDATE, MESSAGES_DELETE
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - verify-net
+
 volumes:
   postgres_data:
+  evolution_instances:
 
 networks:
   verify-net:

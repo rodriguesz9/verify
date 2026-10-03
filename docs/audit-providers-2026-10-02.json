@@ -1,0 +1,44 @@
+{
+  "tested_at": "2026-10-02T22:01:36.572698+00:00",
+  "scope": "Single synthetic image, not an accuracy benchmark",
+  "verdict": "Suspicious",
+  "analysis_status": "inconclusive",
+  "providers": {
+    "sightengine": {
+      "available": true,
+      "status": "success",
+      "reason": null,
+      "ai_score": 0.99
+    },
+    "huggingface": {
+      "available": false,
+      "status": "error",
+      "reason": "Modelo Hugging Face indisponível (HTTP 400).",
+      "ai_score": null
+    },
+    "hive": {
+      "available": false,
+      "status": "error",
+      "reason": "Hive indisponível (HTTP 403).",
+      "ai_score": null
+    },
+    "ocr": {
+      "available": true,
+      "status": "error",
+      "reason": null,
+      "ai_score": null
+    },
+    "gemini_vision": {
+      "available": false,
+      "status": "unavailable",
+      "reason": null,
+      "ai_score": null
+    }
+  },
+  "tts": {
+    "available": false,
+    "status": "error",
+    "model_used": null,
+    "duration_sec": null
+  }
+}

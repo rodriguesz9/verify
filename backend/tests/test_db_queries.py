@@ -5,6 +5,9 @@ import uuid
 
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.engine import make_url
+from sqlalchemy.pool import NullPool
+from pathlib import Path
 
 from helpers import app, fake_report
 from app.core.auth import get_current_user
@@ -20,9 +23,12 @@ TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
 class DbQueryIntegrationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        if "test" not in TEST_DATABASE_URL.lower():
+        database_name = Path(make_url(TEST_DATABASE_URL).database or "").name.lower()
+        if "test" not in database_name:
             raise unittest.SkipTest("TEST_DATABASE_URL must point to a test database.")
-        cls.engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+        # asyncio.run and TestClient use different event loops. Never reuse an
+        # asyncpg pooled connection across those loops; production keeps its pool.
+        cls.engine = create_async_engine(TEST_DATABASE_URL, echo=False, poolclass=NullPool)
         cls.Session = async_sessionmaker(cls.engine, expire_on_commit=False)
         asyncio.run(cls._create_schema())
 
@@ -59,6 +65,7 @@ class DbQueryIntegrationTests(unittest.TestCase):
 
     def tearDown(self):
         app.dependency_overrides.clear()
+        self.client.close()
 
     async def _seed_data(self):
         async with self.Session() as session:
@@ -87,6 +94,9 @@ class DbQueryIntegrationTests(unittest.TestCase):
                 raw_result=fake_report(score=60, verdict="Authentic"),
             )
             session.add(self.user)
+            # No ORM relationship orders these objects; PostgreSQL enforces the
+            # FK immediately (SQLite's default test connection did not).
+            await session.flush()
             session.add(first)
             session.add(second)
             await session.commit()

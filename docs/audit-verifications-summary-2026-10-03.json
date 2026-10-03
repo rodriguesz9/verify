@@ -1,0 +1,14 @@
+{
+  "date": "2026-10-03",
+  "policy_version": "2026-10-03.1",
+  "scope": "Local functional and policy regression controls, not a measured accuracy benchmark",
+  "backend": {"passed": 137, "subtests_passed": 66, "failed": 0, "deprecation_warnings": 2},
+  "frontend": {"passed": 15, "failed": 0, "build": "passed"},
+  "local_http": {"expected_responses_passed": 24, "filename_invariance_passed": 1, "failed": 0, "details": "audit-verifications-local-2026-10-03.json"},
+  "browser": {"flow": "text input -> local API -> inconclusive report without credentials", "console_errors": 0, "policy_verified": "2026-10-03.1", "screenshot": "report-two-axes-2026-10-03.jpg"},
+  "paid_provider_calls_in_this_stage": 0,
+  "postgres_migration_tested": false,
+  "production_deployed": false,
+  "production_accuracy_measured": false,
+  "required_next_checks": ["provider credentials, quota and model entitlement", "independent labeled benchmark", "staging PostgreSQL migration", "publication and production end-to-end verification"]
+}

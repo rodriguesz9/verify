@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
-import { Search, LayoutDashboard, Info, Zap, LogOut, Menu, X, Shield, MessageCircle, ChevronDown, Wifi, WifiOff } from "lucide-react";
+import { useAuth } from "../hooks/authContext";
+import { Search, LayoutDashboard, Info, Zap, LogOut, Menu, X, Shield, MessageCircle, ChevronDown, Wifi, WifiOff, Accessibility, Volume2, Eye } from "lucide-react";
 import { getOfflineCount } from "../services/offlineCache";
 
 const NAV_LINKS = [
@@ -22,6 +22,10 @@ export default function Navbar() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [fontSize, setFontSize] = useState(() => localStorage.getItem("verify_font_size") || "normal");
+  const [isElderlyMode, setIsElderlyMode] = useState(() => {
+    const saved = localStorage.getItem("verify_elderly_mode");
+    return saved === "true";
+  });
   const [menuOpen, setMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -30,11 +34,34 @@ export default function Navbar() {
   useEffect(() => {
     if (fontSize === "normal") {
       document.documentElement.removeAttribute("data-font-size");
+      document.documentElement.removeAttribute("data-elderly-mode");
+    } else if (fontSize === "elderly") {
+      document.documentElement.setAttribute("data-font-size", "elderly");
+      document.documentElement.setAttribute("data-elderly-mode", "true");
     } else {
       document.documentElement.setAttribute("data-font-size", fontSize);
+      document.documentElement.removeAttribute("data-elderly-mode");
     }
     localStorage.setItem("verify_font_size", fontSize);
   }, [fontSize]);
+
+  useEffect(() => {
+    if (isElderlyMode && fontSize !== "elderly") {
+      setFontSize("elderly");
+    }
+    localStorage.setItem("verify_elderly_mode", isElderlyMode);
+    if (!isElderlyMode) {
+      document.documentElement.removeAttribute("data-elderly-mode");
+    }
+  }, [isElderlyMode]);
+
+  useEffect(() => {
+    const handleElderlyChange = (e) => {
+      setIsElderlyMode(e.detail === true);
+    };
+    window.addEventListener("elderly-mode-change", handleElderlyChange);
+    return () => window.removeEventListener("elderly-mode-change", handleElderlyChange);
+  }, []);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -87,10 +114,26 @@ export default function Navbar() {
               border: `1px solid ${isOnline ? "rgba(0,255,135,0.2)" : "rgba(255,184,48,0.3)"}`,
             }}>
             {isOnline ? <Wifi size={12} /> : <WifiOff size={12} />}
-            {isOnline ? "Online" : `Offline${offlineCount > 0 ? ` (${offlineCount})` : ""}`}
-          </div>
+{isOnline ? "Online" : `Offline${offlineCount > 0 ? ` (${offlineCount})` : ""}`}
+           </div>
 
-          {user ? (
+           {isElderlyMode ? (
+             <button
+               onClick={() => setIsElderlyMode(false)}
+               className="flex items-center gap-2 rounded-lg px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider bg-[#00FF87]/20 text-[#00FF87] hover:bg-[#00FF87]/30 transition-colors"
+             >
+               <Eye size={12} /> Modo Idoso
+             </button>
+           ) : (
+             <button
+               onClick={() => setIsElderlyMode(true)}
+               className="flex items-center gap-2 rounded-lg px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider bg-[#00D4FF]/20 text-[#00D4FF] hover:bg-[#00D4FF]/30 transition-colors"
+             >
+               <Accessibility size={12} /> Modo Fácil
+             </button>
+           )}
+
+           {user ? (
             <div className="flex items-center gap-4 pl-6 border-l border-[#132435]">
               <div className="text-right hidden sm:block">
                 <div className="font-mono text-[12px] text-[#CDE8F0] font-bold leading-none">{user.name}</div>
@@ -121,13 +164,28 @@ export default function Navbar() {
               <Icon size={16} /> {label}
             </Link>
           ))}
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-[11px] font-mono font-bold uppercase"
+<div className="flex items-center gap-2 px-3 py-2 rounded-lg text-[11px] font-mono font-bold uppercase"
             style={{ color: isOnline ? "#00FF87" : "#FFB830" }}>
             {isOnline ? <Wifi size={14} /> : <WifiOff size={14} />}
-            {isOnline ? "Online" : `Offline${offlineCount > 0 ? ` (${offlineCount} cacheadas)` : ""}`}
+            {isOnline ? "Online" : `Offline${offlineCount > 0 ? ` (${offlineCount})` : ""}`}
           </div>
+          {isElderlyMode ? (
+            <button
+              onClick={() => setIsElderlyMode(false)}
+              className="flex items-center gap-2 rounded-lg px-4 py-2 font-mono text-[11px] font-bold uppercase bg-[#00FF87]/20 text-[#00FF87] hover:bg-[#00FF87]/30 transition-colors"
+            >
+              <Eye size={14} /> Modo Idoso
+            </button>
+          ) : (
+            <button
+              onClick={() => setIsElderlyMode(true)}
+              className="flex items-center gap-2 rounded-lg px-4 py-2 font-mono text-[11px] font-bold uppercase bg-[#00D4FF]/20 text-[#00D4FF] hover:bg-[#00D4FF]/30 transition-colors"
+            >
+              <Accessibility size={14} /> Modo Fácil
+            </button>
+          )}
           <button onClick={toggleFontSize} className="font-mono text-[11px] text-[#00D4FF] uppercase text-left">
-            Ajustar Tamanho do Texto
+            Ajustar Texto
           </button>
         </div>
       )}

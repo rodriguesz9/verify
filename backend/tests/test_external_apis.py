@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
 
-from helpers import FakeSession, ScalarResult, app, fake_report, fake_user, override_auth_and_db
+from helpers import FakeSession, ScalarResult, app, fake_report, fake_user, override_auth_and_db, valid_png
 from app.models.history import Verification
 
 
@@ -60,7 +60,7 @@ class ExternalApisIntegrationTests(unittest.TestCase):
         run_pipeline.assert_not_awaited()
         self.assertEqual(self.db.commits, 0)
 
-    def test_upload_returns_cached_analysis_without_calling_external_apis(self):
+    def test_upload_does_not_reuse_unversioned_other_user_cache(self):
         cached_report = fake_report(summary="Cached image analysis.")
         cached_verification = SimpleNamespace(id=uuid.uuid4(), raw_result=cached_report)
         cached_entry = SimpleNamespace(
@@ -71,21 +71,17 @@ class ExternalApisIntegrationTests(unittest.TestCase):
 
         with (
             patch("app.api.upload.verify_limit", new=AsyncMock()),
-            patch("app.api.upload.check_deepfake", new=AsyncMock()) as check_deepfake,
-            patch("app.api.upload.check_ai_image_hf", new=AsyncMock()) as check_ai_image_hf,
-            patch("app.api.upload.generate_final_report", new=AsyncMock()) as final_report,
+            patch("app.api.upload.analyze_media", new=AsyncMock(return_value=fake_report(summary="New report"))) as analyzer,
         ):
             response = self.client.post(
                 "/api/upload",
-                files={"file": ("sample.png", b"same image bytes", "image/png")},
+                files={"file": ("sample.png", valid_png(), "image/png")},
             )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), cached_report)
-        check_deepfake.assert_not_awaited()
-        check_ai_image_hf.assert_not_awaited()
-        final_report.assert_not_awaited()
-        self.assertEqual(self.db.commits, 0)
+        self.assertEqual(response.json()["summary"], "New report")
+        analyzer.assert_awaited_once()
+        self.assertEqual(self.db.commits, 1)
 
 
 if __name__ == "__main__":

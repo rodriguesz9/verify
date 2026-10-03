@@ -1,237 +1,174 @@
-# Verify — Plataforma Inteligente de Checagem de Fatos e Proteção contra Golpes
+# Verify
 
-> Checagem acessível de mensagens, links, imagens e áudios para ajudar famílias e idosos a reconhecerem notícias falsas, fraudes digitais e clonagem de voz antes de repassar.
+Aplicação de apoio à checagem de mensagens, links, imagens, áudio e vídeos. Feita para ajudar pessoas a reconhecer sinais de risco e consultar evidências antes de compartilhar ou agir.
 
-O **Verify** combina inteligência artificial multimodal (Google Gemini), cruzamento com agências oficiais de checagem, inspeção forense de imagens (metadados EXIF/C2PA), análise acústica de voz sintética e verificação de reputação de links. O objetivo central é fornecer apoio à decisão rápido, acolhedor e com linguagem clara para que qualquer pessoa leiga consiga se proteger.
+Não é uma perícia, um certificado de autenticidade ou uma garantia de detecção de deepfake.
 
----
+## Estado atual — revisão de 3 de outubro de 2026
 
-## Sumário Executivo das Melhorias e Diagnósticos
+A versão publicada foi testada em [verifybr.vercel.app](https://verifybr.vercel.app). Foram encontradas falhas de validação de mídia, erros em texto/WhatsApp e resultados de voz dependentes do nome do arquivo.
 
-### 1. Diagnóstico e Execução Completa dos Testes
-- **Status dos testes:** **26 testes executados e 100% aprovados** (com 2 testes de banco real opcionalmente ignorados na ausência de `TEST_DATABASE_URL`).
-- **Problemas resolvidos durante a auditoria:**
-  1. *Dependência opcional de áudio quebrada:* O módulo `audio_checker.py` importava `numpy` e `librosa` no nível do arquivo, impedindo que o backend e os testes iniciassem em contêineres que não possuíam essas bibliotecas pesadas de compilação C++. O carregamento foi tornado estritamente preguiçoso (*lazy import*) com salvaguarda sem quebra de execução.
-  2. *Incompatibilidade de teste de autenticação:* O teste de renovação de cookie JWT validava estaticamente `SameSite=lax`, enquanto o ambiente de produção configurado utilizava `COOKIE_SAME_SITE=none`. O teste foi flexibilizado para validar dinamicamente a configuração do ambiente.
-  3. *Incompatibilidade na simulação do WhatsApp:* O frontend buscava `whatsapp_response`, enquanto o backend retornava `whatsapp_reply`. O endpoint agora fornece compatibilidade bidirecional com ambos os campos.
-  4. *Criação de novos testes:* Adicionado arquivo `test_image_and_whatsapp.py` cobrindo a não detecção falsa do Photoshop como IA, detecção correta do Midjourney, formatação de respostas para WhatsApp e payloads vazios do webhook.
+A revisão corrige esses comportamentos e separa veracidade da informação da origem da mídia. A publicação foi autorizada via Git; **deploy e provedores devem ser confirmados separadamente**. Consulte o [passo a passo de configuração em produção](docs/CONFIGURACAO-PRODUCAO.md), o [guia de verificações e chaves](docs/VERIFICACOES-2026-10-03.md), o [relatório histórico da auditoria](docs/AUDITORIA-2026-10-02.md) e os resultados reproduzíveis:
 
-### 2. Solução Definitiva para Falsos-Positivos em Imagens Verdadeiras
-- **Causa raiz diagnosticada:**
-  - Softwares padrão de mercado como **Adobe Photoshop** e **GIMP** estavam cadastrados na lista `AI_SOFTWARE_SIGNATURES` do módulo de metadados. Qualquer fotógrafo, jornalista ou usuário que tratasse, cortasse ou redimensionasse uma foto genuína acionava o alerta `is_suspicious = True`.
-  - No C2PA, uma busca simples por substring `b"generative"` em bytes binários causava falsos-positivos em perfis de cores ou licenças embutidas.
-  - Detectores pontuais (como Sightengine com nota `> 0.6` ou o modelo `umm-maybe/AI-image-detector` do Hugging Face) são excessivamente sensíveis a ruídos de compressão JPEG (típicos de fotos enviadas pelo WhatsApp) e a fotos de celular com HDR/suavização de pele.
-  - O backend não submetia os bytes da imagem à visão multimodal do Gemini, confiando apenas nas notas numéricas de detectores externos.
-- **Implementações realizadas:**
-  - Criação da lista `CONVENTIONAL_EDITING_SIGNATURES` separada da lista de geradores generativos (`AI_SOFTWARE_SIGNATURES`). Edição convencional agora gera apenas a etiqueta de imagem tratada, sem classificar como suspeita.
-  - Adoção de **consenso multi-camadas**: para declarar uma imagem como gerada por IA na ausência de assinatura explícita no arquivo, é exigida concordância de múltiplos modelos ou nota extrema (> 0.85).
-  - Atualização do prompt forense do Gemini para orientar explicitamente o modelo sobre artefatos de compressão de redes sociais e pós-processamento de smartphones.
+- [Produção, antes das correções](docs/audit-production-2026-10-02.json).
+- [Fluxos locais corrigidos](docs/audit-local-2026-10-02.json).
+- [25 controles HTTP finais desta etapa](docs/audit-verifications-local-2026-10-03.json).
+- [Teste limitado com provedores reais](docs/audit-providers-2026-10-02.json).
+- [Origem e limites das mídias de teste](backend/tests/fixtures/README.md).
 
-### 3. Vozes e Áudios Reais na Demonstração (Sem Simulações)
-- **Causa raiz diagnosticada:** A tela de demonstração gerava um sinal senoidal em memória (bip matemático de 2 segundos) e usava a síntese robótica do navegador (`SpeechSynthesis`), enquanto o backend usava um condicional de texto baseado no nome do arquivo.
-- **Implementações realizadas:**
-  - Disponibilizados arquivos de áudio gravados reais na pasta pública (`/audio/voz_humana_real.mp3` e `/audio/voz_golpe_clonado.mp3`).
-  - O componente `AudioDeepfakeDemo.jsx` agora faz o streaming de áudio nativo via HTML5 `<audio>`, permitindo ao usuário escutar a gravação com clareza.
-  - O botão de análise submete o arquivo de áudio real ao endpoint `/api/verificar/audio-rapido`, processando as características acústicas e o texto transcrito pelo pipeline de verdade.
+Última execução: **137 testes backend + 66 subtestes, 15 testes de interface e 25 controles HTTP aprovados; build concluído**. Houve dois avisos de descontinuação de dependências (AnyIO/Starlette e python-jose), não erros. São testes funcionais, não medição da precisão dos detectores. Um HTTP 200 não significa análise conclusiva. Testes de políticas usam respostas controladas e chaves externas desligadas; resultados reais de provedores citados acima são históricos, não validação das novas integrações.
 
----
+Preparação para o push: a suíte backend também passou com **PostgreSQL 16 descartável**. A atualização de um enum antigo foi repetida sem erro, e `FALSE` foi gravado/lido corretamente. Corrigidos isolamento de conexões e ordem dos dados nos testes reais de banco. A imagem Docker da raiz compilou, carregou a API e confirmou FFmpeg/ffprobe/ExifTool; agora ambos os contextos de build excluem `.env`, bancos locais e caches, e ambos os comandos respeitam `PORT`. Não houve acesso ao banco de produção, teste pago novo de provedores ou comprovação de precisão.
 
-## Como Tornar a UI Mais Didática para o Público Idoso
+## O que a aplicação faz
 
-Pessoas idosas são os alvos mais frequentes de golpes de engenharia social (especialmente o "golpe do parente com celular novo" e o "falso resgate do Pix"). Para que a plataforma cumpra seu papel social, a experiência visual deve priorizar clareza, ausência de pânico e passos diretos.
-
-### Diretrizes de Acessibilidade para Idosos Implementadas e Planejadas
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                   METÁFORA DO FAROL                         │
-├───────────────────┬───────────────────┬─────────────────────┤
-│   🟢 VERDE        │    🟡 AMARELO     │     🔴 VERMELHO     │
-│   CONFIÁVEL       │    ATENÇÃO        │     PERIGO / GOLPE  │
-│   Pode ler e      │    Não temos      │     Não faça Pix!   │
-│   compartilhar    │    certeza ainda  │     Não clique!     │
-└───────────────────┴───────────────────┴─────────────────────┘
-```
-
-1. **Leitura em Voz Alta com 1 Clique (Botão "🔊 Ouvir explicação"):**
-   - Idosos frequentemente relatam vista cansada ou dificuldade para ler textos longos na tela do celular.
-   - Um botão visível lê a explicação em português com velocidade ajustada (0.92x), tom sereno e frases diretas.
-2. **Checklist Prático de Ação Imediata ("O que você deve fazer agora"):**
-   - Em vez de relatórios técnicos com jargões como "Perplexity 42.1" ou "HMAC SHA-256", exibe uma lista numerada:
-     1. *Não transfira dinheiro nem faça Pix.*
-     2. *Não clique em nenhum link nem passe códigos recebidos por SMS.*
-     3. *Se disseram que é seu filho ou neto, ligue no número antigo dele para confirmar.*
-     4. *Avise no grupo da família para proteger outras pessoas.*
-3. **Botão Direto para o WhatsApp:**
-   - Permite enviar com um toque uma mensagem carinhosa e clara no grupo da família explicando por que aquela mensagem é falsa, sem gerar atritos entre parentes.
-4. **Modo Fácil / Letras Grandes (`A+`):**
-   - Fontes com tamanho mínimo de 18px a 20px, alto contraste, espaçamento generoso e botões com área de toque ampla para evitar cliques acidentais.
-
----
-
-## Como Criar o Bot de WhatsApp para Mensagens Encaminhadas
-
-O WhatsApp é a principal porta de entrada de desinformação e golpes financeiros no Brasil. Criar um bot dedicado para receber mensagens encaminhadas é a maneira mais direta de alcançar os usuários.
-
-### Arquitetura do Bot
-
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│                        USUÁRIO NO WHATSAPP                             │
-│       Recebeu mensagem com etiqueta "Encaminhada" ou áudio do golpe   │
-└──────────────────────────────────┬─────────────────────────────────────┘
-                                   │ Encaminha para o contato do Verify
-                                   ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│                        GATEWAY DO WHATSAPP                             │
-│   Opção A: Evolution API (Self-Hosted, Open-Source, Baileys)           │
-│   Opção B: WhatsApp Cloud API Oficial da Meta                          │
-└──────────────────────────────────┬─────────────────────────────────────┘
-                                   │ Webhook POST /api/whatsapp/webhook
-                                   ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│                         VERIFY BACKEND (FASTAPI)                       │
-│  1. Envio de resposta imediata: "🔍 Checando fontes confiáveis..."     │
-│  2. Roteamento por tipo de mídia:                                      │
-│     ├─ Texto / Link   → Filtro SSRF + Busca Serper + Fact Checks       │
-│     ├─ Áudio (Opus)   → Gemini Multimodal / AssemblyAI + Detector Golpe│
-│     └─ Foto / Print   → Gemini Vision + OCR + EXIF / C2PA              │
-│  3. Geração do veredito estruturado com dica para idosos               │
-│  4. Síntese de áudio da resposta (áudio de voz para quem não lê)       │
-└──────────────────────────────────┬─────────────────────────────────────┘
-                                   │ Resposta com badges + áudio TTS
-                                   ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│                  MENSAGEM FORMATADA NO WHATSAPP                        │
-│  📊 Veredito: 🔴 CUIDADO: ALERTA DE GOLPE                              │
-│  📝 O QUE VOCÊ PRECISA SABER: [...]                                    │
-│  💡 DICA DE SEGURANÇA: [...]                                           │
-│  🔊 [Áudio com a explicação falada anexado]                            │
-│  🛡️ Botão: Repassar alerta no grupo da família                         │
-└────────────────────────────────────────────────────────────────────────┘
-```
-
-### Especificação dos Tipos de Mensagem Tratados
-
-| Tipo de Mensagem | Como o Bot Processa | Resposta ao Usuário |
+| Entrada | Verificações disponíveis | Limite importante |
 | --- | --- | --- |
-| **Texto Encaminhado** | Extrai alegações com Gemini, consulta Google Fact Check Tools e notícias em tempo real no Serper. | Texto com veredito (Verdadeiro, Falso, Boato), resumo e link oficial. |
-| **Links / URLs** | Faz checagem de domínio suspeito, phishing, idade do registro e scraping do conteúdo com proteção SSRF. | Alerta se o site se passa por banco, Correios ou governo oficial. |
-| **Áudios de Voz (`.ogg`, Opus)** | Transcreve o áudio via Gemini Multimodal Audio e detecta padrões de extorsão emocional urgente. | Transcrição em texto, veredito se é golpe e resposta falada. |
-| **Fotos e Prints de Tela** | Analisa comprovantes de Pix adulterados, anúncios falsos ou fotos geradas por IA. | Veredito sobre autenticidade da imagem e sinais visuais de fraude. |
+| Texto | Padrões de risco e checagens atribuídas: duas famílias editoriais distintas com correspondência literal conservadora | LLM não decide verdade; paráfrase, contexto relativo, discordância ou cobertura incompleta ficam inconclusivos |
+| Link | Consulta pública limitada com validação DNS/IP/TLS; conteúdo segue a política factual de texto | Não certifica legitimidade nem consulta idade do domínio; bloqueios e limites podem impedir leitura |
+| Imagem | Decodificação real, Sightengine/Hive/Hugging Face, metadados, C2PA, OCR e inspeção visual auxiliar | Metadados podem ser forjados; visão de um LLM não é prova de geração por IA |
+| Áudio | Transcrição Gemini/AssemblyAI, triagem do discurso, Hive específico e Sightengine `ai_speech` opt-in | Transcrição não prova clonagem; segundo detector exige autorização ao modelo, não só chave |
+| Vídeo | Amostragem adaptativa de até nove quadros por padrão e análise separada da faixa de áudio | Não verifica todos os quadros, sincronização labial ou identidade; média temporal não vira consenso |
 
----
+Outros recursos: login com cookies HTTP-only, histórico autenticado, lotes de texto, PDF do resultado, demonstração educativa e simulador de WhatsApp.
 
-## O Que Deve Ser Implementado (Roadmap de Tarefas)
+O relatório na interface explica os sinais encontrados, destaca os trechos que acionaram regras e mostra fontes de checagem quando retornadas. Orientações oficiais cadastradas ficam separadas das consultas externas. Vídeos mostram o número de quadros e os tempos amostrados. O indicador animado é **heurístico, não porcentagem de veracidade**: sem evidência, aparece “Não determinado”. A interface usa rolagem nativa personalizada e respeita movimento reduzido.
 
-Abaixo está o inventário de tudo o que deve ser desenvolvido e integrado para a versão definitiva de produção:
+O registro SHA-256 compara bytes com um registro anterior. Não comprova autoria, captura por câmera, veracidade da cena nem assinatura C2PA.
 
-### Fase 1 — Inteligência Forense e Resolução de Falsos-Positivos
-- [x] Separar ferramentas de edição gráfica (Photoshop, Lightroom, GIMP, Canva) de modelos generativos de IA nos metadados.
-- [x] Implementar matriz de consenso e elevar o limiar de decisão contra falsos-positivos.
-- [x] Corrigir testes unitários do backend (26 testes aprovados sem falhas).
-- [ ] Implementar passagem direta dos bytes de imagem para a API multimodal de visão do Gemini no endpoint `/api/upload`.
-- [ ] Adicionar checagem de data de publicação mais antiga via Google Imagens Reversa (SerpApi) para descartar categoricamente geração recente por IA de fotos antigas.
-- [ ] Adicionar suporte a extração automática de OCR em capturas de tela (prints de conversas e comprovantes bancários).
+## Política de resultado
 
-### Fase 2 — UI/UX Acessível para Pessoas Idosas
-- [x] Adicionar botão de leitura em voz alta do relatório com síntese em português brasileiro.
-- [x] Adicionar botão de compartilhamento direto no aplicativo do WhatsApp.
-- [x] Adicionar card de passos práticos imediatos ("O que fazer agora").
-- [x] Corrigir espaçamento superior do Meu Painel (`Dashboard.jsx`) e implementar rolagem para o topo ao trocar de rota (`PageWrapper`).
-- [ ] Criar chave seletora global "Modo Terceira Idade / Modo Fácil" no cabeçalho, ativando tipografia ampliada de 20px e contraste reforçado em todo o site.
-- [ ] Criar tutorial ilustrado em 3 passos com animação: *"Como compartilhar do seu WhatsApp para o Verify"*.
-- [ ] Implementar resumo em cartão visual simplificado com botão de impressão de recibo em PDF de 1 página.
+- Falta de evidência, erro de API ou discordância relevante: **inconclusivo**.
+- Indícios concordantes de detectores: **resultado parcial**, sujeito a revisão.
+- C2PA só é tratado como credencial validada quando a validação e a confiança criptográfica estiverem configuradas.
+- Ausência de sinais de IA nunca transforma uma mídia em “autêntica”.
+- Corroborada/refutada é classificação atribuída às checagens correspondentes; `False` não é sinônimo de `AI_Generated`. OCR/transcrição têm relatório factual separado.
+- Pontuações são sinais não calibrados. Não são porcentagens de acerto do Verify.
 
-### Fase 3 — Demonstração e Interatividade ao Vivo
-- [x] Inserir gravações de áudio reais na pasta pública (`voz_humana_real.mp3` e `voz_golpe_clonado.mp3`).
-- [x] Substituir a síntese senoidal artificial e o sintetizador do navegador pelo reprodutor de áudio real em `AudioDeepfakeDemo.jsx`.
-- [x] Conectar o botão de análise ao endpoint real `/api/verificar/audio-rapido`.
-- [ ] Adicionar seletor com 4 novos exemplos reais:
-  1. Áudio real de idosa conversando sobre receita de bolo.
-  2. Áudio de clonagem com pedido de resgate falso.
-  3. Comprovante falso de Pix agendado.
-  4. Foto histórica autêntica da década de 1980 com compressão de WhatsApp para provar a ausência de falso-positivo.
+As políticas experimentais estão em `backend/app/services/evidence_policy.py` e `claim_policy.py`. Limiares precisam de validação com um conjunto rotulado representativo; concordância entre dois serviços ou famílias editoriais não garante independência estatística.
 
-### Fase 4 — Integração e Publicação do Bot de WhatsApp
-- [x] Endpoint base de webhook do WhatsApp (`POST /api/whatsapp/webhook`).
-- [x] Endpoint de simulação interativa (`POST /api/whatsapp/simulate`).
-- [ ] Implementar contêiner Docker da **Evolution API** no `docker-compose.yml` para pareamento com QR Code de número real.
-- [ ] Adicionar suporte a download automático de mídias recebidas (áudios `.ogg` e imagens `.jpeg`) pelo webhook.
-- [ ] Integrar envio de resposta em formato de nota de voz (gerada via Gemini TTS ou Google Cloud TTS) para o usuário que enviou um áudio.
-- [ ] Salvar histórico das conversas anônimas do WhatsApp associadas a números com hash para métricas de desinformação recorrente.
+`GET /api/capabilities` informa configuração/ferramentas sem expor chaves nem fazer chamadas pagas. Presença de configuração não comprova acesso ou quota: disponibilidade operacional fica `not_tested`. Para métricas offline com resultados inconclusivos incluídos, use `backend/scripts/evaluate_predictions.py`, seguindo o [formato e plano de avaliação](docs/VERIFICACOES-2026-10-03.md#como-medir-precisão-de-verdade-sem-esconder-inconclusivos).
 
----
+## Arquitetura
 
-## Tecnologias
+- Interface: React, Vite, Tailwind CSS e Lucide.
+- API: FastAPI e Pydantic.
+- Persistência: SQLAlchemy assíncrono e PostgreSQL; SQLite em testes isolados.
+- Mídia: Pillow, FFmpeg/ffprobe; ExifTool e c2patool opcionais.
+- Hospedagem: frontend na Vercel, API e banco na Railway.
 
-| Camada | Tecnologia | Finalidade |
+Uploads, relatórios completos e PDFs usam o mesmo fluxo de análise de mídia. Arquivos aceitos: imagens decodificáveis JPEG/PNG/WebP/GIF, áudio e vídeo suportados pelo servidor. Limites: 25 MB, 20 megapixels e dois minutos. Imagens animadas têm cobertura limitada ao primeiro quadro.
+
+## Executar com Docker
+
+Copie `backend/.env.example` para `backend/.env` e configure o necessário. Não comite esse arquivo.
+
+```bash
+docker compose up --build
+```
+
+- Interface: http://localhost:5174
+- API: http://localhost:8001
+- Documentação: http://localhost:8001/docs
+- Saúde: http://localhost:8001/health
+- PostgreSQL de desenvolvimento: porta 5433
+
+O Compose é para desenvolvimento: possui senhas de exemplo, volumes locais e recarga automática. Não exponha o banco nem use essas senhas em produção. O Dockerfile do backend instala FFmpeg e ExifTool; c2patool exige instalação adicional.
+
+O perfil opcional `whatsapp` não foi certificado de ponta a ponta com um número real. O webhook não envia automaticamente uma mensagem só porque retornou um JSON; integração de transporte, autenticação e provisionamento do gateway ainda precisam de validação.
+
+## Testes reproduzíveis
+
+Dentro de `backend`, com dependências instaladas:
+
+```bash
+TEST_DATABASE_URL=sqlite+aiosqlite:////tmp/verify-test.db python -m pytest -q
+```
+
+Use **somente um banco descartável de testes**: a suíte de integração recria suas tabelas. Os testes desabilitam credenciais externas; não dependem de créditos pagos.
+
+Compilação da interface:
+
+```bash
+cd frontend
+npm run build
+```
+
+Os testes de explicações, fontes e limites da animação ficam em `frontend/tests`: execute `npm test`. O controle visual `/tests/score-preview.html` é servido apenas pelo Vite de desenvolvimento; não é rota de análise da aplicação publicada.
+
+Controles locais adicionais do webhook: `backend/scripts/security_probe.py`. Ele aceita apenas localhost e lê o segredo de teste de `VERIFY_AUDIT_WEBHOOK_SECRET`; mantenha-o fora de logs. Esses controles podem consumir provedores se você não os desabilitar no servidor de teste.
+
+Com uma API local iniciada e banco descartável:
+
+O probe envia controles em sequência. Somente nesse servidor descartável, aumente `ANALYSIS_REQUESTS_PER_MINUTE` para 200 e `ANALYSIS_GLOBAL_REQUESTS_PER_MINUTE` para 400 antes de iniciá-lo, para não confundir limites 429 com falhas de fluxo. Não use esses valores para liberar produção; os limitadores têm testes independentes na suíte. Desabilite as chaves externas se não quiser consumir créditos.
+
+```bash
+PYTHONPATH=backend backend/venv/bin/python backend/scripts/audit_probe.py \
+  --base-url http://127.0.0.1:8012 --local-auth --output docs/audit-local.json
+```
+
+`--local-auth` cria dados de teste e só aceita localhost. Sem essa opção, o script não cria contas. Os controles de mídia ainda podem consumir operações dos provedores configurados.
+
+Teste real opcional e limitado de provedores:
+
+```bash
+PYTHONPATH=backend backend/venv/bin/python backend/scripts/provider_probe.py \
+  --env-file backend/.env --output docs/audit-providers.json
+```
+
+Acrescente `--tts` para uma chamada de geração de fala. Isso pode consumir quota/créditos; os arquivos enviados são os controles fictícios do repositório.
+
+## Chaves e configuração
+
+As chaves de fornecedores ficam **no backend/Railway**, nunca em variáveis `VITE_*` públicas.
+
+| Serviço | Onde obter | Variáveis |
 | --- | --- | --- |
-| **Interface** | React 18, Vite, Tailwind CSS, Lucide | Painel responsivo e acessível para web e celular |
-| **API** | FastAPI (Python 3.11/3.12), Pydantic v2 | Orquestração assíncrona do pipeline forense |
-| **Banco de Dados** | PostgreSQL 16 com asyncpg / SQLAlchemy | Armazenamento de auditorias, métricas e usuários |
-| **Inteligência Artificial** | Google Gemini (3.7 Flash, 1.5 Flash), AssemblyAI | Transcrição, visão multimodal e geração de vereditos |
-| **Forense de Mídia** | Sightengine, Hive, ExifTool, C2PA Tool | Detecção de manipulação, selos de proveniência e metadados |
-| **Busca de Fatos** | Google Fact Check Tools API, Serper (Google News) | Cruzamento com checagens de agências oficiais |
-| **Bot WhatsApp** | Webhook nativo (FastAPI) preparado para Evolution API / Meta Cloud API | Atendimento de mensagens encaminhadas |
-| **Infraestrutura** | Docker Compose, Railway (Backend + DB), Vercel (Frontend) | Execução local e publicação em nuvem |
+| Gemini | [Google AI Studio](https://aistudio.google.com/app/apikey) · [documentação](https://ai.google.dev/gemini-api/docs/api-key) | `GEMINI_API_KEY`, modelo explícito em `GEMINI_MODEL_NAME` |
+| Sightengine | [Painel](https://dashboard.sightengine.com/) · [imagem](https://sightengine.com/docs/ai-generated-image-detection) · [fala sintética](https://sightengine.com/docs/ai-generated-speech-detection) | `SIGHTENGINE_API_USER`, `SIGHTENGINE_API_SECRET`; áudio só com acesso ao modelo e `SIGHTENGINE_AUDIO_ENABLED=true` |
+| Hive | [Portal](https://portal.thehive.ai/) · [autenticação](https://docs.thehive.ai/reference/authentication) | `HIVE_IMAGE_API_KEY`, `HIVE_DEEPFAKE_API_KEY`, `HIVE_AUDIO_API_KEY`, `HIVE_TEXT_API_KEY`; `HIVE_API_KEY` é compatibilidade |
+| Hugging Face | [Tokens](https://huggingface.co/settings/tokens) · [Endpoints](https://endpoints.huggingface.co/) | `HUGGINGFACE_API_TOKEN`, `HUGGINGFACE_IMAGE_API_URL`, `HUGGINGFACE_AI_LABEL` |
+| AssemblyAI | [Painel](https://www.assemblyai.com/dashboard/) · [transcrição](https://www.assemblyai.com/docs/pre-recorded-audio/getting-started/transcribe-an-audio-file) | `ASSEMBLYAI_API_KEY` — alternativa de transcrição, não detector de clonagem |
+| Google Fact Check | [Console Google Cloud](https://console.cloud.google.com/apis/library/factchecktools.googleapis.com) · [documentação](https://developers.google.com/fact-check/tools/api/reference/rest/) | `GOOGLE_FACT_CHECK_KEY` |
+| Serper | [Serper](https://serper.dev/) | `SERPERAPI_KEY` |
+| SerpApi | [Chave](https://serpapi.com/manage-api-key) · [Lens](https://serpapi.com/google-lens-api) | `SERPAPI_KEY` |
+| OpenRouter, cliente legado/opcional | [Chaves](https://openrouter.ai/settings/keys) · [documentação](https://openrouter.ai/docs/quickstart) | `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`; não decide veracidade no fluxo atual |
 
----
+Hive v2 exige chave do projeto/modelo apropriado: chave de imagem não habilita automaticamente manipulação facial, áudio ou texto; chaves v3 não são intercambiáveis com v2. Duas chamadas Hive não contam como dois detectores independentes. HF exige endpoint hospedado oficial explicitamente configurado e classe positiva documentada, não apenas um token. Sightengine `ai_speech` tem acesso enterprise/parceiro; mantenha desligado sem autorização e confirme preço/acesso antes de contratar.
 
-## Executar Localmente com Docker
+AssemblyAI e GPTZero são integrações opcionais/alternativas; VirusTotal permanece roadmap. ExifTool, FFmpeg, SHA-256 e Wayback não exigem chave comercial. Não é necessário contratar todos os serviços para iniciar — porém, sem detectores disponíveis, mídia deve continuar inconclusiva.
 
-### 1. Clonar e configurar variáveis de ambiente
-```bash
-cp backend/.env.example backend/.env
-```
-Preencha pelo menos a `GEMINI_API_KEY` gerada no [Google AI Studio](https://aistudio.google.com/app/apikey).
+`JWT_SECRET` e `HMAC_SECRET_KEY` são segredos aleatórios próprios, não chaves compradas. Gere valores fortes e independentes. `GOOGLE_CLIENT_ID` é um cliente OAuth, não uma chave de detecção.
 
-### 2. Subir todos os serviços
-```bash
-docker-compose up --build
-```
+## Proteções e limites desta revisão
 
-Portas mapeadas no ambiente:
-- **Interface Web:** `http://localhost:5174`
-- **API FastAPI:** `http://localhost:8001`
-- **Documentação Swagger:** `http://localhost:8001/docs`
-- **Health Check da API:** `http://localhost:8001/health`
-- **PostgreSQL:** `localhost:5433`
+- URLs: validação de endereços públicos e conexão ao IP validado, mantendo a verificação TLS do domínio original. Cada redirecionamento é revalidado; somente portas 80/443, sem credenciais ou proxy do ambiente. Páginas: até 2 MiB, cinco redirecionamentos e 20 segundos totais. Respostas comprimidas são recusadas; alguns sites exigirão outro meio de envio.
+- Downloads de mídia: até 25 MiB, 20 segundos totais e sem redirecionamento. Bytes são validados antes da análise.
+- Análises públicas: 10 solicitações/minuto por IP, 60/minuto globais e quatro simultâneas por processo; no máximo duas simultâneas por IP. Login conserva o limite próprio de cinco tentativas a cada 15 minutos; cadastro/Google também entram no controle de admissão.
+- Envio: até 35 MiB por requisição completa, 64 KiB em autenticação e 15 segundos para receber o corpo. Lotes contam como uma solicitação, mas podem chamar vários provedores: estes limites **não garantem um orçamento financeiro máximo**.
+- Origens: configure `CORS_ORIGINS` com domínios exatos. `*` não autoriza automaticamente todos os sites Vercel. Escritas de navegador vindas de origem não autorizada são recusadas antes do processamento.
+- JWT: em `APP_ENV=production`, segredo ausente/curto/padrão impede iniciar. Em desenvolvimento sem segredo, a chave é efêmera e sessões expiram ao reiniciar.
 
-### 3. Rodar todos os testes de verificação
-Para executar a suíte completa de testes unitários e de integração dentro do contêiner do backend:
+Os limites e a deduplicação do webhook são em memória, **por processo**. Antes de várias réplicas/workers, use Redis ou outro mecanismo compartilhado e ajuste os IPs de proxies confiáveis no servidor. Não habilite confiança em cabeçalhos encaminhados por qualquer cliente. Retenção/exclusão de dados, fila de tarefas e auditoria de dependências continuam pendentes.
 
-```bash
-docker exec -t verify-backend python -m unittest discover -s tests -v
-```
+### WhatsApp: configuração obrigatória
 
-Resultado esperado:
-```text
-Ran 26 tests in ~4s
-OK (skipped=2)
-```
+`WHATSAPP_BOT_ENABLED=true` exige `WHATSAPP_WEBHOOK_SECRET` com pelo menos 32 caracteres. O gateway deve enviar esse mesmo segredo no header `X-Verify-Webhook-Secret`, por HTTPS. Não coloque segredo na URL, frontend ou logs.
 
-Para validar a compilação do frontend:
-```bash
-docker exec -t verify-frontend npm run build
-```
+São ignoradas mensagens `fromMe=true` e eventos diferentes de `messages.upsert`. IDs repetidos são suprimidos por dez minutos em um único processo; isso não garante entrega exatamente uma vez. Mídia em base64 é decodificada e validada; áudio/imagem/vídeo usam o mesmo fluxo. URLs nativas do WhatsApp podem conter conteúdo criptografado: forneça bytes já descriptografados pelo gateway.
 
----
+Histórico de WhatsApp fica desligado por padrão. Ativar exige `WHATSAPP_HISTORY_ENABLED=true` e `WHATSAPP_HASH_SECRET` independente. O telefone recebe HMAC, mas mensagens ainda podem identificar pessoas: é **pseudonimização, não anonimização**. Simulações não são salvas como conversas reais.
 
-## Variáveis de Ambiente Canônicas
+O webhook apenas retorna JSON. Configure e teste o encaminhamento de `reply` e `audio_reply` ao gateway. O Compose opcional não faz esse transporte nem configura headers automaticamente: a configuração global sem autenticação será recusada.
 
-| Variável | Obrigatória | Finalidade |
-| --- | --- | --- |
-| `DATABASE_URL` | Sim | Conexão PostgreSQL assíncrona (`postgresql+asyncpg://...`) |
-| `GEMINI_API_KEY` | Sim | Orquestração da IA, visão multimodal e transcrição de áudios |
-| `GEMINI_MODEL_NAME` | Não | Modelo padrão (ex: `gemini-3.7-flash` ou `gemini-1.5-flash`) |
-| `JWT_SECRET` | Sim | Assinatura dos cookies HTTP-only de sessão |
-| `HMAC_SECRET_KEY` | Sim | Assinatura digital criptográfica dos selos de autenticidade |
-| `GOOGLE_FACT_CHECK_KEY` | Não | Chave da API Google Fact Check Tools |
-| `SERPERAPI_KEY` | Não | Busca de notícias em tempo real no Google via Serper |
-| `SIGHTENGINE_API_USER` / `SECRET` | Não | Detecção de deepfakes e IA em imagens |
-| `HUGGINGFACE_API_TOKEN` | Não | Modelo complementar de detecção de imagem |
-| `HIVE_API_KEY` | Não | Análise multimídia do TheHive.ai |
-| `ASSEMBLYAI_API_KEY` | Não | Transcrição fonética e medição de confiança acústica |
-| `COOKIE_SECURE` | Produção | Deve ser `true` sob HTTPS |
-| `COOKIE_SAME_SITE` | Produção | `none` em domínios separados (Vercel/Railway) ou `lax` em subdomínio próprio |
+## Antes de publicar esta revisão
+
+1. Revisar o diff, preservar as mudanças locais existentes e executar a suíte novamente.
+2. Railway: usar a pasta raiz `backend` e conferir o builder Dockerfile. O deploy auditado usava Railpack; o arquivo local não prova que o serviço adotou a configuração.
+3. Confirmar FFmpeg/ffprobe no ambiente implantado, banco/migrações, segredos, limites de custo e disponibilidade dos provedores.
+4. Vercel: raiz `frontend`, build `npm run build`, saída `dist`; configurar `VITE_API_URL` com a URL pública da API, sem o sufixo `/api`, conforme `frontend/src/services/api.js`.
+5. Configurar origens CORS **exatas**, cookies HTTPS e testar login no navegador real. Cookies entre domínios podem sofrer bloqueios de terceiros.
+6. Publicar e repetir os controles no serviço público. Não usar relatórios antigos do cache como se fossem resultados da política nova.
+7. Conferir as configurações novas acima, limites compartilhados/custo e integração autenticada do gateway; implementar retenção/exclusão de dados.
+
+Os relatórios de auditoria registram o estado anterior ao push. Publicação no Git não certifica implantação, validade das chaves ou precisão em produção. Confira commit/status do deploy e as pendências no [guia de produção](docs/CONFIGURACAO-PRODUCAO.md).

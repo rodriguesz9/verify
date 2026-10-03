@@ -8,6 +8,7 @@ Security utilities:
 
 import os
 import re
+import secrets
 import bleach
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -35,7 +36,12 @@ def verify_password(plain: str, hashed: str) -> bool:
         return False
 
 # ── JWT ───────────────────────────────────────────────────────────────────────
-_SECRET    = os.getenv("JWT_SECRET", "change_me_please_32_chars_minimum!")
+_SECRET = os.getenv("JWT_SECRET", "")
+if len(_SECRET) < 32 or _SECRET == "change_me_please_32_chars_minimum!":
+    if os.getenv("APP_ENV", "development").lower() == "production":
+        raise RuntimeError("Production requires an independent JWT_SECRET of at least 32 characters.")
+    # Dev tokens expire on restart. Never sign with a publicly known fallback.
+    _SECRET = secrets.token_urlsafe(48)
 _ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 _ACCESS_EXP  = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 _REFRESH_EXP = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS",  "7"))

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from typing import List
 import asyncio
 from app.models.schemas import AnalysisRequest
@@ -15,7 +15,14 @@ router = APIRouter()
 
 
 class BatchAnalysisRequest(BaseModel):
-    texts: List[str]
+    texts: List[str] = Field(..., min_length=1, max_length=10)
+
+    @field_validator("texts")
+    @classmethod
+    def validate_texts(cls, texts):
+        if any(not 10 <= len(sanitize(text).strip()) <= 5000 for text in texts):
+            raise ValueError("Cada mensagem deve ter de 10 a 5000 caracteres.")
+        return texts
 
 
 async def _process_one(text: str, user: User | None, db: AsyncSession) -> dict:
@@ -28,34 +35,17 @@ async def _process_one(text: str, user: User | None, db: AsyncSession) -> dict:
         ai["serper_news"] = result.get("serper_news", [])
         metrics = result["metrics"]
 
-        if user:
-            v = Verification(
-                user_id=user.id,
-                content_type=ContentType.TEXT,
-                verdict_score=ai["score"],
-                verdict_label=ai["verdict"],
-                ai_summary=ai["summary"],
-                raw_result=ai
-            )
-            db.add(v)
-            await db.flush()
-
-            m = AnalysisMetrics(
-                verification_id=v.id,
-                text_ai_probability=metrics["text_ai_probability"]
-            )
-            db.add(m)
-
-        return ai
-    except Exception as e:
+        return ai, metrics
+    except Exception:
         return {
             "query_input": clean_text,
             "verdict": "Suspicious",
             "score": 0,
-            "summary": f"Erro ao analisar: {str(e)[:80]}",
+            "summary": "Não foi possível analisar esta mensagem. Nenhum veredito conclusivo foi produzido.",
             "plain_explanation": "Não foi possível analisar esta mensagem.",
             "error": True,
-        }
+            "analysis_status": "inconclusive",
+        }, {}
 
 
 @router.post("/check-text")
@@ -105,11 +95,12 @@ async def check_text_batch(
     if not body.texts:
         return {"results": []}
 
-    texts_to_check = body.texts[:10]
+    texts_to_check = body.texts
 
-    await verify_limit(user, db, "TEXTUAL")
+    await verify_limit(user, db, "TEXTUAL", requested=len(texts_to_check))
 
-    tasks = [_process_one(text, user, db) for text in texts_to_check]
+    # AsyncSession is not safe for concurrent writes. Analyze concurrently, persist serially.
+    tasks = [_process_one(text, None, db) for text in texts_to_check]
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
     clean_results = []
@@ -121,9 +112,19 @@ async def check_text_batch(
                 "score": 0,
                 "summary": "Erro interno na análise.",
                 "error": True,
+                "analysis_status": "inconclusive",
             })
         else:
-            clean_results.append(r)
+            report, metrics = r
+            clean_results.append(report)
+            if user and not report.get("error"):
+                verification = Verification(user_id=user.id, content_type=ContentType.TEXT,
+                    verdict_score=report["score"], verdict_label=report["verdict"],
+                    ai_summary=report["summary"], raw_result=report)
+                db.add(verification)
+                await db.flush()
+                db.add(AnalysisMetrics(verification_id=verification.id,
+                                       text_ai_probability=metrics.get("text_ai_probability")))
 
     if user:
         await db.commit()

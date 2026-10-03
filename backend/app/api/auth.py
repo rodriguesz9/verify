@@ -1,7 +1,7 @@
 import os
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime
@@ -21,9 +21,9 @@ router = APIRouter(prefix="/auth")
 # ── Schemas ───────────────────────────────────────────────────────────────────
 
 class RegisterBody(BaseModel):
-    email:    str
-    password: str
-    name:     str
+    email:    str = Field(min_length=3, max_length=254)
+    password: str = Field(min_length=6, max_length=128)
+    name:     str = Field(min_length=1, max_length=100)
 
     @field_validator("email")
     def email_valid(cls, v):
@@ -39,12 +39,12 @@ class RegisterBody(BaseModel):
 
 
 class LoginBody(BaseModel):
-    email:    str
-    password: str
+    email:    str = Field(min_length=3, max_length=254)
+    password: str = Field(min_length=1, max_length=128)
 
 
 class GoogleBody(BaseModel):
-    id_token: str
+    id_token: str = Field(min_length=10, max_length=10000)
 
 
 class AuthOut(BaseModel):
@@ -124,8 +124,7 @@ async def register(body: RegisterBody, response: Response, db: AsyncSession = De
         db.add(user)
         await db.commit()
         await db.refresh(user)
-    except Exception as e:
-        print(f"Error creating user: {e}")
+    except Exception:
         raise HTTPException(status_code=500, detail="Erro ao salvar no banco de dados. Tente novamente.")
 
     _set_auth_cookies(response, str(user.id))

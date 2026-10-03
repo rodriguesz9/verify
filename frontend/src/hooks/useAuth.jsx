@@ -1,7 +1,7 @@
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { getMe, logout as apiLogout } from "../services/api";
-
-const AuthCtx = createContext(null);
+import { AuthCtx } from "./authContext";
+// Export only the provider component so Fast Refresh keeps consumers coherent.
 
 export function AuthProvider({ children }) {
   const [user,    setUser]    = useState(null);
@@ -43,5 +43,3 @@ export function AuthProvider({ children }) {
     </AuthCtx.Provider>
   );
 }
-
-export const useAuth = () => useContext(AuthCtx);

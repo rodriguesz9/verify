@@ -1,4 +1,5 @@
 import re
+from urllib.parse import urlsplit
 from typing import Dict, Any, List
 
 SCAM_PATTERNS = [
@@ -6,13 +7,13 @@ SCAM_PATTERNS = [
         "category": "Golpe do Pix / Dinheiro Fácil",
         "regex": r"(pix.*aprovado|pague\s+(uma\s+)?taxa|taxa.*(liberar|receber|resgatar)|devolu[cç][aã]o\s+do\s+pix|resgate\s+(de\s+)?valores|valores\s+esquecidos?.*pix|saldo\s+esquecido|pix\s+em\s+dobro|multiplicador\s+de\s+pix|taxa\s+para\s+liberar\s+saldo|taxa\s+de\s+r\$\s*\d+.*liberar|chave\s+pix.*ganhe)",
         "risk_level": "ALTO",
-        "description": "Promessa de resgate de valores ou multiplicação via Pix. Bancos e governo nunca cobram taxa para devolver dinheiro."
+        "description": "Pedido de taxa ou promessa de liberar um suposto saldo. O pagamento antecipado pode causar perda de dinheiro; confirme o procedimento no canal oficial antes de pagar."
     },
     {
         "category": "Falsa Taxa dos Correios / Alfândega",
         "regex": r"(correios.*encomenda.*retida|correios.*objeto|taxa\s+alfandeg[aá]ria|objeto\s+aguardando\s+pagamento|alfandega.*taxa|libera[cç][aã]o\s+de\s+pacote|sua\s+encomenda\s+est[aá]\s+presa)",
         "risk_level": "ALTO",
-        "description": "Golpe comum usando o nome dos Correios para cobrar falsas taxas de liberação de compras."
+        "description": "Mensagem relacionando uma encomenda a uma cobrança. Taxas legítimas podem existir, portanto confira o rastreamento e o pagamento no site oficial; a mensagem isolada não comprova fraude."
     },
     {
         "category": "Falso Benefício / INSS / Bolsa Família",
@@ -24,7 +25,7 @@ SCAM_PATTERNS = [
         "category": "Golpe do Falso Parente / Novo Número",
         "regex": r"(troquei\s+de\s+n[uú]mero|salva\s+meu\s+n[uú]mero\s+novo|meu\s+celular\s+quebrou.*pix|m[aã]e.*preciso\s+pagar\s+uma\s+conta|pai.*preciso\s+de\s+uma\s+ajuda.*pix)",
         "risk_level": "CRÍTICO",
-        "description": "Criminoso finge ser filho(a) ou parente com número novo pedindo dinheiro ou pagamento urgente."
+        "description": "Troca de número ou pedido financeiro atribuído a um parente. O texto não comprova a identidade do remetente; confirme pelo número antigo antes de transferir dinheiro."
     },
     {
         "category": "Falsa Promoção / Brinde Grátis",
@@ -41,6 +42,18 @@ SCAM_PATTERNS = [
 ]
 
 SUSPICIOUS_DOMAINS_TLD = [".xyz", ".top", ".club", ".online", ".site", ".cc", ".buzz", ".work", ".click", ".vip"]
+PATTERN_GUIDANCE = {
+    "Golpe do Pix / Dinheiro Fácil": [
+        {"title": "Banco Central · orientação sobre golpes e Valores a Receber",
+         "url": "https://www.bcb.gov.br/meubc/faqs/p/golpes-envolvendo-o-meu-bc",
+         "reviewed_at": "2026-10-02"},
+    ],
+    "Falsa Taxa dos Correios / Alfândega": [
+        {"title": "Correios · segurança e mensagens falsas",
+         "url": "https://www.correios.com.br/falecomoscorreios/seguranca",
+         "reviewed_at": "2026-10-02"},
+    ],
+}
 
 def analyze_scam_indicators(text: str, url: str | None = None) -> Dict[str, Any]:
     """
@@ -48,15 +61,17 @@ def analyze_scam_indicators(text: str, url: str | None = None) -> Dict[str, Any]
     and elderly-targeted fraud patterns.
     """
     matches: List[Dict[str, str]] = []
-    text_lower = text.lower()
     
     # Check text patterns
     for pattern in SCAM_PATTERNS:
-        if re.search(pattern["regex"], text_lower, re.IGNORECASE):
+        match = re.search(pattern["regex"], text, re.IGNORECASE)
+        if match:
             matches.append({
                 "category": pattern["category"],
                 "risk_level": pattern["risk_level"],
-                "description": pattern["description"]
+                "description": pattern["description"],
+                "matched_excerpt": match.group(0)[:300],
+                "guidance": PATTERN_GUIDANCE.get(pattern["category"], []),
             })
             
     # Check URL patterns if present
@@ -68,22 +83,34 @@ def analyze_scam_indicators(text: str, url: str | None = None) -> Dict[str, Any]
         if found_urls:
             target_url = found_urls[0]
             
+    impersonates_institution = False
     if target_url:
-        target_lower = target_url.lower()
+        try:
+            hostname = (urlsplit(target_url).hostname or "").lower().rstrip(".")
+        except ValueError:
+            hostname = ""
         for tld in SUSPICIOUS_DOMAINS_TLD:
-            if tld in target_lower:
+            if hostname.endswith(tld):
                 has_suspicious_url = True
-                suspicious_url_reason = f"O link termina em '{tld}', extensão muito utilizada em páginas de golpes."
+                suspicious_url_reason = f"O domínio termina em '{tld}'. A extensão isolada é um sinal fraco e não comprova golpe ou falsidade."
                 break
-        if ("gov" in target_lower or "caixa" in target_lower or "correios" in target_lower or "bb" in target_lower) and not (target_lower.endswith(".gov.br") or ".gov.br/" in target_lower or ".com.br" in target_lower):
-            has_suspicious_url = True
-            suspicious_url_reason = "O link tenta imitar um órgão oficial ou banco mas não possui o domínio oficial (.gov.br ou .com.br)."
+        official_domains = {
+            "gov": ("gov.br",), "caixa": ("caixa.gov.br",),
+            "correios": ("correios.com.br",), "bb": ("bb.com.br",),
+        }
+        for entity, domains in official_domains.items():
+            if re.search(r"(?:^|[.-])" + entity + r"(?:[.-]|$)", hostname):
+                if not any(hostname == domain or hostname.endswith("." + domain) for domain in domains):
+                    has_suspicious_url = impersonates_institution = True
+                    suspicious_url_reason = f"O domínio usa o nome '{entity}', mas não corresponde aos domínios oficiais configurados para essa instituição. Confirme pelo canal oficial."
+                    break
 
-    is_scam = len(matches) > 0 or has_suspicious_url
+    # An unfamiliar suffix alone must not turn a legitimate site into a scam.
+    is_scam = len(matches) > 0 or impersonates_institution
     
     return {
         "is_scam": is_scam,
-        "scam_count": len(matches) + (1 if has_suspicious_url else 0),
+        "scam_count": len(matches) + (1 if impersonates_institution else 0),
         "detected_patterns": matches,
         "suspicious_url": has_suspicious_url,
         "suspicious_url_reason": suspicious_url_reason,

@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from fastapi import HTTPException
 
-from app.api.check_url import _resolve_public_host, _validate_public_url
+from app.services.public_fetch import _resolve_public_host, _validate_public_url
 
 
 class UrlSecurityTests(unittest.IsolatedAsyncioTestCase):
@@ -14,7 +14,7 @@ class UrlSecurityTests(unittest.IsolatedAsyncioTestCase):
 
     def test_private_address_is_rejected(self):
         result = [(None, None, None, None, ("127.0.0.1", 0))]
-        with patch("app.api.check_url.socket.getaddrinfo", return_value=result):
+        with patch("app.services.public_fetch.socket.getaddrinfo", return_value=result):
             with self.assertRaises(HTTPException) as error:
                 _resolve_public_host("internal.example")
         self.assertEqual(error.exception.status_code, 400)
