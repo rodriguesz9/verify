@@ -6,6 +6,8 @@ Não é uma perícia, um certificado de autenticidade ou uma garantia de detecç
 
 Guias novos: [configurar APIs sem novas contratações](docs/APIS-SEM-CUSTO.md) · [ativar Hugging Face, Hive e Gemini; situação do OpenRouter](docs/ATIVAR-DETECTORES.md) · [landing, Modo Fácil e testes visuais](docs/INTERFACE-MODO-FACIL.md).
 
+Nova integração: OpenRouter com **modelos gratuitos e preço máximo zero**, extração literal e OCR alternativo; Hive **v3** com detecção combinada em uma chamada; transcrição AssemblyAI com modelo explícito e polling corrigido. Resultados e pendências em [INTEGRACOES-GRATUITAS.md](docs/INTEGRACOES-GRATUITAS.md). Teste real Hive de imagem passou; não equivale a validar todas as modalidades ou precisão universal.
+
 ## Estado atual — revisão de 3 de outubro de 2026
 
 A versão publicada foi testada em [verifybr.vercel.app](https://verifybr.vercel.app). Foram encontradas falhas de validação de mídia, erros em texto/WhatsApp e resultados de voz dependentes do nome do arquivo.
@@ -18,7 +20,7 @@ A revisão corrige esses comportamentos e separa veracidade da informação da o
 - [Teste limitado com provedores reais](docs/audit-providers-2026-10-02.json).
 - [Origem e limites das mídias de teste](backend/tests/fixtures/README.md).
 
-Última execução da revisão de verificações: **137 testes backend + 66 subtestes, 15 testes de interface e 25 controles HTTP aprovados; build concluído**. Na etapa visual subsequente, o frontend passou em **21 casos** e novo build, com correções do Modo Fácil e landing. Houve dois avisos de descontinuação de dependências (AnyIO/Starlette e python-jose), não erros. São testes funcionais, não medição da precisão dos detectores. Um HTTP 200 não significa análise conclusiva. Testes de políticas usam respostas controladas e chaves externas desligadas; resultados reais de provedores citados acima são históricos, não validação das novas integrações.
+Última execução, incluindo integrações gratuitas: **161 testes backend + 90 subtestes, 27 casos de interface e 25 controles HTTP locais aprovados; build concluído**. Houve dois avisos de descontinuação de dependências (AnyIO/Starlette e python-jose), não erros. São testes funcionais, não medição da precisão dos detectores. Um HTTP 200 não significa análise conclusiva. As suítes usam respostas controladas e chaves externas desligadas; os testes reais separados de Gemini/Hive e as pendências estão em [INTEGRACOES-GRATUITAS.md](docs/INTEGRACOES-GRATUITAS.md).
 
 Preparação para o push: a suíte backend também passou com **PostgreSQL 16 descartável**. A atualização de um enum antigo foi repetida sem erro, e `FALSE` foi gravado/lido corretamente. Corrigidos isolamento de conexões e ordem dos dados nos testes reais de banco. A imagem Docker da raiz compilou, carregou a API e confirmou FFmpeg/ffprobe/ExifTool; agora ambos os contextos de build excluem `.env`, bancos locais e caches, e ambos os comandos respeitam `PORT`. Não houve acesso ao banco de produção, teste pago novo de provedores ou comprovação de precisão.
 
@@ -134,9 +136,11 @@ As chaves de fornecedores ficam **no backend/Railway**, nunca em variáveis `VIT
 | Google Fact Check | [Console Google Cloud](https://console.cloud.google.com/apis/library/factchecktools.googleapis.com) · [documentação](https://developers.google.com/fact-check/tools/api/reference/rest/) | `GOOGLE_FACT_CHECK_KEY` |
 | Serper | [Serper](https://serper.dev/) | `SERPERAPI_KEY` |
 | SerpApi | [Chave](https://serpapi.com/manage-api-key) · [Lens](https://serpapi.com/google-lens-api) | `SERPAPI_KEY` |
-| OpenRouter, cliente legado/opcional | [Chaves](https://openrouter.ai/settings/keys) · [documentação](https://openrouter.ai/docs/quickstart) | `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`; não decide veracidade no fluxo atual |
+| OpenRouter gratuito | [Chaves](https://openrouter.ai/settings/keys) · [free router](https://openrouter.ai/openrouter/free) | `OPENROUTER_API_KEY`, `OPENROUTER_MODEL=openrouter/free`; auxilia busca/OCR, não decide veracidade |
 
 Hive v2 exige chave do projeto/modelo apropriado: chave de imagem não habilita automaticamente manipulação facial, áudio ou texto; chaves v3 não são intercambiáveis com v2. Duas chamadas Hive não contam como dois detectores independentes. HF exige endpoint hospedado oficial explicitamente configurado e classe positiva documentada, não apenas um token. Sightengine `ai_speech` tem acesso enterprise/parceiro; mantenha desligado sem autorização e confirme preço/acesso antes de contratar.
+
+Hive v3 usa `HIVE_API_VERSION=v3`, `HIVE_V3_API_KEY` (ou `HIVE_API_KEY` existente) e `HIVE_V3_MEDIA_TYPES` para autorizar explicitamente chamadas pagas. Vazio = pausado. Imagem/deepfake compartilham uma chamada; áudio usa `ai_generated_audio`, não o score visual. O teto de US$ 0,01 foi autorização de um teste, não gasto contínuo em produção.
 
 AssemblyAI e GPTZero são integrações opcionais/alternativas; VirusTotal permanece roadmap. ExifTool, FFmpeg, SHA-256 e Wayback não exigem chave comercial. Não é necessário contratar todos os serviços para iniciar — porém, sem detectores disponíveis, mídia deve continuar inconclusiva.
 

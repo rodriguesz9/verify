@@ -19,7 +19,7 @@ async def get_ai_voice_speech(text="Olá! Esta é uma demonstração de fala ger
         return {"available": False, "status": "no_api_key", "message": "Gemini não configurado."}
     model = os.getenv("GEMINI_TTS_MODEL", "gemini-3.8-flash-tts")
     try:
-        async with httpx.AsyncClient(timeout=20) as client:
+        async with httpx.AsyncClient(timeout=20, trust_env=False, follow_redirects=False) as client:
             response = await client.post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
                 headers={"x-goog-api-key": key}, json={
                     "contents": [{"parts": [{"text": f"Leia em português do Brasil: {text[:1500]}"}]}],

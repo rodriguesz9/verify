@@ -58,6 +58,9 @@ export function buildReportEvidence(result = {}, query = "") {
   }
   const missing = [];
   const content = result.content_analysis && typeof result.content_analysis === "object" ? result.content_analysis : result;
+  if (content !== result && content.provider_coverage && typeof content.provider_coverage === "object") {
+    for (const [name, layer] of Object.entries(content.provider_coverage)) coverage[`conteúdo/${name}`] = layer;
+  }
   const claimAssessments = Array.isArray(content.claim_assessments) ? content.claim_assessments.filter((item) =>
     item && typeof item.claim === "string" && typeof item.status === "string") : [];
   const claimLabels = {supported: "Corroborada nas checagens", refuted: "Refutada nas checagens", conflicting: "Fontes em desacordo", unverified: "Não verificada"};
@@ -78,6 +81,26 @@ export function buildReportEvidence(result = {}, query = "") {
   }
   for (const [provider, layer] of Object.entries(coverage)) {
     if (!layer || typeof layer !== "object") continue;
+    if (["ocr_only", "inspection_only", "transcription_only"].includes(layer.decision_role)) {
+      const labels = {ocr_only: "Leitura de texto da imagem", inspection_only: "Inspeção visual auxiliar", transcription_only: "Transcrição da fala"};
+      if (layer.status === "success") findings.push({id: `helper-${provider}`, title: labels[layer.decision_role],
+        detail: `Camada concluída${typeof layer.provider === "string" ? ` por ${layer.provider}` : ""}. Não certifica identidade, origem da mídia ou veracidade da informação.`,
+        origin: "Auxílio à leitura · não é detector de autenticidade"});
+      else missing.push(`${labels[layer.decision_role]}: indisponível${typeof layer.reason === "string" ? ` (${layer.reason})` : ""}.`);
+      continue;
+    }
+    if (["search_hints_only", "context_only"].includes(layer.decision_role)) {
+      if (layer.status === "success") {
+        findings.push({id: `helper-${provider}`, title: `Auxílio de pesquisa · ${provider}`,
+          detail: layer.decision_role === "search_hints_only"
+            ? `A IA ajudou a selecionar trechos para busca${typeof layer.model_used === "string" ? ` (${layer.model_used})` : ""}. Não decidiu o veredito nem forneceu prova de verdade ou falsidade.`
+            : "Foram recuperadas notícias relacionadas. Notícias relacionadas não confirmam automaticamente a afirmação.",
+          origin: "Camada auxiliar · não participa da decisão de veracidade"});
+      } else {
+        missing.push(`${provider}: auxílio de pesquisa ${layer.status === "no_results" ? "sem resultados" : "indisponível"}; isso não determina verdade ou falsidade.`);
+      }
+      continue;
+    }
     const available = ["success", "partial"].includes(layer.status);
     if (!available) {
       missing.push(`${provider}: não retornou evidência utilizável nesta análise.`);

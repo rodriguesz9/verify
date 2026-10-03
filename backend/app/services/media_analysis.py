@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from app.core.gemini_analyzer import analyze_image_with_vision, extract_text_from_image
 from app.core.sightengine_client import check_deepfake
 from app.core.huggingface_client import check_ai_image_hf
-from app.services.hive_service import check_hive_media
+from app.services.hive_service import check_hive_media, hive_v3_enabled
 from app.services.metadata_service import extract_metadata
 from app.services.c2pa_service import verify_c2pa
 from app.services.reverse_search_service import search_context_and_provenance
@@ -32,9 +32,10 @@ async def audio_layers(data: bytes, mime_type: str) -> dict:
     suffix = {"audio/wav": "wav", "audio/mpeg": "mp3", "audio/ogg": "ogg", "audio/webm": "webm",
               "audio/flac": "flac", "audio/mp4": "m4a", "audio/aac": "aac"}.get(mime_type, "bin")
     jobs = {"audio": analyze_audio_quick_for_demonstration(data, "evidence.audio", mime_type),
-            "hive": check_hive_media(data, f"evidence.{suffix}", "audio"),
+            "hive": check_hive_media(data, f"evidence.{suffix}", "audio", mime_type),
             "sightengine_audio": detect_synthetic_speech(data, mime_type)}
-    return dict(zip(jobs, await asyncio.gather(*(safe_layer(job) for job in jobs.values()))))
+    return dict(zip(jobs, await asyncio.gather(*(safe_layer(job, timeout=26 if name == "audio" else 18)
+                                               for name, job in jobs.items()))))
 
 
 async def safe_layer(coro, timeout=18):
@@ -49,15 +50,20 @@ async def safe_layer(coro, timeout=18):
 
 async def image_layers(data: bytes, mime_type: str, filename: str, auxiliary=True) -> dict:
     jobs = {"sightengine": check_deepfake(data), "huggingface": check_ai_image_hf(data),
-            "hive": check_hive_media(data, "evidence.jpg", "image"),
-            "hive_deepfake": check_hive_media(data, "evidence.jpg", "deepfake")}
+            "hive": check_hive_media(data, filename, "image", mime_type)}
+    if not hive_v3_enabled():
+        jobs["hive_deepfake"] = check_hive_media(data, filename, "deepfake", mime_type)
     if auxiliary:
         jobs.update({"metadata": extract_metadata(data, filename), "c2pa": verify_c2pa(data, filename),
                      "context": search_context_and_provenance(image_bytes=data, filename="evidence.jpg"),
                      "ocr": extract_text_from_image(data, mime_type),
                      "gemini_vision": analyze_image_with_vision(data, mime_type, {})})
     values = await asyncio.gather(*(safe_layer(job) for job in jobs.values()))
-    return dict(zip(jobs, values))
+    result = dict(zip(jobs, values))
+    if hive_v3_enabled():
+        # Same result, same provider family: never a second independent vote.
+        result["hive_deepfake"] = {**result["hive"], "shared_request": "hive"}
+    return result
 
 
 async def video_visual_layers(media: ValidatedMedia):
@@ -160,7 +166,7 @@ async def analyze_media(media: ValidatedMedia) -> dict:
         report = media_report(forensics, "audio")
         report["transcription"] = audio.get("transcription", "")
         report["content_risk"] = audio.get("content_risk", {})
-        report["content_analysis"] = await check_content(report["transcription"], "transcription")
+        report["content_analysis"] = await check_content(report["transcription"], "transcription", timeout=24)
         report["limitations"].append("Transcrição e indícios de golpe no discurso não determinam se a voz foi clonada.")
         if report["content_risk"].get("is_scam_pattern") and report["analysis_status"] == "inconclusive":
             report["summary"] = "A fala contém sinais de pedido financeiro suspeito. A origem da voz continua inconclusiva."

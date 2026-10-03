@@ -36,9 +36,24 @@ def media_report(forensics: dict, kind: str = "image") -> dict:
     deepfake = len(deep_high) >= 2 and not deep_low
     coverage = {name: {"status": "success" if scores.get(name) is not None or deep_scores.get(name) is not None else result.get("status", "unavailable"),
                        "ai_score": scores.get(name), "deepfake_score": deep_scores.get(name),
-                       "reason": result.get("reason") or result.get("error")}
+                       "reason": result.get("reason") or result.get("error"),
+                       "api_version": result.get("api_version"), "model_used": result.get("model_used"),
+                       "shared_request": result.get("shared_request")}
                 for name in [*fields, *(["hive_deepfake"] if kind != "audio" and "hive_deepfake" in forensics else [])]
                 for result in [forensics.get(name, {})]}
+    for name, role in (("ocr", "ocr_only"), ("gemini_vision", "inspection_only")):
+        result = forensics.get(name)
+        if isinstance(result, dict):
+            coverage[name] = {"status": result.get("status", "unavailable"), "decision_role": role,
+                              "provider": result.get("provider", "gemini"), "model_used": result.get("model_used"),
+                              "reason": result.get("reason") or result.get("error"), "ai_score": None, "deepfake_score": None}
+    speech = forensics.get("audio")
+    if isinstance(speech, dict):
+        detail = speech.get("transcription_detail")
+        detail = detail if isinstance(detail, dict) else {}
+        coverage["transcription"] = {"status": "success" if speech.get("transcription") else detail.get("status", "unavailable"),
+            "decision_role": "transcription_only", "provider": speech.get("transcription_provider"),
+            "reason": detail.get("reason"), "model_used": detail.get("model_used"), "ai_score": None, "deepfake_score": None}
     limitations = [
         "Ausência de sinais de IA não comprova autenticidade ou veracidade da cena.",
         "Pontuações de detectores são sinais não calibrados; compressão e edição podem gerar erros.",

@@ -24,7 +24,9 @@ export default function Privacidade() {
             <h2 className="text-cyan mb-3 tracking-widest text-[11px] uppercase">2. Processamento e Armazenamento</h2>
             <p>
                As camadas habilitadas podem enviar textos, imagens, quadros de vídeo ou áudio a provedores externos,
-               como Google, Sightengine, Hive e Hugging Face. As regras de retenção desses serviços também se aplicam.
+               como Google, OpenRouter e seus fornecedores de modelos, Sightengine, Hive, Hugging Face e AssemblyAI.
+               As regras de retenção desses serviços também se aplicam. Ofertas gratuitas podem permitir uso
+               do conteúdo para melhoria de modelos; não são uma garantia de processamento privado.
                O histórico pode armazenar o conteúdo consultado e o relatório; o registro de integridade usa SHA-256.
                Evite enviar senhas, documentos pessoais, dados bancários e mídias privadas de terceiros.
             </p>

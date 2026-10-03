@@ -13,9 +13,9 @@ Sem orçamento para novos planos? Comece pelo [guia de configuração sem novas 
 | Hive Deepfake | `HIVE_DEEPFAKE_API_KEY` ausente | Camada facial não habilitada. Por segurança, não reutiliza automaticamente a chave legada. |
 | Hive áudio | `HIVE_AUDIO_API_KEY` ausente | Não há configuração específica de áudio confirmada. O fallback legado não comprova acesso ao detector correto. |
 | Gemini | `GEMINI_API_KEY` presente | Integração existe; funcionamento real, modelo e quota não foram confirmados nesta revisão visual. |
-| OpenRouter | `OPENROUTER_API_KEY` presente | Integração legada existe, mas **não é chamada pelo pipeline principal de veredito**. Não participa de uma votação para decidir verdade/falsidade. |
+| OpenRouter | `OPENROUTER_API_KEY` presente | Integrado à extração literal para pesquisa e ao fallback de OCR; somente modelos gratuitos. Não vota sobre veracidade. |
 
-O teste real registrado em `audit-providers-2026-10-02.json` é histórico: apontou falhas Hive/Hugging Face/Gemini. Não foi repetido nesta etapa; não descreve necessariamente o estado atual. Testes locais e respostas simuladas não comprovam que fornecedores externos estejam operacionais.
+O teste em `audit-providers-2026-10-02.json` é histórico. Na nova etapa, uma chamada real Hive v3 reconheceu o controle sintético; o custo publicado por imagem é US$ 0,006, dentro do teto de US$ 0,01 autorizado. Não houve teste Hive de áudio/vídeo. Consulte [integrações gratuitas e resultados atuais](INTEGRACOES-GRATUITAS.md). Testes simulados não comprovam provedores externos operacionais.
 
 ## 1. Hugging Face: token + modelo hospedado + classe correta
 
@@ -37,7 +37,23 @@ Aceitamos URLs oficiais HTTPS de `router.huggingface.co`, `api-inference.hugging
 
 Fontes: [tokens](https://huggingface.co/docs/hub/security-tokens), [tarefas suportadas](https://huggingface.co/docs/inference-endpoints/en/supported_tasks), [como testar o endpoint](https://huggingface.co/docs/inference-endpoints/guides/test_endpoint).
 
-## 2. Hive: projetos autorizados aos modelos usados
+## 2. Hive: primeiro escolher v3 ou v2
+
+Seu print mostra **Service API Keys v3**, não chaves de projeto v2. Use o **Secret Key**, não o Access Key ID listado na tabela. O cliente v3 agora foi implementado e testado com uma imagem.
+
+```dotenv
+HIVE_API_VERSION=v3
+HIVE_V3_API_KEY=<Secret Key privado>
+HIVE_V3_MEDIA_TYPES=
+```
+
+Campo `HIVE_V3_MEDIA_TYPES` vazio mantém chamadas pagas pausadas. Após autorizar orçamento de operação, `image` habilita imagem/quadros de vídeo, `audio` habilita áudio, `image,audio` habilita ambos. **Não habilite tráfego contínuo com base apenas na autorização de US$ 0,01 para o teste.** Não houve contratação ou recarga.
+
+Com v3 selecionado explicitamente, `HIVE_API_KEY` pode ser o Secret Key existente, sem copiar o mesmo segredo para três campos. Endpoint fixo: `https://api.thehive.ai/api/v3/hive/ai-generated-and-deepfake-content-detection`; autenticação Bearer; envio multipart de bytes reais. Resposta usa `output[].classes[].value`: `ai_generated`, `deepfake` e, para áudio, **`ai_generated_audio`**. Imagem/deepfake são obtidos em uma chamada compartilhada, sem dois votos ou cobrança duplicada. Uma tarefa pendente não é reenviada automaticamente.
+
+Fonte: [contrato oficial Hive v3](https://docs.thehive.ai/docs/ai-generated-and-deepfake-content-detection-playground), [preço exibido no Playground](https://thehive.ai/models/hive/ai-generated-and-deepfake-content-detection).
+
+### Se você tiver projetos v2 de verdade
 
 Entre no [Portal Hive](https://portal.thehive.ai/). Em cada projeto disponível, abra **Integration & API Keys**. A aplicação usa a API **v2**, endpoint `https://api.thehive.ai/api/v2/task/sync`, autenticação `Authorization: token ...`. Chave de Playground/API v3 não deve ser presumida compatível.
 
@@ -73,13 +89,22 @@ Gemini ajuda com sugestões, OCR, análise visual auxiliar e transcrição. **N�
 
 Fonte: [guia oficial de chaves](https://ai.google.dev/gemini-api/docs/api-key).
 
-## 4. OpenRouter: chave não ativa o pipeline principal
+## 4. OpenRouter: gratuito, auxiliar e com bloqueio de cobrança
 
 [Chaves OpenRouter](https://openrouter.ai/settings/keys), [catálogo de modelos](https://openrouter.ai/models) e [guia oficial](https://openrouter.ai/docs/quickstart).
 
-O arquivo legado `openrouter_service.py` tem geração e rotação de modelos. O fluxo principal em `pipeline.py` atualmente **não chama** esse serviço: usa política auditável e checagens recuperadas. Portanto, cadastrar `OPENROUTER_MODEL` ou colocar créditos não faz o OpenRouter participar automaticamente da checagem.
+```dotenv
+OPENROUTER_ENABLED=true
+OPENROUTER_MODEL=openrouter/free
+OPENROUTER_FALLBACK_MODELS=
+OPENROUTER_DAILY_LIMIT=40
+```
 
-Para acrescentá-lo futuramente, o papel deve ser definido e testado — por exemplo, auxílio na explicação com fontes — sem converter concordância entre modelos de linguagem em prova de verdade.
+O router oficial escolhe um modelo gratuito compatível com texto/imagem e JSON. Alternativas precisam ter identificador específico terminado em `:free`. **`openrouter/auto:free` não garante gratuidade e é bloqueado**, assim como modelos pagos. Cada requisição exige preço máximo zero, incluindo prompt, saída, requisição e imagem. HTTP 402/429 interrompe chamadas, não compra créditos nem usa fallback pago.
+
+O pipeline aceita somente trechos literais como sugestões de busca, preservando datas, números e negações. O OCR pode usar OpenRouter se Gemini estiver ausente/indisponível; envia bytes reais, sem inferir identidade ou origem. Não oferece transcrição de áudio por esse router. Checagens recuperadas e política auditável continuam decidindo o relatório factual, nunca concordância entre LLMs.
+
+Limite local: até 40 tentativas/dia e dez/minuto **por processo**, incluindo falhas; reiniciar ou usar réplicas reinicia/separa esse contador. A cota compartilhada da conta continua valendo; não é produção ilimitada. Free providers podem reter/usar conteúdo: evite dados sensíveis. Fontes: [free router](https://openrouter.ai/openrouter/free), [limites oficiais](https://openrouter.ai/docs/api_reference/limits), [preço máximo](https://openrouter.ai/docs/guides/routing/provider-selection).
 
 ## 5. Como validar depois de salvar e fazer deploy
 

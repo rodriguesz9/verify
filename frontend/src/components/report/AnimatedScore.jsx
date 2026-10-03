@@ -37,7 +37,7 @@ export default function AnimatedScore({value, color = "#00D4FF", label = "Índic
 
   return (
     <div className={compact ? "w-full" : "w-full sm:w-64 rounded-xl bg-[#04080C88] p-4 border border-white/10"}>
-      <div className="flex items-start justify-between gap-3 mb-3">
+      <div className="report-score-header flex items-start justify-between gap-3 mb-3">
         <span id={labelId} className="text-[11px] font-mono leading-5 text-[#8AA2B4]">{label}</span>
         {target !== null && <span className={compact ? "font-mono text-sm font-bold shrink-0" : "font-syne text-3xl font-black tabular-nums shrink-0"} style={{color}}>
           <span aria-hidden="true">{Math.round(display)}<span className="text-sm">/100</span></span>

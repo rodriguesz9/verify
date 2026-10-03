@@ -15,9 +15,14 @@ os.environ["ANALYSIS_GLOBAL_REQUESTS_PER_MINUTE"] = "4000"
 for key in ("GEMINI_API_KEY", "OPENROUTER_API_KEY", "GOOGLE_FACT_CHECK_KEY", "SERPERAPI_KEY",
             "SERPAPI_KEY", "SIGHTENGINE_API_USER", "SIGHTENGINE_API_SECRET", "HIVE_API_KEY",
             "HUGGINGFACE_API_TOKEN", "GPTZERO_API_KEY", "ASSEMBLYAI_API_KEY", "TINEYE_API_KEY", "HIVE_DEEPFAKE_API_KEY",
-            "HIVE_IMAGE_API_KEY", "HIVE_VIDEO_API_KEY", "HIVE_AUDIO_API_KEY", "HIVE_TEXT_API_KEY"):
+            "HIVE_IMAGE_API_KEY", "HIVE_VIDEO_API_KEY", "HIVE_AUDIO_API_KEY", "HIVE_TEXT_API_KEY", "HIVE_V3_API_KEY"):
     os.environ[key] = ""
 os.environ["SIGHTENGINE_AUDIO_ENABLED"] = "false"
+os.environ["HIVE_API_VERSION"] = "v2"
+os.environ["HIVE_V3_MEDIA_TYPES"] = ""
+os.environ["OPENROUTER_ENABLED"] = "true"
+os.environ["OPENROUTER_MODEL"] = "openrouter/free"
+os.environ["OPENROUTER_FALLBACK_MODELS"] = ""
 
 from app.core.auth import get_current_user, get_optional_user
 from app.core.database import get_db

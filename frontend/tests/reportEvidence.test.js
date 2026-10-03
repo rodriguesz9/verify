@@ -118,3 +118,30 @@ test("preconfigured safety guidance stays separate from retrieved fact checks", 
   assert.equal(report.sources.length, 0);
   assert.equal(report.guidance.length, 1);
 });
+
+test("free AI helper is transparent but never displayed as a truth detector", () => {
+  const report = buildReportEvidence({provider_coverage: {openrouter: {status: "success", decision_role: "search_hints_only",
+    model_used: "vendor/model:free", ai_score: 1}}});
+  assert.equal(report.findings.length, 1);
+  assert.match(report.findings[0].detail, /Não decidiu o veredito/);
+  assert.match(report.findings[0].detail, /vendor\/model:free/);
+  assert.doesNotMatch(report.findings[0].title, /Sinal de geração/);
+});
+
+test("media content search failure remains visible and distinct from authenticity", () => {
+  const report = buildReportEvidence({content_type: "image", content_analysis: {provider_coverage: {
+    openrouter: {status: "rate_limited", decision_role: "search_hints_only"},
+    serper: {status: "no_results", decision_role: "context_only"}}}});
+  assert.equal(report.missing.length, 2);
+  assert.ok(report.missing.every((item) => item.includes("não determina verdade ou falsidade")));
+});
+
+test("OCR and transcription are reading aids, not authenticity scores", () => {
+  const report = buildReportEvidence({provider_coverage: {
+    ocr: {status: "success", decision_role: "ocr_only", provider: "openrouter", ai_score: 1},
+    speech: {status: "timeout", decision_role: "transcription_only", reason: "Prazo atingido", ai_score: 1}}});
+  assert.equal(report.findings.length, 1);
+  assert.match(report.findings[0].detail, /Não certifica/);
+  assert.doesNotMatch(report.findings[0].title, /Sinal de geração/);
+  assert.match(report.missing[0], /Prazo atingido/);
+});

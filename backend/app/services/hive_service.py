@@ -1,9 +1,64 @@
-"""Hive v2 detection. Project-specific keys and exact documented class names."""
+"""Hive v2 projects / v3 service keys. Exact classes; no billable retries."""
 import math
 import os
 import httpx
 
 HIVE_API_URL = "https://api.thehive.ai/api/v2/task/sync"
+HIVE_V3_MODEL = "hive/ai-generated-and-deepfake-content-detection"
+HIVE_V3_API_URL = f"https://api.thehive.ai/api/v3/{HIVE_V3_MODEL}"
+
+
+def hive_v3_enabled():
+    return os.getenv("HIVE_API_VERSION", "v2").strip().lower() == "v3"
+
+
+def parse_hive_v3_scores(data: dict, media_type="image") -> dict:
+    """v3 uses output[].classes[].value, and a DISTINCT audio head."""
+    if not isinstance(data, dict) or data.get("model") != HIVE_V3_MODEL or not isinstance(data.get("output"), list):
+        return {"available": False, "status": "invalid_response", "api_version": "v3"}
+    outputs = []
+    for output in data["output"][:50]:
+        if not isinstance(output, dict) or not isinstance(output.get("classes"), list):
+            return {"available": False, "status": "invalid_response", "api_version": "v3"}
+        classes = []
+        for item in output["classes"]:
+            if not isinstance(item, dict):
+                continue
+            label = item.get("class")
+            if media_type == "audio":
+                if label != "ai_generated_audio":
+                    continue
+                label = "ai_generated"
+            elif label not in {"ai_generated", "deepfake"}:
+                continue
+            classes.append({"class": label, "score": item.get("value")})
+        outputs.append({"classes": classes})
+    result = parse_hive_scores({"status": [{"status": {"code": "0"}, "response": {"output": outputs}}]})
+    return {**result, "api_version": "v3", "model_used": HIVE_V3_MODEL,
+            "model_version": str(data.get("version", ""))[:50], "decision_role": "media_detector"}
+
+
+async def _request_hive_v3(file_bytes, filename, media_type, mime_type):
+    key = (os.getenv("HIVE_V3_API_KEY") or os.getenv("HIVE_API_KEY", "")).strip()
+    enabled = {part.strip() for part in os.getenv("HIVE_V3_MEDIA_TYPES", "").lower().split(",")}
+    if not key or media_type not in enabled:
+        return {"available": False, "status": "not_configured", "api_version": "v3",
+                "reason": "Hive v3 exige Secret Key e autorização de custo em HIVE_V3_MEDIA_TYPES.",
+                "ai_generated_score": None, "deepfake_score": None}
+    try:
+        async with httpx.AsyncClient(timeout=15, trust_env=False, follow_redirects=False) as client:
+            response = await client.post(HIVE_V3_API_URL, headers={"Authorization": f"Bearer {key}", "Accept": "application/json"},
+                                         files={"media": (filename, file_bytes, mime_type)})
+        if response.status_code == 202:
+            return {"available": False, "status": "pending", "api_version": "v3",
+                    "reason": "Hive aceitou a tarefa, mas não retornou detecção síncrona. Não houve reenvio."}
+        if response.status_code != 200:
+            return {"available": False, "status": "rate_limited" if response.status_code in {402, 429} else "error",
+                    "api_version": "v3", "reason": f"Hive v3 indisponível (HTTP {response.status_code})."}
+        return parse_hive_v3_scores(response.json(), media_type)
+    except Exception:
+        return {"available": False, "status": "error", "api_version": "v3",
+                "reason": "Não foi possível obter resposta válida do Hive v3."}
 
 
 def parse_hive_scores(data: dict) -> dict:
@@ -74,9 +129,18 @@ async def _request_hive(media_type: str, **payload) -> dict:
                 "ai_generated_score": None, "deepfake_score": None}
 
 
-async def check_hive_media(file_bytes: bytes, filename: str = "media.jpg", media_type: str = "image") -> dict:
-    return await _request_hive(media_type, files={"media": (filename, file_bytes)})
+async def check_hive_media(file_bytes: bytes, filename: str = "media.jpg", media_type: str = "image", mime_type: str = "application/octet-stream") -> dict:
+    if hive_v3_enabled():
+        # v3 combines image and facial heads. Caller reuses ONE image request.
+        if media_type == "deepfake":
+            return {"available": False, "status": "skipped", "reason": "Cabeça facial incluída na única chamada Hive v3 de imagem."}
+        if media_type not in {"image", "audio"}:
+            return {"available": False, "status": "unsupported"}
+        return await _request_hive_v3(file_bytes, filename, media_type, mime_type)
+    return await _request_hive(media_type, files={"media": (filename, file_bytes, mime_type)})
 
 
 async def check_hive_text(text: str) -> dict:
+    if hive_v3_enabled():
+        return {"available": False, "status": "unsupported", "reason": "O detector Hive v3 configurado não recebe texto."}
     return await _request_hive("text", json={"text_data": text[:3000]})

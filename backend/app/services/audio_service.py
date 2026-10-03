@@ -7,6 +7,7 @@ import os
 import httpx
 import asyncio
 import re
+import time
 from typing import Dict, Any, Optional
 
 ASSEMBLYAI_API_URL = "https://api.assemblyai.com/v2"
@@ -47,31 +48,22 @@ def detect_acoustic_scam_heuristics(text: str, audio_bytes: bytes) -> Dict[str, 
     }
 
 
-async def transcribe_with_assemblyai(file_bytes: bytes) -> Dict[str, Any]:
+async def _assemblyai_job(file_bytes: bytes, api_key: str) -> Dict[str, Any]:
     """
     Transcribes audio using AssemblyAI with confidence and speech model metrics.
     """
-    api_key = os.getenv("ASSEMBLYAI_API_KEY", "").strip()
-    if not api_key:
-        return {
-            "available": False,
-            "status": "skipped",
-            "reason": "ASSEMBLYAI_API_KEY não configurada",
-            "transcription": ""
-        }
-
     headers = {"authorization": api_key}
 
     try:
         # 1. Upload audio to AssemblyAI
-        async with httpx.AsyncClient(timeout=10.0, trust_env=False) as client:
+        async with httpx.AsyncClient(timeout=10.0, trust_env=False, follow_redirects=False) as client:
             upload_resp = await client.post(
                 f"{ASSEMBLYAI_API_URL}/upload",
                 headers=headers,
                 content=file_bytes
             )
             if upload_resp.status_code != 200:
-                return {"available": True, "status": "error", "error": "Upload failed"}
+                return {"available": False, "status": "error", "reason": f"Upload AssemblyAI indisponível (HTTP {upload_resp.status_code})."}
 
             audio_url = upload_resp.json().get("upload_url")
             if not isinstance(audio_url, str) or not audio_url.startswith("https://"):
@@ -81,15 +73,15 @@ async def transcribe_with_assemblyai(file_bytes: bytes) -> Dict[str, Any]:
             transcript_resp = await client.post(
                 f"{ASSEMBLYAI_API_URL}/transcript",
                 headers=headers,
-                json={"audio_url": audio_url, "language_code": "pt"}
+                json={"audio_url": audio_url, "language_code": "pt", "speech_models": ["universal-2"]}
             )
             transcript_id = transcript_resp.json().get("id")
             if transcript_resp.status_code not in {200, 201} or not isinstance(transcript_id, str) or not re.fullmatch(r"[a-zA-Z0-9-]{1,100}", transcript_id):
                 raise ValueError("Job inválido")
 
-            # 3. Poll for result (up to 8 seconds for demo responsiveness)
-            for _ in range(8):
-                await asyncio.sleep(1.0)
+            # Poll immediately, then back off. The entire job has one deadline,
+            # not a timeout shorter than its compulsory polling sleeps.
+            for attempt in range(10):
                 poll_resp = await client.get(
                     f"{ASSEMBLYAI_API_URL}/transcript/{transcript_id}",
                     headers=headers
@@ -98,46 +90,74 @@ async def transcribe_with_assemblyai(file_bytes: bytes) -> Dict[str, Any]:
                 if poll_resp.status_code != 200:
                     raise ValueError("Consulta indisponível")
                 if poll_data.get("status") == "completed":
+                    text = poll_data.get("text")
+                    if not isinstance(text, str) or not text.strip():
+                        return {"available": False, "status": "no_speech", "transcription": "",
+                                "reason": "O provedor não encontrou fala transcritível."}
+                    if len(text) > 100000:
+                        raise ValueError("Transcrição inválida")
                     return {
                         "available": True,
                         "status": "success",
-                        "transcription": poll_data.get("text") or "",
+                        "transcription": text.strip(),
+                        "model_used": str(poll_data.get("speech_model_used") or "universal-2")[:100],
+                        "decision_role": "transcription_only",
                         "confidence": poll_data.get("confidence", 0.0),
                         "words_count": len(poll_data.get("words", [])),
                         "audio_duration_sec": poll_data.get("audio_duration", 0)
                     }
                 elif poll_data.get("status") == "error":
                     return {"available": False, "status": "error", "reason": "Transcrição recusada pelo provedor."}
+                elif poll_data.get("status") not in {"queued", "processing"}:
+                    raise ValueError("Estado inválido")
+                await asyncio.sleep(min(.5 * (attempt + 1), 2))
 
-        return {"available": True, "status": "timeout", "transcription": ""}
+        return {"available": False, "status": "pending", "transcription": "",
+                "reason": "A tarefa de transcrição não concluiu a tempo. Não houve reenvio do áudio."}
     except Exception:
         return {"available": False, "status": "error", "reason": "Resposta de transcrição indisponível ou inválida."}
 
 
+async def transcribe_with_assemblyai(file_bytes: bytes) -> Dict[str, Any]:
+    api_key = os.getenv("ASSEMBLYAI_API_KEY", "").strip()
+    if not api_key:
+        return {"available": False, "status": "not_configured", "transcription": "",
+                "reason": "ASSEMBLYAI_API_KEY não configurada."}
+    try:
+        return await asyncio.wait_for(_assemblyai_job(file_bytes, api_key), timeout=12)
+    except asyncio.TimeoutError:
+        return {"available": False, "status": "pending", "transcription": "",
+                "reason": "Transcrição não concluída no prazo. Tarefa não reenviada para evitar custo duplicado."}
+
+
 async def analyze_audio_quick_for_demonstration(file_bytes: bytes, filename: str = "audio.wav", mime_type: str = "audio/wav") -> Dict[str, Any]:
     """
-    Ultra-fast (< 3s) audio analysis endpoint specifically optimized for live stage presentations.
-    Combines rapid acoustic heuristic detection with Gemini Multimodal Audio analysis.
+    Bounded transcription and speech-content triage, NOT an acoustic detector.
     """
-    import time
     start_time = time.time()
 
     # Actual bytes only. Fallback is transcription, never an authenticity vote.
     from app.core.audio_checker import transcribe_and_extract_audio
     transcription = ""
     transcription_provider = None
+    transcription_detail = {"status": "not_configured"}
     try:
         transcription = await asyncio.wait_for(
             transcribe_and_extract_audio(file_bytes, mime_type),
-            timeout=8
+            timeout=12
         )
         if transcription:
             transcription_provider = "gemini"
-    except Exception:
+            transcription_detail = {"status": "success"}
+    except Exception as exc:
         transcription = ""
+        from app.core.gemini_client import GeminiError
+        transcription_detail = {"status": getattr(exc, "status", "timeout" if isinstance(exc, asyncio.TimeoutError) else "error"),
+                                "reason": str(exc) if isinstance(exc, GeminiError) else "Transcrição Gemini não concluída no prazo."}
     if not transcription and os.getenv("ASSEMBLYAI_API_KEY", "").strip():
         try:
-            alternate = await asyncio.wait_for(transcribe_with_assemblyai(file_bytes), 8)
+            alternate = await transcribe_with_assemblyai(file_bytes)
+            transcription_detail = {key: value for key, value in alternate.items() if key not in {"transcription", "words"}}
             if alternate.get("status") == "success" and isinstance(alternate.get("transcription"), str):
                 transcription = alternate["transcription"]
                 transcription_provider = "assemblyai"
@@ -154,6 +174,7 @@ async def analyze_audio_quick_for_demonstration(file_bytes: bytes, filename: str
         "transcription": transcription,
         "transcription_status": "success" if transcription else "unavailable",
         "transcription_provider": transcription_provider,
+        "transcription_detail": transcription_detail,
         "short_explanation": "Há sinais de pedido financeiro suspeito na fala; isso não comprova clonagem de voz." if heuristics["is_scam_pattern"] else (
             "A transcrição foi obtida, mas a origem da voz não pôde ser determinada." if transcription else
             "Não foi possível transcrever este áudio. Não há resultado de detecção de clonagem."),

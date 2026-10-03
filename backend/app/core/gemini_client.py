@@ -8,10 +8,16 @@ class GeneratedText(str):
     model_name: str
 
 
-async def generate_text(contents, *, system_instruction=None, temperature=.1, json_output=True):
+class GeminiError(RuntimeError):
+    def __init__(self, reason, status="error", http_status=None):
+        self.status, self.http_status = status, http_status
+        super().__init__(reason)
+
+
+async def generate_text(contents, *, system_instruction=None, temperature=.1, json_output=True, max_tokens=2048):
     key = os.getenv("GEMINI_API_KEY", "").strip()
     if not key:
-        raise RuntimeError("Gemini não configurado.")
+        raise GeminiError("Gemini não configurado.", "not_configured")
     primary = os.getenv("GEMINI_MODEL_NAME", "gemini-3.7-flash").strip()
     fallback = [m.strip() for m in os.getenv("GEMINI_FALLBACK_MODELS", "").split(",") if m.strip()]
     models = list(dict.fromkeys([primary, *fallback]))[:2]
@@ -24,31 +30,40 @@ async def generate_text(contents, *, system_instruction=None, temperature=.1, js
             parts.append({"inlineData": {"mimeType": inline["mime_type"], "data": base64.b64encode(inline["data"]).decode()}})
         else:
             parts.append(part)
-    config = {"temperature": temperature, "maxOutputTokens": 4096}
+    config = {"temperature": temperature, "maxOutputTokens": max(64, min(4096, max_tokens))}
     if json_output:
         config["responseMimeType"] = "application/json"
     body = {"contents": [{"role": "user", "parts": parts}], "generationConfig": config}
     if system_instruction:
         body["systemInstruction"] = {"parts": [{"text": system_instruction}]}
-    async with httpx.AsyncClient(timeout=15) as client:
+    async with httpx.AsyncClient(timeout=20, trust_env=False, follow_redirects=False) as client:
         for index, model in enumerate(models):
+            # Simple extraction/OCR needs low latency, not default deep reasoning.
+            # thinkingLevel is documented only for Gemini 3+; no legacy breakage.
+            body["generationConfig"] = {**config, **({"thinkingConfig": {"thinkingLevel": "LOW"}} if model.startswith("gemini-3") else {})}
             try:
                 response = await client.post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
                                              headers={"x-goog-api-key": key}, json=body)
             except httpx.TimeoutException:
                 if index + 1 < len(models):
                     continue
-                raise RuntimeError("Tempo limite do Gemini atingido.") from None
-            if response.status_code in {404, 429, 503} and index + 1 < len(models):
+                raise GeminiError("Tempo limite do Gemini atingido.", "timeout") from None
+            except httpx.HTTPError:
+                raise GeminiError("Conexão Gemini indisponível.") from None
+            if response.status_code in {404, 503} and index + 1 < len(models):
                 continue
             if response.status_code != 200:
-                raise RuntimeError(f"Gemini indisponível (HTTP {response.status_code}).")
-            candidates = response.json().get("candidates", [])
-            if not candidates or candidates[0].get("finishReason") not in {None, "STOP"}:
-                raise RuntimeError("Gemini não retornou uma resposta completa.")
-            value = "".join(p.get("text", "") for p in candidates[0].get("content", {}).get("parts", []) if not p.get("thought"))
-            if not value:
-                raise RuntimeError("Resposta vazia do Gemini.")
+                raise GeminiError(f"Gemini indisponível (HTTP {response.status_code}).",
+                                  "rate_limited" if response.status_code == 429 else "error", response.status_code)
+            try:
+                candidates = response.json().get("candidates", [])
+                if not candidates or candidates[0].get("finishReason") not in {None, "STOP"}:
+                    raise ValueError("incomplete")
+                value = "".join(p.get("text", "") for p in candidates[0].get("content", {}).get("parts", []) if not p.get("thought"))
+                if not value or len(value) > 30000:
+                    raise ValueError("empty or oversized")
+            except (ValueError, TypeError, KeyError, IndexError, AttributeError):
+                raise GeminiError("Gemini não retornou uma resposta completa e válida.", "invalid_response") from None
             text = GeneratedText(value)
             text.model_name = model
             return text

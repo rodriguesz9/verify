@@ -40,6 +40,8 @@ Todos os routers ficam sob `/api`.
 - `services/claim_policy.py`: duas famílias editoriais distintas com avaliação explícita, data válida e correspondência exata conservadora; negação/valores/datas preservados. Discordância, contexto relativo e cobertura incompleta impedem aprovação global. Classificação é atribuída às fontes, não garantia de verdade.
 - `core/scam_detector.py`: regras de triagem com trechos encontrados. Extensão de domínio isolada não produz veredito de golpe. Referências de orientação são cadastradas, não consultas automáticas.
 - `core/gemini_client.py`: cliente assíncrono com modelo explícito e erros; nada de inventar sucesso em falhas.
+- `core/openrouter_service.py`: somente `openrouter/free`/variantes específicas `:free`, preço máximo zero, limite por processo e pausa após quota. Extrai trechos literais para pesquisa e faz fallback de OCR; não vota sobre verdade nem origem.
+- `services/audio_service.py`: transcrição Gemini → AssemblyAI `universal-2`, com prazo total limitado e polling imediato; tarefas pendentes não são reenviadas. Não é detector de clonagem.
 - `core/request_budget.py`: admissão por IP/processo, concorrência e corpo limitado; proteção de origens de escrita.
 - `services/public_fetch.py`: valida DNS e conecta ao IP validado com TLS/SNI correto. Revalida redirecionamentos, limita bytes/tempo; não usa proxy do ambiente.
 - `services/media_validation.py`: valida bytes reais; 25 MiB, 20 megapixels e 120 segundos. Não confia em nome/extensão/MIME declarado.
@@ -52,7 +54,7 @@ Todos os routers ficam sob `/api`.
 - `services/gemini_service.py`: fala real quando disponível, PCM em WAV. Falha não vira beep apresentado como voz.
 - `services/pdf_report_service.py`: PDF do resultado real e suas limitações.
 
-Os clientes Hive, Sightengine e Hugging Face não são intercambiáveis. Hive exige projetos apropriados (incluindo facial separado); token HF exige endpoint hospedado oficial explícito e classe positiva documentada. Erros diminuem cobertura, não viram evidência de falsidade. Duas chamadas Hive não são dois detectores independentes.
+Os clientes Hive, Sightengine e Hugging Face não são intercambiáveis. Hive v2 exige projetos apropriados; Hive v3 usa Secret Key Bearer e `classes[].value`, com cabeça de áudio distinta. Imagem/facial v3 compartilham uma chamada e um fornecedor; ativação de chamadas pagas exige `HIVE_V3_MEDIA_TYPES`. Token HF exige endpoint hospedado oficial explícito e classe positiva documentada. Erros diminuem cobertura, não viram evidência de falsidade.
 
 ## Persistência e privacidade
 

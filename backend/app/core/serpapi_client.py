@@ -17,7 +17,7 @@ async def reverse_image_search(image_url: str) -> dict:
     }
     
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with httpx.AsyncClient(timeout=15, trust_env=False, follow_redirects=False) as client:
             response = await client.get("https://serpapi.com/search", params=params)
             response.raise_for_status()
             data = response.json()
@@ -35,5 +35,6 @@ async def reverse_image_search(image_url: str) -> dict:
                 "image_results": image_results[:5],
                 "raw": data
             }
-    except Exception as e:
-        return {"available": False, "reason": str(e)}
+    except Exception:
+        # HTTP errors may include api_key in the request URL. Never echo them.
+        return {"available": False, "status": "error", "reason": "Busca SerpAPI indisponível ou resposta inválida."}

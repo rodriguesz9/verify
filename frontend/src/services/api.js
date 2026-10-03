@@ -2,6 +2,8 @@ import axios from "axios";
 
 const baseURL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api` : "/api";
 const api = axios.create({ baseURL, timeout: 60000, withCredentials: true });
+// Decoding + bounded detector/transcription + factual retrieval can exceed 60s.
+const MEDIA_TIMEOUT = 90000;
 
 // Authentication remains in HTTP-only cookies; JavaScript never receives a JWT.
 // Retry once after the server rotates the refresh cookie.
@@ -48,14 +50,14 @@ export const analyzeUrl    = (url)  => api.post("/check-url",  { url }     ).the
 export const analyzeUpload = (file) => {
   const form = new FormData();
   form.append("file", file);
-  return api.post("/upload", form, { headers: { "Content-Type": "multipart/form-data" } }).then(r => r.data);
+  return api.post("/upload", form, { timeout: MEDIA_TIMEOUT, headers: { "Content-Type": "multipart/form-data" } }).then(r => r.data);
 };
 
 // ── Verification & interactive demonstration ───────────────────────────────
 export const verifyAudioQuick = (file) => {
   const form = new FormData();
   form.append("file", file);
-  return api.post("/verificar/audio-rapido", form, { headers: { "Content-Type": "multipart/form-data" } }).then(r => r.data);
+  return api.post("/verificar/audio-rapido", form, { timeout: MEDIA_TIMEOUT, headers: { "Content-Type": "multipart/form-data" } }).then(r => r.data);
 };
 
 export const captureSeal = (file) => {
@@ -73,7 +75,7 @@ export const verifySeal = (file) => {
 export const verifyComplete = (file) => {
   const form = new FormData();
   form.append("file", file);
-  return api.post("/verificar/completo", form, { headers: { "Content-Type": "multipart/form-data" } }).then(r => r.data);
+  return api.post("/verificar/completo", form, { timeout: MEDIA_TIMEOUT, headers: { "Content-Type": "multipart/form-data" } }).then(r => r.data);
 };
 
 export const downloadPdfReport = async (file, filename) => {
@@ -82,6 +84,7 @@ export const downloadPdfReport = async (file, filename) => {
   if (filename) form.append("filename", filename);
   const resp = await api.post("/verificar/relatorio-pdf", form, {
     responseType: "blob",
+    timeout: MEDIA_TIMEOUT,
     headers: { "Content-Type": "multipart/form-data" }
   });
   return resp.data;

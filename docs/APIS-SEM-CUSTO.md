@@ -14,7 +14,7 @@ Inspeção limitada aos nomes das variáveis do Railway e à presença de valore
 | Serper | `SERPERAPI_KEY` presente | Conferir saldo gratuito restante; pesquisa auxilia contexto, não prova veracidade. |
 | AssemblyAI | `ASSEMBLYAI_API_KEY` presente | Conferir créditos de teste restantes; serve para transcrever, não detectar clonagem. |
 | Hugging Face | Token presente; `HUGGINGFACE_IMAGE_API_URL` ausente | Só ativar se houver detector compatível realmente servido dentro da cota gratuita. Não criar endpoint dedicado pago. |
-| Hive | `HIVE_API_KEY` legada presente; três chaves específicas ausentes | Conferir qual modelo essa chave autoriza e se há trial v2 válido. Não contratar projetos para preencher todos os campos. |
+| Hive | `HIVE_API_KEY` presente; painel mostra v3 | Cliente v3 testado com uma imagem. Existe custo por uso; manter pausado fora do teste autorizado. Não comprar projetos v2. |
 
 O `.env` local tem Gemini, Sightengine, Hugging Face, Hive, Serper, SerpAPI e AssemblyAI preenchidos; `OPENROUTER_API_KEY` está vazio. O Railway já tem variáveis adicionais. **Não substituir a configuração de produção pelo `.env` inteiro.**
 
@@ -63,19 +63,19 @@ Os [Inference Providers oferecem créditos mensais pequenos para contas gratuita
 
 Não cadastrar endpoint inventado para tirar o aviso de configuração. **Não criar Inference Endpoint dedicado:** há [cobrança durante inicialização e execução](https://huggingface.co/docs/inference-endpoints/en/pricing), inclusive sem consultas. Se nenhum detector compatível estiver disponível gratuitamente, mantenha essa camada indisponível. Rodar modelo aberto localmente seria outro projeto, exigindo recursos e validação — não é equivalente a habilitar esta API com um token.
 
-### 6. Hive imagem / Deepfake / áudio — conferir trial antes
+### 6. Hive imagem / Deepfake / áudio — chave v3 e orçamento explícito
 
-No [Portal Hive](https://portal.thehive.ai/), abra o projeto existente → **Integration & API Keys**. A aplicação usa [autenticação v2](https://docs.thehive.ai/reference/authentication), não presumir compatibilidade com a chave de Playground v3.
+No [Hive Models](https://thehive.ai/explore), abra **Service API Keys**. Guarde o Secret Key, não o Access Key ID, em `HIVE_V3_API_KEY`; uma chave existente em `HIVE_API_KEY` também é aceita com `HIVE_API_VERSION=v3`. O cliente agora distingue explicitamente v3 de v2, sem presumir compatibilidade.
 
-Pergunte pelo acesso de teste aos produtos de imagem gerada, manipulação facial e áudio sintético. Só se o projeto tiver acesso gratuito confirmado, copie a chave correspondente para `HIVE_IMAGE_API_KEY`, `HIVE_DEEPFAKE_API_KEY` ou `HIVE_AUDIO_API_KEY` no Railway. **Não é necessário criar três contas nem contratar três planos.** Não copiar a mesma chave para tudo sem confirmar os modelos.
+O v3 combina geração por IA e deepfake na mesma chamada. O [Playground oficial](https://thehive.ai/models/hive/ai-generated-and-deepfake-content-detection) exibia US$ 6/1.000 imagens/quadros e US$ 10/h de áudio. Foi feito apenas um teste de imagem, estimado em US$ 0,006, com teto autorizado de US$ 0,01. **Não é grátis e não houve autorização de gasto contínuo.** `HIVE_V3_MEDIA_TYPES` vazio impede chamadas; não ativar imagem/áudio públicos nem recarga automaticamente.
 
-Uma demo gratuita no site não comprova uma API gratuita de produção. Não encontrei garantia oficial de acesso gratuito permanente aos três detectores v2. Se exigirem pagamento, não ativar. Contratos e classes esperadas estão em [ATIVAR-DETECTORES.md](ATIVAR-DETECTORES.md).
+Se tiver projetos v2 autorizados, preserve suas chaves específicas e selecione v2. Não contratar três planos para preencher campos. Contratos e classes estão em [ATIVAR-DETECTORES.md](ATIVAR-DETECTORES.md).
 
 ## Campos opcionais que não precisamos comprar
 
 | Campo | Situação no código |
 | --- | --- |
-| `OPENROUTER_API_KEY` | Cliente legado não chamado pelo pipeline principal. Comprar créditos não melhora a checagem atual. [Portal](https://openrouter.ai/settings/keys). |
+| `OPENROUTER_API_KEY` | Agora integrado à busca e ao OCR auxiliar. `OPENROUTER_MODEL=openrouter/free`, preços máximos zero, limite local e pausa após quota. Não precisa comprar créditos. [Portal](https://openrouter.ai/settings/keys). |
 | `GPTZERO_API_KEY` | Camada opcional de autoria de texto, não veracidade. Cliente legado exige validar contrato e idioma antes de ativação. [Docs](https://gptzero.me/docs). |
 | `TINEYE_API_KEY` | Busca reversa opcional; contrato do cliente legado não homologado nesta etapa. Site gratuito não equivale a API gratuita. [Docs](https://services.tineye.com/developers/). |
 | `SERPAPI_KEY` | Já presente; Google Lens não envia uploads privados automaticamente. Preencher a chave não ativa essa busca. [Portal](https://serpapi.com/manage-api-key). |
@@ -93,7 +93,7 @@ FFmpeg, ExifTool e C2PA são ferramentas locais, não APIs que precisam de chave
 4. Revise as alterações, aplique e publique. Aguarde deploy bem-sucedido.
 5. Confira `/api/capabilities`: informa presença de configuração, **não testa saldo nem precisão**. Depois teste controles de origem conhecida apenas nos serviços cujo plano gratuito esteja confirmado, com poucas solicitações.
 
-Não fiz chamadas de análise que possam gastar saldo nesta revisão. Não configurei chaves fictícias, contratei planos ou ativei recarga. A documentação guia o cadastro; faltam as confirmações privadas de plano/acesso da conta para ativar os detectores restantes.
+O teste real Hive foi limitado a uma imagem dentro dos US$ 0,01 autorizados. Não foram contratados planos, criadas chaves fictícias ou ativadas recargas. Chave SerpAPI exposta no print precisa ser revogada/regenerada no [painel](https://serpapi.com/manage-api-key), depois substituída privadamente no Railway e `.env`.
 
 ## O que esperar sem pagar
 

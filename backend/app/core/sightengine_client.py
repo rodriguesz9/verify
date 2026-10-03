@@ -25,7 +25,7 @@ async def check_deepfake(file_bytes: bytes) -> dict:
     }
     
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with httpx.AsyncClient(timeout=15, trust_env=False, follow_redirects=False) as client:
             files = {"media": ("media", file_bytes)}
             # Credentials belong in the form, not URL query strings or access logs.
             response = await client.post(ENDPOINT, data=params, files=files)

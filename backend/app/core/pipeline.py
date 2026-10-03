@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime, timezone
 import re
+import os
 from app.core.gemini_analyzer import extract_claims_with_ai, generate_final_report
 from app.core.fact_checker import query_fact_check_api
 from app.core.domain_checker import check_domain_reputation
@@ -58,13 +59,12 @@ def _merge_verdicts(gemini_result: dict, openrouter_result: dict) -> dict:
 
 
 async def _run_openrouter_check(text: str) -> dict | None:
-    """Run OpenRouter analysis as secondary check."""
+    """Free auxiliary extraction, not a second opinion on truth."""
     try:
-        result = await asyncio.wait_for(analyze_with_openrouter(text), timeout=45.0)
-        return result if result else None
-    except Exception as e:
-        print(f"OpenRouter cross-check failed: {e}")
-        return None
+        return await asyncio.wait_for(analyze_with_openrouter(text), timeout=12.0)
+    except Exception:
+        return {"available": False, "status": "timeout", "claims": [],
+                "reason": "Extração auxiliar OpenRouter indisponível.", "decision_role": "search_hints_only", "free_only": True}
 
 
 async def _run_gemini_check(text: str, context: dict) -> dict:
@@ -154,20 +154,22 @@ async def run_pipeline(text: str, url: str | None = None) -> dict:
 
     scam_info = analyze_scam_indicators(analysis_text, source_url)
 
-    ai_task = asyncio.create_task(detect_ai_text(analysis_text))
-    domain_task = (
-        asyncio.create_task(asyncio.to_thread(check_domain_reputation, source_url))
-        if source_url
-        else None
-    )
-
-    try:
-        claims = await asyncio.wait_for(extract_claims_with_ai(analysis_text), 12)
-    except Exception:
-        claims = []
+    openrouter_result = {"available": False, "status": "not_configured", "claims": [],
+                         "decision_role": "search_hints_only", "free_only": True}
+    if os.getenv("OPENROUTER_API_KEY", "").strip() and os.getenv("OPENROUTER_ENABLED", "true").lower() == "true":
+        openrouter_result = await _run_openrouter_check(analysis_text)
+    if openrouter_result.get("available"):
+        claims = openrouter_result["claims"]
+    else:
+        try:
+            claims = await asyncio.wait_for(extract_claims_with_ai(analysis_text), 12)
+        except Exception:
+            claims = []
     # Retrieve literal input as well as extraction. Model paraphrases are search
     # hints only: they cannot change the statement that receives the verdict.
-    fact_check_queries = list(dict.fromkeys([analysis_text, *input_claims(analysis_text)]))[:5]
+    fact_check_queries = list(dict.fromkeys([analysis_text, *input_claims(analysis_text), *claims]))[:5]
+    ai_task = asyncio.create_task(detect_ai_text(analysis_text))
+    domain_task = (asyncio.create_task(asyncio.to_thread(check_domain_reputation, source_url)) if source_url else None)
     fact_tasks = [
         asyncio.create_task(query_fact_check_api(query))
         for query in fact_check_queries
@@ -230,8 +232,7 @@ async def run_pipeline(text: str, url: str | None = None) -> dict:
         "source_info": source_info,
     }
 
-    # LLM verdicts are not evidence. Do not buy a second LLM opinion to turn
-    # correlated guesses into confidence. Decisions are deterministic/auditable.
+    # Model extraction assists search, but NEVER votes on the final verdict.
     ai = text_report(analysis_text, context["fact_checks"], scam_info)
     ai["search_claims"] = claims
     ai["scam_analysis"] = scam_info
@@ -244,7 +245,16 @@ async def run_pipeline(text: str, url: str | None = None) -> dict:
         "status": status, "queries": queries, "matches_returned": len(fact_checks),
         "reason": "Consulta concluída sem checagens correspondentes." if status == "no_results" else
                   next((q["reason"] for q in queries if q["reason"]), None)}}
-    openrouter_result = None
+    ai["provider_coverage"]["openrouter"] = {key: value for key, value in openrouter_result.items()
+        if key in {"available", "status", "reason", "model_used", "decision_role", "free_only"}}
+    news_queries = [{"status": "error" if task.exception() else getattr(task.result(), "status", "success" if task.result() else "no_results"),
+                     "reason": "Falha na busca de contexto." if task.exception() else getattr(task.result(), "reason", None)}
+                    for task in serper_news_tasks]
+    news_status = ("success" if serper_news_results else "no_results" if any(q["status"] in {"success", "no_results"} for q in news_queries)
+                   else "not_configured" if all(q["status"] == "not_configured" for q in news_queries) else "error")
+    ai["provider_coverage"]["serper"] = {"status": news_status, "queries": news_queries, "decision_role": "context_only",
+                                          "matches_returned": len(serper_news_results),
+                                          "reason": next((q["reason"] for q in news_queries if q["reason"]), None)}
 
     if scam_info["is_scam"]:
         ai["verdict"] = "Scam"
@@ -271,7 +281,7 @@ async def run_pipeline(text: str, url: str | None = None) -> dict:
             "earliest_known_date": (temporal_info.get("dates_found") or [None])[0],
             "temporal_info": temporal_info,
             "source_info": source_info,
-            "openrouter_available": openrouter_result is not None and not openrouter_result.get("error"),
+            "openrouter_available": bool(openrouter_result.get("available")),
             "divergent": ai.get("divergent", False),
             "agreement_note": ai.get("agreement_note", ""),
             "model_used": ai.get("model_used", "gemini"),

@@ -153,15 +153,17 @@ export default function ReportPage() {
             <ArrowRight size={14} /> Nova Checagem
           </button>
 
-          <div className="flex rounded-lg p-1 bg-[#0A1520] border border-[#132435]">
+          <div className="report-view-switch rounded-lg p-1 bg-[#0A1520] border border-[#132435]" role="group" aria-label="Detalhamento do relatório">
             <button
               onClick={() => setViewMode("simple")}
+              aria-pressed={viewMode === "simple"}
               className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${viewMode === "simple" ? "bg-[#00D4FF] text-[#04080C]" : "text-[#5A7E94]"}`}
             >
-              Visão Simples (Idosos e Família)
+              Visão Simples
             </button>
             <button
               onClick={() => setViewMode("technical")}
+              aria-pressed={viewMode === "technical"}
               className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${viewMode === "technical" ? "bg-[#00D4FF] text-[#04080C]" : "text-[#5A7E94]"}`}
             >
               Visão Técnica
@@ -169,11 +171,11 @@ export default function ReportPage() {
           </div>
         </div>
 
-        <div className="p-6 sm:p-8 rounded-xl border mb-8" style={{ backgroundColor: badge.bg, borderColor: badge.border }}>
+        <div className="report-result-card p-6 sm:p-8 rounded-xl border mb-8" style={{ backgroundColor: badge.bg, borderColor: badge.border }}>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <div>
               <span className="text-[10px] font-mono tracking-[8px] uppercase font-bold text-[#8AA2B4] block mb-2">Resultado da Checagem</span>
-              <h2 className="font-syne font-black text-2xl sm:text-3xl" style={{ color: badge.color }}>
+              <h2 className="report-result-title font-syne font-black text-2xl sm:text-3xl" style={{ color: badge.color }}>
                 {badge.title}
               </h2>
             </div>
