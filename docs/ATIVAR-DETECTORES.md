@@ -2,6 +2,8 @@
 
 Revisão: 3 de outubro de 2026. O diagnóstico abaixo cruza os nomes das variáveis do Railway com o código atual. **Valores mascarados não permitem validar credenciais, autorização, crédito ou precisão.** Nenhuma chave deve ser publicada no GitHub, no chat ou nas variáveis `VITE_*`.
 
+Sem orçamento para novos planos? Comece pelo [guia de configuração sem novas contratações](APIS-SEM-CUSTO.md). Não hospedar endpoint dedicado Hugging Face nem comprar detectores apenas para preencher variáveis.
+
 ## Situação observada
 
 | Serviço | Configuração observada no Railway | Conclusão permitida |

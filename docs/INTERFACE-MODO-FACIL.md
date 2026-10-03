@@ -22,3 +22,13 @@ Escape fecha o menu e devolve foco ao controle. Perguntas abrem/fecham sem recor
 **Escopo:** esta etapa visual usou uma resposta local de sessão não autenticada, sem chaves/fornecedores externos. Não testou login real, vereditos por API, cobrança, reprodução de voz externa ou todos os estados possíveis de relatório/painel. O navegador disponibilizou alteração de viewport, não emulação de `prefers-reduced-motion`: essa preferência foi conferida no CSS e na inicialização, mas não foi emulada. Não é uma certificação completa WCAG nem uma medida de precisão.
 
 Setup e limites operacionais estão em [ATIVAR-DETECTORES.md](ATIVAR-DETECTORES.md). Push/build/deploy não comprovam precisão dos detectores; esses testes devem ser repetidos com controles reais autorizados depois da configuração.
+
+## Retorno ao azul/ciano — mesma data
+
+A pedido do responsável, os destaques da landing e da navegação retornaram a `#00D4FF`. Layout, conteúdo, animações e comportamento de acessibilidade foram preservados. Cores semânticas de alerta/resultado não foram substituídas pela cor da marca. Variáveis compartilhadas em `index.css` mantêm botões e links consistentes.
+
+Build aprovado novamente. Os 21 casos existentes e os 3 novos de `landingTheme.test.js` passaram, totalizando 24 casos frontend. Os novos testes cobrem paleta, contraste de texto dos botões/links/estado ativo e preservação do aviso e das salvaguardas de movimento.
+
+Prévia de produção local conferida no navegador em 1440 px e em 320 px com Modo Fácil: azul computado `rgb(0, 212, 255)`, nenhuma largura de texto excedendo os respectivos controles inspecionados, fonte raiz de 20 px e animação `none` no Modo Fácil. Landing sem overlay de erro e sem erros JavaScript capturados. Essa conferência não repetiu o fluxo de análise nem testou login/backend.
+
+Configuração com orçamento zero: [APIS-SEM-CUSTO.md](APIS-SEM-CUSTO.md). Nenhum detector foi contratado ou certificado por esses testes visuais.

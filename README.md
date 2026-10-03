@@ -4,7 +4,7 @@ Aplicação de apoio à checagem de mensagens, links, imagens, áudio e vídeos.
 
 Não é uma perícia, um certificado de autenticidade ou uma garantia de detecção de deepfake.
 
-Guias novos: [ativar Hugging Face, Hive e Gemini; situação do OpenRouter](docs/ATIVAR-DETECTORES.md) · [landing, Modo Fácil e testes visuais](docs/INTERFACE-MODO-FACIL.md).
+Guias novos: [configurar APIs sem novas contratações](docs/APIS-SEM-CUSTO.md) · [ativar Hugging Face, Hive e Gemini; situação do OpenRouter](docs/ATIVAR-DETECTORES.md) · [landing, Modo Fácil e testes visuais](docs/INTERFACE-MODO-FACIL.md).
 
 ## Estado atual — revisão de 3 de outubro de 2026
 

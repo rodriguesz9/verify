@@ -75,6 +75,8 @@ Rotas públicas: `/`, `/app`, `/report`, `/demo`, páginas institucionais, login
 
 Relatório usa `components/report/EvidenceExplanation.jsx` e `AnimatedScore.jsx`. Fontes recuperadas e orientações cadastradas são separadas. Indicador não é porcentagem de acerto/veracidade. Inconclusivo não recebe valor inventado. Animação tem cancelamento e movimento reduzido; rolagem nativa é personalizada em `index.css`.
 
+Landing mantém os destaques azul/ciano em variáveis `--brand-*`, sem mudar cores semânticas dos resultados. Testes de paleta e contraste estão em `landingTheme.test.js`; a configuração de fornecedores sem novas contratações está em [APIS-SEM-CUSTO.md](APIS-SEM-CUSTO.md).
+
 Contrato atual separa `veracity_status` de `authenticity_status`, inclui `claim_assessments` e `content_analysis`. `False` é refutação atribuída, não mídia gerada por IA. O índice legado usa `score_semantics=legacy_decision_index_not_probability`; listas mostram índice/100 e deixam inconclusivos sem índice, não como precisão.
 
 `utils/reportEvidence.js` normaliza dados, limita índices e bloqueia protocolos perigosos em links de referência. Testes do utilitário ficam em `frontend/tests/`. `score-preview.html` é controle visual do Vite, não resultado/rota publicada.
