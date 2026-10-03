@@ -2,6 +2,15 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {animatedScoreAt, normalizeScore, safeSourceUrl, buildReportEvidence} from "../src/utils/reportEvidence.js";
 
+test("experimental detector response is not described as evidence weighing on verdict", () => {
+  const report = buildReportEvidence({content_type: "image", provider_coverage: {
+    huggingface: {status: "success", ai_score: .99, decision_role: "experimental_signal", voting_eligible: false}
+  }});
+  assert.equal(report.findings.length, 1);
+  assert.match(report.findings[0].detail, /não participa do veredito/);
+  assert.doesNotMatch(report.findings[0].detail, /99/);
+});
+
 test("refuted claims show attributed evidence, dates and exclusions", () => {
   const result = buildReportEvidence({verdict: "False", veracity_status: "refuted", analysis_status: "partial",
     claim_assessments: [{claim: "Afirmação sintética de teste", status: "refuted", explanation: "Duas fontes refutam.", evidence: [{}, {}], excluded_evidence: []}],

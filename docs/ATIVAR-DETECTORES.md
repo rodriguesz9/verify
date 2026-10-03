@@ -4,7 +4,9 @@ Revisão: 3 de outubro de 2026. O diagnóstico abaixo cruza os nomes das variáv
 
 Sem orçamento para novos planos? Comece pelo [guia de configuração sem novas contratações](APIS-SEM-CUSTO.md). Não hospedar endpoint dedicado Hugging Face nem comprar detectores apenas para preencher variáveis.
 
-## Situação observada
+## Situação inicial (histórica)
+
+Esta tabela registra o início da revisão, antes dos testes reais posteriores. Para o estado atual e configuração de OCR/ASR/HF compartilhado, use [resultados multimodais](MULTIMODAL-2026-10-03.md). A nova chave SerpAPI já autenticou após a substituição confirmada pelo usuário.
 
 | Serviço | Configuração observada no Railway | Conclusão permitida |
 | --- | --- | --- |
@@ -21,7 +23,7 @@ O teste em `audit-providers-2026-10-02.json` é histórico. Na nova etapa, uma c
 
 1. Crie um token em [Settings → Access Tokens](https://huggingface.co/settings/tokens), com acesso de inferência ao endpoint escolhido. Prefira permissões mínimas; não precisa dar acesso de escrita ao repositório.
 2. Escolha um **detector de imagens geradas por IA**, compatível com a tarefa Image Classification. Ler uma página do Hub ou criar um token não coloca esse modelo em execução.
-3. Confirme que há um serviço de inferência disponível para o modelo. Se necessário, configure um [Inference Endpoint](https://endpoints.huggingface.co/) dedicado. **Pode haver cobrança de hospedagem mesmo sem consultas**: confira preço, escalonamento e suspensão antes de contratar.
+3. Confirme inferência compartilhada para o modelo, sem provisionar servidor dedicado. Foi testado `https://router.huggingface.co/hf-inference/models/Ateeqq/ai-vs-human-image-detector`, classe positiva `ai`. Ele respondeu, mas errou a imagem sintética de controle; esta revisão mantém qualquer sinal HF **experimental e sem voto**. Créditos gratuitos são finitos. Não contratar endpoint dedicado para este projeto sem orçamento: hospedagem pode cobrar mesmo sem consultas.
 4. Teste pelo painel do endpoint. O contrato esperado é uma lista de objetos `label`/`score`, com pontuações finitas entre 0 e 1. O projeto envia bytes da imagem com o MIME correspondente.
 5. No serviço backend do Railway, configure:
 
@@ -80,6 +82,9 @@ Crie/confira a chave no [Google AI Studio](https://aistudio.google.com/apikey). 
 ```dotenv
 GEMINI_API_KEY=<chave privada do projeto>
 GEMINI_MODEL_NAME=<identificador de modelo disponível à sua conta>
+GEMINI_MEDIA_MODEL_NAME=gemini-3.1-flash-lite
+LOCAL_OCR_ENABLED=true
+AUDIO_TRANSCRIPTION_PROVIDER=assemblyai
 GEMINI_TTS_MODEL=<modelo de geração de voz disponível à sua conta>
 ```
 

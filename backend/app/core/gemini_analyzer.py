@@ -124,6 +124,16 @@ def _extract_json_text(text: str) -> str:
 
 
 async def extract_text_from_image(image_bytes: bytes, mime_type: str) -> dict:
+    # Printed text can be read locally: no key, quota, provider retention or bill.
+    from app.services.local_ocr import extract_local_text
+    local = await extract_local_text(image_bytes)
+    if local.get("available"):
+        return local
+    remote = await _extract_image_text_remote(image_bytes, mime_type)
+    return {**remote, "local_ocr_status": local.get("status")}
+
+
+async def _extract_image_text_remote(image_bytes: bytes, mime_type: str) -> dict:
     """
     Extract text from screenshots/images using Gemini Vision OCR.
     Useful for WhatsApp screenshots, Pix receipts, and printed text in images.
@@ -145,15 +155,8 @@ Se a imagem for um comprovante bancário, print de conversa ou documento, preser
 - Nomes de pessoas, bancos e instituições
 - Palavras riscadas, em negrito ou destacadas
 
-Retorne APENAS um JSON válido:
-{
-  "text": "texto extraído completo, com quebras de linha preservadas",
-  "detected_document_type": "comprovante_pix|conversa_whatsapp|documento|outro|desconhecido",
-  "contains_financial_data": true/false,
-  "contains_phone_numbers": true/false,
-  "contains_urls": true/false,
-  "confidence": 0.0 a 1.0
-}
+Retorne APENAS JSON {"text": "texto extraído completo, com quebras de linha preservadas"}.
+Se não houver texto legível, use {"text": ""}.
 """
     try:
         response = await asyncio.wait_for(generate_text(
@@ -162,9 +165,11 @@ Retorne APENAS um JSON válido:
                 {"inline_data": {"mime_type": mime_type, "data": image_bytes}}
             ],
             temperature=0.0,
+            model_name=os.getenv("GEMINI_MEDIA_MODEL_NAME", "").strip() or None,
+            response_schema={"type": "OBJECT", "properties": {"text": {"type": "STRING"}}, "required": ["text"]},
         ), timeout=12)
         result = json.loads(_extract_json_text(response))
-        if not isinstance(result, dict) or not isinstance(result.get("text"), str):
+        if not isinstance(result, dict) or not isinstance(result.get("text"), str) or len(result["text"]) > 12000:
             raise ValueError("OCR inválido")
         result["available"] = True
         result["status"] = "success"
@@ -178,7 +183,7 @@ Retorne APENAS um JSON válido:
         from app.core.gemini_client import GeminiError
         primary_status = getattr(exc, "status", "timeout" if isinstance(exc, asyncio.TimeoutError) else "error")
         try:
-            alternate = await asyncio.wait_for(extract_image_text(image_bytes, mime_type), timeout=20)
+            alternate = await asyncio.wait_for(extract_image_text(image_bytes, mime_type), timeout=12)
             if alternate.get("available"):
                 return {**alternate, "fallback_from": "gemini_unavailable", "gemini_status": primary_status}
             return {**alternate, "status": primary_status, "gemini_status": primary_status,

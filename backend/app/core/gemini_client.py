@@ -1,6 +1,7 @@
 """Bounded Gemini REST calls, honoring explicit model configuration."""
 import base64
 import os
+import re
 import httpx
 
 
@@ -14,13 +15,15 @@ class GeminiError(RuntimeError):
         super().__init__(reason)
 
 
-async def generate_text(contents, *, system_instruction=None, temperature=.1, json_output=True, max_tokens=2048):
+async def generate_text(contents, *, system_instruction=None, temperature=.1, json_output=True, max_tokens=2048, model_name=None, response_schema=None):
     key = os.getenv("GEMINI_API_KEY", "").strip()
     if not key:
         raise GeminiError("Gemini não configurado.", "not_configured")
-    primary = os.getenv("GEMINI_MODEL_NAME", "gemini-3.7-flash").strip()
-    fallback = [m.strip() for m in os.getenv("GEMINI_FALLBACK_MODELS", "").split(",") if m.strip()]
+    primary = model_name or os.getenv("GEMINI_MODEL_NAME", "gemini-3.7-flash").strip()
+    fallback = [] if model_name else [m.strip() for m in os.getenv("GEMINI_FALLBACK_MODELS", "").split(",") if m.strip()]
     models = list(dict.fromkeys([primary, *fallback]))[:2]
+    if any(not re.fullmatch(r"[a-zA-Z0-9._-]{1,120}", model) for model in models):
+        raise GeminiError("Identificador de modelo Gemini inválido.", "invalid_configuration")
     parts = []
     for part in contents if isinstance(contents, list) else [contents]:
         if isinstance(part, str):
@@ -33,6 +36,8 @@ async def generate_text(contents, *, system_instruction=None, temperature=.1, js
     config = {"temperature": temperature, "maxOutputTokens": max(64, min(4096, max_tokens))}
     if json_output:
         config["responseMimeType"] = "application/json"
+        if response_schema:
+            config["responseSchema"] = response_schema
     body = {"contents": [{"role": "user", "parts": parts}], "generationConfig": config}
     if system_instruction:
         body["systemInstruction"] = {"parts": [{"text": system_instruction}]}

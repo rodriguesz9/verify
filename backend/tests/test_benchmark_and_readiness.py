@@ -57,6 +57,7 @@ class MetricsTests(unittest.TestCase):
 class TranscriptionFallbackTests(unittest.IsolatedAsyncioTestCase):
     async def test_assembly_fallback_transcribes_but_never_certifies_voice(self):
         with patch.dict(os.environ, {"ASSEMBLYAI_API_KEY": "test-only"}), \
+             patch("app.services.speech_input.prepare_speech_input", new=AsyncMock(return_value=(b"speech-control", False, "success"))), \
              patch("app.core.audio_checker.transcribe_and_extract_audio", new=AsyncMock(return_value="")), \
              patch("app.services.audio_service.transcribe_with_assemblyai", new=AsyncMock(return_value={"status": "success", "transcription": "Minha avó chegou para o café"})):
             report = await analyze_audio_quick_for_demonstration(valid_wav())

@@ -30,7 +30,7 @@ export default function DemonstracaoPage() {
       <Navbar />
 
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-28 pb-20">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8 p-6 rounded-2xl bg-gradient-to-r from-[#00D4FF]/10 via-[#0A1520] to-[#00FF87]/10 border border-[#132435]">
+        <div className="demo-page-header flex flex-col md:flex-row items-center justify-between gap-4 mb-8 p-4 sm:p-6 rounded-2xl bg-gradient-to-r from-[#00D4FF]/10 via-[#0A1520] to-[#00FF87]/10 border border-[#132435]">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#00D4FF]/20 border border-[#00D4FF] font-mono text-[11px] text-[#00D4FF] font-bold mb-2">
               <ScanSearch size={13} /> AMBIENTE INTERATIVO
@@ -51,7 +51,7 @@ export default function DemonstracaoPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-10">
           {TABS.map((tab, index) => {
             const isSelected = activeTab === tab.id;
             const Icon = tab.icon;
@@ -67,8 +67,8 @@ export default function DemonstracaoPage() {
                 }`}
                 style={{ borderColor: isSelected ? tab.color : undefined }}
               >
-                <Icon size={22} style={{ color: isSelected ? tab.color : "#8BAAC0" }} />
-                <div>
+                <Icon size={22} className="shrink-0" style={{ color: isSelected ? tab.color : "#8BAAC0" }} />
+                <div className="min-w-0 break-words">
                   <h4 className={`font-syne font-bold text-sm ${isSelected ? "text-white" : "text-[#CDE8F0]"}`}>
                     {index + 1}. {tab.label}
                   </h4>

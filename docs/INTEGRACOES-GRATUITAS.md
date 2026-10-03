@@ -2,20 +2,24 @@
 
 O código das integrações foi atualizado. **Isso não significa que todas as APIs estejam operacionais em produção ou que os vereditos tenham precisão de 100%.** Credencial presente, HTTP 200 e testes com respostas simuladas são coisas diferentes de acesso real e avaliação de precisão.
 
+Atualização mais recente: [OCR local, proteção de silêncio, transcrição portuguesa e HF experimental](MULTIMODAL-2026-10-03.md). As observações abaixo distinguem testes desta revisão de controles anteriores.
+
 ## Resultado observado
 
 | Serviço/camada | Teste real desta etapa | Situação e limite |
 | --- | --- | --- |
 | Gemini — texto | Uma resposta JSON válida com `gemini-3.7-flash` | Funcionou no controle mínimo. Foram observados timeouts em tentativas anteriores. Não é validação de todas as análises. |
-| Gemini — leitura de imagem | HTTP 503 no último controle | Indisponível nessa tentativa; OCR alternativo gratuito do OpenRouter foi implementado, mas precisa de validação com chave. |
-| Gemini — transcrição | Prazo de 12 s atingido | Não foi possível transcrever nesse controle. O relatório conserva esse motivo, sem inventar fala ou autenticidade. |
+| OCR — local/Gemini | Tesseract no Docker sem internet: 4/4 linhas; Gemini `gemini-3.1-flash-lite`: 4/4 linhas | Leitura funcional nesses controles; Tesseract primeiro, sem chave. Não certifica origem ou precisão geral. |
+| Gemini — transcrição | Novo controle português ainda atingiu 20 s | AssemblyAI passa a preferido. Quase silêncio é bloqueado localmente para impedir palavras inventadas nesse controle. |
 | OpenRouter | Resposta válida no controle público após corrigir prazo e formato | Modelo efetivo `nvidia/nemotron-3-super-120b-a12b:free`. Extração auxiliar de texto funcionou com preço máximo zero/JSON Schema. OCR gratuito ainda não foi validado ao vivo; a chave local continua ausente. |
 | Hive v3 — imagem | Uma chamada com a imagem sintética de controle | Resposta válida: sinal de geração por IA próximo de 1; sinal de deepfake próximo de 0. Não valida reconhecimento de face-swap nem sensibilidade geral. |
 | Hive v3 — áudio/vídeo | Não executado | Sem gasto adicional autorizado. As duas saídas visuais usam a mesma chamada, não dois votos independentes. |
-| Hugging Face | Sem endpoint de detecção configurado | Token sozinho não disponibiliza um detector. Não foi contratado servidor/GPU pago. |
+| Hugging Face | Endpoint compartilhado respondeu; falso negativo no controle sintético | Integração experimental, sem voto no veredito. Não houve contratação de servidor/GPU pago. |
 | Google Fact Check | Consulta pública concluída, sem checagens correspondentes ao exemplo Pix | Sem correspondência não significa verdadeiro/falso. Não valida resultados para outras afirmações. |
 | Serper | Notícias relacionadas retornadas no relatório público do exemplo Pix | Funcionou nesse controle; notícia relacionada não é automaticamente prova sobre a mensagem. |
-| Sightengine, AssemblyAI e SerpAPI | Não revalidados ao vivo nesta etapa | Adaptadores e políticas têm controles automatizados; acesso, modelo e quota reais ainda precisam ser confirmados. |
+| Sightengine imagem | Sinal IA 0,99 na imagem sintética; 0,001 no gráfico impresso | Dois controles, não benchmark de fotos humanas, face-swap ou vídeo. |
+| AssemblyAI | Controle português novo: 16/16 palavras, WER 0 nesse exemplo | Transcrição funcionou; não é detector de clonagem/identidade. |
+| SerpAPI | Nova chave autenticou (Account API HTTP 200) | Chave substituída pelo usuário; busca Lens completa não revalidada. |
 
 O Hive foi testado **uma única vez**, dentro da autorização de US$ 0,01. O custo nominal estimado foi **US$ 0,006**, pela tarifa exibida no playground; não houve conferência do lançamento no extrato. Não houve recarga, cartão novo, chamada de áudio/vídeo ou repetição automática. `HIVE_V3_MEDIA_TYPES` fica vazio em produção: a autorização de um teste não autoriza gasto contínuo com visitantes.
 
@@ -33,6 +37,11 @@ HIVE_V3_MEDIA_TYPES=
 SIGHTENGINE_AUDIO_ENABLED=false
 GEMINI_MODEL_NAME=gemini-3.7-flash
 VIDEO_MAX_FRAMES=3
+LOCAL_OCR_ENABLED=true
+GEMINI_MEDIA_MODEL_NAME=gemini-3.1-flash-lite
+AUDIO_TRANSCRIPTION_PROVIDER=assemblyai
+HUGGINGFACE_IMAGE_API_URL=https://router.huggingface.co/hf-inference/models/Ateeqq/ai-vs-human-image-detector
+HUGGINGFACE_AI_LABEL=ai
 ```
 
 - Somente `openrouter/free` ou variantes específicas `provedor/modelo:free` são aceitas. `openrouter/auto` e `openrouter/auto:free` são bloqueados.
@@ -49,17 +58,17 @@ VIDEO_MAX_FRAMES=3
 
 1. **OpenRouter:** o teste público confirmou a chave atual do Railway para extração de texto; não é necessário recriá-la por causa desse teste. Para reproduzir localmente, preencha `OPENROUTER_API_KEY` no `.env` privado do backend com sua chave de [Settings → Keys](https://openrouter.ai/settings/keys). Mantenha-a somente no backend/Railway; não cole no chat nem use variável `VITE_` para segredos.
 2. **Hive:** a chave v3 é a **Secret Key**, não o Access Key ID da captura. Use `HIVE_V3_API_KEY` ou a `HIVE_API_KEY` existente com `HIVE_API_VERSION=v3`. Só preencha `HIVE_V3_MEDIA_TYPES=image,audio` se decidir autorizar o consumo contínuo. Isso é pago; vídeo também consome análises de quadros. A plataforma não dispõe aqui de um teto financeiro global do Hive.
-3. **Hugging Face:** configure um endpoint compatível com o contrato documentado em [ATIVAR-DETECTORES.md](ATIVAR-DETECTORES.md). Não foi confirmado um detector hospedado gratuito adequado. Deixe desativado se exigir pagamento; ausência dessa camada gera resultado inconclusivo quando faltarem evidências.
-4. **Gemini:** a chave funcionou para texto, mas OCR/transcrição tiveram indisponibilidade/prazo. A janela de transcrição passou de 12 para 20 s; OCR usa até 12 s no Gemini e 20 s no fallback gratuito, sem certificado de funcionamento de todas as modalidades. Confira a [quota do projeto](https://aistudio.google.com/usage) e não ative faturamento só para ocultar o erro. O fallback de transcrição AssemblyAI usa `universal-2`, requer chave e crédito próprios.
-5. **SerpAPI:** a chave apareceu inteira em uma captura enviada. **Revogue e gere outra em [Manage API key](https://serpapi.com/manage-api-key)**, depois atualize o `.env` privado e Railway. Não reutilize a chave exposta.
-6. **Demais serviços:** confirme créditos gratuitos/entitlements antes dos testes reais. Não habilite `SIGHTENGINE_AUDIO_ENABLED` só porque a chave de imagem existe. Google Fact Check e buscas não garantem checagens correspondentes para toda mensagem.
+3. **Hugging Face:** endpoint compartilhado testado acima, classe `ai`; responde mas mostrou falso negativo. Não habilita voto nem exige GPU paga. Créditos finitos e resultados experimentais explícitos; veja [guia atual](MULTIMODAL-2026-10-03.md).
+4. **Gemini/AssemblyAI:** OCR local primeiro e modelo multimodal separado corrigem leitura no controle. Transcrição Gemini ainda atingiu o prazo; AssemblyAI `universal-2` foi testado e escolhido primeiro. Não ative faturamento para ocultar indisponibilidade; confira a [quota do projeto](https://aistudio.google.com/usage).
+5. **SerpAPI:** usuário confirmou revogação/substituição no `.env` privado e Railway. Nova credencial local autenticou HTTP 200, sem consumir pesquisa. Não é necessário revogá-la novamente por causa desse teste; não publicar chaves em capturas.
+6. **Demais serviços:** usuário confirmou créditos gratuitos e ausência de cobrança automática em Sightengine/AssemblyAI. Os testes ficaram nesse escopo. Não habilite `SIGHTENGINE_AUDIO_ENABLED` só porque a chave de imagem existe. Google Fact Check e buscas não garantem cobertura de toda mensagem.
 
 ## Verificação reproduzível
 
 Resultado final nesta etapa:
 
-- Backend: **164 testes e 93 subtestes aprovados**; dois avisos de descontinuação de dependências, nenhum erro.
-- Frontend: **27 casos aprovados**, distribuídos em quatro arquivos; build de produção aprovado.
+- Backend: **178 testes e 93 subtestes aprovados**; dois avisos de descontinuação de dependências, nenhum erro.
+- Frontend: **29 casos aprovados**, distribuídos em cinco arquivos; build de produção aprovado.
 - HTTP local: **25 controles aprovados** (24 respostas esperadas e uma comparação comportamental). Incluem texto/lote, mídia inválida, imagem/vídeo, áudio invariável ao nome do arquivo, PDF, simulador WhatsApp, cadastro/login/refresh/logout, histórico e selo.
 - Interface: fluxo real do exemplo Pix até o relatório; Modo Fácil em 320 px sem rolagem horizontal. Ajustes de quebra de texto, botões e cabeçalho do indicador; sem novos erros no console nesse fluxo.
 - As suítes e controles HTTP usaram banco descartável local e **chaves externas desligadas**. Não foram usados dados ou banco de produção.

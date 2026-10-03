@@ -55,6 +55,12 @@ PATTERN_GUIDANCE = {
     ],
 }
 
+def is_negated_request(text: str, start: int) -> bool:
+    # Narrow local safeguard, not semantic understanding of sarcasm/quotations.
+    prefix = text[max(0, start - 65):start]
+    return bool(re.search(r"(?:\bn[aã]o|\bnunca|\bjamais|\bevite)\s+(?:\w+\s+){0,3}$", prefix, re.IGNORECASE))
+
+
 def analyze_scam_indicators(text: str, url: str | None = None) -> Dict[str, Any]:
     """
     Scans text and URLs for common Brazilian scams, phishing attempts,
@@ -64,7 +70,8 @@ def analyze_scam_indicators(text: str, url: str | None = None) -> Dict[str, Any]
     
     # Check text patterns
     for pattern in SCAM_PATTERNS:
-        match = re.search(pattern["regex"], text, re.IGNORECASE)
+        match = next((m for m in re.finditer(pattern["regex"], text, re.IGNORECASE)
+                      if not is_negated_request(text, m.start())), None)
         if match:
             matches.append({
                 "category": pattern["category"],

@@ -19,7 +19,7 @@ async def check_ai_image_hf(file_bytes: bytes) -> dict:
         endpoint = urlsplit(API_URL)
         host = (endpoint.hostname or "").lower()
         allowed = host in {"router.huggingface.co", "api-inference.huggingface.co"} or host.endswith(".endpoints.huggingface.cloud")
-        if not allowed or endpoint.scheme != "https" or endpoint.username or endpoint.password or endpoint.port not in (None, 443):
+        if not allowed or endpoint.scheme != "https" or endpoint.username or endpoint.password or endpoint.port not in (None, 443) or endpoint.query or endpoint.fragment:
             raise ValueError("Endpoint não autorizado")
     except ValueError:
         return {"available": False, "status": "invalid_configuration", "reason": "Use um endpoint HTTPS oficial do Hugging Face, sem credenciais na URL."}
@@ -28,11 +28,11 @@ async def check_ai_image_hf(file_bytes: bytes) -> dict:
     headers = {"Authorization": f"Bearer {HUGGINGFACE_API_TOKEN}", "Content-Type": mime}
     
     try:
-        async with httpx.AsyncClient(timeout=15, trust_env=False) as client:
+        async with httpx.AsyncClient(timeout=15, trust_env=False, follow_redirects=False) as client:
             response = await client.post(API_URL, headers=headers, content=file_bytes)
             # HF might return 503 if model is loading
             if response.status_code == 503:
-                return {"available": False, "reason": "Model is loading on Hugging Face."}
+                return {"available": False, "status": "unavailable", "reason": "Modelo Hugging Face indisponível ou carregando."}
             
             response.raise_for_status()
             data = response.json()
@@ -45,6 +45,8 @@ async def check_ai_image_hf(file_bytes: bytes) -> dict:
             ai_label = os.getenv("HUGGINGFACE_AI_LABEL", "artificial").strip().casefold()
             for entry in data:
                 if isinstance(entry, dict) and ai_label and str(entry.get("label", "")).casefold() == ai_label:
+                    if artificial_score is not None:
+                        return {"available": False, "status": "invalid_response", "reason": "Modelo retornou classes positivas duplicadas."}
                     artificial_score = _score(entry.get("score"))
             
             if artificial_score is None:
@@ -54,9 +56,15 @@ async def check_ai_image_hf(file_bytes: bytes) -> dict:
                 "status": "success",
                 "ai_probability": artificial_score,
                 "is_likely_artificial": artificial_score > 0.8,
-                "raw": data
+                "model_used": endpoint.path.removeprefix("/hf-inference/models/")[:150],
+                "decision_role": "experimental_signal",
+                "voting_eligible": False,
+                "reason": "Detector experimental: sinal não calibrado, não participa do veredito. Não detecta manipulação facial nem comprova autenticidade."
             }
     except httpx.HTTPStatusError as exc:
-        return {"available": False, "status": "error", "reason": f"Modelo Hugging Face indisponível (HTTP {exc.response.status_code})."}
+        status = {401: "invalid_credentials", 403: "access_denied", 402: "quota_exhausted", 429: "rate_limited"}.get(exc.response.status_code, "error")
+        return {"available": False, "status": status, "reason": f"Modelo Hugging Face indisponível (HTTP {exc.response.status_code}); sem reenvio ou contratação automática."}
+    except httpx.TimeoutException:
+        return {"available": False, "status": "timeout", "reason": "Modelo Hugging Face excedeu o prazo."}
     except Exception:
         return {"available": False, "status": "error", "reason": "Resposta Hugging Face indisponível ou inválida."}

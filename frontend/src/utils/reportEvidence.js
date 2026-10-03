@@ -81,6 +81,13 @@ export function buildReportEvidence(result = {}, query = "") {
   }
   for (const [provider, layer] of Object.entries(coverage)) {
     if (!layer || typeof layer !== "object") continue;
+    if (layer.decision_role === "experimental_signal" || layer.voting_eligible === false) {
+      if (layer.status === "success") findings.push({id: `experimental-${provider}`, title: `Detector experimental · ${provider}`,
+        detail: "Este modelo respondeu, mas sua precisão ainda não foi validada para os conteúdos analisados. O sinal não participa do veredito e não comprova autenticidade nem falsidade.",
+        origin: typeof layer.model_used === "string" ? layer.model_used : "Camada experimental · excluída da decisão"});
+      else missing.push(`${provider}: detector experimental indisponível; não participa do veredito.`);
+      continue;
+    }
     if (["ocr_only", "inspection_only", "transcription_only"].includes(layer.decision_role)) {
       const labels = {ocr_only: "Leitura de texto da imagem", inspection_only: "Inspeção visual auxiliar", transcription_only: "Transcrição da fala"};
       if (layer.status === "success") findings.push({id: `helper-${provider}`, title: labels[layer.decision_role],

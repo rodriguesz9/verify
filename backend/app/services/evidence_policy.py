@@ -1,7 +1,7 @@
 """Conservative, reproducible decisions. Scores are NOT calibrated accuracy."""
 import math
 
-POLICY_VERSION = "2026-10-03.1"
+POLICY_VERSION = "2026-10-03.2"
 DETECTOR_FIELDS = {"sightengine": "genai_probability", "huggingface": "ai_probability", "hive": "ai_generated_score"}
 AUDIO_DETECTOR_FIELDS = {"sightengine_audio": "ai_speech_score", "hive": "ai_generated_score"}
 
@@ -18,7 +18,7 @@ def detector_score(result: dict, field: str) -> float | None:
 def media_report(forensics: dict, kind: str = "image") -> dict:
     fields = AUDIO_DETECTOR_FIELDS if kind == "audio" else DETECTOR_FIELDS
     scores = {name: detector_score(forensics.get(name, {}), field) for name, field in fields.items()}
-    observed = {name: value for name, value in scores.items() if value is not None}
+    observed = {name: value for name, value in scores.items() if value is not None and forensics.get(name, {}).get("voting_eligible", True) is not False}
     high = [name for name, value in observed.items() if value >= .8]
     low = [name for name, value in observed.items() if value <= .2]
     c2pa = forensics.get("c2pa", {})
@@ -38,6 +38,7 @@ def media_report(forensics: dict, kind: str = "image") -> dict:
                        "ai_score": scores.get(name), "deepfake_score": deep_scores.get(name),
                        "reason": result.get("reason") or result.get("error"),
                        "api_version": result.get("api_version"), "model_used": result.get("model_used"),
+                       "decision_role": result.get("decision_role"), "voting_eligible": result.get("voting_eligible", True),
                        "shared_request": result.get("shared_request")}
                 for name in [*fields, *(["hive_deepfake"] if kind != "audio" and "hive_deepfake" in forensics else [])]
                 for result in [forensics.get(name, {})]}
@@ -67,6 +68,8 @@ def media_report(forensics: dict, kind: str = "image") -> dict:
     disagreement = bool((low and high) or (deep_low and deep_high))
     if disagreement:
         limitations.append("Detectores discordaram: revisão humana necessária.")
+    if any(result.get("voting_eligible") is False for result in forensics.values() if isinstance(result, dict)):
+        limitations.append("Detectores experimentais são exibidos para inspeção, mas não participam do veredito sem validação em conjunto independente.")
     if deepfake:
         explanation = "Há indícios concordantes de possível manipulação facial nos detectores disponíveis. Isso requer confirmação humana."
     elif deep_high:
@@ -74,7 +77,7 @@ def media_report(forensics: dict, kind: str = "image") -> dict:
     elif ai:
         explanation = "Há indícios concordantes de geração por IA nas camadas disponíveis. Confirme a procedência antes de concluir."
     elif not observed:
-        explanation = "Não houve resposta válida dos detectores de IA. Não é possível determinar a origem deste arquivo."
+        explanation = "Não houve evidência utilizável de detectores habilitados para decidir. Camadas experimentais ou indisponíveis não determinam a origem deste arquivo."
     elif high:
         explanation = "Há um sinal de possível geração por IA, mas a evidência é insuficiente ou contraditória."
     else:

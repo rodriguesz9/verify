@@ -8,6 +8,8 @@ Guias novos: [configurar APIs sem novas contratações](docs/APIS-SEM-CUSTO.md) 
 
 Nova integração: OpenRouter com **modelos gratuitos e preço máximo zero**, extração literal e OCR alternativo; Hive **v3** com detecção combinada em uma chamada; transcrição AssemblyAI com modelo explícito e polling corrigido. Resultados e pendências em [INTEGRACOES-GRATUITAS.md](docs/INTEGRACOES-GRATUITAS.md). Teste real Hive de imagem passou; não equivale a validar todas as modalidades ou precisão universal.
 
+Última revisão multimodal: **OCR local gratuito, AssemblyAI preferido para fala, bloqueio de silêncio e amostras portuguesas declaradamente sintéticas**. HF compartilhado respondeu, mas errou um controle: fica experimental, sem decidir o veredito. Testes reais, configuração e limites em [MULTIMODAL-2026-10-03.md](docs/MULTIMODAL-2026-10-03.md).
+
 ## Estado atual — revisão de 3 de outubro de 2026
 
 A versão publicada foi testada em [verifybr.vercel.app](https://verifybr.vercel.app). Foram encontradas falhas de validação de mídia, erros em texto/WhatsApp e resultados de voz dependentes do nome do arquivo.
@@ -20,7 +22,7 @@ A revisão corrige esses comportamentos e separa veracidade da informação da o
 - [Teste limitado com provedores reais](docs/audit-providers-2026-10-02.json).
 - [Origem e limites das mídias de teste](backend/tests/fixtures/README.md).
 
-Última execução, incluindo integrações gratuitas: **164 testes backend + 93 subtestes, 27 casos de interface e 25 controles HTTP locais aprovados; build concluído**. Houve dois avisos de descontinuação de dependências (AnyIO/Starlette e python-jose), não erros. São testes funcionais, não medição da precisão dos detectores. Um HTTP 200 não significa análise conclusiva. As suítes usam respostas controladas e chaves externas desligadas; os testes reais separados de Gemini/Hive e as pendências estão em [INTEGRACOES-GRATUITAS.md](docs/INTEGRACOES-GRATUITAS.md).
+Última execução, incluindo resiliência multimodal: **178 testes backend + 93 subtestes, 29 casos de interface e 25 controles HTTP locais aprovados; build concluído**. Houve dois avisos de descontinuação de dependências (AnyIO/Starlette e python-jose), não erros. São testes funcionais, não medição da precisão dos detectores. Um HTTP 200 não significa análise conclusiva. As suítes usam respostas controladas e chaves externas desligadas; testes reais e pendências estão em [MULTIMODAL-2026-10-03.md](docs/MULTIMODAL-2026-10-03.md).
 
 Preparação para o push: a suíte backend também passou com **PostgreSQL 16 descartável**. A atualização de um enum antigo foi repetida sem erro, e `FALSE` foi gravado/lido corretamente. Corrigidos isolamento de conexões e ordem dos dados nos testes reais de banco. A imagem Docker da raiz compilou, carregou a API e confirmou FFmpeg/ffprobe/ExifTool; agora ambos os contextos de build excluem `.env`, bancos locais e caches, e ambos os comandos respeitam `PORT`. Não houve acesso ao banco de produção, teste pago novo de provedores ou comprovação de precisão.
 
@@ -131,7 +133,7 @@ As chaves de fornecedores ficam **no backend/Railway**, nunca em variáveis `VIT
 | Gemini | [Google AI Studio](https://aistudio.google.com/app/apikey) · [documentação](https://ai.google.dev/gemini-api/docs/api-key) | `GEMINI_API_KEY`, modelo explícito em `GEMINI_MODEL_NAME` |
 | Sightengine | [Painel](https://dashboard.sightengine.com/) · [imagem](https://sightengine.com/docs/ai-generated-image-detection) · [fala sintética](https://sightengine.com/docs/ai-generated-speech-detection) | `SIGHTENGINE_API_USER`, `SIGHTENGINE_API_SECRET`; áudio só com acesso ao modelo e `SIGHTENGINE_AUDIO_ENABLED=true` |
 | Hive | [Portal](https://portal.thehive.ai/) · [autenticação](https://docs.thehive.ai/reference/authentication) | `HIVE_IMAGE_API_KEY`, `HIVE_DEEPFAKE_API_KEY`, `HIVE_AUDIO_API_KEY`, `HIVE_TEXT_API_KEY`; `HIVE_API_KEY` é compatibilidade |
-| Hugging Face | [Tokens](https://huggingface.co/settings/tokens) · [Endpoints](https://endpoints.huggingface.co/) | `HUGGINGFACE_API_TOKEN`, `HUGGINGFACE_IMAGE_API_URL`, `HUGGINGFACE_AI_LABEL` |
+| Hugging Face experimental | [Tokens](https://huggingface.co/settings/tokens) · [inferência compartilhada](https://huggingface.co/docs/inference-providers/main/pricing) | `HUGGINGFACE_API_TOKEN`, `HUGGINGFACE_IMAGE_API_URL`, `HUGGINGFACE_AI_LABEL`; sem voto, sem contratar GPU |
 | AssemblyAI | [Painel](https://www.assemblyai.com/dashboard/) · [transcrição](https://www.assemblyai.com/docs/pre-recorded-audio/getting-started/transcribe-an-audio-file) | `ASSEMBLYAI_API_KEY` — alternativa de transcrição, não detector de clonagem |
 | Google Fact Check | [Console Google Cloud](https://console.cloud.google.com/apis/library/factchecktools.googleapis.com) · [documentação](https://developers.google.com/fact-check/tools/api/reference/rest/) | `GOOGLE_FACT_CHECK_KEY` |
 | Serper | [Serper](https://serper.dev/) | `SERPERAPI_KEY` |

@@ -7,6 +7,7 @@ Estas mídias não são fotografias reais nem vídeos de pessoas reais. Não sã
 - `recorder-no-duration.webm`: um segundo de silêncio Opus em container WebM com cabeçalho de streaming, criado pelo FFmpeg. Testa gravações sem duração no cabeçalho, comuns no MediaRecorder; não representa fala humana ou clonada.
 - Os testes também constroem PNGs simples e WAVs válidos de silêncio. Silêncio não é exemplo de voz clonada.
 - Os MP3 da demonstração têm origem não auditada nesta revisão. Foram usados para invariância ao nome e funcionamento, não como rótulos de verdade de um benchmark.
+- A demonstração atual substitui esses MP3 por `frontend/public/audio/demo-conversa-sintetica.wav` e `demo-pedido-sintetico.wav`: fala sintética offline eSpeak NG, idioma pt-br, velocidade 145. Textos públicos fictícios, sem imitar pessoa real. Reproduzir com `backend/scripts/generate_demo_audio.sh`; as duas amostras são sintéticas, **nenhuma é controle de voz humana real ou clonagem**. A conversa cotidiana tem 16 palavras no controle de transcrição normalizado.
 
 Prompt da imagem (modo integrado, sem chave OpenAI do projeto):
 

@@ -34,7 +34,7 @@ async def audio_layers(data: bytes, mime_type: str) -> dict:
     jobs = {"audio": analyze_audio_quick_for_demonstration(data, "evidence.audio", mime_type),
             "hive": check_hive_media(data, f"evidence.{suffix}", "audio", mime_type),
             "sightengine_audio": detect_synthetic_speech(data, mime_type)}
-    return dict(zip(jobs, await asyncio.gather(*(safe_layer(job, timeout=34 if name == "audio" else 18)
+    return dict(zip(jobs, await asyncio.gather(*(safe_layer(job, timeout=50 if name == "audio" else 18)
                                                for name, job in jobs.items()))))
 
 
@@ -119,6 +119,8 @@ async def analyze_media(media: ValidatedMedia) -> dict:
             scores = [detector_score(result.get(name, {}), field) for result in results]
             valid = [value for value in scores if value is not None]
             forensics[name] = {"available": bool(valid), "status": "aggregate_only",
+                               "voting_eligible": not any(result.get(name, {}).get("voting_eligible") is False for result in results),
+                               "decision_role": next((result.get(name, {}).get("decision_role") for result in results if result.get(name, {}).get("decision_role")), None),
                                field: sum(valid) / len(valid) if valid else None, "analyzed_frames": len(valid),
                                "deepfake_probability" if name == "sightengine" else "deepfake_score": None}
         deep_values = [detector_score(result.get("hive_deepfake", {}), "deepfake_score") for result in results]

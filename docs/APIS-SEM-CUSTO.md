@@ -2,6 +2,8 @@
 
 Revisão: 3 de outubro de 2026. Preferência do responsável: usar as contas existentes e opções gratuitas, **sem contratar planos, GPUs ou recargas automáticas**.
 
+Atualização após testes reais: [resultados multimodais](MULTIMODAL-2026-10-03.md). OCR local passou sem internet; Gemini OCR passou com modelo multimodal separado; AssemblyAI transcreveu a fala portuguesa de controle. HF compartilhado respondeu, mas errou um controle: sinal experimental, sem voto. Nova chave SerpAPI autenticou após substituição pelo usuário.
+
 ## O que já existe e o que falta
 
 Inspeção limitada aos nomes das variáveis do Railway e à presença de valores no `.env` local. Nenhum segredo foi publicado. Chave preenchida não comprova validade, saldo, quota ou autorização ao modelo.
@@ -13,7 +15,7 @@ Inspeção limitada aos nomes das variáveis do Railway e à presença de valore
 | Sightengine imagem | `SIGHTENGINE_API_USER` e `SIGHTENGINE_API_SECRET` presentes | Conferir Free plan, quota e acesso a `genai`/`deepfake`. |
 | Serper | `SERPERAPI_KEY` presente | Conferir saldo gratuito restante; pesquisa auxilia contexto, não prova veracidade. |
 | AssemblyAI | `ASSEMBLYAI_API_KEY` presente | Conferir créditos de teste restantes; serve para transcrever, não detectar clonagem. |
-| Hugging Face | Token presente; `HUGGINGFACE_IMAGE_API_URL` ausente | Só ativar se houver detector compatível realmente servido dentro da cota gratuita. Não criar endpoint dedicado pago. |
+| Hugging Face | Endpoint compartilhado testado; configuração no guia multimodal | Resultado experimental sem voto, pois houve falso negativo. Créditos finitos; não criar endpoint dedicado pago. |
 | Hive | `HIVE_API_KEY` presente; painel mostra v3 | Cliente v3 testado com uma imagem. Existe custo por uso; manter pausado fora do teste autorizado. Não comprar projetos v2. |
 
 O `.env` local tem Gemini, Sightengine, Hugging Face, Hive, Serper, SerpAPI e AssemblyAI preenchidos; `OPENROUTER_API_KEY` está vazio. O Railway já tem variáveis adicionais. **Não substituir a configuração de produção pelo `.env` inteiro.**
@@ -57,6 +59,8 @@ Serper localiza páginas. AssemblyAI converte voz em texto. Nenhum dos dois, iso
 Seu token já tem campo no Railway. Se precisar revisar permissões, abra [Settings → Access Tokens](https://huggingface.co/settings/tokens); não dar acesso de escrita desnecessário.
 
 Os [Inference Providers oferecem créditos mensais pequenos para contas gratuitas](https://huggingface.co/docs/inference-providers/pricing). Isso **não garante que um detector específico de imagem esteja hospedado**. A integração exige um classificador imagem real/gerada por IA com resposta `label`/`score`:
+
+Nesta revisão, confirmou-se inferência compartilhada para `Ateeqq/ai-vs-human-image-detector`, classe positiva `ai`. Não é necessário contratar GPU para esse endpoint; acesso e crédito podem expirar. O erro observado no controle sintético impede usá-lo como voto decisivo. Configuração exata e resultado em [MULTIMODAL-2026-10-03.md](MULTIMODAL-2026-10-03.md).
 
 - `HUGGINGFACE_IMAGE_API_URL`: URL HTTPS de inferência oficial, não a página do modelo ou uma demo Space qualquer.
 - `HUGGINGFACE_AI_LABEL`: classe positiva exata retornada pelo modelo; `artificial` é apenas o padrão do código.

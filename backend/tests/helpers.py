@@ -18,6 +18,8 @@ for key in ("GEMINI_API_KEY", "OPENROUTER_API_KEY", "GOOGLE_FACT_CHECK_KEY", "SE
             "HIVE_IMAGE_API_KEY", "HIVE_VIDEO_API_KEY", "HIVE_AUDIO_API_KEY", "HIVE_TEXT_API_KEY", "HIVE_V3_API_KEY"):
     os.environ[key] = ""
 os.environ["SIGHTENGINE_AUDIO_ENABLED"] = "false"
+os.environ["LOCAL_OCR_ENABLED"] = "false"
+os.environ["GEMINI_MEDIA_MODEL_NAME"] = ""
 os.environ["HIVE_API_VERSION"] = "v2"
 os.environ["HIVE_V3_MEDIA_TYPES"] = ""
 os.environ["OPENROUTER_ENABLED"] = "true"

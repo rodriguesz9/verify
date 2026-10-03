@@ -41,14 +41,16 @@ Todos os routers ficam sob `/api`.
 - `core/scam_detector.py`: regras de triagem com trechos encontrados. Extensão de domínio isolada não produz veredito de golpe. Referências de orientação são cadastradas, não consultas automáticas.
 - `core/gemini_client.py`: cliente assíncrono com modelo explícito e erros; nada de inventar sucesso em falhas.
 - `core/openrouter_service.py`: somente `openrouter/free`/variantes específicas `:free`, preço máximo zero, limite por processo e pausa após quota. Extrai trechos literais para pesquisa e faz fallback de OCR; não vota sobre verdade nem origem.
-- `services/audio_service.py`: transcrição Gemini → AssemblyAI `universal-2`, com prazo total limitado e polling imediato; tarefas pendentes não são reenviadas. Não é detector de clonagem.
+- `services/local_ocr.py`: Tesseract português/inglês primeiro, com limites de bytes/qualidade/prazo; Gemini/OpenRouter somente quando faltar leitura utilizável. Não certifica origem ou verdade.
+- `services/speech_input.py`: normaliza mono 16 kHz e bloqueia quase silêncio antes de transcrição remota; não autentica voz nem identifica toda gravação sem fala.
+- `services/audio_service.py`: ordem configurável via `AUDIO_TRANSCRIPTION_PROVIDER`, AssemblyAI `universal-2` preferido na produção desta revisão; prazo único de 25 s/polling imediato. Gemini usa modelo multimodal separado. Tarefas pendentes não são reenviadas. Não é detector de clonagem.
 - `core/request_budget.py`: admissão por IP/processo, concorrência e corpo limitado; proteção de origens de escrita.
 - `services/public_fetch.py`: valida DNS e conecta ao IP validado com TLS/SNI correto. Revalida redirecionamentos, limita bytes/tempo; não usa proxy do ambiente.
 - `services/media_validation.py`: valida bytes reais; 25 MiB, 20 megapixels e 120 segundos. Não confia em nome/extensão/MIME declarado.
 - `services/media_analysis.py`: fluxo comum de imagem/áudio/vídeo. Vídeo amostra até nove quadros por padrão, exige concordância no mesmo quadro e analisa áudio em paralelo. OCR/transcrição têm checagem factual separada; não faz perícia temporal completa.
 - `services/speech_detector.py`: Sightengine `ai_speech` opt-in com acesso ao modelo; Hive de áudio é outro projeto. Transcrição não comprova clonagem e pontuação máxima de um trecho não se aplica automaticamente ao arquivo inteiro.
 - `services/benchmark_metrics.py`: métricas offline por dimensão/modalidade/split, com inconclusivos nos denominadores. Não gera ground truth nem valida precisão sem corpus real independente.
-- `services/evidence_policy.py`: cobertura, discordância, limitações e política versionada. Ausência de sinal de IA nunca vira mídia autêntica; resultados sem cobertura são inconclusivos.
+- `services/evidence_policy.py`: cobertura, discordância, limitações e política versionada. Ausência de sinal de IA nunca vira mídia autêntica; resultados sem cobertura são inconclusivos. HF é experimental/sem voto, inclusive no agregado de vídeo; não confundir score retornado com evidência decisiva.
 - `services/c2pa_service.py`: marcador não é assinatura validada. Confiança criptográfica depende de ferramenta/configuração.
 - `services/whatsapp_security.py`: autenticação, parser, base64 e deduplicação limitada por processo.
 - `services/gemini_service.py`: fala real quando disponível, PCM em WAV. Falha não vira beep apresentado como voz.
@@ -89,6 +91,6 @@ Suíte backend desliga provedores externos. Para testes reais de banco, `TEST_DA
 
 Interface: `npm test` e `npm run build`. Controles HTTP opcionais: `backend/scripts/audit_probe.py`; contas de teste somente em localhost. `provider_probe.py` é opt-in e pode consumir créditos. Controles estáticos não medem precisão de deepfake.
 
-Compose é desenvolvimento (portas 5174/8001/5433, recarga e senhas de exemplo). Perfil Evolution não provisiona sozinho todos os recursos nem o transporte autenticado. Dockerfile backend instala FFmpeg/ExifTool e executa sem reload.
+Compose é desenvolvimento (portas 5174/8001/5433, recarga e senhas de exemplo). Perfil Evolution não provisiona sozinho todos os recursos nem o transporte autenticado. Dockerfiles raiz/backend instalam FFmpeg/ExifTool/Tesseract português e inglês e executam sem reload.
 
 Vercel recebe frontend; Railway recebe backend/banco. Antes de publicar: builder/root corretos, segredos fortes, HTTPS/cookies, origens exatas, ferramentas de mídia e migrações. Limites e deduplicação são por processo; múltiplas réplicas exigem armazenamento compartilhado. Nenhum teste local prova que a revisão já esteja no deploy.

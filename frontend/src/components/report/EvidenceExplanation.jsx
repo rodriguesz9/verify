@@ -42,7 +42,7 @@ export default function EvidenceExplanation({result, query}) {
         <ul className="list-disc pl-5 text-sm space-y-2 text-[#A7BFCD]">{evidence.claims.map((claim, index) => <li key={index}>{claim}</li>)}</ul>
       </div>}
 
-      <h4 className="flex items-center gap-2 font-bold mb-3"><CircleAlert size={16} aria-hidden="true" /> O que pesou no resultado</h4>
+      <h4 className="flex items-center gap-2 font-bold mb-3"><CircleAlert size={16} aria-hidden="true" /> O que foi observado nesta análise</h4>
       {evidence.findings.length > 0 ? <ol className="space-y-3 mb-6">
         {evidence.findings.map((finding, index) => <li key={finding.id} className="rounded-xl border border-[#1D3B4D] bg-[#070F17] p-4">
           <h5 className="font-bold text-sm mb-2"><span className="text-[#00D4FF] mr-2">{String(index + 1).padStart(2, "0")}</span>{finding.title}</h5>
