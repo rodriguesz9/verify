@@ -1,6 +1,6 @@
 # Verify — publicação e controles públicos de 08/10/2026
 
-Registro de evidências em **8 de outubro de 2026**, horário de Brasília (UTC−3). Distingue a revisão publicada das alterações posteriores locais. Não contém chaves, cookies, tokens de relatório, mensagens privadas ou parâmetros SQL.
+Registro de evidências em **8 de outubro de 2026**, horário de Brasília (UTC−3). Preserva o checkpoint da base e o desenvolvimento posterior; a publicação final do código está confirmada na seção 7. Commits posteriores exclusivos de documentação não alteram o código ensaiado. Não contém chaves, cookies, tokens de relatório, mensagens privadas ou parâmetros SQL.
 
 ## 1. Revisão publicada
 
@@ -96,7 +96,7 @@ Hugging Face permanece desativado. Sightengine voz não foi ativado, nenhum endp
 
 ## 6. Fronteiras ainda pendentes
 
-1. Publicar/retestar o patch lexical posterior, conferir seu SHA/CI e a pertinência das notícias na interface. Suíte local aprovada não comprova deploy.
+1. **Concluído posteriormente na seção 7:** publicar/retestar patch lexical, conferir SHA/CI e notícias na interface. Permanecem pendentes os itens seguintes; não homologar precisão por esse único controle.
 2. Link público autorizado com escrita/histórico no PostgreSQL publicado; login/refresh/troca de conta, isolamento e privacidade completos em produção.
 3. PDF: capturar download, abrir o arquivo e verificar conteúdo/layout/páginas. HTTP 200 sozinho não encerra essa fronteira.
 4. Voz humana portuguesa autorizada com negação, valores/data; controles de gravação real e síntese/clonagem independente. Só habilitar segundo detector se houver acesso gratuito/crédito expressamente autorizado.
@@ -105,3 +105,18 @@ Hugging Face permanece desativado. Sightengine voz não foi ativado, nenhum endp
 7. Retenção/exclusão de dados, recuperação e governança operacional conforme [fechamento até 11/10](ENTREGA-ATE-11-OUTUBRO.md).
 
 Para a banca: [roteiro](ROTEIRO-BANCA.md). Mostrar os resultados reais, incluindo inconclusivos, sem escolher ou alterar rótulo esperado. “Respondeu” não significa “certeiro”; transcrição não é detector de clonagem, e origem de uma mídia não é veracidade de sua legenda.
+
+## 7. Publicação da revisão posterior e rechecagem
+
+Código `cba8d3f77cb60ae1906ab1ccb292c77f6f3e7b40`, enviado ao candidato e promovido por fast-forward a master, sem substituir alterações pendentes da cópia original. [CI do candidato](https://github.com/rodriguesz9/verify/actions/runs/37812069733) e [CI de master](https://github.com/rodriguesz9/verify/actions/runs/37812326226): três jobs SUCCESS, frontend/build e backend SQLite/PostgreSQL descartável. Testes locais da revisão: 492 backend e 156 frontend, sem skips, build concluído. Não somar execuções da mesma suíte como cenários independentes.
+
+| Plataforma | Deployment da revisão | Estado confirmado | Momento |
+| --- | --- | --- | --- |
+| Railway | `17cef0ed-56e3-4cc1-bf0a-fe008c7bf935` | SUCCESS, SHA cba8d3f | 16:54:31,745Z / 13:54:31,745 Brasília |
+| Vercel | `dpl_CM3kQKw7miAgaexyViNCP3oFrVzh` | READY, SHA cba8d3f | 16:53:55,974Z / 13:53:55,974 Brasília |
+
+Após carregar o frontend novo, a mesma mensagem preventiva foi enviada **uma única vez**: `/api/check-text` HTTP 200, **4,924 s**, em 16:55:03,502Z / 13:55:03,502 Brasília. A UI preservou as duas frases literais, manteve veracidade inconclusiva sem checagens correspondentes e não mostrou as notícias de cassino/dívidas. Cobertura: OpenRouter respondeu; Google Fact Check consulta sem resultados; Serper consulta concluída sem notícias com correspondência lexical utilizável. Ausência de contexto não foi apresentada como erro, verdade ou falsidade. As contagens internas brutas/excluídas não foram exibidas nessa visão e não foram presumidas.
+
+A orientação de OCR curto foi verificada por testes automatizados e publicada no mesmo código; não houve outro upload pago só para repetir a foto. Os controles de imagem/voz/PDF da seção 3 pertencem à base ef9655ff, não são novas chamadas no cba8d3f. A rechecagem textual não usa Hive. Nenhuma compra, recarga, troca de chave ou ativação de Sightengine voz/HF foi feita.
+
+O relatório/documentação não declara o projeto “100% certeiro”. Arquivos humanos autorizados podem ser colocados em `/mnt/externo/IMPORTANTES/mostra/arquivos-para-validacao/` (subpastas `audios`, `videos`, `fotos`), conforme o [guia de envio privado](ENTREGA-ATE-11-OUTUBRO.md); não são enviados ou commitados automaticamente. Precisão independente, fluxo autenticado completo e download local de PDF continuam pendentes.
