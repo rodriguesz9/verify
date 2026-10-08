@@ -47,6 +47,8 @@ def configure_test_environment(runtime, postgres_url=None):
         "WHATSAPP_HISTORY_ENABLED": "false", "WHATSAPP_WEBHOOK_SECRET": "",
         "WHATSAPP_HASH_SECRET": "", "GOOGLE_CLIENT_ID": "",
         "HIVE_V3_MEDIA_TYPES": "", "HIVE_API_VERSION": "v2",
+        "GEMINI_LOCAL_ADMISSION_ENABLED": "false", "HUGGINGFACE_ENABLED": "false",
+        "HIVE_V3_IMAGE_REQUEST_LIMIT": "0", "HIVE_V3_AUDIO_SECONDS_LIMIT": "0",
     })
 
 

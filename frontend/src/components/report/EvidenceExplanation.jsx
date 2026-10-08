@@ -3,6 +3,8 @@ import { buildReportEvidence } from "../../utils/reportEvidence";
 
 export default function EvidenceExplanation({result, query}) {
   const evidence = buildReportEvidence(result, query);
+  const findings = evidence.publicFindings;
+  const readingLabel = evidence.extractionMethod === "OCR" ? "leitura do texto na imagem" : "transcrição da fala";
   const excluded = evidence.claimAssessments.flatMap((item) =>
     Array.isArray(item.excluded_evidence) ? item.excluded_evidence.filter((source) => source && typeof source === "object") : []);
   return (
@@ -19,7 +21,7 @@ export default function EvidenceExplanation({result, query}) {
       {result.text_review?.status === "user_confirmed" ? <div className="mb-6 rounded-xl border border-[#00D4FF]/30 bg-[#070F17] p-4 text-sm leading-6">
         <h4 className="font-bold">Nova checagem do texto conferido</h4>
         <p className="mt-2 text-[#A7BFCD]">{result.text_review.changed ? "Você editou a leitura automática antes desta checagem." : "Você confirmou a leitura automática antes desta checagem."} Este resultado avalia apenas o texto enviado. Não refaz nem altera a análise da imagem, da voz ou do vídeo; confirmar a leitura não comprova sua fidelidade nem verdade.</p>
-        <p className="mt-2 break-words text-[#A7BFCD]">Arquivo de referência: {result.text_review.filename} · {result.text_review.method === "ocr" ? "OCR" : "transcrição"}{result.text_review.provider ? ` por ${result.text_review.provider}` : ""}.</p>
+        <p className="mt-2 break-words text-[#A7BFCD]">Arquivo de referência: {result.text_review.filename} · {result.text_review.method === "ocr" ? "leitura do texto na imagem" : "transcrição da fala"}.</p>
         <details className="mt-3">
           <summary className="cursor-pointer font-bold">Leitura original preservada</summary>
           <blockquote className="mt-3 whitespace-pre-wrap break-words max-h-56 overflow-y-auto pr-3">{result.text_review.original_text}</blockquote>
@@ -30,7 +32,7 @@ export default function EvidenceExplanation({result, query}) {
         <div className="rounded-xl border border-[#1D3B4D] p-4"><h4 className="font-bold mb-2">Veracidade da informação</h4>
           <p>{({supported: "Corroborada nas checagens", refuted: "Refutada nas checagens", mixed: "Afirmações mistas", conflicting: "Fontes em desacordo", unverified: "Não determinada"})[evidence.veracityStatus] || "Não determinada"}</p>
           {evidence.media && <p className="mt-2 text-xs text-[#8AA2B4]">{evidence.extractionMethod
-            ? `Texto extraído por ${evidence.extractionMethod}: pode conter erros. Isso é separado da origem da mídia.`
+            ? `Texto obtido pela ${readingLabel}: pode conter erros. Isso é separado da origem da mídia.`
             : evidence.transcriptionState.notice ? evidence.transcriptionState.contentMessage
             : "Não houve texto extraído utilizável nesta análise. Confira o arquivo original."}</p>}
         </div>
@@ -55,7 +57,7 @@ export default function EvidenceExplanation({result, query}) {
         : `Checagem do conteúdo extraído: ${evidence.contentSummary}`}</p>}
       {evidence.media && evidence.extractedText && <div className="mb-6 rounded-xl border border-[#00D4FF]/30 bg-[#070F17] p-4">
         <h4 className="font-bold text-sm">Confira o texto que foi lido</h4>
-        <p className="mt-2 text-sm leading-6 text-[#A7BFCD]">{evidence.extractionMethod}{evidence.extractionProvider ? ` · ${evidence.extractionProvider}` : ""}. Compare com o arquivo original, especialmente palavras como “não”, valores e datas. Se a leitura estiver errada, faça uma nova checagem com o texto corrigido; este relatório original não será alterado.</p>
+        <p className="mt-2 text-sm leading-6 text-[#A7BFCD]">A {readingLabel} permite conferir o conteúdo da mensagem, não provar como o arquivo foi produzido. Compare com o original, especialmente palavras como “não”, valores e datas. Se a leitura estiver errada, faça uma nova checagem com o texto corrigido; este relatório original não será alterado.</p>
         <blockquote className="mt-3 whitespace-pre-wrap max-h-64 overflow-y-auto pr-3 text-sm leading-6" aria-label="Texto extraído da mídia">{evidence.extractedText}</blockquote>
         <a href="/app" className="inline-block mt-3 text-sm text-[#00D4FF] underline underline-offset-4">Fazer nova checagem de texto</a>
       </div>}
@@ -75,8 +77,8 @@ export default function EvidenceExplanation({result, query}) {
       </div>}
 
       <h4 className="flex items-center gap-2 font-bold mb-3"><CircleAlert size={16} aria-hidden="true" /> O que foi observado nesta análise</h4>
-      {evidence.findings.length > 0 ? <ol className="space-y-3 mb-6">
-        {evidence.findings.map((finding, index) => <li key={finding.id} className="rounded-xl border border-[#1D3B4D] bg-[#070F17] p-4">
+      {findings.length > 0 ? <ol className="space-y-3 mb-6">
+        {findings.map((finding, index) => <li key={finding.id} className="rounded-xl border border-[#1D3B4D] bg-[#070F17] p-4">
           <h5 className="font-bold text-sm mb-2"><span className="text-[#00D4FF] mr-2">{String(index + 1).padStart(2, "0")}</span>{finding.title}</h5>
           {finding.quote && <blockquote className="border-l-2 border-[#FFCB55] pl-3 py-1 my-3 text-sm text-[#FFCB55]">“{finding.quote}”</blockquote>}
           <p className="text-sm leading-6 text-[#CDE8F0]">{finding.detail}</p>
@@ -131,12 +133,20 @@ export default function EvidenceExplanation({result, query}) {
         <h4 className="font-bold text-base text-[#CDE8F0]">{evidence.transcriptionState.message}</h4>
         <p className="mt-2 text-sm leading-6 text-[#A7BFCD]">{evidence.transcriptionState.detail}</p>
       </div>}
-      {evidence.missing.length > 0 && <div className="mt-5 p-4 rounded-xl border border-[#FFCB55]/25 bg-[#FFCB55]/5">
+      {evidence.publicMissing.length > 0 && <div className="mt-5 p-4 rounded-xl border border-[#FFCB55]/25 bg-[#FFCB55]/5">
         <h4 className="font-bold text-sm text-[#FFCB55] flex items-center gap-2"><Info size={16} aria-hidden="true" /> O que ficou sem confirmação</h4>
-        <ul className="list-disc pl-5 mt-3 text-sm space-y-2 text-[#A7BFCD]">{evidence.missing.map((item, index) => <li key={index}>{item}</li>)}</ul>
+        <ul className="list-disc pl-5 mt-3 text-sm space-y-2 text-[#A7BFCD]">{evidence.publicMissing.map((item, index) => <li key={index}>{item}</li>)}</ul>
       </div>}
       <p className="mt-5 text-sm leading-6 text-[#A7BFCD]"><strong className="text-[#CDE8F0]">Como conferir por conta própria:</strong> busque a publicação original, confirme a data e compare com uma fonte independente. Em pedidos de dinheiro ou dados, fale com a pessoa ou instituição por um canal que você já conhece.</p>
-      {result.policy_version && <p className="mt-3 font-mono text-[11px] text-[#8AA2B4]">Política da análise: {result.policy_version}</p>}
+      {(evidence.technicalFindings.length > 0 || evidence.missing.length > 0 || result.policy_version) && <details className="mt-5 min-w-0 rounded-xl border border-[#1D3B4D] p-4">
+        <summary className="cursor-pointer font-bold text-sm">Detalhes técnicos das observações</summary>
+        <p className="mt-3 text-sm leading-6 text-[#A7BFCD]">Informações para auditoria. Pontuações dos serviços não são porcentagens de verdade ou de precisão.</p>
+        {evidence.technicalFindings.length > 0 && <ul className="mt-3 space-y-3 text-sm leading-6 text-[#A7BFCD]">{evidence.technicalFindings.map((finding) => <li key={finding.id}>
+          <h5 className="font-bold text-[#CDE8F0]">{finding.title}</h5><p>{finding.detail}</p><p className="text-xs">{finding.origin}</p>
+        </li>)}</ul>}
+        {evidence.missing.length > 0 && <ul className="mt-3 list-disc pl-5 space-y-2 text-sm leading-6 text-[#A7BFCD]">{evidence.missing.map((item, index) => <li key={index}>{item}</li>)}</ul>}
+        {result.policy_version && <p className="mt-3 text-xs text-[#A7BFCD]">Política da análise: {result.policy_version}</p>}
+      </details>}
     </section>
   );
 }

@@ -12,6 +12,7 @@ from app.models.user import User
 from app.models.history import Verification, AnalysisMetrics, ContentType
 from app.services.public_fetch import fetch_public_resource
 from app.services.pdf_snapshot import attach_pdf_snapshot
+from app.services.metric_dates import absolute_metric_date
 
 router = APIRouter()
 MAX_REDIRECTS = 5
@@ -132,7 +133,7 @@ async def check_url(
         m = AnalysisMetrics(
             verification_id=v.id,
             text_ai_probability=metrics["text_ai_probability"],
-            earliest_known_date=metrics["earliest_known_date"]
+            earliest_known_date=absolute_metric_date(metrics.get("earliest_known_date"))
         )
         db.add(m)
         await db.commit()

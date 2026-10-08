@@ -15,6 +15,14 @@ test("review uses exact OCR/transcription including negation, numbers and ASR er
   assert.equal(extractedReviewText({}), "");
 });
 
+test("review uses ordinary reading labels and never silently truncates a correction", () => {
+  const component = readFileSync(new URL("../src/components/report/ExtractedTextReview.jsx", import.meta.url), "utf8");
+  assert.match(component, /texto lido da imagem/);
+  assert.doesNotMatch(component, /maxLength=|por \$\{provider\}|\? "OCR"/);
+  assert.equal(reviewedTextValid("😀".repeat(5), true), false);
+  assert.equal(reviewedTextValid("😀".repeat(5000), true), true);
+});
+
 test("review requires explicit confirmation, usable text and unexpired capability", () => {
   assert.equal(textReviewState(report, 1999000), "ready");
   assert.equal(textReviewState(report, 2000000), "expired");

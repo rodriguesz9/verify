@@ -196,6 +196,10 @@ Se não houver texto legível, use {"text": ""}.
         from app.core.openrouter_service import extract_image_text
         from app.core.gemini_client import GeminiError
         primary_status = getattr(exc, "status", "timeout" if isinstance(exc, asyncio.TimeoutError) else "error")
+        if primary_status == "input_too_large":
+            # Do not relay an already oversized image to another provider.
+            return {"available": False, "status": primary_status, "gemini_status": primary_status,
+                    "provider": "gemini", "decision_role": "ocr_only", "text": "", "reason": str(exc)}
         try:
             alternate = await asyncio.wait_for(extract_image_text(image_bytes, mime_type), timeout=27)
             if alternate.get("available"):

@@ -1,9 +1,16 @@
 """Bounded Gemini REST calls, honoring explicit model configuration."""
 import asyncio
 import base64
+from collections import deque
+import json
 import os
 import re
+import threading
+import time
 import httpx
+
+
+MAX_GEMINI_REQUEST_BYTES = 19_000_000  # Below Google's 20 MB inline request cap.
 
 
 class GeneratedText(str):
@@ -14,6 +21,111 @@ class GeminiError(RuntimeError):
     def __init__(self, reason, status="error", http_status=None):
         self.status, self.http_status = status, http_status
         super().__init__(reason)
+
+
+def _bounded_integer(name, default, lower, upper):
+    raw = os.getenv(name, str(default)).strip()
+    if not re.fullmatch(r"[0-9]{1,4}", raw):
+        return default
+    value = int(raw)
+    return value if lower <= value <= upper else default
+
+
+def _admission_enabled():
+    # Explicit opt-out used by isolated regression harnesses. Other values do
+    # not silently remove protection from a misconfigured production service.
+    return os.getenv("GEMINI_LOCAL_ADMISSION_ENABLED", "true").strip().lower() != "false"
+
+
+class GeminiAdmission:
+    """Bounded per-process burst protection, NOT the Google project's quota.
+
+    All callers using this REST helper share a model window, including failed
+    requests and explicit fallbacks. No key, input, media or response is stored.
+    Other processes, API clients and services using the project are not covered.
+    """
+
+    def __init__(self, *, clock=time.monotonic, capacity=32):
+        self._clock = clock
+        self._capacity = capacity
+        self._lock = threading.Lock()
+        self._models = {}
+
+    def _prune(self, now):
+        for model, record in list(self._models.items()):
+            stamps, paused_until = record
+            while stamps and now - stamps[0] >= 60:
+                stamps.popleft()
+            if not stamps and now >= paused_until:
+                del self._models[model]
+
+    def reserve(self, model, requests_per_minute):
+        with self._lock:
+            now = self._clock()
+            self._prune(now)
+            record = self._models.get(model)
+            if record is None:
+                if len(self._models) >= self._capacity:
+                    raise GeminiError("Serviço de leitura temporariamente ocupado. Aguarde antes de tentar novamente.", "rate_limited")
+                record = self._models[model] = [deque(), 0.0]
+            stamps, paused_until = record
+            if now < paused_until:
+                raise GeminiError("Serviço de leitura em pausa após limite de solicitações. Aguarde antes de tentar novamente.", "rate_limited")
+            if len(stamps) >= requests_per_minute:
+                raise GeminiError("Muitas solicitações de leitura em pouco tempo. Aguarde antes de tentar novamente.", "rate_limited")
+            # Failed/ambiguous requests also consume the local burst budget.
+            stamps.append(now)
+
+    def pause(self, model, duration):
+        with self._lock:
+            now = self._clock()
+            self._prune(now)
+            record = self._models.get(model)
+            if record is None:
+                if len(self._models) >= self._capacity:
+                    return
+                record = self._models[model] = [deque(), 0.0]
+            record[1] = max(record[1], now + duration)
+
+
+_gemini_admission = GeminiAdmission()
+
+
+def _reserve_request(model):
+    if _admission_enabled():
+        _gemini_admission.reserve(model, _bounded_integer("GEMINI_LOCAL_REQUESTS_PER_MINUTE", 5, 1, 15))
+
+
+def _pause_after_rate_limit(model, response):
+    if not _admission_enabled():
+        return
+    duration = _bounded_integer("GEMINI_RATE_LIMIT_COOLDOWN_SECONDS", 60, 1, 3600)
+    retry_after = response.headers.get("retry-after", "").strip()
+    if re.fullmatch(r"[0-9]{1,9}", retry_after):
+        duration = max(duration, min(3600, max(1, int(retry_after))))
+    try:
+        payload = response.json()
+        error = payload.get("error", {}) if isinstance(payload, dict) else {}
+        details = error.get("details", []) if isinstance(error, dict) else []
+        if isinstance(details, list):
+            for detail in details[:16]:
+                if not isinstance(detail, dict) or detail.get("@type") != "type.googleapis.com/google.rpc.RetryInfo":
+                    continue
+                delay = detail.get("retryDelay")
+                if isinstance(delay, str) and re.fullmatch(r"[0-9]{1,9}(?:\.[0-9]{1,9})?s", delay):
+                    duration = max(duration, min(3600, max(1, float(delay[:-1]))))
+    except (ValueError, TypeError, AttributeError):
+        pass  # Error bodies, messages and configuration values never escape.
+    _gemini_admission.pause(model, duration)
+
+
+def _validate_request_size(body):
+    try:
+        size = len(json.dumps(body, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode("utf-8"))
+    except (ValueError, TypeError, OverflowError):
+        raise GeminiError("Configuração da solicitação de leitura inválida.", "invalid_configuration") from None
+    if size > MAX_GEMINI_REQUEST_BYTES:
+        raise GeminiError("Arquivo grande demais para leitura remota. Use uma imagem menor ou um trecho mais curto do áudio.", "input_too_large")
 
 
 def gemini_timeout_seconds() -> int:
@@ -69,6 +181,8 @@ async def _generate_text(contents, *, system_instruction=None, temperature=.1, j
             # Simple extraction/OCR needs low latency, not default deep reasoning.
             # thinkingLevel is documented only for Gemini 3+; no legacy breakage.
             body["generationConfig"] = {**config, **({"thinkingConfig": {"thinkingLevel": "LOW"}} if model.startswith("gemini-3") else {})}
+            _validate_request_size(body)
+            _reserve_request(model)
             try:
                 response = await client.post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
                                              headers={"x-goog-api-key": key}, json=body)
@@ -81,6 +195,8 @@ async def _generate_text(contents, *, system_instruction=None, temperature=.1, j
             if response.status_code in {404, 503} and index + 1 < len(models):
                 continue
             if response.status_code != 200:
+                if response.status_code == 429:
+                    _pause_after_rate_limit(model, response)
                 status = "rate_limited" if response.status_code == 429 else "unavailable" if response.status_code == 503 else "error"
                 raise GeminiError(f"Gemini indisponível (HTTP {response.status_code}).", status, response.status_code)
             try:

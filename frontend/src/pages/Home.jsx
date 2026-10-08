@@ -11,6 +11,7 @@ import { analyzeText, analyzeUrl, analyzeUpload, analyzeTextBatch, analyzeReview
 import ExtractedTextReview from "../components/report/ExtractedTextReview.jsx";
 import { textReviewState, textReviewError, withoutReviewCredential } from "../utils/textReview.js";
 import { analysisUrlInput, MAX_ANALYSIS_URL_LENGTH } from "../utils/urlInput.js";
+import { textInputState, analysisErrorMessage } from "../utils/analysisInput.js";
 import { captureAnalysisScope, isAnalysisScopeCurrent, storeSessionReport, subscribeAnalysisReset } from "../services/privacyStorage.js";
 
 const TABS = [
@@ -51,6 +52,7 @@ export default function Home() {
 
   const [tab, setTab] = useState(0);
   const [text, setText] = useState("");
+  const textInput = textInputState(text);
   const [url, setUrl] = useState("");
   const urlInput = analysisUrlInput(url);
   const [imageFile, setImageFile] = useState(null);
@@ -77,7 +79,7 @@ export default function Home() {
 
   const canSubmit = () => {
     if (authLoading) return false;
-    if (tab === 0) return text.trim().length >= 10;
+    if (tab === 0) return textInput.valid;
     if (tab === 1) return urlInput.valid;
     if (tab === 2) return !!imageFile;
     if (tab === 3) return !!audioFile;
@@ -89,7 +91,7 @@ export default function Home() {
     if (authLoading) return false;
     if (tab !== 0) return false;
     const msgs = parseBatchText(text);
-    return msgs.length >= 2 && msgs.length <= 10;
+    return msgs.length >= 2 && msgs.length <= 10 && msgs.every((message) => textInputState(message).valid);
   };
 
   const handleAnalyze = async () => {
@@ -104,8 +106,8 @@ export default function Home() {
       let queryLabel = "";
 
       if (tab === 0) {
-        result = await analyzeText(text);
-        queryLabel = text;
+        result = await analyzeText(textInput.text);
+        queryLabel = textInput.text;
       } else if (tab === 1) {
         result = await analyzeUrl(url);
         queryLabel = url;
@@ -132,12 +134,7 @@ export default function Home() {
       navigate("/report");
     } catch (e) {
       if (!scopeCurrent(scope)) return;
-      const detail = e?.response?.data?.detail;
-      if (detail && typeof detail === "object" && detail.error === "limite_diario") {
-        setError("Seu limite diário de consultas gratuitas foi atingido hoje.");
-      } else {
-        setError(typeof detail === "string" ? detail : e.message === "Envie um arquivo de até 25 MB." ? e.message : "Não foi possível concluir a checagem no momento. Por favor, tente novamente.");
-      }
+      setError(analysisErrorMessage(e));
     } finally {
       if (scopeCurrent(scope)) { setLoading(false); setStage(0); }
     }
@@ -177,7 +174,7 @@ export default function Home() {
       setBatchResults(data.results || []);
     } catch (e) {
       if (!isAnalysisScopeCurrent(scope)) return;
-      setError("Erro ao analisar mensagens em lote. Tente novamente.");
+      setError(analysisErrorMessage(e));
     } finally {
       if (isAnalysisScopeCurrent(scope)) setBatchLoading(false);
     }
@@ -257,8 +254,16 @@ export default function Home() {
                     : "Cole aqui o texto da mensagem, boato ou notícia..."
                   }
                   rows={batchMode ? 10 : 5}
+                  aria-describedby={batchMode ? undefined : "text-input-guidance"}
+                  aria-invalid={!batchMode && textInput.length > 5000}
                   className="w-full font-mono text-sm sm:text-base leading-relaxed p-4 rounded-lg bg-[#04080C] border border-[#132435] text-[#CDE8F0] placeholder-[#3A6070] focus:border-[#00D4FF] focus:outline-none resize-none transition-all"
                 />
+
+                {!batchMode && (
+                  <p id="text-input-guidance" className={`text-sm leading-relaxed ${textInput.length > 5000 ? "text-[#FF889D]" : "text-[#8AA2B4]"}`} aria-live="polite">
+                    {textInput.length > 5000 ? textInput.message : `${textInput.length.toLocaleString("pt-BR")} de 5.000 caracteres · mínimo de 10. O texto não será cortado.`}
+                  </p>
+                )}
 
                 {batchMode && (
                   <div className="flex items-center gap-2 text-[10px] font-mono text-[#5A7E94]">

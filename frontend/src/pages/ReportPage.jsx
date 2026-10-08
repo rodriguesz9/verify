@@ -6,7 +6,7 @@ import { useAuth } from "../hooks/authContext";
 import Footer from "../components/Footer";
 import AnimatedScore from "../components/report/AnimatedScore";
 import EvidenceExplanation from "../components/report/EvidenceExplanation";
-import { visibleDetectorScore, reportMediaHeadline, providerCoveragePresentation } from "../utils/reportEvidence";
+import { visibleDetectorScore, reportMediaHeadline, providerCoveragePresentation, publicCoveragePresentation, transcriptionPresentation, isTechnicalReportText } from "../utils/reportEvidence";
 import { pdfExportError, pdfExportState, publicReportDetails } from "../utils/reportExport";
 import { Shield, AlertTriangle, ArrowRight, Volume2, Phone, ChevronDown, ChevronUp, FileJson, Download } from "lucide-react";
 
@@ -151,6 +151,10 @@ export default function ReportPage() {
   const verdict = result.verdict || "Suspicious";
   const exportState = pdfExportState(result, exportNow);
   const inconclusive = result.analysis_status === "inconclusive";
+  const publicCoverage = publicCoveragePresentation(result);
+  const transcriptionState = transcriptionPresentation(result);
+  const publicLimitations = [...new Set([...publicCoverage.limitations,
+    ...(Array.isArray(result.limitations) ? result.limitations.filter((item) => typeof item === "string" && !isTechnicalReportText(item)) : [])])];
   const defaultBadge = inconclusive ? {
     title: "ANÁLISE INCONCLUSIVA", color: "#FFCB55", bg: "rgba(255,203,85,.06)",
     border: "rgba(255,203,85,.3)", headline: "Não há evidência suficiente para concluir. Isso não significa que o conteúdo seja falso ou autêntico."
@@ -260,10 +264,18 @@ export default function ReportPage() {
           <p className="text-base text-[#CDE8F0] leading-relaxed mt-2">{badge.headline}</p>
 
           {result.provider_coverage && <section className="mt-5 border-t border-white/10 pt-4" aria-label="Cobertura da análise">
-            <h3 className="font-bold text-sm mb-3">O que realmente foi verificado</h3>
-            <div className="grid gap-2 sm:grid-cols-3">{Object.entries(result.provider_coverage).filter(([, layer]) => layer && typeof layer === "object").map(([name, layer]) => {
+            <h3 className="font-bold text-base mb-2">{publicCoverage.title}</h3>
+            <p className="text-sm leading-6 text-[#A7BFCD]">{publicCoverage.detail}</p>
+            {transcriptionState.notice && <div role="status" aria-live="polite" aria-atomic="true" className="mt-4 rounded-xl border border-[#00D4FF]/40 bg-[#070F17] p-4">
+              <h4 className="text-base font-bold text-[#CDE8F0]">Transcrição da fala · {providerCoveragePresentation("transcription", {status: transcriptionState.status}, result).label}</h4>
+              <p className="mt-2 text-sm leading-6 text-[#A7BFCD]">{transcriptionState.detail}</p>
+            </div>}
+            <details className="mt-4 min-w-0 rounded-xl border border-[#1D3B4D] p-4">
+              <summary className="cursor-pointer font-bold text-sm">Detalhes técnicos da cobertura</summary>
+              <p className="mt-3 text-sm leading-6 text-[#A7BFCD]">Informações para auditoria, não porcentagens de verdade ou de precisão.</p>
+            <div className="mt-3 grid min-w-0 gap-3 sm:grid-cols-2">{Object.entries(result.provider_coverage).filter(([, layer]) => layer && typeof layer === "object").map(([name, layer]) => {
               const coverage = providerCoveragePresentation(name, layer, result);
-              return <div key={name} className="rounded-lg bg-[#04080C] p-3 text-xs break-words" role={coverage.notice ? "status" : undefined} aria-live={coverage.notice ? "polite" : undefined} aria-atomic={coverage.notice ? "true" : undefined}>
+              return <div key={name} className="min-w-0 rounded-lg bg-[#04080C] p-3 text-sm leading-6 break-words">
                 <strong className="capitalize">{name === "transcription" ? "Transcrição da fala" : name}</strong>
                 <p className="mt-1">{coverage.label}</p>
                 {coverage.detail && <p className="mt-2 text-[#8AA2B4]">{coverage.detail}</p>}
@@ -271,11 +283,12 @@ export default function ReportPage() {
                 {visibleDetectorScore(layer, "deepfake_score") !== null && <p>Sinal de manipulação facial: {(visibleDetectorScore(layer, "deepfake_score") * 100).toFixed(1)}% · não calibrado</p>}
               </div>;
             })}</div>
+            </details>
           </section>}
           {result.media_details?.duration_seconds && <p className="mt-4 text-sm">Duração: {result.media_details.duration_seconds.toFixed(1)} s. {result.content_type === "video" ? `Análise de ${result.forensics?.video?.sampled_frames ?? "alguns"} quadros amostrados, não do vídeo inteiro.` : ""}</p>}
-          {result.limitations?.length > 0 && <details className="mt-4 text-sm text-[#FFCB55]">
+          {publicLimitations.length > 0 && <details className="mt-4 text-sm text-[#FFCB55]">
             <summary className="cursor-pointer font-bold">Limitações desta checagem</summary>
-            <ul className="mt-3 list-disc pl-5 space-y-2">{result.limitations.map((item, index) => <li key={index}>{item}</li>)}</ul>
+            <ul className="mt-3 list-disc pl-5 space-y-2">{publicLimitations.map((item, index) => <li key={index}>{item}</li>)}</ul>
           </details>}
 
           <div className="mt-5 flex flex-wrap gap-3 pt-4 border-t border-white/10">
@@ -350,7 +363,10 @@ export default function ReportPage() {
 
         <div className="space-y-4 mb-8">
           <button
+            type="button"
             onClick={() => setTechnicalOpen(!technicalOpen)}
+            aria-expanded={technicalOpen}
+            aria-controls="report-technical-details"
             className="w-full flex items-center justify-between p-4 rounded-lg bg-[#0A1520] border border-[#132435] text-[#CDE8F0] hover:border-[#00D4FF] transition-all cursor-pointer"
           >
             <span className="font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2">
@@ -360,7 +376,7 @@ export default function ReportPage() {
           </button>
 
           {technicalOpen && (
-            <div className="p-4 rounded-lg bg-[#0A1520] border border-[#132435] font-mono text-[11px] text-[#8AA2B4] leading-relaxed overflow-x-auto">
+            <div id="report-technical-details" className="min-w-0 p-4 rounded-lg bg-[#0A1520] border border-[#132435] font-mono text-[11px] text-[#8AA2B4] leading-relaxed overflow-x-auto">
               <pre className="whitespace-pre-wrap text-[10px]">
                 {JSON.stringify(publicReportDetails(result), null, 2)}
               </pre>

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AudioLines, FileAudio, Mic, Play, ShieldAlert, Square, Upload, Volume2 } from "lucide-react";
 import { verifyAudioQuick } from "../../services/api";
-import { transcriptionPresentation, visibleDetectorScore } from "../../utils/reportEvidence";
+import { transcriptionPresentation, visibleDetectorScore, publicCoveragePresentation, isTechnicalReportText } from "../../utils/reportEvidence";
 import { createMediaLifecycle } from "../../services/mediaLifecycle.js";
 
 const SAMPLES = {
@@ -186,8 +186,10 @@ export default function AudioDeepfakeDemo() {
   };
 
   const isSynthetic = result?.verdict === "indicios_sintetica";
-  const inconclusive = result?.analysis_status === "inconclusive";
+  const inconclusive = result?.analysis_status !== "partial" || !isSynthetic;
   const transcriptionState = transcriptionPresentation(result || {});
+  const publicCoverage = publicCoveragePresentation({...result, content_type: "audio", analysis_status: inconclusive ? "inconclusive" : "partial"});
+  const publicIndicators = Array.isArray(result?.indicators) ? result.indicators.filter((item) => typeof item === "string" && !isTechnicalReportText(item)) : [];
   return (
     <section className="mx-auto max-w-4xl rounded-3xl border border-[#132435] bg-[#0A1520] p-5 shadow-2xl sm:p-8">
       <header className="mb-8 text-center">
@@ -213,7 +215,7 @@ export default function AudioDeepfakeDemo() {
           <label className={`inline-flex items-center gap-2 rounded-xl border border-[#00D4FF]/30 bg-[#00D4FF]/10 px-4 py-3 font-mono text-xs font-bold text-[#00D4FF] ${inputBusy ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-[#00D4FF]/20"}`}><Upload size={15} /> Enviar áudio<input type="file" disabled={inputBusy} accept="audio/*,.mp3,.ogg,.wav,.m4a,.aac,.opus,.webm" onChange={handleFileUpload} className="hidden" /></label>
           {!isRecording ? <button type="button" disabled={inputBusy} onClick={startRecording} className="inline-flex items-center gap-2 rounded-xl border border-[#FFB800]/30 bg-[#FFB800]/10 px-4 py-3 font-mono text-xs font-bold text-[#FFCB55] hover:bg-[#FFB800]/20 disabled:cursor-not-allowed disabled:opacity-50"><Mic size={15} /> Gravar minha voz</button> : <button type="button" onClick={stopRecording} className="inline-flex animate-pulse items-center gap-2 rounded-xl bg-[#FF3B5C] px-4 py-3 font-mono text-xs font-bold text-white"><Square size={15} /> Parar gravação</button>}
         </div>
-        {audioFile && <div className="mt-4 rounded-xl border border-[#00FF87]/20 bg-[#00FF87]/5 p-3"><p className="flex items-center justify-center gap-2 font-mono text-xs text-[#00FF87]"><FileAudio size={14} /> Pronto: <b>{audioFile.name}</b></p>{previewUrl && <audio className="mt-3 w-full" controls src={previewUrl}>Seu navegador não suporta áudio.</audio>}</div>}
+        {audioFile && <div className="mt-4 min-w-0 rounded-xl border border-[#00FF87]/20 bg-[#00FF87]/5 p-3"><p className="flex min-w-0 items-center justify-center gap-2 text-sm text-[#00FF87]"><FileAudio size={14} className="shrink-0" /> Pronto: <b className="min-w-0 break-all">{audioFile.name}</b></p>{previewUrl && <audio className="mt-3 w-full" controls src={previewUrl}>Seu navegador não suporta áudio.</audio>}</div>}
       </div>
 
       {error && <p role="alert" className="mb-5 rounded-xl border border-[#FF3B5C]/40 bg-[#FF3B5C]/10 p-3 text-center font-mono text-xs text-[#FFB2BF]">{error}</p>}
@@ -222,16 +224,21 @@ export default function AudioDeepfakeDemo() {
 
       {result && <section className={`mt-7 rounded-3xl border p-5 sm:p-7 ${inconclusive ? "border-[#FFCB55] bg-[#FFCB55]/10" : isSynthetic ? "border-[#FF3B5C] bg-[#FF3B5C]/10" : "border-[#00FF87] bg-[#00FF87]/10"}`} aria-live="polite">
         {result.isDemo && <p className="mb-5 rounded-lg border border-[#FFB800]/30 bg-[#FFB800]/10 p-3 text-center font-mono text-[10px] leading-5 text-[#FFDB85]">Resultado educativo da comparação. Para uma análise forense real, envie ou grave um áudio de verdade.</p>}
-        <div className="border-b border-white/10 pb-5"><span className="font-mono text-[10px] text-[#8BAAC0]">Processamento da transcrição: {result.tempo_processamento_ms ?? 0} ms</span><h3 className="mt-2 font-syne text-2xl font-black text-[#FFCB55]">{inconclusive ? "Origem da voz inconclusiva" : "Indícios de fala sintética"}</h3></div>
+        <div className="border-b border-white/10 pb-5"><h3 className="font-syne text-2xl font-black text-[#FFCB55]">{inconclusive ? "Origem da voz inconclusiva" : "Indícios de fala sintética"}</h3></div>
         <p className="mt-3 text-sm text-[#8BAAC0]">Resultado acústico não comprova identidade nem falsidade da fala. Detectores podem errar.</p>
-        {result.provider_coverage && <ul className="mt-3 text-xs text-[#8BAAC0] space-y-2">{Object.entries(result.provider_coverage).filter(([, layer]) => layer && typeof layer === "object").map(([name, layer]) => <li key={name}>{transcriptionState.notice && (name === "transcription" || layer.decision_role === "transcription_only") ? `${name}: ${transcriptionState.coverageLabel}` : `${name}: ${layer.status === "success" ? "respondeu" : "indisponível"}`}{visibleDetectorScore(layer) !== null ? ` · sinal ${(visibleDetectorScore(layer) * 100).toFixed(1)}% (não calibrado)` : ""}</li>)}</ul>}
-        <p className="mt-5 font-syne text-base font-bold leading-relaxed text-[#CDE8F0]">{transcriptionState.notice ? "A leitura da fala ainda não fornece texto para conferência. O resultado acústico é separado da transcrição." : result.short_explanation}</p>
+        <p className="mt-3 text-sm leading-6 text-[#A7BFCD]">{publicCoverage.detail}</p>
+        <p className="mt-5 font-syne text-base font-bold leading-relaxed text-[#CDE8F0]">{transcriptionState.notice ? "A leitura da fala ainda não fornece texto para conferência. O resultado acústico é separado da transcrição." : isTechnicalReportText(result.short_explanation) ? "Confira as observações e a mensagem transcrita abaixo. Confirme pedidos de dinheiro por um canal que você já conhece." : result.short_explanation}</p>
         {transcriptionState.notice && <div role="status" aria-live="polite" aria-atomic="true" className="mt-4 rounded-xl border border-[#00D4FF]/40 bg-[#070F17] p-4">
           <h4 className="text-base font-bold text-[#CDE8F0]">{transcriptionState.message}</h4>
           <p className="mt-2 text-sm leading-6 text-[#A7BFCD]">{transcriptionState.detail}</p>
         </div>}
         {transcriptionState.text && <p className="mt-4 text-sm text-[#CDE8F0]">Transcrição: {transcriptionState.text}</p>}
-        {result.indicators?.length > 0 && <ul className="mt-5 space-y-3">{result.indicators.map((indicator, index) => <li key={index} className="flex gap-3 font-mono text-xs leading-5 text-[#CDE8F0]"><span className={isSynthetic ? "text-[#FF8195]" : "text-[#00FF87]"}>{isSynthetic ? "!" : "✓"}</span>{indicator}</li>)}</ul>}
+        {publicIndicators.length > 0 && <ul className="mt-5 space-y-3">{publicIndicators.map((indicator, index) => <li key={index} className="flex min-w-0 gap-3 text-sm leading-6 text-[#CDE8F0]"><span aria-hidden="true" className="shrink-0 text-[#FFCB55]">•</span><span className="min-w-0 break-words">{indicator}</span></li>)}</ul>}
+        {result.provider_coverage && <details className="mt-5 min-w-0 rounded-xl border border-[#284258] p-4">
+          <summary className="cursor-pointer text-sm font-bold text-[#CDE8F0]">Detalhes técnicos da análise de áudio</summary>
+          <p className="mt-3 text-sm leading-6 text-[#A7BFCD]">Pontuações dos serviços não são porcentagens de verdade ou de precisão. Tempo informado: {result.tempo_processamento_ms ?? "não disponível"} ms.</p>
+          <ul className="mt-3 space-y-2 break-words text-sm leading-6 text-[#A7BFCD]">{Object.entries(result.provider_coverage).filter(([, layer]) => layer && typeof layer === "object").map(([name, layer]) => <li key={name}>{transcriptionState.notice && (name === "transcription" || layer.decision_role === "transcription_only") ? `${name}: ${transcriptionState.coverageLabel}` : `${name}: ${layer.status === "success" ? "respondeu" : "indisponível"}`}{visibleDetectorScore(layer) !== null ? ` · sinal ${(visibleDetectorScore(layer) * 100).toFixed(1)}% (não calibrado)` : ""}</li>)}</ul>
+        </details>}
       </section>}
       <p className="mt-5 flex items-start gap-2 font-mono text-[10px] leading-5 text-[#5A7E94]"><Volume2 size={13} className="mt-1 shrink-0" />Amostras sintéticas educativas geradas por eSpeak NG. Não representam uma pessoa real nem um teste de clonagem. A verificação não substitui confirmação por outro canal.</p>
     </section>

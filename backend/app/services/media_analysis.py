@@ -41,11 +41,11 @@ async def extracted_content(text: str, origin: str, *, review_first: bool, timeo
             "provider_coverage": {}, "claim_assessments": []}
 
 
-async def audio_layers(data: bytes, mime_type: str) -> dict:
+async def audio_layers(data: bytes, mime_type: str, *, duration_seconds: float | None = None) -> dict:
     suffix = {"audio/wav": "wav", "audio/mpeg": "mp3", "audio/ogg": "ogg", "audio/webm": "webm",
               "audio/flac": "flac", "audio/mp4": "m4a", "audio/aac": "aac"}.get(mime_type, "bin")
     jobs = {"audio": analyze_audio_quick_for_demonstration(data, "evidence.audio", mime_type),
-            "hive": check_hive_media(data, f"evidence.{suffix}", "audio", mime_type),
+            "hive": check_hive_media(data, f"evidence.{suffix}", "audio", mime_type, duration_seconds=duration_seconds),
             "sightengine_audio": detect_synthetic_speech(data, mime_type)}
     return dict(zip(jobs, await asyncio.gather(*(safe_layer(job, timeout=gemini_timeout_seconds() + 45 if name == "audio" else 18)
                                                for name, job in jobs.items()))))
@@ -96,7 +96,7 @@ async def video_visual_layers(media: ValidatedMedia):
 async def video_audio_layers(media: ValidatedMedia, *, review_first: bool = False) -> dict:
     try:
         track = await asyncio.wait_for(extract_video_audio(media), 15)
-        forensics = await audio_layers(track, "audio/wav")
+        forensics = await audio_layers(track, "audio/wav", duration_seconds=media.details.get("duration_seconds"))
         report = media_report(forensics, "audio")
         report["transcription"] = forensics["audio"].get("transcription", "")
         report["content_analysis"] = await extracted_content(report["transcription"], "video_transcription", review_first=review_first, timeout=18)
@@ -212,7 +212,7 @@ async def analyze_media(media: ValidatedMedia, *, review_first: bool = False) ->
                 report["limitations"].append("Sinais de fala sintética não identificam a pessoa, não comprovam clonagem de voz nem verificam sincronização labial ou toda a gravação.")
                 report["plain_explanation"] = report["whatsapp_share_text"] = report["summary"]
     else:
-        forensics = await audio_layers(media.data, media.mime_type)
+        forensics = await audio_layers(media.data, media.mime_type, duration_seconds=media.details.get("duration_seconds"))
         audio = forensics["audio"]
         report = media_report(forensics, "audio")
         report["transcription"] = audio.get("transcription", "")

@@ -182,6 +182,15 @@ class FreeRouterTests(unittest.IsolatedAsyncioTestCase):
 
 
 class HiveV3Tests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        from app.services.hive_service import HiveV3Budget
+        self.env = patch.dict(os.environ, {"HIVE_V3_IMAGE_REQUEST_LIMIT": "20", "HIVE_V3_AUDIO_SECONDS_LIMIT": "60"})
+        self.budget = patch("app.services.hive_service.hive_v3_budget", HiveV3Budget())
+        self.env.start()
+        self.budget.start()
+        self.addCleanup(self.env.stop)
+        self.addCleanup(self.budget.stop)
+
     def test_distinct_audio_head_and_negative_classes(self):
         data = hive_v3([{"class": "not_ai_generated", "value": .99}, {"class": "ai_generated", "value": .01},
                         {"class": "deepfake", "value": .98}, {"class": "ai_generated_audio", "value": .8}])

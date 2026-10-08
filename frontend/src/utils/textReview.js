@@ -5,14 +5,14 @@ export function extractedReviewText(report) {
 
 export function textReviewState(report, now = Date.now()) {
   const token = report?.text_review_token;
-  const text = extractedReviewText(report).trim();
+  const text = textInputState(extractedReviewText(report));
   if (report?.text_review_status !== "ready" || typeof token !== "string" || !token.startsWith("vrev1.") || token.length > 32 * 1024
-    || !Number.isSafeInteger(report.text_review_expires_at) || text.length < 10 || text.length > 5000) return "unavailable";
+    || !Number.isSafeInteger(report.text_review_expires_at) || !text.valid) return "unavailable";
   return report.text_review_expires_at * 1000 <= now ? "expired" : "ready";
 }
 
 export function reviewedTextValid(text, confirmed) {
-  return confirmed === true && typeof text === "string" && text.trim().length >= 10 && text.trim().length <= 5000;
+  return confirmed === true && textInputState(text).valid;
 }
 
 export function withoutReviewCredential(report) {
@@ -28,3 +28,4 @@ export function textReviewError(error) {
   if (status === 429) return "Limite de consultas atingido. Seu texto continua aqui; aguarde antes de tentar novamente.";
   return "Não foi possível checar o texto agora. Sua edição foi mantida; tente novamente mais tarde.";
 }
+import {textInputState} from "./analysisInput.js";

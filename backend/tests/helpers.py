@@ -20,6 +20,7 @@ for key in ("GEMINI_API_KEY", "OPENROUTER_API_KEY", "GOOGLE_FACT_CHECK_KEY", "SE
 os.environ["SIGHTENGINE_AUDIO_ENABLED"] = "false"
 os.environ["LOCAL_OCR_ENABLED"] = "false"
 os.environ["GEMINI_MEDIA_MODEL_NAME"] = ""
+os.environ["GEMINI_LOCAL_ADMISSION_ENABLED"] = "false"  # dedicated admission tests opt in
 os.environ["HIVE_API_VERSION"] = "v2"
 os.environ["HIVE_V3_MEDIA_TYPES"] = ""
 os.environ["OPENROUTER_ENABLED"] = "true"

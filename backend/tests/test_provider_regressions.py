@@ -84,6 +84,11 @@ class ProviderParserTests(unittest.TestCase):
 
 
 class ProviderTransportTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.env = patch.dict(os.environ, {"HUGGINGFACE_ENABLED": "true"})
+        self.env.start()
+        self.addCleanup(self.env.stop)
+
     async def test_hive_deepfake_requires_own_key_not_legacy_fallback(self):
         with patch.dict(os.environ, {"HIVE_API_KEY": "legacy-image-test", "HIVE_DEEPFAKE_API_KEY": ""}), \
              patch("httpx.AsyncClient.post", new=AsyncMock()) as post:

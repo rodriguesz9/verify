@@ -2,7 +2,9 @@
 
 Atualização: **8 de outubro de 2026**, horário de Brasília. Este documento descreve a revisão local e as evidências disponíveis; não certifica que ela esteja publicada no Vercel/Railway.
 
-**Resposta curta: não, todas as verificações ainda não estão homologadas.** Há caminhos funcionais, serviços com resposta real e regressões automatizadas aprovadas. Ainda faltam disponibilidade multimodal do Gemini, avaliação independente de precisão, fala/vídeos humanos autorizados e validação integral do candidato em produção. Nenhuma chave ou combinação de APIs garante vereditos 100% certos.
+**Atualização complementar desta data:** o conector confirmou Railway/backend/PostgreSQL online; Vercel/Railway continuam no SHA publicado `5db970d…`, não na revisão nova. Houve 422 na rota de texto e 500 de persistência de data na rota de link, que são problemas diferentes de quota/modelo. O candidato corrige a persistência e separa diagnósticos técnicos da visão pública. Gemini `3.1 Flash Lite` leu o controle de imagem exatamente; outras verificações ainda têm pendências. Veja [evidências/checkpoints da rodada](CORRECOES-PRODUCAO-2026-10-08.md).
+
+**Resposta curta: não, todas as verificações ainda não estão homologadas.** Há caminhos funcionais, serviços com resposta real e regressões automatizadas aprovadas. Gemini Lite respondeu a controles de texto/imagem pela interface isolada; ainda faltam homologação multimodal abrangente, avaliação independente de precisão, fala/vídeos humanos autorizados e validação integral do candidato em produção. Nenhuma chave ou combinação de APIs garante vereditos 100% certos.
 
 ## 1. Como interpretar os resultados
 
@@ -28,27 +30,27 @@ O relatório distingue:
 
 ## 2. Situação por verificação e API
 
-As respostas externas abaixo são as últimas observações disponíveis, principalmente de **07/10**, não novos testes de todas as APIs em 08/10. Onde o registro anterior é apenas narrativo, isso está indicado em [fechamento de 07/10](FECHAMENTO-2026-10-07.md#4-outras-observações-de-apis-nesta-sessão).
+As respostas externas abaixo identificam a data do controle: novas observações de **08/10** não substituem uma homologação de todas as APIs. Registros anteriores de 07/10 permanecem históricos; quando apenas narrativos, isso está indicado em [fechamento de 07/10](FECHAMENTO-2026-10-07.md#4-outras-observações-de-apis-nesta-sessão). Diagnóstico, correções e controles pendentes desta rodada estão no [registro complementar](CORRECOES-PRODUCAO-2026-10-08.md).
 
 | Verificação/camada | Última evidência | Por que ainda não está totalmente validada | Como avançar sem inventar resultados |
 | --- | --- | --- | --- |
 | Texto — Google Fact Check | Três consultas HTTP 200 em 07/10, sem checagens correspondentes | A API recupera checagens existentes; não pesquisa a verdade de qualquer frase. Sem correspondência suficiente, a política não conclui | Confirmar projeto/API/chave; ensaiar afirmações com checagens reais de duas famílias editoriais, mesmo conteúdo/contexto/data. Ausência de resultado continua inconclusiva |
-| Texto — Gemini | `gemini-3.8-flash` respondeu HTTP 200/STOP ao controle mínimo de JSON em 07/10 | Um controle mínimo não homologa extração de textos longos nem veracidade | Conferir modelo/quota na conta; validar extração literal, negações, datas e valores. Gemini auxilia leitura/pesquisa, não vota “verdadeiro/falso” |
+| Texto — Gemini | Em 08/10, diagnóstico 3.8 atingiu timeout de 60 s; controle Lite pela interface isolada teve `/check-text` e Gemini HTTP 200 | Modelo 3.8 e Lite têm evidências diferentes; disponibilidade varia. O 200 local não explica automaticamente os três 422 públicos, cuja entrada foi rejeitada e corpo não foi observado | Conferir modelo/quota e mensagem de validação separadamente; ensaiar preservação literal no SHA publicado. Admissão local não mede quota global; Gemini não vota “verdadeiro/falso” |
 | Texto — OpenRouter gratuito | Controle respondeu com `liquid/lfm-2.5-2.6b:free` em 07/10 | Modelos gratuitos/capacidade mudam; saída estruturada pode não ser compatível. Sucesso não o torna detector factual | Manter `openrouter/free` ou modelo explicitamente `:free`, preço máximo zero e limites. Ensaiar preservação literal; indisponibilidade deve aparecer no relatório |
 | Contexto — Serper | Duas consultas HTTP 200 em 07/10 | Notícias relacionadas não são checagens da mesma afirmação; franquia disponível precisa ser conferida | Usar `SERPERAPI_KEY` do próprio Serper, acompanhar saldo. Não confundir com SerpAPI nem promover contexto a prova |
-| Links públicos | Extração/limites/segurança testados offline e em controles locais anteriores | Não certifica o site inteiro, páginas dependentes de JavaScript nem todas as condições HTTPS no deploy | Ensaiar URL pública autorizada no candidato; conferir texto extraído, fonte e truncamento. Depois aplicar a mesma política factual do texto |
+| Links públicos | Extração/limites/segurança testados; log de 08/10 revelou HTTP 500 ao persistir string onde PostgreSQL esperava data/hora. Correção/regressão em banco descartável passou | Falta publicar/retestar a correção; não certifica o site inteiro nem páginas dependentes de JavaScript | Publicar SHA aprovado, ensaiar URL pública autorizada, conferir texto/fonte/truncamento e histórico. Datas relativas de métricas permanecem desconhecidas, não são inventadas |
 | Imagem — OCR local | Tesseract leu controle impresso pela interface em 07/10, preservando negação, R$ 123,45 e data | Um impresso limpo não mede todos os prints, manuscritos ou imagens degradadas | Instalar binário + idiomas `por`/`eng` na imagem final; manter `LOCAL_OCR_ENABLED=true` e conferência humana antes de checar o texto |
-| Imagem — Gemini OCR/inspeção | OCR e inspeção pela UI retornaram HTTP 503 em 07/10; 3.7 também falhou | Houve indisponibilidade do fornecedor. Chave/catalogação funcionais não asseguram geração multimodal. Não há prova de que trocar só a chave resolva | Confirmar acesso, modelo e quota; testar modelo multimodal disponível com teto novo de chamadas. Deadline já corrigido para 60 s, configurável até 90; esperar mais não resolve um 503 rápido |
+| Imagem — Gemini OCR/inspeção | Em 08/10, OCR 3.8 retornou 503 em ~41,8 s; Lite OCR 200 em ~2,376 s correspondeu à referência de 88 caracteres. Na interface isolada, upload da planta IA teve 200 e duas chamadas Gemini 200; DOM mostrou inspeção “Respondeu”/leitura “Sem texto” | Gemini voltou a ler/inspecionar nesses controles. A imagem permaneceu corretamente inconclusiva porque só havia LLM auxiliar, sem detectores habilitados; isso não homologa manipulação, voz ou acerto universal | Usar modelo efetivamente testado, conferência humana e limites da conta; repetir no deploy corrigido. “Sem texto” em uma imagem de planta não significa falha de autorização nem informação falsa |
 | Imagem — OpenRouter OCR | Tentativas anteriores tiveram HTTP 404/resposta incompleta | Não havia resposta de visão/OCR utilizável; texto funcionando não valida imagem | Só configurar variante gratuita realmente compatível com imagem + formato exigido. Não ativar fallback pago; manter Tesseract/conferência como contingência |
 | Imagem — Sightengine | Foto publicada: sinal de IA 0.001; imagem conhecida gerada: 0.99 em 07/10 | Dois controles não são benchmark. Face-swap/transformações não homologados; um único fornecedor não dá consenso | Conferir acesso aos modelos `genai,deepfake`, créditos gratuitos e exemplos independentes. Pontuação é sinal; cobertura insuficiente continua inconclusiva |
-| Imagem — Hugging Face | Dois uploads HTTP 200; detector experimental já errou controles conhecidos | Token não provisiona modelo hospedado. Endpoint/classe positiva precisam corresponder ao modelo. **Sem elegibilidade de voto**, inclusive vídeo | Configurar somente endpoint oficial existente, compatível e autorizado; classe positiva exata. Avaliar corpus independente antes de qualquer promoção. Não inverter classes para “acertar” dois exemplos |
-| Imagem/facial — Hive v3 | Um smoke de imagem respondeu anteriormente; nenhuma nova chamada nesta rodada | API tem custo. Autorização de até US$ 0,01 era apenas para o smoke já realizado; não autoriza tráfego contínuo. Não homologou face-swap/áudio | Manter modalidades v3 vazias/pausadas. Para novo teste, confirmar Secret Key v3, modalidade, saldo e novo teto explícito; depois avaliar controles independentes |
+| Imagem — Hugging Face | Respostas históricas experimentais erraram controles. Revisão 08/10 usa `HUGGINGFACE_ENABLED=false` padrão | Usuário recusou contratação paga. Chave presente não implica endpoint/saldo e não deve gerar envio após opt-out | Manter `false` no Railway/candidato; não criar endpoint nem comprar créditos. Sinal experimental continua sem voto, inclusive vídeo |
+| Imagem/facial — Hive v3 | Em 08/10, duas imagens reais retornaram HTTP 200: NASA em 1.515 ms, sinal IA `0.0002034269780552065`; planta IA em 2.430 ms, sinal IA `0.9999999677581336`; facial zero nos dois. Teto nominal US$ 0,012, saldo/fatura não consultados | Transporte/parsing funcionaram para esses dois controles, não pela interface. Dois exemplos não medem acurácia nem homologam face-swap/voz; um sinal facial zero não certifica autenticidade | Configurar v3/modalidade/reserva e conferir Usage/Billing sem recarga automática. Guardas por processo não são teto financeiro global. [Passos e limites](ATIVACAO-HIVE-VOZ-2026-10-08.md) |
 | Hive v2 por projeto | Cliente e parsing cobertos por testes; projetos específicos não homologados nesta etapa | Chave de projeto de imagem não é automaticamente projeto de áudio/facial/texto; chave v3 não é chave v2 | Conferir versão e projeto no painel. Usar nomes específicos. Não contratar novos projetos apenas para preencher o template |
 | Áudio — AssemblyAI | Transcrição de voz sintética já respondeu, mas houve erro “Pix urgente” → “pic surgente”; fala humana ainda pendente | Reconhecimento pode perder palavra/negação/valor/data. Retomada de tarefa foi testada com transporte simulado, não nova voz reconhecida | Se houver créditos gratuitos autorizados, preferir `AUDIO_TRANSCRIPTION_PROVIDER=assemblyai`; subir gravações humanas sem dados pessoais e conferir a leitura na UI |
 | Áudio — retomada AssemblyAI | Ensaio local 07/10: duas tentativas, um upload/uma criação/duas consultas simuladas | Cache por processo/sessão tem janela limitada; reinício, réplica, expiração ou perda de contexto não têm garantia durável | Evitar reenviar repetidamente. Resultado pendente não vira “sem fala”; concluir checkpoint compartilhado para escala. [Limites/testes](TRANSCRICAO-PENDENTE-2026-10-07.md) |
 | Áudio — Gemini transcrição | Não há homologação atual em fala humana após as falhas multimodais | Texto mínimo bem-sucedido não valida fala; transcrição não autentica voz | Modelo multimodal separado, prazo/quota e teste humano autorizado. Não usar transcrição como detector de clonagem |
 | Áudio — Sightengine `ai_speech` | Cliente testado offline; acesso real ao modelo não comprovado | Chaves de imagem não liberam esse modelo. Documentação atual informa acesso restrito a enterprise/parceiros | Sem acesso autorizado gratuito já existente, deixar `SIGHTENGINE_AUDIO_ENABLED=false`. Não pagar nem trocar sinal acústico por palpite do LLM |
-| Áudio — Hive | Cliente/modalidade previstos; áudio real não homologado | Cabeça de áudio/projeto e autorização de custo distintos | Não ativar uso pago automático. Transcrição funcional não substitui este detector |
+| Áudio — Hive | Cliente/modalidade e guardas de orçamento testados; áudio real ainda não homologado | Saldo autorizado não confirma resposta/precisão em voz. Duração validada reserva segundos acumulados; transcrição é outra tarefa | Ativar somente com Secret Key/modalidade/reserva e saldo existente, sem recarga automática. Ensaiar poucos áudios curtos autorizados; transcrição não substitui detector |
 | Vídeo | Validação de bytes, extração de quadros e separação áudio/visual testadas offline | Amostras de quadros não cobrem o vídeo todo, lip-sync ou identidade; vídeos humanos autorizados ainda faltam | Ensaiar vídeo sem fala e vídeo com voz fora do quadro; distinguir resultados visuais/acústicos. `VIDEO_MAX_FRAMES=9` aumenta cobertura/custo, não certifica origem |
 | Busca reversa — SerpAPI/Lens | Usuário confirmou chave rotacionada local/Railway; chave anterior autenticou em etapa histórica. Fluxo reverso atual não homologado | **Upload privado retorna `skipped` por projeto**, pois Lens precisa URL pública/ação explícita. Preencher chave não ativa essa busca | Validar desenho de busca pública com URL autorizada e contrato do provedor; nunca publicar upload privado automaticamente. Sem busca realizada, não declarar “zero correspondências” |
 | TinEye / Wayback | Tratamento de falhas melhorado/testado offline; integrações reais ainda não homologadas nesta revisão | TinEye API não equivale ao site gratuito; registro Wayback não prova primeira publicação/descontextualização | Só ativar TinEye com contrato/crédito autorizados. Ensaiar URL pública Wayback; erro, consulta vazia e resultado encontrado devem permanecer diferentes |
@@ -98,28 +100,35 @@ Não importar o `.env` inteiro. Preservar referência privada PostgreSQL, secret
 | OpenRouter | `OPENROUTER_API_KEY`, `OPENROUTER_ENABLED`, `OPENROUTER_MODEL`, `OPENROUTER_FALLBACK_MODELS`, `OPENROUTER_DAILY_LIMIT` | `true`, `openrouter/free`, fallback vazio até validado; limite local 40/dia por processo. A cota real da conta pode ser menor |
 | Fact Check/contexto | `GOOGLE_FACT_CHECK_KEY`, `SERPERAPI_KEY`, `SERPAPI_KEY` | Cada chave do seu provedor; Fact Check API habilitada/restrições compatíveis com backend. SerpAPI não ativa upload privado |
 | Sightengine | `SIGHTENGINE_API_USER`, `SIGHTENGINE_API_SECRET`, `SIGHTENGINE_AUDIO_ENABLED` | Par de credenciais; áudio `false` sem acesso autorizado ao modelo |
-| HF | `HUGGINGFACE_API_TOKEN`, `HUGGINGFACE_IMAGE_API_URL`, `HUGGINGFACE_AI_LABEL` | Endpoint existente, HTTPS oficial, classe positiva real e saldo autorizado. Continua experimental sem voto |
-| Hive | `HIVE_API_KEY`, `HIVE_API_VERSION`, `HIVE_V3_API_KEY`, `HIVE_V3_MEDIA_TYPES`, `HIVE_IMAGE_API_KEY`, `HIVE_AUDIO_API_KEY`, `HIVE_DEEPFAKE_API_KEY` | Distinguir v2/projeto e v3/Secret Key. `HIVE_V3_MEDIA_TYPES` vazio; não habilitar uso pago nesta orientação |
+| HF | `HUGGINGFACE_ENABLED`, `HUGGINGFACE_API_TOKEN`, `HUGGINGFACE_IMAGE_API_URL`, `HUGGINGFACE_AI_LABEL` | Manter `HUGGINGFACE_ENABLED=false` conforme escolha do usuário; não contratar endpoint nem comprar créditos |
+| Hive | `HIVE_API_KEY`, `HIVE_API_VERSION`, `HIVE_V3_API_KEY`, `HIVE_V3_MEDIA_TYPES`, `HIVE_V3_IMAGE_REQUEST_LIMIT`, `HIVE_V3_AUDIO_SECONDS_LIMIT`, `HIVE_IMAGE_API_KEY`, `HIVE_AUDIO_API_KEY`, `HIVE_DEEPFAKE_API_KEY` | Distinguir v2/projeto e v3/Secret Key; saldo existente autorizado. Modalidades vazias ou limites zero impedem envio v3. Exemplos limitados e reinícios/réplicas explicados no guia de ativação |
 | ASR | `ASSEMBLYAI_API_KEY`, `AUDIO_TRANSCRIPTION_PROVIDER` | `assemblyai` só quando houver os créditos gratuitos já autorizados; modelo usado pelo cliente: `universal-2`, português |
-| Ferramentas | `LOCAL_OCR_ENABLED`, `EXIFTOOL_ENABLED`, `C2PATOOL_ENABLED`, `VIDEO_MAX_FRAMES` | Confirmar instalação real; OCR `true`. C2PA sem confiança/voto homologados. Vídeo 9 quadros padrão |
+| Ferramentas | `LOCAL_OCR_ENABLED`, `EXIFTOOL_ENABLED`, `C2PATOOL_ENABLED`, `VIDEO_MAX_FRAMES` | Confirmar instalação real; OCR `true`. C2PA sem confiança/voto homologados. Exemplo de apresentação usa três quadros para limitar custo, com menor cobertura |
 
 Valores públicos seguros de referência para a revisão, **não um arquivo completo para substituir a produção**:
 
 ```dotenv
-GEMINI_MODEL_NAME=gemini-3.8-flash
+GEMINI_MODEL_NAME=gemini-3.1-flash-lite
 GEMINI_REQUEST_TIMEOUT_SECONDS=60
-GEMINI_MEDIA_MODEL_NAME=
+GEMINI_MEDIA_MODEL_NAME=gemini-3.1-flash-lite
 GEMINI_FALLBACK_MODELS=
 LOCAL_OCR_ENABLED=true
 OPENROUTER_ENABLED=true
 OPENROUTER_MODEL=openrouter/free
 OPENROUTER_FALLBACK_MODELS=
 OPENROUTER_DAILY_LIMIT=40
-HIVE_V3_MEDIA_TYPES=
+HUGGINGFACE_ENABLED=false
+HIVE_API_VERSION=v3
+HIVE_V3_MEDIA_TYPES=image,audio
+HIVE_V3_IMAGE_REQUEST_LIMIT=20
+HIVE_V3_AUDIO_SECONDS_LIMIT=60
+VIDEO_MAX_FRAMES=3
 SIGHTENGINE_AUDIO_ENABLED=false
 ```
 
-`GEMINI_MEDIA_MODEL_NAME` vazio herda o principal, ainda não homologado em OCR/fala. Aumentar timeout para 90 deve ser ensaio controlado, não solução presumida para indisponibilidade.
+O template candidato usa Lite principal/mídia porque controles de texto, leitura e inspeção auxiliar responderam. `GEMINI_MEDIA_MODEL_NAME` vazio continua herdando o principal no código; **não homologa fala nem precisão**. Variável antiga explícita do Railway prevalece até ser aplicada uma mudança. Aumentar timeout para 90 deve ser ensaio controlado, não solução presumida para indisponibilidade.
+
+Para Hive, o exemplo positivo só vale com Secret Key v3/saldo existente e revisão aplicada. Padrões do código/template para reservas permanecem zero. São **vinte imagens/quadros e sessenta segundos acumulados por processo**, não teto global em dólares. Reinícios/réplicas podem renovar esses contadores. Nenhuma recarga ou cobrança automática foi autorizada. [Guia específico](ATIVACAO-HIVE-VOZ-2026-10-08.md).
 
 ### Vercel: somente frontend
 
@@ -138,20 +147,21 @@ Não cadastrar cartão, criar endpoint pago ou comprar créditos para seguir est
 | SerpAPI | [Manage API key](https://serpapi.com/manage-api-key), [Google Lens API](https://serpapi.com/google-lens-api) | Nova chave rotacionada, saldo, imagem pública autorizada e fluxo explicitamente implementado |
 | Sightengine | [Dashboard](https://dashboard.sightengine.com/), [modelo de fala](https://www-cf.sightengine.com/docs/ai-generated-speech-detection) | Par API user/secret, modelos liberados e saldo. `ai_speech` atualmente é restrito a enterprise/parceiros; chave de imagem não libera essa camada |
 | HF | [Access Tokens](https://huggingface.co/settings/tokens), [Inference Providers settings](https://huggingface.co/settings/inference-providers), [classificação de imagem](https://huggingface.co/docs/inference-providers/tasks/image-classification), [preços atuais](https://huggingface.co/docs/inference-providers/pricing) | Token com permissão de inferência, hospedagem do classificador, `label`/`score`, classe de IA e saldo. **Página atual aberta em 08/10 informa que contas gratuitas não recebem créditos mensais**; resultados/snippets antigos citando US$ 0,10 não são garantia atual |
-| Hive | [Hive Models](https://thehive.ai/explore), [Service API Keys v3](https://docs.thehive.ai/docs/chat-completions-openai-compatible-llms), [modelo imagem/vídeo/facial](https://docs.thehive.ai/docs/ai-image-and-video-detection) | Secret Key, não Access Key ID; painel/projeto/versão/uso. Orientação de autenticação não homologa o detector. V3 usa Bearer; v2 usa chave de projeto. Sem nova autorização de gasto, manter pausado |
+| Hive | [Hive Models](https://thehive.ai/explore), [Service API Keys v3](https://docs.thehive.ai/docs/chat-completions-openai-compatible-llms), [modelo imagem/vídeo/facial](https://docs.thehive.ai/docs/ai-image-and-video-detection) | Secret Key, não Access Key ID; painel/projeto/versão/uso. V3 usa Bearer; v2 usa chave de projeto. Usuário autorizou saldo existente, não recarga automática; usar modalidades e reservas limitadas |
 | AssemblyAI | [Dashboard](https://www.assemblyai.com/dashboard/), [criar transcrição](https://www.assemblyai.com/docs/pre-recorded-audio/api-reference/transcripts/submit), [consultar transcrição](https://www.assemblyai.com/docs/pre-recorded-audio/api-reference/transcripts/get) | Chave, créditos de teste restantes, tarefa pendente e leitura final. Polling de tarefa existente não é nova tarefa; retenção local não apaga arquivo remoto |
 
 Para HF, este cliente aceita HTTPS sem credenciais/query/fragmento em `router.huggingface.co`, `api-inference.huggingface.co` ou subdomínio de `endpoints.huggingface.cloud`. Isso é uma **guarda do código**, não garantia de que cada URL/modelo tenha serviço ativo. Requer retorno de lista `label`/`score` e a classe positiva exata. O exemplo anterior `Ateeqq/ai-vs-human-image-detector` usa `ai`, respondeu, mas errou controles; não é indicação de detector homologado. **Não criar Inference Endpoint dedicado para “resolver a falta de URL”.**
 
 ## 6. Evidência local versus produção em 08/10
 
-- Backend: **424 testes offline** reexecutados em 08/10, zero falhas/skips, HTTP real bloqueado. Validam código/regras, não disponibilidade atual das APIs.
-- Frontend: **142 testes aprovados + build** em 08/10, incluindo 18 controles novos de renovação/troca de sessão, sem rede. Registro anterior de 124 permanece histórico. [Entrega candidata](ENTREGA-BANCA-2026-10-08.md). Não usar essas contagens como percentual de acerto.
-- PostgreSQL: execução anterior no modo PostgreSQL rodou a mesma suíte; **só três testes são integração real PostgreSQL**. Não afirmar homologação completa de todos os fluxos no banco de produção.
+- Backend final: **482 testes offline aprovados** em SQLite, 9,614 s, incluindo 13 controles de segurança do probe Hive e guarda de leitura excessiva. HTTP real bloqueado; validam código/regras, não disponibilidade/precisão atuais das APIs.
+- Frontend final: **155 testes aprovados + build** em 08/10, 698,83 ms; build 1.977 módulos/3,92 s. Inclui proteção de renovação/troca de sessão, visão pública simples, entrada e conferência com limites Unicode sem corte silencioso. Contagens 124, 142, 150 e 154 permanecem históricas; não são percentual de acerto.
+- PostgreSQL final: mesmo runner com `--postgres-test-url` explícito concluiu **482 aprovados**, 10,428 s; **quatro testes são integração real PostgreSQL**, incluindo persistência de métricas com datas. O restante usa controles/mocks/SQLite; não afirmar 482 integrações de banco, homologação completa da produção nem 964 casos distintos ao somar as duas execuções. Checkpoint anterior 468/9,247 s permanece histórico.
 - Em 08/10, frontend público `https://verifybr.vercel.app` respondeu HTTP 200. O bundle publicado apontou para `https://verify-production-ead7.up.railway.app`.
-- Consultas read-only `/health`, `/ready` e `/api/capabilities` do backend não puderam ser completadas deste ambiente. Controle de `/health`: timeout de resolução DNS após 5 s, HTTP `000`. **Não houve HTTP 5xx observado; isso não prova que o Railway esteja globalmente fora do ar.** A fronteira bloqueada foi resolução/rede.
-- Referência remota `master` ainda era `5db970d…` na checagem desta rodada. Commit/push de candidato e implantação precisam ser confirmados separadamente; este documento não afirma que já aconteceram.
-- Nenhuma chamada paga ou geração externa foi feita para produzir esta atualização; as observações remotas de conteúdo continuam históricas e identificadas.
+- O timeout DNS anterior de `/health` é histórico, não evidência de indisponibilidade global. **O conector confirmou backend/PG Railway online** nesta rodada. Logs revelaram três 422 de texto, sem corpo/detalhe para concluir a causa, e um 500 de link causado por tipo de data na persistência. [Separação dos diagnósticos](CORRECOES-PRODUCAO-2026-10-08.md#2-por-que-aparece-não-foi-possível-concluir-a-checagem).
+- `master`/Vercel/Railway publicados permanecem `5db970d…`; último deployment Railway confirmado `b34a1f5e`, de 04/10. Candidato `7c6b676` foi enviado na branch `entrega/banca-2026-10-08`, com três jobs CI aprovados. As correções posteriores ainda não têm publicação comprovada neste documento; autorização de promoção está pendente.
+- Foram feitas **seis chamadas Gemini reais** em 08/10: três diagnósticas (texto/OCR 3.8 e OCR Lite) e três pela interface Lite isolada (texto e leitura/inspeção da planta IA). O controle Hive de **duas imagens** concluiu com HTTP 200, teto nominal US$ 0,012, sem consulta de saldo/fatura nem homologação de precisão. **Zero envio HF** nesta rodada.
+- Modo Fácil e mobile de 375 px foram conferidos na interface isolada sem overflow horizontal. A publicação e os limites de vinte imagens/sessenta segundos de áudio por processo ainda aguardam resposta à aprovação solicitada; não foram aplicados por esta documentação.
 
 ## 7. Aceite para apresentação e conclusão
 
@@ -172,6 +182,8 @@ Na banca, usar exemplos ensaiados **sem alterar o resultado para combinar com o 
 - [Manual completo](DOCUMENTACAO-COMPLETA.md).
 - [Diagnóstico/evidências de APIs de 07/10](FECHAMENTO-2026-10-07.md).
 - [Retomada ASR, UI simulada e limites](TRANSCRICAO-PENDENTE-2026-10-07.md).
+- [Diagnóstico/correções complementares de 08/10](CORRECOES-PRODUCAO-2026-10-08.md).
+- [Ativação limitada Hive/voz e explicação de OCR](ATIVACAO-HIVE-VOZ-2026-10-08.md).
 - [Template sem chaves](../backend/.env.example).
 - Código consultado: `core/gemini_client.py`, `core/openrouter_service.py`, `core/fact_checker.py`, `core/huggingface_client.py`, `services/hive_service.py`, `services/audio_service.py`, `services/speech_detector.py`, `services/evidence_policy.py`, `services/claim_policy.py`, `services/capabilities.py` e `services/reverse_search_service.py`.
 

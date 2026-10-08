@@ -11,6 +11,9 @@ async def check_ai_image_hf(file_bytes: bytes) -> dict:
     """
     Check for AI generated images using Hugging Face Inference API.
     """
+    # A stored token is not authorization to consume paid inference credits.
+    if os.getenv("HUGGINGFACE_ENABLED", "false").strip().lower() != "true":
+        return {"available": False, "status": "disabled", "reason": "Detector Hugging Face desativado pela configuração do projeto."}
     if not HUGGINGFACE_API_TOKEN:
         return {"available": False, "status": "not_configured", "reason": "Token Hugging Face não configurado."}
     if not API_URL:

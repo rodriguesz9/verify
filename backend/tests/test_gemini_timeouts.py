@@ -16,6 +16,16 @@ CLIENT = httpx.AsyncClient
 
 
 class GeminiDeadlineTests(unittest.IsolatedAsyncioTestCase):
+    async def test_oversized_image_is_not_forwarded_to_another_provider(self):
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "test-only"}), \
+                patch("app.core.gemini_analyzer.generate_text", new=AsyncMock(
+                    side_effect=GeminiError("Envie uma imagem menor.", "input_too_large"))), \
+                patch("app.core.openrouter_service.extract_image_text", new=AsyncMock()) as alternate:
+            result = await _extract_image_text_remote(helpers.valid_png(), "image/png")
+        self.assertEqual(result["status"], "input_too_large")
+        self.assertFalse(result["available"])
+        alternate.assert_not_awaited()
+
     def test_configuration_is_bounded_without_echoing_invalid_values(self):
         for raw, expected in [("10", 10), ("60", 60), ("90", 90), (" 75 ", 75),
                               ("9", 60), ("91", 60), ("", 60), ("-1", 60),

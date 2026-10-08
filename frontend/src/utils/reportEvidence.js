@@ -93,6 +93,76 @@ export function providerCoveragePresentation(name, layer = {}, result = {}) {
   return {label: transcriptionLabels[state.status], detail: state.detail, notice: true};
 }
 
+// Operational diagnostics stay available on explicit request, not mixed with
+// the evidence a person needs to decide whether to share or act on a message.
+export function isTechnicalReportText(value) {
+  return typeof value === "string" && /\bHTTP\s*\d{3}\b|\b[A-Z][A-Z0-9_]*_(?:API|SECRET|MEDIA|ENDPOINT|MODEL|KEY|TIMEOUT|ENABLED)[A-Z0-9_]*\b|\b(?:sightengine|hugging\s?face|hive(?:_deepfake)?|gemini_vision|openrouter)\s*:|\b(?:gemini-[\w.-]+|[^\s]+\/[^\s]+:free)\b|não calibrado|\bEXIF\b|detectores experimentais/i.test(value);
+}
+
+export function publicCoveragePresentation(result = {}) {
+  const coverage = [result.provider_coverage, result.content_analysis?.provider_coverage,
+    result.content_type === "video" && result.media_details?.has_audio !== false
+      ? result.audio_analysis?.provider_coverage : null];
+  const layers = coverage.flatMap((value) => value && typeof value === "object" && !Array.isArray(value)
+    ? Object.values(value).filter((layer) => layer && typeof layer === "object" && !Array.isArray(layer)
+      && layer.decision_role !== "experimental_signal" && layer.voting_eligible !== false) : []);
+  const failed = layers.some((layer) => !["success", "partial", "no_results", "no_text", "no_speech", "disabled"].includes(layer.status));
+  const partial = layers.some((layer) => layer.status === "partial");
+  const media = ["image", "audio", "video"].includes(result.content_type);
+  const inconclusive = result.analysis_status === "inconclusive";
+  const title = inconclusive ? "Não foi possível chegar a uma conclusão"
+    : failed ? "Algumas etapas não foram concluídas"
+    : partial ? "Análise com alcance limitado" : "Como usar este resultado";
+  const detail = inconclusive
+    ? media ? "As evidências disponíveis não bastam para confirmar a origem do arquivo ou a informação. Isso não significa que o conteúdo seja falso ou verdadeiro."
+      : "As evidências disponíveis não bastam para confirmar nem refutar a informação. Isso não significa que o conteúdo seja falso ou verdadeiro."
+    : failed ? "Parte da análise não ficou disponível. Considere apenas as observações descritas neste relatório e confirme a informação por outra fonte."
+    : media ? "A análise da produção do arquivo é separada da verdade da mensagem. Indícios de inteligência artificial não comprovam uma informação falsa; ausência de indícios não certifica uma mídia autêntica."
+    : "Compare a afirmação, a data e o contexto com as fontes citadas. Notícias relacionadas ou ausência de checagens não comprovam verdade nem falsidade.";
+  const limitations = [];
+  if (inconclusive) limitations.push(media ? "A origem do arquivo não foi confirmada." : "A informação não foi confirmada nem refutada pelas evidências disponíveis.");
+  if (failed) limitations.push("Não foi possível concluir todas as etapas desta análise.");
+  if (partial) limitations.push("A análise abrange apenas parte das observações disponíveis, não todo o arquivo.");
+  if (result.detector_disagreement === true || result.visual_detector_disagreement === true
+      || result.audio_analysis?.detector_disagreement === true) limitations.push("Os sinais obtidos ficaram em desacordo. É necessária uma conferência humana.");
+  return {title, detail, limitations, incomplete: inconclusive || failed || partial};
+}
+
+function publicEvidenceFindings(findings, coverage, result) {
+  const publicFindings = [];
+  const technicalFindings = [];
+  for (const finding of findings) {
+    if (/^(?:pattern-|claim-|speech-)/.test(finding.id) || ["url", "page-extraction"].includes(finding.id)
+        || finding.id.startsWith("retrieval-")) {
+      publicFindings.push(finding);
+      continue;
+    }
+    if (finding.id.startsWith("flag-") && !isTechnicalReportText(finding.detail)) {
+      publicFindings.push(finding);
+      continue;
+    }
+    const layer = finding.id.startsWith("helper-") ? coverage[finding.id.slice(7)] : null;
+    if (layer && ["ocr_only", "transcription_only"].includes(layer.decision_role)) {
+      publicFindings.push({...finding, detail: layer.status === "success"
+        ? "Foi possível obter texto para conferência. Compare a leitura com o arquivo original, principalmente negações, valores e datas. Essa leitura não comprova a origem do arquivo nem a verdade da informação."
+        : finding.detail});
+      continue;
+    }
+    technicalFindings.push(finding);
+  }
+  if (result.analysis_status === "partial" && ["ai_indications", "manipulation_indications"].includes(result.authenticity_status)) {
+    publicFindings.push({id: "media-production", title: result.authenticity_status === "ai_indications"
+      ? "Indícios sobre a produção do arquivo" : "Indícios de possível alteração",
+    detail: result.content_type === "video"
+      ? "Foram registrados indícios nas partes analisadas. Confira a separação entre imagens e áudio acima: o resultado não se aplica automaticamente ao vídeo inteiro e não comprova que a mensagem seja falsa."
+      : result.content_type === "audio"
+        ? "Foram registrados indícios de possível fala sintética. Isso não identifica quem falou, não comprova clonagem e não determina a verdade da mensagem."
+        : "Foram registrados indícios sobre a produção ou edição da imagem. Isso não comprova intenção de enganar nem determina a verdade da informação retratada.",
+    origin: "Observação sobre o arquivo · distinta da checagem da informação"});
+  }
+  return {publicFindings, technicalFindings};
+}
+
 function videoOriginEvidence(result) {
   const hasAudio = typeof result.media_details?.has_audio === "boolean" ? result.media_details.has_audio : null;
   const visualStatus = result.visual_authenticity_status;
@@ -375,8 +445,11 @@ export function buildReportEvidence(result = {}, query = "") {
   const contentText = typeof content.query_input === "string" ? content.query_input.trim() : "";
   const extractionMethod = ocrText ? "OCR" : speechText ? "transcrição"
     : contentText && origin ? origin === "ocr" ? "OCR" : "transcrição" : null;
+  const publicPresentation = publicCoveragePresentation(result);
+  const {publicFindings, technicalFindings} = publicEvidenceFindings(findings, coverage, result);
   return {
     media, video, inconclusive, findings, sources, guidance, missing, checkedContent, claimAssessments,
+    publicFindings, technicalFindings, publicMissing: publicPresentation.limitations, publicPresentation,
     veracityStatus: typeof content.veracity_status === "string" ? content.veracity_status : "unverified",
     contentSummary: typeof content.summary === "string" ? content.summary : "",
     contentOrigin: content.origin || "text",

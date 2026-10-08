@@ -3,7 +3,7 @@ import os
 import shutil
 from app.services.evidence_policy import POLICY_VERSION
 from app.core.openrouter_service import configured_models, OpenRouterError
-from app.services.hive_service import hive_v3_enabled
+from app.services.hive_service import hive_v3_enabled, HiveV3Budget
 
 
 def capability_report():
@@ -23,9 +23,13 @@ def capability_report():
                 "hive_image": provider("HIVE_IMAGE_API_KEY"), "hive_audio": provider("HIVE_AUDIO_API_KEY"),
                 "hive_deepfake": provider("HIVE_DEEPFAKE_API_KEY"),
                 "hive_legacy": provider("HIVE_API_KEY"), "huggingface_image": {**provider("HUGGINGFACE_API_TOKEN", "HUGGINGFACE_IMAGE_API_URL"),
+                    "enabled": os.getenv("HUGGINGFACE_ENABLED", "false").strip().lower() == "true",
                     "decision_role": "experimental_signal", "voting_eligible": False},
                 "hive_v3": {"configured": configured("HIVE_V3_API_KEY") or configured("HIVE_API_KEY"),
                     "enabled": hive_v3_enabled(), "media_types": os.getenv("HIVE_V3_MEDIA_TYPES", ""),
+                    "local_admission": {"scope": "process", "resets_on_restart": True,
+                        "images_enabled": bool(HiveV3Budget._limit("HIVE_V3_IMAGE_REQUEST_LIMIT")),
+                        "audio_enabled": bool(HiveV3Budget._limit("HIVE_V3_AUDIO_SECONDS_LIMIT"))},
                     "operational_status": "not_tested", "requires_credit": True, "combined_image_and_deepfake": True},
                 "openrouter": {**provider("OPENROUTER_API_KEY"), "enabled": os.getenv("OPENROUTER_ENABLED", "true").lower() == "true",
                     "free_only": True, "models": models, "model_configuration": model_status, "decision_role": "search_hints_only"},
