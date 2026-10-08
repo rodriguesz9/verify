@@ -39,7 +39,12 @@ class ExternalApisIntegrationTests(unittest.TestCase):
             response = self.client.post("/api/check-url", json={"url": "example.com/news"})
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), report)
+        returned = response.json()
+        self.assertEqual({key: returned[key] for key in report}, report)
+        self.assertEqual(returned["content_type"], "url")
+        self.assertEqual(returned["source_text"], scraped["text"])
+        self.assertIsNotNone(datetime.fromisoformat(returned["analyzed_at"]).tzinfo)
+        self.assertEqual(returned["pdf_export_status"], "unavailable")  # incomplete legacy fixture
         verify_limit.assert_awaited_once_with(self.user, self.db, "TEXTUAL")
         fetch_page_text.assert_awaited_once_with("https://example.com/news")
         run_pipeline.assert_awaited_once_with(text=scraped["text"], url="https://example.com/news")

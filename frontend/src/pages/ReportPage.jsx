@@ -1,11 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getLog } from "../services/api";
+import { downloadPdfReport, getLog } from "../services/api";
+import { readSessionReport, subscribeAnalysisReset } from "../services/privacyStorage";
+import { useAuth } from "../hooks/authContext";
 import Footer from "../components/Footer";
 import AnimatedScore from "../components/report/AnimatedScore";
 import EvidenceExplanation from "../components/report/EvidenceExplanation";
-import { visibleDetectorScore } from "../utils/reportEvidence";
-import { Shield, AlertTriangle, ArrowRight, Volume2, Phone, ChevronDown, ChevronUp, FileJson } from "lucide-react";
+import { visibleDetectorScore, reportMediaHeadline, providerCoveragePresentation } from "../utils/reportEvidence";
+import { pdfExportError, pdfExportState, publicReportDetails } from "../utils/reportExport";
+import { Shield, AlertTriangle, ArrowRight, Volume2, Phone, ChevronDown, ChevronUp, FileJson, Download } from "lucide-react";
 
 const BADGE_STYLES = {
   False: {
@@ -60,37 +63,79 @@ const BADGE_STYLES = {
 export default function ReportPage() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { user, loading: authLoading } = useAuth();
   const [result, setResult] = useState(null);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState("simple");
   const [technicalOpen, setTechnicalOpen] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const [pdfDownloading, setPdfDownloading] = useState(false);
+  const [pdfError, setPdfError] = useState("");
+  const [pdfNotice, setPdfNotice] = useState("");
+  const [exportNow, setExportNow] = useState(Date.now);
+  const reportEpoch = useRef(0);
+  const hasDisplayedReport = Boolean(result) && !loading;
+
+  useEffect(() => subscribeAnalysisReset(() => {
+    reportEpoch.current += 1;
+    setResult(null);
+    setQuery("");
+    setPdfError("");
+    setPdfNotice("");
+    setPdfDownloading(false);
+    setSpeaking(false);
+    window.speechSynthesis?.cancel();
+    // An anonymous reset may not change auth dependencies; do not leave a blank report.
+    // Initial auth hydration has no displayed result and must keep /report/:id intact.
+    if (hasDisplayedReport) navigate("/app", { replace: true });
+  }), [hasDisplayedReport, navigate]);
+
+  useEffect(() => {
+    const expires = result?.pdf_snapshot_expires_at;
+    setExportNow(Date.now());
+    if (!Number.isSafeInteger(expires)) return;
+    const timer = setTimeout(() => setExportNow(Date.now()), Math.min(2147483647, Math.max(0, expires * 1000 - Date.now() + 1)));
+    return () => clearTimeout(timer);
+  }, [result]);
 
   useEffect(() => () => {
     window.speechSynthesis?.cancel();
   }, []);
 
   useEffect(() => {
+    let active = true;
+    const epoch = ++reportEpoch.current;
+    const isCurrent = () => active && reportEpoch.current === epoch;
+    setResult(null);
+    setQuery("");
+    setLoading(true);
+    setPdfError("");
+    setPdfNotice("");
+    setPdfDownloading(false);
+    const cancel = () => {
+      active = false;
+      if (reportEpoch.current === epoch) reportEpoch.current += 1;
+    };
+    if (authLoading) return cancel;
     if (id) {
       getLog(id)
         .then((log) => {
+          if (!isCurrent()) return;
           setResult(log.raw_result || log.result);
-          setQuery(log.query_input);
+          setQuery(log.query_input || "");
         })
-        .catch(() => navigate("/dashboard"))
-        .finally(() => setLoading(false));
+        .catch(() => { if (isCurrent()) navigate("/dashboard"); })
+        .finally(() => { if (isCurrent()) setLoading(false); });
     } else {
-      const r = sessionStorage.getItem("verify_result") || sessionStorage.getItem("verifai_result");
-      const q = sessionStorage.getItem("verify_query") || sessionStorage.getItem("verifai_query");
-      if (!r) { navigate("/app"); return; }
-      try {
-        setResult(JSON.parse(r));
-        setQuery(q || "");
-      } catch { navigate("/app"); }
+      const stored = readSessionReport();
+      if (!stored) { navigate("/app"); return cancel; }
+      setResult(stored.result);
+      setQuery(stored.query || "");
       setLoading(false);
     }
-  }, [id, navigate]);
+    return cancel;
+  }, [id, navigate, authLoading, user?.id]);
 
   if (loading) {
     return (
@@ -104,11 +149,14 @@ export default function ReportPage() {
   if (!result) return null;
 
   const verdict = result.verdict || "Suspicious";
+  const exportState = pdfExportState(result, exportNow);
   const inconclusive = result.analysis_status === "inconclusive";
-  const badge = inconclusive ? {
+  const defaultBadge = inconclusive ? {
     title: "ANÁLISE INCONCLUSIVA", color: "#FFCB55", bg: "rgba(255,203,85,.06)",
     border: "rgba(255,203,85,.3)", headline: "Não há evidência suficiente para concluir. Isso não significa que o conteúdo seja falso ou autêntico."
   } : BADGE_STYLES[verdict] || BADGE_STYLES.Suspicious;
+  const mediaHeadline = reportMediaHeadline(result);
+  const badge = mediaHeadline ? {...defaultBadge, ...mediaHeadline} : defaultBadge;
 
   const shareText = result.whatsapp_share_text ||
     `⚠️ *Alerta do Verify:* Resultado: ${badge.title}.\n\n📝 *Resumo:* ${result.summary || ""}\n\n🛡️ *Checado em:* ${window.location.origin}`;
@@ -138,6 +186,33 @@ export default function ReportPage() {
   const handleShareWhatsAppDirect = () => {
     const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
     window.open(url, "_blank");
+  };
+
+  const handleDownloadPdf = async () => {
+    if (pdfDownloading || pdfExportState(result) !== "ready") return;
+    const epoch = reportEpoch.current;
+    setPdfDownloading(true);
+    setPdfError("");
+    setPdfNotice("");
+    try {
+      const blob = await downloadPdfReport(result.pdf_snapshot_token);
+      if (reportEpoch.current !== epoch) return;
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      const hash = /^[a-f0-9]{64}$/i.test(result.file_hash_sha256 || "") ? result.file_hash_sha256.slice(0, 8) : "analise";
+      anchor.href = url;
+      anchor.download = `Relatorio_Verify_${hash}.pdf`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      setPdfNotice("PDF preparado. Se o arquivo não aparecer, confira a lista de downloads do navegador.");
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch (error) {
+      const message = await pdfExportError(error);
+      if (reportEpoch.current === epoch) setPdfError(message);
+    } finally {
+      if (reportEpoch.current === epoch) setPdfDownloading(false);
+    }
   };
 
   return (
@@ -172,9 +247,9 @@ export default function ReportPage() {
           </div>
         </div>
 
-        <div className="report-result-card p-6 sm:p-8 rounded-xl border mb-8" style={{ backgroundColor: badge.bg, borderColor: badge.border }}>
+        <div className="report-result-card min-w-0 break-words p-6 sm:p-8 rounded-xl border mb-8" style={{ backgroundColor: badge.bg, borderColor: badge.border }}>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-            <div>
+            <div className="min-w-0">
               <span className="text-[10px] font-mono tracking-[8px] uppercase font-bold text-[#8AA2B4] block mb-2">Resultado da Checagem</span>
               <h2 className="report-result-title font-syne font-black text-2xl sm:text-3xl" style={{ color: badge.color }}>
                 {badge.title}
@@ -186,14 +261,16 @@ export default function ReportPage() {
 
           {result.provider_coverage && <section className="mt-5 border-t border-white/10 pt-4" aria-label="Cobertura da análise">
             <h3 className="font-bold text-sm mb-3">O que realmente foi verificado</h3>
-            <div className="grid gap-2 sm:grid-cols-3">{Object.entries(result.provider_coverage).map(([name, layer]) =>
-              <div key={name} className="rounded-lg bg-[#04080C] p-3 text-xs break-words">
-                <strong className="capitalize">{name}</strong>
-                <p className="mt-1">{layer.status === "success" ? "Respondeu" : layer.status === "partial" ? "Cobertura parcial" : layer.status === "no_results" ? "Consulta sem resultados" : "Não disponível"}</p>
-                {typeof layer.reason === "string" && <p className="mt-2 text-[#8AA2B4]">{layer.reason}</p>}
+            <div className="grid gap-2 sm:grid-cols-3">{Object.entries(result.provider_coverage).filter(([, layer]) => layer && typeof layer === "object").map(([name, layer]) => {
+              const coverage = providerCoveragePresentation(name, layer, result);
+              return <div key={name} className="rounded-lg bg-[#04080C] p-3 text-xs break-words" role={coverage.notice ? "status" : undefined} aria-live={coverage.notice ? "polite" : undefined} aria-atomic={coverage.notice ? "true" : undefined}>
+                <strong className="capitalize">{name === "transcription" ? "Transcrição da fala" : name}</strong>
+                <p className="mt-1">{coverage.label}</p>
+                {coverage.detail && <p className="mt-2 text-[#8AA2B4]">{coverage.detail}</p>}
                 {visibleDetectorScore(layer) !== null && <p>Sinal de IA: {(visibleDetectorScore(layer) * 100).toFixed(1)}% · não calibrado</p>}
                 {visibleDetectorScore(layer, "deepfake_score") !== null && <p>Sinal de manipulação facial: {(visibleDetectorScore(layer, "deepfake_score") * 100).toFixed(1)}% · não calibrado</p>}
-              </div>)}</div>
+              </div>;
+            })}</div>
           </section>}
           {result.media_details?.duration_seconds && <p className="mt-4 text-sm">Duração: {result.media_details.duration_seconds.toFixed(1)} s. {result.content_type === "video" ? `Análise de ${result.forensics?.video?.sampled_frames ?? "alguns"} quadros amostrados, não do vídeo inteiro.` : ""}</p>}
           {result.limitations?.length > 0 && <details className="mt-4 text-sm text-[#FFCB55]">
@@ -218,7 +295,24 @@ export default function ReportPage() {
               <Phone size={15} />
               Avisar família no WhatsApp
             </button>
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              disabled={pdfDownloading || exportState !== "ready"}
+              aria-describedby="pdf-export-help"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0A1520] border border-[#8AA2B4] text-[#CDE8F0] hover:border-[#00D4FF] font-mono text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download size={16} aria-hidden="true" />
+              {pdfDownloading ? "Preparando PDF..." : "Baixar relatório PDF"}
+            </button>
           </div>
+          <p id="pdf-export-help" className="mt-3 text-sm text-[#8AA2B4]">
+            {exportState === "ready" ? "O PDF usa este mesmo resultado, sem refazer a análise. Evite compartilhar dados pessoais presentes no relatório."
+              : exportState === "expired" ? "O prazo para baixar terminou. Se esta análise foi salva, abra-a pelo histórico para exportar o mesmo resultado."
+              : "PDF indisponível para esta análise: faltam dados originais ou configuração de assinatura. Resultados antigos não serão refeitos automaticamente."}
+          </p>
+          {pdfError && <p role="alert" className="mt-3 text-sm text-[#FFCB55]">{pdfError}</p>}
+          {pdfNotice && <p role="status" className="mt-3 text-sm text-[#CDE8F0]">{pdfNotice}</p>}
         </div>
 
         <EvidenceExplanation result={result} query={query} />
@@ -268,7 +362,7 @@ export default function ReportPage() {
           {technicalOpen && (
             <div className="p-4 rounded-lg bg-[#0A1520] border border-[#132435] font-mono text-[11px] text-[#8AA2B4] leading-relaxed overflow-x-auto">
               <pre className="whitespace-pre-wrap text-[10px]">
-                {JSON.stringify(result, null, 2)}
+                {JSON.stringify(publicReportDetails(result), null, 2)}
               </pre>
             </div>
           )}

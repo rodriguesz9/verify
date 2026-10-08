@@ -1,5 +1,7 @@
 # Ativar Hugging Face, Hive e Gemini
 
+**Nota de 08/10/2026:** configuração e testes abaixo são históricos. Consulte o [status atual](STATUS-VERIFICACOES-2026-10-08.md). A [página atual de preços HF](https://huggingface.co/docs/inference-providers/pricing) informa ausência de créditos mensais para contas gratuitas; referências antigas à franquia de US$ 0,10 não são garantia vigente. Não provisionar endpoint pago nem ativar uso Hive sem novo teto autorizado.
+
 Revisão: 3 de outubro de 2026. O diagnóstico abaixo cruza os nomes das variáveis do Railway com o código atual. **Valores mascarados não permitem validar credenciais, autorização, crédito ou precisão.** Nenhuma chave deve ser publicada no GitHub, no chat ou nas variáveis `VITE_*`.
 
 Sem orçamento para novos planos? Comece pelo [guia de configuração sem novas contratações](APIS-SEM-CUSTO.md). Não hospedar endpoint dedicado Hugging Face nem comprar detectores apenas para preencher variáveis.

@@ -64,7 +64,7 @@ class MediaPolicyTests(unittest.TestCase):
         self.assertEqual(report["analysis_status"], "inconclusive")
 
     def test_c2pa_resolves_active_manifest_id_and_requires_trust(self):
-        data = {"active_manifest": "id", "manifests": {"id": {"assertions": [{"label": "c2pa.actions", "data": {"digitalSourceType": "trainedAlgorithmicMedia"}}]}}, "validation_status": []}
+        data = {"active_manifest": "id", "manifests": {"id": {"assertions": [{"label": "c2pa.actions", "data": {"actions": [{"action": "c2pa.created", "digitalSourceType": "http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia"}]}}]}}, "validation_status": []}
         self.assertEqual(parse_c2pa_report(data)["validation_state"], "present_unverified_trust")
         self.assertFalse(parse_c2pa_report(data)["generative_ai_flag"])
         self.assertTrue(parse_c2pa_report(data, True)["generative_ai_flag"])
@@ -105,6 +105,17 @@ class AsyncMediaTests(unittest.IsolatedAsyncioTestCase):
         media = await validate_media(valid_png(), "../../safe.bin", "application/octet-stream")
         self.assertEqual(media.kind, "image")
         self.assertEqual(media.filename, "safe.bin")
+
+    async def test_browser_webm_alias_requires_decoded_audio_only(self):
+        data = (Path(__file__).parent / "fixtures/recorder-no-duration.webm").read_bytes()
+        media = await validate_media(data, "recording.webm", "video/webm")
+        self.assertEqual(media.kind, "audio")
+        self.assertEqual(media.mime_type, "audio/webm")
+        self.assertFalse(media.details["has_video"])
+        video = (Path(__file__).parent / "fixtures/synthetic-cafe.mp4").read_bytes()
+        with self.assertRaises(HTTPException) as caught:
+            await validate_media(video, "disguised.webm", "audio/webm")
+        self.assertEqual(caught.exception.status_code, 415)
 
     async def test_valid_mp4_extracts_three_real_decodable_frames(self):
         data = (Path(__file__).parent / "fixtures/synthetic-cafe.mp4").read_bytes()
@@ -166,6 +177,36 @@ class AsyncMediaTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(report["authenticity_status"], "manipulation_indications")
         self.assertEqual(report["audio_analysis"]["authenticity_status"], "ai_indications")
 
+    async def test_video_preserves_missing_configuration_and_disabled_reasons(self):
+        media = ValidatedMedia(b"control", "neutral.mp4", "video/mp4", "video", {"duration_seconds": 3})
+        frame = {"sightengine": {"available": False, "status": "not_configured", "reason": "Credenciais ausentes."},
+                 "hive": {"available": False, "status": "disabled", "reason": "Chamadas desativadas."}}
+        with patch("app.services.media_analysis.video_visual_layers", new=AsyncMock(return_value=(
+                [(0.3, b"frame"), (1.5, b"frame"), (2.7, b"frame")], [frame] * 3))):
+            report = await analyze_media(media)
+        sight = report["provider_coverage"]["sightengine"]
+        self.assertEqual(sight["status"], "not_configured")
+        self.assertEqual(sight["frame_status_counts"], {"not_configured": 3})
+        self.assertEqual(sight["reason"], "Credenciais ausentes.")
+        self.assertEqual(report["provider_coverage"]["hive"]["status"], "disabled")
+        self.assertEqual(report["analysis_status"], "inconclusive")
+
+    async def test_video_partial_coverage_keeps_failure_reason_and_facial_only_success(self):
+        media = ValidatedMedia(b"control", "neutral.mp4", "video/mp4", "video", {"duration_seconds": 3})
+        frames = [{"sightengine": {"available": True, "status": "success", "deepfake_probability": .1}},
+                  {"sightengine": {"available": False, "status": "timeout", "reason": "Prazo excedido."}}]
+        with patch("app.services.media_analysis.video_visual_layers", new=AsyncMock(return_value=(
+                [(0.3, b"frame"), (2.7, b"frame")], frames))):
+            report = await analyze_media(media)
+        sight = report["provider_coverage"]["sightengine"]
+        self.assertEqual(sight["status"], "partial")
+        self.assertEqual(sight["analyzed_frames"], 1)
+        self.assertEqual(sight["ai_analyzed_frames"], 0)
+        self.assertEqual(sight["failure_reasons"], ["Prazo excedido."])
+        self.assertEqual(sight["frame_status_counts"], {"success": 1, "timeout": 1})
+        self.assertIsNone(sight["ai_score"])
+        self.assertEqual(report["analysis_status"], "inconclusive")
+
     async def test_later_facial_frame_is_not_hidden_by_earlier_ai_frame(self):
         media = ValidatedMedia(b"control", "neutral.mp4", "video/mp4", "video", {"duration_seconds": 3})
         generated = {"sightengine": {"available": True, "genai_probability": .99},
@@ -190,7 +231,10 @@ class AsyncMediaTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(all(r["transcription"] == "" and r["confidence"] is None for r in results))
 
     async def test_scam_transcript_is_not_evidence_of_voice_cloning(self):
-        with patch("app.core.audio_checker.transcribe_and_extract_audio", new=AsyncMock(return_value="Mãe perdi meu celular faz um pix urgente")):
+        # Isolate speech triage. The silent WAV is not a real spoken scam;
+        # local silence/no-ASR behavior has its own real-byte regression.
+        with patch("app.services.speech_input.prepare_speech_input", new=AsyncMock(return_value=(b"speech-control", False, "success"))), \
+             patch("app.core.audio_checker.transcribe_and_extract_audio", new=AsyncMock(return_value="Mãe perdi meu celular faz um pix urgente")):
             report = await analyze_audio_quick_for_demonstration(valid_wav(), "normal.wav")
         self.assertEqual(report["verdict"], "inconclusiva")
         self.assertTrue(report["content_risk"]["is_scam_pattern"])
@@ -236,7 +280,9 @@ class MediaEndpointTests(unittest.TestCase):
 
     def test_pdf_handles_markup_in_filename(self):
         with patch("app.api.verificacao.verify_limit", new=AsyncMock()):
-            response = self.client.post("/api/verificar/relatorio-pdf", files={"file": ("<broken>.png", valid_png(), "image/png")})
+            analysis = self.client.post("/api/verificar/completo", files={"file": ("<broken>.png", valid_png(), "image/png")})
+        self.assertEqual(analysis.status_code, 200)
+        response = self.client.post("/api/verificar/relatorio-pdf", json={"snapshot_token": analysis.json()["pdf_snapshot_token"]})
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.content.startswith(b"%PDF"))
 

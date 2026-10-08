@@ -86,9 +86,12 @@ class VerificacaoDemonstracaoIntegrationTests(unittest.TestCase):
 
     def test_exportar_relatorio_pdf(self):
         sample_image = valid_png()
+        analysis = self.client.post("/api/verificar/completo",
+            files={"file": ("evidencia.png", sample_image, "image/png")})
+        self.assertEqual(analysis.status_code, 200)
         resp = self.client.post(
             "/api/verificar/relatorio-pdf",
-            files={"file": ("evidencia.png", sample_image, "image/png")}
+            json={"snapshot_token": analysis.json()["pdf_snapshot_token"]}
         )
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.headers["content-type"], "application/pdf")

@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-07",
+  "scope": "local_reviewed_checkout_not_deployed",
+  "provider_validation": "simulated_transport_not_accuracy_benchmark",
+  "real_provider_calls": 0,
+  "private_env_loaded": false,
+  "backend": {"tests": 424, "passed": 424, "skipped": 0, "sqlite_seconds": 8.422, "postgres_mode_seconds": 9.644, "actual_postgres_integration_tests": 3, "same_suite_repeated": true, "unexpected_http_requests": 0},
+  "frontend": {"tests": 124, "passed": 124, "skipped": 0, "build_passed": true, "modules": 1976},
+  "input": {"kind": "generated_decoding_tone_not_human_speech", "duration_seconds": 1, "sha256": "9e2c610d9b40fbfe83c6de65590d815834bfd2669e493c58ec526874222ec545"},
+  "ui_final_sequence": [
+    {"step": "first_upload", "observed": "inconclusive_with_processing_notice", "provider_operation_counts": {"upload": 1, "submit": 1, "poll": 1}},
+    {"step": "easy_mode_notice", "observed": "readable_desktop_notice_no_new_transcription_call"},
+    {"step": "same_file_same_live_tab", "observed": "literal_control_text_in_human_review", "provider_operation_counts": {"upload": 1, "submit": 1, "poll": 2}}
+  ],
+  "literal_returned_by_mock": "CONTROLE SIMULADO. Não envie dinheiro. Valor R$ 123,45. Data 03/10/2026.",
+  "human_fidelity_confirmation_checked": false,
+  "desktop": {"viewport_width": 1280, "document_width": 1265},
+  "pdf": {"simulated_control_rendered_pages": 2, "labels_tested_for_audio_and_video": true, "browser_save_and_open_confirmed": false},
+  "resume_limits": {"process_local": true, "record_capacity": 64, "worker_capacity": 8, "worker_seconds": 25, "pending_ttl_seconds": 1800, "expired_tombstone_seconds": 300, "success_ttl_seconds": 300, "deterministic_error_ttl_seconds": 60, "provider_data_deleted": false},
+  "limitations": ["No guarantee after restart, another worker, tab reload, context loss or record removal", "Other detectors can be called again", "No new real API validation", "Human speech/video fidelity and full responsive/deployment checks remain pending"],
+  "git": {"committed": false, "pushed": false, "deployed": false}
+}

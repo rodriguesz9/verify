@@ -131,14 +131,21 @@ async def verify_limit(user: User | None, db: AsyncSession, category: str, reque
 
 
 def verify_google_id_token(token: str) -> dict:
+    # Never skip audience checking when configuration is absent. Google auth
+    # permits audience=None, but this endpoint must accept this app's client only.
+    if not _GOOGLE_CLIENT_ID.strip():
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Não foi possível verificar o acesso com o Google.",
+        )
     try:
         return google_id_token.verify_oauth2_token(
             token,
             google_requests.Request(),
             _GOOGLE_CLIENT_ID,
         )
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Token Google inválido: {str(e)[:80]}",
+            detail="Não foi possível verificar o acesso com o Google.",
         )

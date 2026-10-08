@@ -25,6 +25,14 @@ class ScamDetectorTests(unittest.TestCase):
         self.assertTrue(analyze_scam_indicators("Consulta de informação", "https://correios-falso.com.br")["is_scam"])
         self.assertFalse(analyze_scam_indicators("Consulta de informação", "https://bbc.com/news")["is_scam"])
 
+    def test_foreign_government_suffix_is_not_brazilian_impersonation(self):
+        for url in ("https://www.nasa.gov/mission/apollo-11/", "https://www.gov.uk/", "https://www.gov.pt/", "https://www.gov.br/", "https://www.bcb.gov.br/"):
+            with self.subTest(url=url):
+                self.assertFalse(analyze_scam_indicators("Consulta de informação", url)["is_scam"])
+        for url in ("https://gov.br.evil.test/", "https://consulta-gov-br.xyz/", "https://caixa-gov-br.com/", "https://correios-falso.com/"):
+            with self.subTest(url=url):
+                self.assertTrue(analyze_scam_indicators("Consulta de informação", url)["is_scam"])
+
     def test_detects_values_owed_pix_fee_variant(self):
         result = analyze_scam_indicators(
             "URGENTE: Banco Central libera valores esquecidos no Pix. "

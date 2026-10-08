@@ -1,0 +1,7 @@
+{
+  "observed_on": "2026-10-07",
+  "scope": "visible local UI observations, NOT a reconstructed raw provider journal",
+  "gemini_image_control": {"model": "gemini-3.8-flash", "remote_ocr": "unavailable_HTTP_503", "remote_visual_inspection": "unavailable_HTTP_503", "report": "inconclusive", "invented_truth_or_authenticity": false},
+  "local_ocr_control": {"fixture": "impresso-base.png", "sha256": "7ffa0355f5dcd0137aa1cf4925b27048710ba90581f3a58ebe44028fae676da5", "provider": "tesseract", "recognized_characters": 88, "exact_reference_match_observed": true, "negation_preserved": true, "amount_preserved": true, "date_preserved": true, "external_providers_enabled": [], "automatic_factual_lookup_before_review": false},
+  "confirmed_text": {"http_status": 200, "original_reading_preserved_in_ui": true, "report": "inconclusive", "no_fact_check_provider_in_this_control": true}
+}

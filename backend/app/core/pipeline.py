@@ -1,4 +1,5 @@
 import asyncio
+from app.core.gemini_client import gemini_timeout_seconds
 from datetime import datetime, timezone
 import re
 import os
@@ -156,15 +157,24 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
 
     openrouter_result = {"available": False, "status": "not_configured", "claims": [],
                          "decision_role": "search_hints_only", "free_only": True}
+    gemini_coverage = None
     if use_ai_extraction and os.getenv("OPENROUTER_API_KEY", "").strip() and os.getenv("OPENROUTER_ENABLED", "true").lower() == "true":
         openrouter_result = await _run_openrouter_check(analysis_text)
     if openrouter_result.get("available"):
         claims = openrouter_result["claims"]
     elif use_ai_extraction:
         try:
-            claims = await asyncio.wait_for(extract_claims_with_ai(analysis_text), 12)
+            claims = await asyncio.wait_for(extract_claims_with_ai(analysis_text), gemini_timeout_seconds() + 2)
+            gemini_coverage = getattr(claims, "coverage", {"status": "success", "decision_role": "search_hints_only"})
+            claims = list(claims)
+        except asyncio.TimeoutError:
+            claims = []
+            gemini_coverage = {"available": False, "status": "timeout", "decision_role": "search_hints_only",
+                               "reason": "Extração Gemini não concluída no prazo; a consulta literal foi preservada."}
         except Exception:
             claims = []
+            gemini_coverage = {"available": False, "status": "error", "decision_role": "search_hints_only",
+                               "reason": "Extração Gemini indisponível; a consulta literal foi preservada."}
     else:
         # OCR/transcription is already extraction. Do not spend another LLM
         # request or let a slow helper cancel literal evidence retrieval.
@@ -252,6 +262,8 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
     if use_ai_extraction:
         ai["provider_coverage"]["openrouter"] = {key: value for key, value in openrouter_result.items()
             if key in {"available", "status", "reason", "model_used", "decision_role", "free_only", "response_issue"}}
+        if gemini_coverage is not None:
+            ai["provider_coverage"]["gemini"] = gemini_coverage
     news_queries = [{"status": "error" if task.exception() else getattr(task.result(), "status", "success" if task.result() else "no_results"),
                      "reason": "Falha na busca de contexto." if task.exception() else getattr(task.result(), "reason", None)}
                     for task in serper_news_tasks]

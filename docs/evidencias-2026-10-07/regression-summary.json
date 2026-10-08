@@ -1,0 +1,11 @@
+{
+  "observed_on": "2026-10-07",
+  "scope": "local functional regressions, NOT provider accuracy or deployment certification",
+  "backend_sqlite": {"tests": 382, "elapsed_seconds": 8.737, "success": true, "skipped": 0, "unexpected_http": 0},
+  "backend_postgres_mode": {"tests": 382, "elapsed_seconds": 8.722, "success": true, "skipped": 0, "unexpected_http": 0, "actual_postgres_integration_tests": 3, "remaining_tests": "SQLite/mocks"},
+  "frontend": {"tests": 101, "success": true, "skipped": 0},
+  "frontend_build": {"success": true, "modules": 1975, "elapsed_seconds": 4.22},
+  "new_commit": false,
+  "push": false,
+  "deployment": false
+}

@@ -1,0 +1,55 @@
+[
+  {
+    "file": "impresso-base.png",
+    "reference_lines": [
+      "CONTROLE DE TESTE",
+      "Nao pague taxa para liberar seu Pix.",
+      "Valor: R$ 123,45",
+      "Data: 03/10/2026"
+    ],
+    "sha256": "7ffa0355f5dcd0137aa1cf4925b27048710ba90581f3a58ebe44028fae676da5",
+    "origin": "Pillow-rendered test graphic; no generative AI; not a photograph",
+    "group": "F-IMPRESSO"
+  },
+  {
+    "file": "afirmativo.png",
+    "reference_lines": [
+      "CONTROLE DE TESTE",
+      "Pague uma taxa para liberar seu Pix.",
+      "Valor: R$ 123,45",
+      "Data: 03/10/2026"
+    ],
+    "sha256": "71d73a3911796ed1af33ba76bfad2dafe25ed24390e18f605b688649d02fcb95",
+    "origin": "Pillow-rendered test graphic; no generative AI; not a photograph",
+    "group": "F-IMPRESSO"
+  },
+  {
+    "file": "numeros.png",
+    "reference_lines": [
+      "R$ 1.000,00",
+      "R$ 10,00",
+      "Taxa: 10%",
+      "Taxa: 100%"
+    ],
+    "sha256": "dc4681601782da6aa447d9c3790f3d08475fdefb96aeb6440a46aecd983fa650",
+    "origin": "Pillow-rendered test graphic; no generative AI; not a photograph",
+    "group": "F-IMPRESSO"
+  },
+  {
+    "file": "datas.png",
+    "reference_lines": [
+      "Data: 03/10/2026",
+      "Outra data: 30/10/2026"
+    ],
+    "sha256": "7c802cfed688dcb6cbe3ca1b3a777504637319c3d1e93295c18f8f5f292ae9b0",
+    "origin": "Pillow-rendered test graphic; no generative AI; not a photograph",
+    "group": "F-IMPRESSO"
+  },
+  {
+    "file": "sem-texto.png",
+    "reference_lines": [],
+    "sha256": "2360c0ab7196e94a6aa0ea47258c2a4f26e6a962d857123faad1aa9e29b942ab",
+    "origin": "Pillow-rendered test graphic; no generative AI; not a photograph",
+    "group": "F-BLANK"
+  }
+]

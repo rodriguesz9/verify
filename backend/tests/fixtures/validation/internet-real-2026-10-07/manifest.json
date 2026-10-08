@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "dataset_id": "internet-real-2026-10-07",
+  "prepared_date": "2026-10-07",
+  "timezone": "America/Sao_Paulo",
+  "dataset_role": "exploratory_source_provenance_controls_not_independent_accuracy_benchmark",
+  "label": "source-published-photo",
+  "image_count": 2,
+  "contains_user_uploads": false,
+  "local_image_transformations": [],
+  "detector_api_calls_during_preparation": 0,
+  "ground_truth_limitations": [
+    "Publisher provenance is not cryptographic proof of the camera, scene or editing history.",
+    "These are published digital reproductions, not untouched camera RAW files.",
+    "Two widely circulated photographs cannot estimate accuracy or exclude training-data contamination.",
+    "Low AI scores must not be converted into guaranteed human authenticity or factual truth.",
+    "No independent facial deepfake, speech-cloning or C2PA benchmark is included."
+  ],
+  "usage": {
+    "basis": "NASA media usage conditions for educational/informational factual use; not a Creative Commons license",
+    "policy_url": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+    "policy_checked_date": "2026-10-07",
+    "purpose": "Exploratory test fixtures with publisher attribution and explicit limitations",
+    "restrictions": [
+      "Preserve credits and disclose source provenance; do not imply NASA endorses or reviewed Verify.",
+      "Do not attribute model outputs or detector accuracy to NASA.",
+      "Third-party materials, trademarks, logos and identifiable-person rights may require separate clearance.",
+      "No promotional, merchandise, logo or accuracy-seal use is authorized by this preparation."
+    ]
+  },
+  "images": [
+    {
+      "id": "INTERNET-REAL-IMG-01",
+      "filename": "nasa-zinnia-iss046e009018.jpg",
+      "label": "source-published-photo",
+      "subject": "Flowering zinnia plants in the ISS Veggie installation",
+      "source_page": "https://www.nasa.gov/image-article/first-flower-grown-space-stations-veggie-facility-2/",
+      "asset_url": "https://www.nasa.gov/wp-content/uploads/2023/03/iss046e009018.jpg",
+      "download_final_url": "https://www.nasa.gov/wp-content/uploads/2023/03/iss046e009018.jpg",
+      "retrieved_date": "2026-10-07",
+      "source_published_date": "2016-01-19",
+      "source_reported_photo_sharing_date": "2016-01-16",
+      "credit": "NASA; article associates the photographs with astronaut Scott Kelly",
+      "http_status": 200,
+      "response_content_type": "image/jpeg",
+      "decoded_format": "JPEG",
+      "width": 1041,
+      "height": 693,
+      "size_bytes": 131801,
+      "sha256": "0263876f57ff9cf1ee94e27335b7e68af592e3f7f3fbff76fa97f374a31cbb2d",
+      "visual_inspection": "Plants and cultivation equipment; no face observed",
+      "metadata_observed": {
+        "make": "NIKON CORPORATION",
+        "model": "NIKON D4",
+        "date_time_original": "2016:01:16 12:16:13",
+        "software": "Adobe Photoshop CC 2014 (Windows)"
+      },
+      "editing_history": "Published JPEG with editor metadata; complete editorial history not audited; no local modification",
+      "camera_authenticity_independently_verified": false,
+      "c2pa_validated": false,
+      "provider_results": []
+    },
+    {
+      "id": "INTERNET-REAL-IMG-02",
+      "filename": "nasa-apollo17-blue-marble-print.jpg",
+      "label": "source-published-photo",
+      "subject": "Earth photographed by the Apollo 17 crew, reproduced for presentation",
+      "source_page": "https://svs.gsfc.nasa.gov/30613",
+      "asset_url": "https://svs.gsfc.nasa.gov/vis/a030000/a030600/a030613/blue_marble_apollo_17_19721207_print.jpg",
+      "download_final_url": "https://svs.gsfc.nasa.gov/vis/a030000/a030600/a030613/blue_marble_apollo_17_19721207_print.jpg",
+      "retrieved_date": "2026-10-07",
+      "source_published_date": "2015-07-20",
+      "source_reported_capture_date": "1972-12-07",
+      "source_photo_identifier": "AS17-148-22727",
+      "credit": "Earth Science and Remote Sensing Unit, NASA Johnson Space Center; Apollo 17 crew",
+      "http_status": 200,
+      "response_content_type": "image/jpeg",
+      "decoded_format": "JPEG",
+      "width": 1024,
+      "height": 1024,
+      "size_bytes": 265324,
+      "sha256": "13419b34c17722be52b4a71a7f0beb3ecc8673183c8a2cee8572d5cd9bbe3f93",
+      "visual_inspection": "Earth against dark background; no person or face observed",
+      "metadata_observed": {
+        "make": null,
+        "model": null,
+        "date_time_original": null,
+        "software": null
+      },
+      "editing_history": "NASA SVS print rendition of a 1972 photograph; not a later Blue Marble satellite mosaic; complete editorial history not audited; no local modification",
+      "camera_authenticity_independently_verified": false,
+      "c2pa_validated": false,
+      "provider_results": []
+    }
+  ]
+}

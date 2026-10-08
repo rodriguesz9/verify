@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { AudioLines, FileAudio, Mic, Play, ShieldAlert, Square, Upload, Volume2 } from "lucide-react";
 import { verifyAudioQuick } from "../../services/api";
-import { visibleDetectorScore } from "../../utils/reportEvidence";
+import { transcriptionPresentation, visibleDetectorScore } from "../../utils/reportEvidence";
+import { createMediaLifecycle } from "../../services/mediaLifecycle.js";
 
 const SAMPLES = {
   cloned: {
@@ -33,13 +34,33 @@ export default function AudioDeepfakeDemo() {
   const mediaStreamRef = useRef(null);
   const audioChunksRef = useRef([]);
   const audioPlayerRef = useRef(null);
+  const microphoneRequestRef = useRef(null);
+  const lifecycleRef = useRef(null);
+  if (!lifecycleRef.current) lifecycleRef.current = createMediaLifecycle();
+  const lifecycle = lifecycleRef.current;
   const inputBusy = analyzing || loadingSample || requestingMicrophone || isRecording;
+
+  useEffect(() => {
+    lifecycle.activate();
+    return () => {
+      lifecycle.dispose();
+      const recorder = mediaRecorderRef.current;
+      if (recorder) {
+        recorder.onstop = null;
+        recorder.ondataavailable = null;
+        try { if (recorder.state !== "inactive") recorder.stop(); } catch { /* Already stopped. */ }
+      }
+      mediaRecorderRef.current = null;
+      mediaStreamRef.current = null;
+      audioChunksRef.current = [];
+      audioPlayerRef.current?.pause();
+    };
+  }, [lifecycle]);
 
   useEffect(() => () => {
     if (audioPlayerRef.current) {
       audioPlayerRef.current.pause();
     }
-    mediaStreamRef.current?.getTracks().forEach(track => track.stop());
     if (previewUrl && previewUrl.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
   }, [previewUrl]);
 
@@ -53,6 +74,8 @@ export default function AudioDeepfakeDemo() {
 
   const selectSample = async (scenario) => {
     if (inputBusy) return;
+    const scope = lifecycle.capture();
+    if (!lifecycle.isCurrent(scope)) return;
     setLoadingSample(true);
     setAudioFile(null);
     clearPreview();
@@ -61,17 +84,20 @@ export default function AudioDeepfakeDemo() {
       const resp = await fetch(SAMPLES[scenario].audioSrc);
       if (!resp.ok) throw new Error("Amostra indisponível");
       const blob = await resp.blob();
+      if (!lifecycle.isCurrent(scope)) return;
       const file = new File([blob], SAMPLES[scenario].filename, { type: "audio/wav" });
       setAudioFile(file);
       setPreviewUrl(SAMPLES[scenario].audioSrc);
     } catch {
-      setError("Não foi possível carregar a amostra de fala.");
+      if (lifecycle.isCurrent(scope)) setError("Não foi possível carregar a amostra de fala.");
     } finally {
-      setLoadingSample(false);
+      if (lifecycle.isCurrent(scope)) setLoadingSample(false);
     }
   };
 
   const playSampleAudio = (scenario) => {
+    const scope = lifecycle.capture();
+    if (!lifecycle.isCurrent(scope)) return;
     if (previewing === scenario) {
       audioPlayerRef.current?.pause();
       setPreviewing(null);
@@ -82,16 +108,16 @@ export default function AudioDeepfakeDemo() {
     }
     const audio = new Audio(SAMPLES[scenario].audioSrc);
     audioPlayerRef.current = audio;
-    audio.onended = () => setPreviewing(null);
-    audio.onerror = () => {
+    audio.onended = lifecycle.guard(scope, () => setPreviewing(null));
+    audio.onerror = lifecycle.guard(scope, () => {
       setPreviewing(null);
       setError("Erro ao reproduzir o áudio.");
-    };
-    audio.play().then(() => setPreviewing(scenario)).catch(() => setPreviewing(null));
+    });
+    audio.play().then(lifecycle.guard(scope, () => setPreviewing(scenario))).catch(lifecycle.guard(scope, () => setPreviewing(null)));
   };
 
   const handleFileUpload = (event) => {
-    if (inputBusy) return;
+    if (inputBusy || !lifecycle.isCurrent(lifecycle.capture())) return;
     const file = event.target.files?.[0];
     if (!file) return;
     window.speechSynthesis?.cancel(); clearPreview();
@@ -100,33 +126,40 @@ export default function AudioDeepfakeDemo() {
   };
 
   const startRecording = async () => {
-    if (inputBusy) return;
+    if (inputBusy || microphoneRequestRef.current !== null) return;
+    const scope = lifecycle.capture();
+    if (!lifecycle.isCurrent(scope)) return;
     if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
       setError("Gravação não é compatível com este navegador. Envie um arquivo de áudio.");
       return;
     }
+    microphoneRequestRef.current = scope;
     setRequestingMicrophone(true);
+    let stream;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (!lifecycle.acceptStream(stream, scope)) return;
       mediaStreamRef.current = stream;
       const recorder = new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
-      recorder.ondataavailable = event => { if (event.data.size > 0) audioChunksRef.current.push(event.data); };
-      recorder.onstop = () => {
+      recorder.ondataavailable = lifecycle.guard(scope, event => { if (event.data.size > 0) audioChunksRef.current.push(event.data); });
+      recorder.onstop = lifecycle.guard(scope, () => {
         const mimeType = recorder.mimeType || "audio/webm";
         const extension = mimeType.includes("ogg") ? "ogg" : "webm";
         const blob = new Blob(audioChunksRef.current, { type: mimeType });
         const file = new File([blob], `gravacao_verify.${extension}`, { type: mimeType });
         clearPreview(); setPreviewUrl(URL.createObjectURL(file));
         setAudioFile(file); setSelectedScenario("custom");
-        stream.getTracks().forEach(track => track.stop()); mediaStreamRef.current = null;
-      };
+        lifecycle.releaseStream(stream); mediaStreamRef.current = null;
+      });
       recorder.start(); setIsRecording(true); setError(""); setResult(null);
     } catch {
-      setError("Permissão de microfone não concedida pelo navegador.");
+      lifecycle.releaseStream(stream);
+      if (lifecycle.isCurrent(scope)) setError("Permissão de microfone não concedida pelo navegador.");
     } finally {
-      setRequestingMicrophone(false);
+      if (microphoneRequestRef.current === scope) microphoneRequestRef.current = null;
+      if (lifecycle.isCurrent(scope)) setRequestingMicrophone(false);
     }
   };
 
@@ -138,20 +171,23 @@ export default function AudioDeepfakeDemo() {
 
   const handleAnalyze = async () => {
     if (inputBusy) return;
+    const scope = lifecycle.capture();
+    if (!lifecycle.isCurrent(scope)) return;
     if (!audioFile) return setError("Selecione uma amostra, envie um arquivo ou grave sua voz.");
     setAnalyzing(true); setError(""); setResult(null);
     try {
       const data = await verifyAudioQuick(audioFile);
-      setResult(data);
+      if (lifecycle.isCurrent(scope)) setResult(data);
     } catch {
-      setError("Não foi possível analisar este arquivo agora. Tente um áudio menor ou outro formato.");
+      if (lifecycle.isCurrent(scope)) setError("Não foi possível analisar este arquivo agora. Tente um áudio menor ou outro formato.");
     } finally {
-      setAnalyzing(false);
+      if (lifecycle.isCurrent(scope)) setAnalyzing(false);
     }
   };
 
   const isSynthetic = result?.verdict === "indicios_sintetica";
   const inconclusive = result?.analysis_status === "inconclusive";
+  const transcriptionState = transcriptionPresentation(result || {});
   return (
     <section className="mx-auto max-w-4xl rounded-3xl border border-[#132435] bg-[#0A1520] p-5 shadow-2xl sm:p-8">
       <header className="mb-8 text-center">
@@ -188,9 +224,13 @@ export default function AudioDeepfakeDemo() {
         {result.isDemo && <p className="mb-5 rounded-lg border border-[#FFB800]/30 bg-[#FFB800]/10 p-3 text-center font-mono text-[10px] leading-5 text-[#FFDB85]">Resultado educativo da comparação. Para uma análise forense real, envie ou grave um áudio de verdade.</p>}
         <div className="border-b border-white/10 pb-5"><span className="font-mono text-[10px] text-[#8BAAC0]">Processamento da transcrição: {result.tempo_processamento_ms ?? 0} ms</span><h3 className="mt-2 font-syne text-2xl font-black text-[#FFCB55]">{inconclusive ? "Origem da voz inconclusiva" : "Indícios de fala sintética"}</h3></div>
         <p className="mt-3 text-sm text-[#8BAAC0]">Resultado acústico não comprova identidade nem falsidade da fala. Detectores podem errar.</p>
-        {result.provider_coverage && <ul className="mt-3 text-xs text-[#8BAAC0] space-y-2">{Object.entries(result.provider_coverage).map(([name, layer]) => <li key={name}>{name}: {layer.status === "success" ? "respondeu" : "indisponível"}{visibleDetectorScore(layer) !== null ? ` · sinal ${(visibleDetectorScore(layer) * 100).toFixed(1)}% (não calibrado)` : ""}</li>)}</ul>}
-        <p className="mt-5 font-syne text-base font-bold leading-relaxed text-[#CDE8F0]">{result.short_explanation}</p>
-        {result.transcription && <p className="mt-4 text-sm text-[#CDE8F0]">Transcrição: {result.transcription}</p>}
+        {result.provider_coverage && <ul className="mt-3 text-xs text-[#8BAAC0] space-y-2">{Object.entries(result.provider_coverage).filter(([, layer]) => layer && typeof layer === "object").map(([name, layer]) => <li key={name}>{transcriptionState.notice && (name === "transcription" || layer.decision_role === "transcription_only") ? `${name}: ${transcriptionState.coverageLabel}` : `${name}: ${layer.status === "success" ? "respondeu" : "indisponível"}`}{visibleDetectorScore(layer) !== null ? ` · sinal ${(visibleDetectorScore(layer) * 100).toFixed(1)}% (não calibrado)` : ""}</li>)}</ul>}
+        <p className="mt-5 font-syne text-base font-bold leading-relaxed text-[#CDE8F0]">{transcriptionState.notice ? "A leitura da fala ainda não fornece texto para conferência. O resultado acústico é separado da transcrição." : result.short_explanation}</p>
+        {transcriptionState.notice && <div role="status" aria-live="polite" aria-atomic="true" className="mt-4 rounded-xl border border-[#00D4FF]/40 bg-[#070F17] p-4">
+          <h4 className="text-base font-bold text-[#CDE8F0]">{transcriptionState.message}</h4>
+          <p className="mt-2 text-sm leading-6 text-[#A7BFCD]">{transcriptionState.detail}</p>
+        </div>}
+        {transcriptionState.text && <p className="mt-4 text-sm text-[#CDE8F0]">Transcrição: {transcriptionState.text}</p>}
         {result.indicators?.length > 0 && <ul className="mt-5 space-y-3">{result.indicators.map((indicator, index) => <li key={index} className="flex gap-3 font-mono text-xs leading-5 text-[#CDE8F0]"><span className={isSynthetic ? "text-[#FF8195]" : "text-[#00FF87]"}>{isSynthetic ? "!" : "✓"}</span>{indicator}</li>)}</ul>}
       </section>}
       <p className="mt-5 flex items-start gap-2 font-mono text-[10px] leading-5 text-[#5A7E94]"><Volume2 size={13} className="mt-1 shrink-0" />Amostras sintéticas educativas geradas por eSpeak NG. Não representam uma pessoa real nem um teste de clonagem. A verificação não substitui confirmação por outro canal.</p>

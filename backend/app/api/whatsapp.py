@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, Depends
 from pydantic import BaseModel, Field, model_validator
 from typing import Optional, Dict, Any
 import os
@@ -9,6 +9,8 @@ import logging
 from app.core.pipeline import run_pipeline
 from app.services.gemini_service import get_ai_voice_speech
 from app.core.database import AsyncSessionLocal
+from app.core.auth import get_optional_user
+from app.models.user import User
 from app.models.history import WhatsAppConversation
 from app.services.public_fetch import fetch_public_resource
 from app.services.whatsapp_security import (
@@ -16,6 +18,10 @@ from app.services.whatsapp_security import (
 )
 from app.services.media_validation import validate_media
 from app.services.media_analysis import analyze_media as analyze_validated_media
+from app.services.transcription_scope import (
+    request_transcription_scope, webhook_transcription_scope, transcription_scope,
+    has_pending_transcription,
+)
 
 router = APIRouter()
 
@@ -187,12 +193,20 @@ async def whatsapp_webhook(request: Request, want_voice_reply: bool = False):
     try:
         if incoming.base64_data or incoming.media_url:
             data = decode_media(incoming.base64_data) if incoming.base64_data else None
-            report = await analyze_media(
-                incoming.text, incoming.media_url, incoming.media_type or "audio", data=data,
-            )
+            with transcription_scope(webhook_transcription_scope(incoming.receipt_key)):
+                report = await analyze_media(
+                    incoming.text, incoming.media_url, incoming.media_type or "audio", data=data,
+                )
         else:
             result = await run_pipeline(text=incoming.text)
             report = result.get("report", {})
+        if has_pending_transcription(report):
+            # Same authenticated receipt may now resume GET polling. Do not mark
+            # a pending transcript as a completed message, persist it or run TTS.
+            receipts.release(incoming.receipt_key)
+            return {"status": "pending", "verdict": report.get("verdict"), "score": report.get("score"),
+                    "reply": "A transcrição ainda está pendente. Isso não indica voz falsa nem ausência de fala. "
+                             "Não há atualização automática; o mesmo evento pode ser consultado novamente."}
         reply = format_whatsapp_response(report, incoming.text[:60])
         audio_reply = None
         if want_voice_reply or incoming.want_voice_reply:
@@ -217,10 +231,12 @@ async def whatsapp_webhook(request: Request, want_voice_reply: bool = False):
 
 
 @router.post("/whatsapp/simulate")
-async def simulate_whatsapp_check(req: WhatsAppMessageRequest):
+async def simulate_whatsapp_check(req: WhatsAppMessageRequest, request: Request,
+                                  user: Optional[User] = Depends(get_optional_user)):
     """Public, rate-limited demo. Never saves simulated phone numbers/history."""
     if req.media_url:
-        report = await analyze_media(req.message, req.media_url, req.media_type or "audio")
+        with transcription_scope(request_transcription_scope(request, user)):
+            report = await analyze_media(req.message, req.media_url, req.media_type or "audio")
     else:
         result = await run_pipeline(text=req.message)
         report = result.get("report", {})

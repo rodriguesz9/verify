@@ -1,63 +1,105 @@
 import axios from "axios";
+import { captureAnalysisScope, clearSensitiveBrowserData } from "./privacyStorage.js";
+import { transcriptionScopeHeaders } from "./transcriptionScope.js";
 
-const baseURL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api` : "/api";
-const api = axios.create({ baseURL, timeout: 60000, withCredentials: true });
-// Decoding + bounded detector/transcription + factual retrieval can exceed 60s.
-const MEDIA_TIMEOUT = 90000;
+const apiOrigin = import.meta.env?.VITE_API_URL;
+const baseURL = apiOrigin ? `${apiOrigin.replace(/\/$/, '')}/api` : "/api";
+export const api = axios.create({ baseURL, timeout: 60000, withCredentials: true });
+// These budgets cover the server's bounded provider deadlines, including
+// extraction + retrieval. Authentication and PDF keep their shorter limits.
+const ANALYSIS_TIMEOUT = 150000;
+const MEDIA_TIMEOUT = 180000;
+
+// Compare epochs even before getMe initializes the account. The report storage
+// guard intentionally requires initialization, whereas this transport guard
+// must permit startup /auth/me and detect A -> B -> A transitions.
+const isRequestScopeCurrent = (config) => {
+  const current = captureAnalysisScope();
+  return !!config?._privacyScope && config._privacyScope.owner === current.owner
+    && config._privacyScope.epoch === current.epoch;
+};
+// Synchronous capture closes the gap before an asynchronous interceptor runs.
+api.interceptors.request.use((config) => {
+  config._privacyScope ??= captureAnalysisScope();
+  if (!isRequestScopeCurrent(config)) {
+    throw new axios.CanceledError("A sessão mudou. Faça um novo pedido.", config);
+  }
+  return config;
+}, (error) => { throw error; }, { synchronous: true });
 
 // Authentication remains in HTTP-only cookies; JavaScript never receives a JWT.
-// Retry once after the server rotates the refresh cookie.
+// Only read-only requests may be replayed, in the same owner/epoch. This does
+// not undo server writes or a late Set-Cookie from an already sent request.
 api.interceptors.response.use(
   (r) => r,
   async (err) => {
     const orig = err.config;
     // A client error without an original request must not enter refresh/retry.
     const skipRefresh = ["/auth/login", "/auth/register", "/auth/google", "/auth/refresh", "/auth/logout"].includes(orig?.url);
-    if (orig && err.response?.status === 401 && !orig._retry && !orig._skipAuthRefresh && !skipRefresh) {
+    if (orig && err.response?.status === 401 && !orig._retry && !orig._skipAuthRefresh && !skipRefresh
+      && isRequestScopeCurrent(orig)) {
       orig._retry = true;
       try {
-        await api.post("/auth/refresh", {}, { _skipAuthRefresh: true });
-        return api(orig);
+        await api.post("/auth/refresh", {}, { _skipAuthRefresh: true, _privacyScope: orig._privacyScope });
       } catch {
-        if (!orig._skipLogoutRedirect) logout();
+        // An old failure must not log out an account opened while refresh ran.
+        if (isRequestScopeCurrent(orig) && !orig._skipLogoutRedirect) logout();
+        return Promise.reject(err);
       }
+      if (!isRequestScopeCurrent(orig)) return Promise.reject(err);
+      if (["get", "head", "options"].includes(String(orig.method).toLowerCase())) return api(orig);
+      // Uploads, analyses, PDF snapshots and other writes require a deliberate
+      // new request: never replay their body/FormData under renewed cookies.
+      err.message = "Seu pedido não foi reenviado automaticamente. Envie novamente se desejar.";
+      err.code = "ERR_REQUEST_REQUIRES_RESUBMISSION";
+      err.response = { ...err.response, data: { detail: err.message } };
     }
     return Promise.reject(err);
   }
 );
 
 export const logout = (redirect = "/login") => {
-  localStorage.removeItem("verify_access");
-  localStorage.removeItem("verify_refresh");
-  localStorage.removeItem("verifai_access");
-  localStorage.removeItem("verifai_refresh");
-  api.post("/auth/logout", {}, { _skipAuthRefresh: true })
+  clearSensitiveBrowserData({ broadcast: true, reason: "logout" });
+  const scope = captureAnalysisScope();
+  return api.post("/auth/logout", {}, { _skipAuthRefresh: true, _privacyScope: scope })
     .catch(() => {})
-    .finally(() => { window.location.href = redirect; });
+    .finally(() => {
+      if (isRequestScopeCurrent({ _privacyScope: scope })) window.location.href = redirect;
+    });
 };
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
-export const register   = (b) => api.post("/auth/register",   b).then(r => r.data);
-export const login      = (b) => api.post("/auth/login",      b).then(r => r.data);
-export const googleAuth = (b) => api.post("/auth/google",     b).then(r => r.data);
+const authenticate = (endpoint, body) => {
+  // Invalidate pending private work and notify other tabs before cookies can
+  // change, not only after LoginPage receives the new account.
+  clearSensitiveBrowserData({ broadcast: true, reason: "account-change" });
+  return api.post(endpoint, body).then(r => r.data);
+};
+export const register   = (b) => authenticate("/auth/register", b);
+export const login      = (b) => authenticate("/auth/login", b);
+export const googleAuth = (b) => authenticate("/auth/google", b);
 export const refreshTokens = () => api.post("/auth/refresh", {}).then(r => r.data);
 export const getMe      = ()  => api.get ("/auth/me", { _skipLogoutRedirect: true }).then(r => r.data);
 
 // ── Analysis ──────────────────────────────────────────────────────────────────
-export const analyzeText   = (text) => api.post("/check-text", { text }    ).then(r => r.data);
+export const analyzeText   = (text) => api.post("/check-text", { text }, { timeout: ANALYSIS_TIMEOUT }).then(r => r.data);
 export const analyzeTextBatch = (texts) => api.post("/check-text-batch", { texts }, { timeout: 180000 }).then(r => r.data);
-export const analyzeUrl    = (url)  => api.post("/check-url",  { url }     ).then(r => r.data);
-export const analyzeUpload = (file) => {
+export const analyzeUrl    = (url)  => api.post("/check-url", { url }, { timeout: MEDIA_TIMEOUT }).then(r => r.data);
+export const analyzeUpload = (file, { reviewText = false } = {}) => {
   const form = new FormData();
   form.append("file", file);
-  return api.post("/upload", form, { timeout: MEDIA_TIMEOUT, headers: { "Content-Type": "multipart/form-data" } }).then(r => r.data);
+  if (reviewText) form.append("review_text", "true");
+  return api.post("/upload", form, { timeout: MEDIA_TIMEOUT, headers: { "Content-Type": "multipart/form-data", ...transcriptionScopeHeaders() } }).then(r => r.data);
 };
+export const analyzeReviewedText = (text, reviewToken) => api.post("/check-extracted-text", {
+  text, review_token: reviewToken,
+}, { timeout: ANALYSIS_TIMEOUT }).then(r => r.data);
 
 // ── Verification & interactive demonstration ───────────────────────────────
 export const verifyAudioQuick = (file) => {
   const form = new FormData();
   form.append("file", file);
-  return api.post("/verificar/audio-rapido", form, { timeout: MEDIA_TIMEOUT, headers: { "Content-Type": "multipart/form-data" } }).then(r => r.data);
+  return api.post("/verificar/audio-rapido", form, { timeout: MEDIA_TIMEOUT, headers: { "Content-Type": "multipart/form-data", ...transcriptionScopeHeaders() } }).then(r => r.data);
 };
 
 export const captureSeal = (file) => {
@@ -75,25 +117,25 @@ export const verifySeal = (file) => {
 export const verifyComplete = (file) => {
   const form = new FormData();
   form.append("file", file);
-  return api.post("/verificar/completo", form, { timeout: MEDIA_TIMEOUT, headers: { "Content-Type": "multipart/form-data" } }).then(r => r.data);
+  return api.post("/verificar/completo", form, { timeout: MEDIA_TIMEOUT, headers: { "Content-Type": "multipart/form-data", ...transcriptionScopeHeaders() } }).then(r => r.data);
 };
 
-export const downloadPdfReport = async (file, filename) => {
-  const form = new FormData();
-  form.append("file", file);
-  if (filename) form.append("filename", filename);
-  const resp = await api.post("/verificar/relatorio-pdf", form, {
+export const downloadPdfReport = async (snapshotToken) => {
+  if (typeof snapshotToken !== "string" || !snapshotToken.startsWith("vpdf1.") || snapshotToken.length > 512 * 1024) {
+    throw new Error("Esta análise não tem uma exportação de PDF disponível.");
+  }
+  const resp = await api.post("/verificar/relatorio-pdf", { snapshot_token: snapshotToken }, {
     responseType: "blob",
-    timeout: MEDIA_TIMEOUT,
-    headers: { "Content-Type": "multipart/form-data" }
+    timeout: 30000,
+    _skipLogoutRedirect: true,
   });
   return resp.data;
 };
 
 // ── WhatsApp ──────────────────────────────────────────────────────────────────
-export const simulateWhatsApp = (message) => api.post("/whatsapp/simulate", { message }).then(r => r.data);
+export const simulateWhatsApp = (message) => api.post("/whatsapp/simulate", { message }, { timeout: ANALYSIS_TIMEOUT, headers: transcriptionScopeHeaders() }).then(r => r.data);
 
 // ── History ───────────────────────────────────────────────────────────────────
-export const getHistory = (page = 1) => api.get(`/history?page=${page}&limit=20`).then(r => r.data);
+export const getHistory = (page = 1, { search = "", contentType = "all", verdict = "all", signal } = {}) => api.get("/history", { params: { page, limit: 20, search, content_type: contentType, verdict }, signal }).then(r => r.data);
 export const getStats   = ()         => api.get("/history/stats"                 ).then(r => r.data);
 export const getLog     = (id)       => api.get(`/history/${id}`                 ).then(r => r.data);

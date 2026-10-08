@@ -1,0 +1,19 @@
+{
+  "scope": "local UI HTTP boundaries, NOT provider accuracy",
+  "events": [
+    {
+      "path": "/api/upload",
+      "method": "POST",
+      "status": 200,
+      "content_type": "application/json",
+      "cache_control": "no-store"
+    },
+    {
+      "path": "/api/check-extracted-text",
+      "method": "POST",
+      "status": 200,
+      "content_type": "application/json",
+      "cache_control": "no-store"
+    }
+  ]
+}

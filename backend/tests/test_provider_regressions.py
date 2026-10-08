@@ -159,7 +159,11 @@ class ProviderTransportTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_ocr_and_vision_work_with_a_configured_key(self):
         ocr = GeneratedText(json.dumps({"text": "R$ 10"})); ocr.model_name = "test-model"
-        vision = GeneratedText(json.dumps({"visual_forensics_verdict": "Suspicious", "visual_score": 50})); vision.model_name = "test-model"
+        vision = GeneratedText(json.dumps({"visual_forensics_verdict": "Suspicious", "visual_score": 50,
+            "anatomical_issues": [], "physical_consistency_issues": [], "editing_software_hints": [], "ai_model_hints": [],
+            "compression_artifacts_detected": False, "ai_generation_artifacts_detected": False, "conventional_editing_detected": False,
+            "pixel_level_summary": "Inspeção auxiliar de controle.", "plain_explanation": "Não determina origem.",
+            "elderly_tip": "Confira a fonte original."})); vision.model_name = "test-model"
         with patch.dict(os.environ, {"GEMINI_API_KEY": "test"}), patch("app.core.gemini_analyzer.generate_text", new=AsyncMock(side_effect=[ocr, vision])):
             self.assertEqual((await extract_text_from_image(valid_png(), "image/png"))["status"], "success")
             self.assertEqual((await analyze_image_with_vision(valid_png(), "image/png", {}))["status"], "success")

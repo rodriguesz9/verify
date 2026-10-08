@@ -1,0 +1,94 @@
+{
+  "date": "2026-10-04",
+  "scope": "Local regression and presentation controls; NOT API accuracy or production validation",
+  "base_commit": "5db970da8f8a109472050ed96e3ab77d20e7f5e7",
+  "working_tree": "verify-reviewed, uncommitted changes",
+  "backend": [
+    {
+      "environment": "Docker, Python 3.11, disposable SQLite",
+      "tests": 256,
+      "passed": 256,
+      "skipped": 0,
+      "unexpected_http_attempts": 0,
+      "docker_network": "none",
+      "seconds": 6.747
+    },
+    {
+      "environment": "Local Python 3.12, disposable PostgreSQL 16",
+      "tests": 256,
+      "passed": 256,
+      "skipped": 0,
+      "unexpected_http_attempts": 0,
+      "seconds": 7.781
+    }
+  ],
+  "frontend": {
+    "tests": 79,
+    "passed": 79,
+    "skipped": 0,
+    "build": "passed",
+    "build_seconds": 3.13,
+    "modules": 1974
+  },
+  "pdf": {
+    "fixture_only_not_real_analysis": true,
+    "http_export": 200,
+    "cache_control": "no-store",
+    "bytes": 5679,
+    "pages": 2,
+    "sha256": "e35973ed5d571cdb21cf17fcbbe1fdb6aed27f2298751c7ed1c6611c97961d4d",
+    "signed_report_unchanged": true,
+    "no_null_placeholder": true,
+    "valid_zero_preserved": true,
+    "scale_is_not_certainty": true,
+    "visual_pages_inspected": 2,
+    "observed_clipping_or_overlap": false,
+    "reanalysis": false
+  },
+  "readiness": {
+    "transport": "TestClient, HTTP route in-process; real disposable PostgreSQL",
+    "connected": {
+      "readiness_http": 200,
+      "liveness_http": 200,
+      "body": {"status": "ready", "service": "Verify", "checks": {"database": "ok"}},
+      "seconds": 0.074
+    },
+    "database_container_removed": {
+      "readiness_http": 503,
+      "liveness_http": 200,
+      "body": {"status": "not_ready", "service": "Verify", "checks": {"database": "unavailable"}},
+      "seconds": 0.021
+    },
+    "cache_control": "no-store",
+    "checks_schema_or_writes": false,
+    "checks_ai_providers": false,
+    "sensitive_connection_details_in_response": false
+  },
+  "workflow": {
+    "file": ".github/workflows/tests.yml",
+    "yaml_parsed": true,
+    "actions_refs_checked_against_official_repositories": true,
+    "actions_pinned_by_sha": true,
+    "provider_secret_references": false,
+    "deploy_job": false,
+    "remote_github_execution": "pending",
+    "required_check_configuration": "pending"
+  },
+  "runtime": {
+    "initial_docker_test": "Failed preflight: missing Poppler; not counted as test success",
+    "qa_image": "verify-ci-runtime:20261004",
+    "qa_image_sha256": "2c696fffecc776cea042ef168cf07176cabdde64b7f2630ee05f0f30fdeda3b2",
+    "published_image": false,
+    "production_dockerfiles_changed_this_round": false,
+    "own_test_containers_removed": true,
+    "existing_containers_preserved": 6
+  },
+  "new_analysis_provider_calls": 0,
+  "api_credits_consumed": 0,
+  "production_database_access": false,
+  "commit": false,
+  "push": false,
+  "deployment": false,
+  "pending_matrix_cases": 10,
+  "universal_accuracy_claim": false
+}

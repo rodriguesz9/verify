@@ -8,6 +8,12 @@ Estas mídias não são fotografias reais nem vídeos de pessoas reais. Não sã
 - Os testes também constroem PNGs simples e WAVs válidos de silêncio. Silêncio não é exemplo de voz clonada.
 - Os MP3 da demonstração têm origem não auditada nesta revisão. Foram usados para invariância ao nome e funcionamento, não como rótulos de verdade de um benchmark.
 - A demonstração atual substitui esses MP3 por `frontend/public/audio/demo-conversa-sintetica.wav` e `demo-pedido-sintetico.wav`: fala sintética offline eSpeak NG, idioma pt-br, velocidade 145. Textos públicos fictícios, sem imitar pessoa real. Reproduzir com `backend/scripts/generate_demo_audio.sh`; as duas amostras são sintéticas, **nenhuma é controle de voz humana real ou clonagem**. A conversa cotidiana tem 16 palavras no controle de transcrição normalizado.
+- `validation/ocr/`: gráficos impressos por Pillow, referências/hashes no manifest. Não são fotografias nem mídia generativa.
+- `validation/links/pagina-controle.html`: documento fictício local, sem fonte factual externa. Tem uma negação no cabeçalho do artigo e pedidos/datas de distração em menu, scripts e elementos ocultos. No harness, a recuperação HTTP é explicitamente simulada; não valida DNS/TLS de um site público.
+- `validation/extended/impresso-degradado.jpg`: transformação convencional do impresso-base, rotação 3,5° bicúbica, contraste 0,20, qualidade JPEG 55/subsampling 2. Não é um novo original independente. Tesseract preservou negação/valor/data, mas alterou a caixa de “Valor”; não passou a comparação literal estrita.
+- `validation/extended/video-tts-auxiliar.mp4`: repete os quadros do vídeo IA acima e adiciona o áudio eSpeak do pedido financeiro fictício. Testa extração de quadros/faixa de áudio e indisponibilidade de ASR; **não é captura humana, clonagem, face-swap ou lip-sync**. Não substitui os casos de gravação própria. Manifest registra hashes de saída/originais e receita.
+
+Reproduzir os derivados em diretório novo/vazio, na raiz do repo: `python -B backend/scripts/prepare_extended_controls.py --output-dir /tmp/verify-controls-novos`. Requer Pillow/FFmpeg e recusa sobrescrever diretório não vazio; versões de Pillow/FFmpeg podem mudar os bytes/hash. Nenhuma API é usada. A avaliação permanece um controle de desenvolvimento, não benchmark independente.
 
 Prompt da imagem (modo integrado, sem chave OpenAI do projeto):
 

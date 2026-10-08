@@ -1,5 +1,7 @@
 # Configurar as APIs sem novas contratações
 
+**Nota de 08/10/2026:** este guia conserva observações de 03/10. Priorize o [status atual e os nomes de configuração](STATUS-VERIFICACOES-2026-10-08.md): Gemini multimodal não está homologado; OpenRouter local já tem chave; a [página atual de preços HF](https://huggingface.co/docs/inference-providers/pricing) informa que contas gratuitas não recebem créditos mensais. Não comprar créditos nem criar endpoint pago.
+
 Revisão: 3 de outubro de 2026. Preferência do responsável: usar as contas existentes e opções gratuitas, **sem contratar planos, GPUs ou recargas automáticas**.
 
 Atualização após testes reais: [resultados multimodais](MULTIMODAL-2026-10-03.md). OCR local passou sem internet; Gemini OCR passou com modelo multimodal separado; AssemblyAI transcreveu a fala portuguesa de controle. HF compartilhado respondeu, mas errou um controle: sinal experimental, sem voto. Nova chave SerpAPI autenticou após substituição pelo usuário.
@@ -58,7 +60,7 @@ Serper localiza páginas. AssemblyAI converte voz em texto. Nenhum dos dois, iso
 
 Seu token já tem campo no Railway. Se precisar revisar permissões, abra [Settings → Access Tokens](https://huggingface.co/settings/tokens); não dar acesso de escrita desnecessário.
 
-Os [Inference Providers oferecem créditos mensais pequenos para contas gratuitas](https://huggingface.co/docs/inference-providers/pricing). Isso **não garante que um detector específico de imagem esteja hospedado**. A integração exige um classificador imagem real/gerada por IA com resposta `label`/`score`:
+A [regra atual de créditos](https://huggingface.co/docs/inference-providers/pricing) não inclui franquia mensal para contas gratuitas. A integração exige um classificador imagem real/gerada por IA efetivamente hospedado, autorizado e com resposta `label`/`score`; não criar endpoint pago:
 
 Nesta revisão, confirmou-se inferência compartilhada para `Ateeqq/ai-vs-human-image-detector`, classe positiva `ai`. Não é necessário contratar GPU para esse endpoint; acesso e crédito podem expirar. O erro observado no controle sintético impede usá-lo como voto decisivo. Configuração exata e resultado em [MULTIMODAL-2026-10-03.md](MULTIMODAL-2026-10-03.md).
 

@@ -122,6 +122,8 @@ async def _generate(prompt, system_instruction, temperature, max_tokens, json_ou
                 data = response.json()
                 choice = data["choices"][0]
                 value = choice["message"]["content"]
+                if choice.get("finish_reason") == "length":
+                    raise OpenRouterError("invalid_response", "A resposta OpenRouter atingiu o limite de tokens e foi descartada; nenhum trecho parcial virou evidência.")
                 if choice.get("finish_reason") != "stop" or not isinstance(value, str) or not value.strip() or len(value) > 30000:
                     raise ValueError("incomplete")
                 usage = data.get("usage", {})
@@ -190,9 +192,11 @@ async def extract_image_text(image_bytes: bytes, mime_type: str) -> dict:
         data = _auxiliary_json(raw)
         if not isinstance(data, dict) or not isinstance(data.get("text"), str) or len(data["text"]) > 12000:
             raise ValueError("invalid OCR")
-        return {"available": True, "status": "success", "text": data["text"].strip(),
+        return {"available": True, "status": "success" if data["text"].strip() else "no_text", "text": data["text"].strip(),
                 "model_used": raw.model_name, "provider": "openrouter", "decision_role": "ocr_only", "free_only": True}
     except OpenRouterError as exc:
-        return {"available": False, "status": exc.status, "text": "", "reason": str(exc), "decision_role": "ocr_only"}
+        return {"available": False, "status": exc.status, "text": "", "reason": str(exc),
+                "provider": "openrouter", "decision_role": "ocr_only", "free_only": True}
     except Exception:
-        return {"available": False, "status": "invalid_response", "text": "", "reason": "OCR auxiliar OpenRouter indisponível ou inválido.", "decision_role": "ocr_only"}
+        return {"available": False, "status": "invalid_response", "text": "", "reason": "OCR auxiliar OpenRouter indisponível ou inválido.",
+                "provider": "openrouter", "decision_role": "ocr_only", "free_only": True}

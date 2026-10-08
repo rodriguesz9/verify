@@ -17,6 +17,8 @@ from app.core.rate_limit import limiter
 from app.models.user import User, UserTier
 
 router = APIRouter(prefix="/auth")
+_LOGIN_ERROR = "E-mail ou senha inválidos."
+_GOOGLE_ERROR = "Não foi possível entrar com o Google. Use e-mail e senha ou tente novamente."
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
 
@@ -137,11 +139,10 @@ async def login(request: Request, body: LoginBody, response: Response, db: Async
     res = await db.execute(select(User).where(User.email == body.email.lower()))
     user = res.scalar_one_or_none()
     
-    if not user or not user.hashed_password:
-        raise HTTPException(status_code=401, detail="E-mail ou senha não encontrados.")
-    
-    if not verify_password(body.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Senha incorreta.")
+    # Refused credentials must not expose account existence or start a session.
+    if (not user or not user.is_active or not user.hashed_password
+            or not verify_password(body.password, user.hashed_password)):
+        raise HTTPException(status_code=401, detail=_LOGIN_ERROR)
 
     user.last_login = datetime.utcnow()
     await db.commit()
@@ -155,24 +156,53 @@ async def google_login(body: GoogleBody, response: Response, db: AsyncSession = 
     try:
         info = verify_google_id_token(body.id_token)
     except Exception:
-        raise HTTPException(status_code=401, detail="Falha na verificação com o Google.")
-        
-    google_sub = info["sub"]
-    email      = info.get("email", "").lower()
-    name       = sanitize(info.get("name", email.split("@")[0])[:100])
-    avatar     = info.get("picture")
+        raise HTTPException(status_code=401, detail=_GOOGLE_ERROR)
 
-    if not email:
-        raise HTTPException(status_code=400, detail="O Google não forneceu um e-mail.")
+    # Signature/audience/issuer/expiry are verified by google-auth; validate the
+    # identity claims before any lookup or mutation. A truthy string is not a
+    # verified email. OIDC subjects are opaque, case-sensitive ASCII identifiers.
+    if not isinstance(info, dict):
+        raise HTTPException(status_code=401, detail=_GOOGLE_ERROR)
+    google_sub = info.get("sub")
+    email_claim = info.get("email")
+    if (not isinstance(google_sub, str) or not 1 <= len(google_sub) <= 255
+            or not all(33 <= ord(char) <= 126 for char in google_sub)
+            or info.get("email_verified") is not True
+            or not isinstance(email_claim, str) or not validate_email(email_claim)):
+        raise HTTPException(status_code=401, detail=_GOOGLE_ERROR)
+    email = email_claim.lower()
+    name_claim = info.get("name")
+    name = sanitize(name_claim[:100]) if isinstance(name_claim, str) else ""
+    name = name or email.split("@")[0][:100]
+    picture_claim = info.get("picture")
+    avatar = picture_claim if isinstance(picture_claim, str) and len(picture_claim) <= 512 else None
 
-    result = await db.execute(select(User).where(User.google_id == google_sub))
-    user = result.scalar_one_or_none()
+    # The current schema has no unique Google-subject constraint. Fail closed
+    # for ambiguous legacy bindings rather than authenticating an arbitrary row.
+    result = await db.execute(select(User).where(User.google_id == google_sub).limit(2))
+    matches = result.scalars().all()
+    if len(matches) > 1:
+        raise HTTPException(status_code=401, detail=_GOOGLE_ERROR)
+    user = matches[0] if matches else None
+    if user and not user.is_active:
+        raise HTTPException(status_code=401, detail=_GOOGLE_ERROR)
 
     if not user:
-        # Check if email exists
-        res2 = await db.execute(select(User).where(User.email == email))
+        # Subject remains the identity. Email may only link an unbound account
+        # when Google is authoritative (Gmail or a signed Workspace hd claim).
+        # Third-party email_verified alone does not prove current ownership:
+        # https://developers.google.com/identity/gsi/web/guides/verify-google-id-token
+        res2 = await db.execute(select(User).where(User.email == email).with_for_update())
         user = res2.scalar_one_or_none()
         if user:
+            hosted_domain = info.get("hd")
+            authoritative_email = (
+                email.endswith("@gmail.com")
+                or (isinstance(hosted_domain, str) and bool(hosted_domain.strip()))
+            )
+            if (not user.is_active or user.google_id not in {None, google_sub}
+                    or not authoritative_email):
+                raise HTTPException(status_code=401, detail=_GOOGLE_ERROR)
             user.google_id = google_sub
             if avatar: user.avatar_url = avatar
         else:

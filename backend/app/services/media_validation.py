@@ -147,7 +147,11 @@ async def validate_media(data: bytes, filename: str = "upload", mime_type: str =
         except (ValueError, KeyError, TypeError, asyncio.TimeoutError):
             raise HTTPException(422, "Áudio/vídeo corrompido ou não decodificável.")
     # Reject a spoofed media family, but infer generic uploads and MIME aliases.
-    if declared.startswith(("image/", "audio/", "video/")) and declared.split("/")[0] != kind:
+    # Browsers label .webm as video/webm even when ffprobe finds audio only.
+    # This narrowly scoped container alias is allowed AFTER real decoding;
+    # it does not accept video tracks in audio endpoints or disguised images.
+    audio_only_webm_alias = kind == "audio" and actual == "audio/webm" and declared == "video/webm"
+    if declared.startswith(("image/", "audio/", "video/")) and declared.split("/")[0] != kind and not audio_only_webm_alias:
         raise HTTPException(415, "O tipo declarado não corresponde ao conteúdo do arquivo.")
     return ValidatedMedia(data, filename, actual, kind, details)
 

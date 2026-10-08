@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/authContext";
 import {
@@ -7,8 +7,11 @@ import {
   FileJson, Menu, X, Layers, Clipboard, Video,
 } from "lucide-react";
 import Footer from "../components/Footer";
-import { analyzeText, analyzeUrl, analyzeUpload, analyzeTextBatch } from "../services/api";
-import { saveToOfflineCache } from "../services/offlineCache";
+import { analyzeText, analyzeUrl, analyzeUpload, analyzeTextBatch, analyzeReviewedText } from "../services/api";
+import ExtractedTextReview from "../components/report/ExtractedTextReview.jsx";
+import { textReviewState, textReviewError, withoutReviewCredential } from "../utils/textReview.js";
+import { analysisUrlInput, MAX_ANALYSIS_URL_LENGTH } from "../utils/urlInput.js";
+import { captureAnalysisScope, isAnalysisScopeCurrent, storeSessionReport, subscribeAnalysisReset } from "../services/privacyStorage.js";
 
 const TABS = [
   { id: 0, label: "Texto", icon: FileText, desc: "Cole o texto da mensagem que você recebeu" },
@@ -44,25 +47,38 @@ function parseBatchText(raw) {
 
 export default function Home() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   const [tab, setTab] = useState(0);
   const [text, setText] = useState("");
   const [url, setUrl] = useState("");
+  const urlInput = analysisUrlInput(url);
   const [imageFile, setImageFile] = useState(null);
   const [audioFile, setAudioFile] = useState(null);
   const [videoFile, setVideoFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [stage, setStage] = useState(0);
   const [error, setError] = useState("");
+  const [pendingReview, setPendingReview] = useState(null);
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const mounted = useRef(false);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  const scopeCurrent = (scope) => mounted.current && isAnalysisScopeCurrent(scope);
 
   const [batchMode, setBatchMode] = useState(false);
   const [batchResults, setBatchResults] = useState(null);
   const [batchLoading, setBatchLoading] = useState(false);
 
+  useEffect(() => subscribeAnalysisReset(() => {
+    setText(""); setUrl(""); setImageFile(null); setAudioFile(null); setVideoFile(null);
+    setBatchResults(null); setError(""); setLoading(false); setBatchLoading(false); setStage(0);
+    setPendingReview(null); setReviewBusy(false);
+  }), []);
+
   const canSubmit = () => {
+    if (authLoading) return false;
     if (tab === 0) return text.trim().length >= 10;
-    if (tab === 1) return url.trim().length >= 5;
+    if (tab === 1) return urlInput.valid;
     if (tab === 2) return !!imageFile;
     if (tab === 3) return !!audioFile;
     if (tab === 4) return !!videoFile;
@@ -70,12 +86,15 @@ export default function Home() {
   };
 
   const canBatchSubmit = () => {
+    if (authLoading) return false;
     if (tab !== 0) return false;
     const msgs = parseBatchText(text);
     return msgs.length >= 2 && msgs.length <= 10;
   };
 
   const handleAnalyze = async () => {
+    if (!canSubmit()) return;
+    const scope = captureAnalysisScope();
     setError(""); setLoading(true); setStage(0);
     try {
       const selectedFile = tab === 2 ? imageFile : tab === 3 ? audioFile : tab === 4 ? videoFile : null;
@@ -91,26 +110,28 @@ export default function Home() {
         result = await analyzeUrl(url);
         queryLabel = url;
       } else if (tab === 2) {
-        result = await analyzeUpload(imageFile);
+        result = await analyzeUpload(imageFile, { reviewText: true });
         queryLabel = imageFile?.name || "Foto enviada";
       } else if (tab === 3) {
-        result = await analyzeUpload(audioFile);
+        result = await analyzeUpload(audioFile, { reviewText: true });
         queryLabel = audioFile?.name || "Áudio enviado";
       } else if (tab === 4) {
-        result = await analyzeUpload(videoFile);
+        result = await analyzeUpload(videoFile, { reviewText: true });
         queryLabel = videoFile?.name || "Vídeo enviado";
       }
 
+      if (!scopeCurrent(scope)) return;
+      if (selectedFile && textReviewState(result) === "ready") {
+        setPendingReview({ report: result, file: selectedFile, queryLabel, scope });
+        return;
+      }
       setStage(3); await sleep(400);
-      result.query_input = queryLabel;
-      saveToOfflineCache(result);
-      sessionStorage.setItem("verify_result", JSON.stringify(result));
-      sessionStorage.setItem("verify_query", queryLabel);
-      sessionStorage.setItem("verifai_result", JSON.stringify(result));
-      sessionStorage.setItem("verifai_query", queryLabel);
+      if (!scopeCurrent(scope)) return;
+      const report = { ...withoutReviewCredential(result), query_input: queryLabel };
+      if (!storeSessionReport(report, queryLabel, scope)) throw new Error("report_storage_unavailable");
       navigate("/report");
     } catch (e) {
-      console.error("Analysis error:", e);
+      if (!scopeCurrent(scope)) return;
       const detail = e?.response?.data?.detail;
       if (detail && typeof detail === "object" && detail.error === "limite_diario") {
         setError("Seu limite diário de consultas gratuitas foi atingido hoje.");
@@ -118,23 +139,47 @@ export default function Home() {
         setError(typeof detail === "string" ? detail : e.message === "Envie um arquivo de até 25 MB." ? e.message : "Não foi possível concluir a checagem no momento. Por favor, tente novamente.");
       }
     } finally {
-      setLoading(false);
-      setStage(0);
+      if (scopeCurrent(scope)) { setLoading(false); setStage(0); }
     }
+  };
+
+  const handleReviewConfirm = async (reviewedText) => {
+    if (!pendingReview || reviewBusy || !scopeCurrent(pendingReview.scope)) return;
+    const { report, scope } = pendingReview;
+    setError(""); setReviewBusy(true);
+    try {
+      const checked = await analyzeReviewedText(reviewedText, report.text_review_token);
+      if (!scopeCurrent(scope)) return;
+      if (!storeSessionReport(checked, checked.query_input || reviewedText, scope)) throw new Error("report_storage_unavailable");
+      navigate("/report");
+    } catch (err) {
+      if (scopeCurrent(scope)) setError(textReviewError(err));
+    } finally {
+      if (scopeCurrent(scope)) setReviewBusy(false);
+    }
+  };
+
+  const handleReviewSkip = () => {
+    if (!pendingReview || reviewBusy || !scopeCurrent(pendingReview.scope)) return;
+    const { report, queryLabel, scope } = pendingReview;
+    if (storeSessionReport(withoutReviewCredential(report), queryLabel, scope)) navigate("/report");
+    else setError("Não foi possível abrir os sinais da mídia. Sua conferência foi mantida.");
   };
 
   const handleBatchAnalyze = async () => {
     if (!canBatchSubmit()) return;
+    const scope = captureAnalysisScope();
     const msgs = parseBatchText(text);
     setBatchLoading(true); setError(""); setBatchResults(null);
     try {
       const data = await analyzeTextBatch(msgs);
+      if (!isAnalysisScopeCurrent(scope)) return;
       setBatchResults(data.results || []);
     } catch (e) {
-      console.error("Batch error:", e);
+      if (!isAnalysisScopeCurrent(scope)) return;
       setError("Erro ao analisar mensagens em lote. Tente novamente.");
     } finally {
-      setBatchLoading(false);
+      if (isAnalysisScopeCurrent(scope)) setBatchLoading(false);
     }
   };
 
@@ -163,7 +208,8 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="rounded-xl overflow-hidden shadow-2xl border border-[#132435] bg-[#0A1520] transition-all">
+        {pendingReview ? <ExtractedTextReview report={pendingReview.report} file={pendingReview.file} busy={reviewBusy}
+          error={error} onConfirm={handleReviewConfirm} onSkip={handleReviewSkip} /> : <div className="rounded-xl overflow-hidden shadow-2xl border border-[#132435] bg-[#0A1520] transition-all">
 
           <div className="check-type-options grid grid-cols-3 sm:grid-cols-5 border-b border-[#132435] bg-[#070F17]" role="group" aria-label="Tipo de conteúdo para checar">
             {tabs.map((t) => (
@@ -242,17 +288,23 @@ export default function Home() {
 
             {tab === 1 && (
               <div className="space-y-4">
+                <label htmlFor="analysis-url" className="block text-sm text-[#CDE8F0]">Endereço da página</label>
                 <div className="relative">
                   <Link2 size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#3A6070]" />
                   <input
+                    id="analysis-url"
                     type="url"
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
+                    aria-describedby="analysis-url-count analysis-url-help analysis-url-error"
+                    aria-invalid={Boolean(urlInput.error)}
                     placeholder="https://exemplo.com/noticia-para-verificar"
                     className="w-full font-mono text-sm sm:text-base p-4 pl-10 rounded-lg bg-[#04080C] border border-[#132435] text-[#CDE8F0] placeholder-[#3A6070] focus:border-[#00D4FF] focus:outline-none transition-all"
                   />
                 </div>
-                <p className="text-xs text-[#5A7E94] font-mono">
+                <p id="analysis-url-count" className="text-xs text-[#8AA2B4]">{urlInput.length} / {MAX_ANALYSIS_URL_LENGTH} caracteres, incluindo https:// quando necessário.</p>
+                {urlInput.error && <p id="analysis-url-error" className="text-sm text-[#FFB830]" role="alert">{urlInput.error}</p>}
+                <p id="analysis-url-help" className="text-xs text-[#8AA2B4] font-mono">
                   Analisamos o texto da página e sinais do endereço. Isso não comprova que o site é legítimo nem verifica a idade do domínio.
                 </p>
               </div>
@@ -343,9 +395,15 @@ export default function Home() {
               </button>
             )}
           </div>
-        </div>
+        </div>}
 
-        {error && (
+        {(loading || batchLoading || reviewBusy) && (
+          <p role="status" aria-live="polite" className="mt-4 text-base leading-relaxed text-[#9CC3D8] text-center">
+            Algumas análises podem levar até três minutos. Aguarde sem enviar novamente.
+          </p>
+        )}
+
+        {error && !pendingReview && (
           <div className="mt-6 p-4 rounded-lg bg-[#FF3B5C10] border border-[#FF3B5C30] text-[#FF3B5C] text-sm text-center font-mono flex items-center justify-center gap-2">
             <AlertTriangle size={14} /> <strong>Atenção:</strong> {error}
           </div>
@@ -365,9 +423,8 @@ export default function Home() {
                   key={i}
                   className="rounded-lg border border-[#132435] bg-[#0A1520] p-4 hover:border-[#00D4FF]/50 transition-colors cursor-pointer"
                   onClick={() => {
-                    sessionStorage.setItem("verify_result", JSON.stringify(r));
-                    sessionStorage.setItem("verify_query", r.query_input || "");
-                    navigate("/report");
+                    if (storeSessionReport(r, r.query_input || "")) navigate("/report");
+                    else setError("Não foi possível abrir este relatório. Por favor, repita a checagem.");
                   }}
                 >
                   <div className="flex items-start justify-between gap-3">

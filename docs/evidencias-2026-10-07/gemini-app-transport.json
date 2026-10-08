@@ -1,0 +1,34 @@
+{
+  "scope": "transport, NOT accuracy",
+  "events": [
+    {
+      "provider": "gemini",
+      "request_number": 1,
+      "method": "POST",
+      "http_status": 503
+    },
+    {
+      "provider": "gemini",
+      "request_number": 2,
+      "method": "POST",
+      "http_status": 503
+    }
+  ],
+  "counts": {
+    "gemini": 2
+  },
+  "caps": {
+    "gemini": 2,
+    "openrouter": 8,
+    "facts": 40,
+    "news": 16,
+    "assemblyai": 40,
+    "sightengine": 3,
+    "hf": 2,
+    "public_fetch": 4
+  },
+  "asr_jobs": {
+    "upload": 0,
+    "job": 0
+  }
+}

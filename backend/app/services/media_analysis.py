@@ -1,6 +1,8 @@
 """One media workflow shared by uploads, demos, PDFs and WhatsApp."""
 import asyncio
+from collections import Counter
 from fastapi import HTTPException
+from app.core.gemini_client import gemini_timeout_seconds
 from app.core.gemini_analyzer import analyze_image_with_vision, extract_text_from_image
 from app.core.sightengine_client import check_deepfake
 from app.core.huggingface_client import check_ai_image_hf
@@ -28,13 +30,24 @@ async def check_content(text: str, origin: str, timeout: float = 30) -> dict:
                 "summary": "Não foi possível checar o conteúdo extraído."}
 
 
+async def extracted_content(text: str, origin: str, *, review_first: bool, timeout: float = 30) -> dict:
+    if not review_first:
+        return await check_content(text, origin, timeout=timeout)
+    usable = isinstance(text, str) and 10 <= len(text.strip()) <= 5000
+    return {"analysis_status": "pending_user_review" if usable else "inconclusive",
+            "veracity_status": "unverified", "origin": origin,
+            "summary": "O texto aguarda sua conferência. Ainda não foram consultadas fontes para checar as afirmações."
+                       if usable else "Não houve texto utilizável para checagem. Confira o arquivo original.",
+            "provider_coverage": {}, "claim_assessments": []}
+
+
 async def audio_layers(data: bytes, mime_type: str) -> dict:
     suffix = {"audio/wav": "wav", "audio/mpeg": "mp3", "audio/ogg": "ogg", "audio/webm": "webm",
               "audio/flac": "flac", "audio/mp4": "m4a", "audio/aac": "aac"}.get(mime_type, "bin")
     jobs = {"audio": analyze_audio_quick_for_demonstration(data, "evidence.audio", mime_type),
             "hive": check_hive_media(data, f"evidence.{suffix}", "audio", mime_type),
             "sightengine_audio": detect_synthetic_speech(data, mime_type)}
-    return dict(zip(jobs, await asyncio.gather(*(safe_layer(job, timeout=50 if name == "audio" else 18)
+    return dict(zip(jobs, await asyncio.gather(*(safe_layer(job, timeout=gemini_timeout_seconds() + 45 if name == "audio" else 18)
                                                for name, job in jobs.items()))))
 
 
@@ -58,7 +71,10 @@ async def image_layers(data: bytes, mime_type: str, filename: str, auxiliary=Tru
                      "context": search_context_and_provenance(image_bytes=data, filename="evidence.jpg"),
                      "ocr": extract_text_from_image(data, mime_type),
                      "gemini_vision": analyze_image_with_vision(data, mime_type, {})})
-    values = await asyncio.gather(*(safe_layer(job, timeout=35 if name == "ocr" else 18)
+    # OCR: local decode + Gemini + bounded OpenRouter fallback. Vision uses
+    # only Gemini. Preserve short independent budgets for other detectors.
+    timeouts = {"ocr": gemini_timeout_seconds() + 40, "gemini_vision": gemini_timeout_seconds() + 5}
+    values = await asyncio.gather(*(safe_layer(job, timeout=timeouts.get(name, 18))
                                   for name, job in jobs.items()))
     result = dict(zip(jobs, values))
     if hive_v3_enabled():
@@ -77,13 +93,13 @@ async def video_visual_layers(media: ValidatedMedia):
     return frames, results
 
 
-async def video_audio_layers(media: ValidatedMedia) -> dict:
+async def video_audio_layers(media: ValidatedMedia, *, review_first: bool = False) -> dict:
     try:
         track = await asyncio.wait_for(extract_video_audio(media), 15)
         forensics = await audio_layers(track, "audio/wav")
         report = media_report(forensics, "audio")
         report["transcription"] = forensics["audio"].get("transcription", "")
-        report["content_analysis"] = await check_content(report["transcription"], "video_transcription", timeout=18)
+        report["content_analysis"] = await extracted_content(report["transcription"], "video_transcription", review_first=review_first, timeout=18)
         return report
     except Exception:
         report = media_report({}, "audio")
@@ -91,16 +107,36 @@ async def video_audio_layers(media: ValidatedMedia) -> dict:
         return report
 
 
-async def analyze_media(media: ValidatedMedia) -> dict:
+def video_provider_coverage(frame_reports: list[dict], name: str, reason: str) -> dict:
+    """Keep unavailable/configuration reasons; never infer coverage from a mean."""
+    statuses, failures = [], []
+    for report in frame_reports:
+        layer = report.get("provider_coverage", {}).get(name, {})
+        status = layer.get("status", "unavailable")
+        if status == "success" and layer.get("ai_score") is None and layer.get("deepfake_score") is None:
+            status = "invalid_response"
+        statuses.append(status)
+        detail = layer.get("reason")
+        if status != "success" and detail and detail not in failures:
+            failures.append(detail)
+    counts = Counter(statuses)
+    successful = counts.get("success", 0)
+    status = "success" if successful == len(frame_reports) and frame_reports else "partial" if successful else next(iter(counts)) if len(counts) == 1 else "unavailable"
+    return {"status": status, "analyzed_frames": successful, "sampled_frames": len(frame_reports),
+            "frame_status_counts": dict(counts), "failure_reasons": failures[:5],
+            "reason": " ".join(failures[:5]) if not successful and failures else reason}
+
+
+async def analyze_media(media: ValidatedMedia, *, review_first: bool = False) -> dict:
     if media.kind == "image":
         forensics = await image_layers(media.data, media.mime_type, media.filename)
         report = media_report(forensics)
-        report["content_analysis"] = await check_content(forensics.get("ocr", {}).get("text", ""), "ocr")
+        report["content_analysis"] = await extracted_content(forensics.get("ocr", {}).get("text", ""), "ocr", review_first=review_first)
         if media.details.get("frames", 1) > 1:
             report["limitations"].append("Imagem animada: detecção limitada ao primeiro quadro.")
     elif media.kind == "video":
         if media.details.get("has_audio"):
-            visual, track_report = await asyncio.gather(video_visual_layers(media), video_audio_layers(media), return_exceptions=True)
+            visual, track_report = await asyncio.gather(video_visual_layers(media), video_audio_layers(media, review_first=review_first), return_exceptions=True)
             if isinstance(visual, BaseException):
                 raise visual
             if isinstance(track_report, BaseException):
@@ -128,14 +164,15 @@ async def analyze_media(media: ValidatedMedia) -> dict:
         forensics["hive_deepfake"] = {"available": bool(deep_count), "status": "aggregate_only", "deepfake_score": None,
                                      "analyzed_frames": deep_count}
         report = media_report(forensics, "video")
+        if not media.details.get("has_audio"):
+            report["limitations"].append("Vídeo sem faixa de áudio: nenhuma fala foi transcrita ou checada.")
         # A mean across different timestamps is not same-frame agreement.
         for name in DETECTOR_FIELDS:
-            count = forensics[name]["analyzed_frames"]
-            report["provider_coverage"][name].update(status="success" if count == len(frames) else "partial" if count else "unavailable",
-                analyzed_frames=count, sampled_frames=len(frames),
-                reason="Decisão baseada em concordância no mesmo quadro; médias são apenas descritivas.")
-        report["provider_coverage"]["hive_deepfake"].update(status="success" if deep_count == len(frames) else "partial" if deep_count else "unavailable",
-            analyzed_frames=deep_count, sampled_frames=len(frames), reason="Modelo facial separado; decisões por quadro, não por média.")
+            report["provider_coverage"][name].update(video_provider_coverage(frame_reports, name,
+                "Decisão baseada em concordância no mesmo quadro; médias são apenas descritivas."))
+            report["provider_coverage"][name]["ai_analyzed_frames"] = forensics[name]["analyzed_frames"]
+        report["provider_coverage"]["hive_deepfake"].update(video_provider_coverage(frame_reports, "hive_deepfake",
+            "Modelo facial separado; decisões por quadro, não por média."))
         report["detector_disagreement"] = any(r["detector_disagreement"] for r in frame_reports)
         if any(forensics[name]["available"] for name in DETECTOR_FIELDS):
             report["summary"] = "Os quadros amostrados não apresentaram concordância suficiente para determinar geração por IA ou manipulação. Isso não comprova autenticidade."
@@ -154,14 +191,25 @@ async def analyze_media(media: ValidatedMedia) -> dict:
         # Preserve disagreements and missing coverage per frame, not just means.
         report["flagged_timestamps_seconds"] = [frames[i][0] for i, r in enumerate(frame_reports)
             if r["verdict"] in {"AI_Generated", "Manipulated"}]
+        # Visual and acoustic conclusions stay distinguishable, even when one
+        # dimension changes the legacy top-level result for compatibility.
+        report["visual_authenticity_status"] = report["authenticity_status"]
+        report["visual_analysis_status"] = report["analysis_status"]
+        report["visual_detector_disagreement"] = report["detector_disagreement"]
         if track_report is not None:
             report["audio_analysis"] = track_report
             report["transcription"] = track_report.get("transcription", "")
             report["content_analysis"] = track_report.get("content_analysis", {})
+            report["detector_disagreement"] = report["detector_disagreement"] or track_report.get("detector_disagreement", False)
             if track_report["verdict"] == "AI_Generated":
-                report.update(verdict="AI_Generated" if not flagged else report["verdict"], analysis_status="partial",
+                report.update(verdict="AI_Generated" if not flagged else report["verdict"], score=20, analysis_status="partial",
                               authenticity_status=report["authenticity_status"] if flagged else "ai_indications",
-                              summary=report["summary"] + " Há também indícios concordantes de fala sintética na faixa de áudio.")
+                              summary=report["summary"] + " Há também indícios concordantes de possível fala sintética na faixa de áudio." if flagged else
+                                      "A origem visual do vídeo continua não determinada. Há indícios concordantes de possível fala sintética na faixa de áudio. Isso não identifica a pessoa e não verifica o vídeo inteiro.")
+                audio_flag = "Indícios concordantes de possível fala sintética na faixa de áudio"
+                if audio_flag not in report["red_flags"]:
+                    report["red_flags"].append(audio_flag)
+                report["limitations"].append("Sinais de fala sintética não identificam a pessoa, não comprovam clonagem de voz nem verificam sincronização labial ou toda a gravação.")
                 report["plain_explanation"] = report["whatsapp_share_text"] = report["summary"]
     else:
         forensics = await audio_layers(media.data, media.mime_type)
@@ -169,7 +217,7 @@ async def analyze_media(media: ValidatedMedia) -> dict:
         report = media_report(forensics, "audio")
         report["transcription"] = audio.get("transcription", "")
         report["content_risk"] = audio.get("content_risk", {})
-        report["content_analysis"] = await check_content(report["transcription"], "transcription", timeout=24)
+        report["content_analysis"] = await extracted_content(report["transcription"], "transcription", review_first=review_first, timeout=24)
         report["limitations"].append("Transcrição e indícios de golpe no discurso não determinam se a voz foi clonada.")
         if report["content_risk"].get("is_scam_pattern") and report["analysis_status"] == "inconclusive":
             report["summary"] = "A fala contém sinais de pedido financeiro suspeito. A origem da voz continua inconclusiva."

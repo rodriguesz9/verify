@@ -1,0 +1,491 @@
+{
+  "scope": "transport, NOT accuracy",
+  "events": [
+    {
+      "provider": "sightengine",
+      "request_number": 1,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "hf",
+      "request_number": 1,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "gemini",
+      "request_number": 1,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 1,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 2,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 3,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 4,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 5,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "news",
+      "request_number": 1,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "sightengine",
+      "request_number": 2,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "hf",
+      "request_number": 2,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "gemini",
+      "request_number": 2,
+      "method": "POST",
+      "http_status": 503
+    },
+    {
+      "provider": "gemini",
+      "request_number": 3,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "assemblyai",
+      "request_number": 1,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "assemblyai",
+      "request_number": 2,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "assemblyai",
+      "request_number": 3,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "assemblyai",
+      "request_number": 4,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "assemblyai",
+      "request_number": 5,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 6,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 7,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 8,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 9,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "news",
+      "request_number": 2,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "assemblyai",
+      "request_number": 6,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "assemblyai",
+      "request_number": 7,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "assemblyai",
+      "request_number": 8,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "assemblyai",
+      "request_number": 9,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "assemblyai",
+      "request_number": 10,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 10,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 11,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 12,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "news",
+      "request_number": 3,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "gemini",
+      "request_number": 4,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "gemini",
+      "request_number": 5,
+      "method": "POST",
+      "transport_status": "incomplete"
+    },
+    {
+      "provider": "facts",
+      "request_number": 13,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "news",
+      "request_number": 4,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "gemini",
+      "request_number": 6,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 14,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 15,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 16,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "news",
+      "request_number": 5,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "gemini",
+      "request_number": 7,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "gemini",
+      "request_number": 8,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 17,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 18,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 19,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 20,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 21,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "news",
+      "request_number": 6,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "gemini",
+      "request_number": 9,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 22,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "news",
+      "request_number": 7,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "public_fetch",
+      "request_number": 1,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "gemini",
+      "request_number": 10,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 23,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 24,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 25,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 26,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 27,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "news",
+      "request_number": 8,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "news",
+      "request_number": 9,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "news",
+      "request_number": 10,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "sightengine",
+      "request_number": 3,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "gemini",
+      "request_number": 11,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "gemini",
+      "request_number": 12,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "public_fetch",
+      "request_number": 2,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "openrouter",
+      "request_number": 1,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 28,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 29,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 30,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 31,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 32,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "news",
+      "request_number": 11,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "openrouter",
+      "request_number": 2,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "facts",
+      "request_number": 33,
+      "method": "GET",
+      "http_status": 200
+    },
+    {
+      "provider": "news",
+      "request_number": 12,
+      "method": "POST",
+      "http_status": 200
+    },
+    {
+      "provider": "openrouter",
+      "request_number": 3,
+      "method": "POST",
+      "http_status": 429
+    }
+  ],
+  "counts": {
+    "sightengine": 3,
+    "hf": 2,
+    "gemini": 12,
+    "facts": 33,
+    "news": 12,
+    "assemblyai": 10,
+    "public_fetch": 2,
+    "openrouter": 3
+  },
+  "caps": {
+    "gemini": 12,
+    "openrouter": 8,
+    "facts": 40,
+    "news": 16,
+    "assemblyai": 40,
+    "sightengine": 3,
+    "hf": 2,
+    "public_fetch": 4
+  },
+  "asr_jobs": {
+    "upload": 2,
+    "job": 2
+  }
+}

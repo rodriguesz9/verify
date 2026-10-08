@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { captureSeal, verifySeal } from "../../services/api";
+import { createMediaLifecycle } from "../../services/mediaLifecycle.js";
 
 export default function AuthenticitySealDemo() {
   const [step, setStep] = useState(1); // 1: Captura, 2: Selado, 3: Verificado
@@ -14,36 +15,46 @@ export default function AuthenticitySealDemo() {
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const cameraRequestRef = useRef(null);
+  const lifecycleRef = useRef(null);
+  if (!lifecycleRef.current) lifecycleRef.current = createMediaLifecycle();
+  const lifecycle = lifecycleRef.current;
 
   const startCamera = async () => {
+    const scope = lifecycle.capture();
+    if (cameraRequestRef.current !== null || !lifecycle.isCurrent(scope)) return;
+    cameraRequestRef.current = scope;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-        setStreamActive(true);
-      }
+      if (!lifecycle.acceptStream(stream, scope)) return;
+      if (!videoRef.current) { lifecycle.releaseStream(stream); return; }
+      videoRef.current.srcObject = stream;
+      videoRef.current.play().catch(() => {});
+      setStreamActive(true);
       setError("");
     } catch (err) {
+      if (!lifecycle.isCurrent(scope)) return;
       // Fallback: draw a synthesized photo on the canvas if webcam not permitted
       drawFallbackCanvas("Foto da Demonstração");
       setStreamActive(false);
+    } finally {
+      if (cameraRequestRef.current === scope) cameraRequestRef.current = null;
     }
   };
 
   const stopCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const tracks = videoRef.current.srcObject.getTracks();
-      tracks.forEach((track) => track.stop());
-      videoRef.current.srcObject = null;
-      setStreamActive(false);
-    }
+    const mounted = lifecycle.isCurrent(lifecycle.capture());
+    lifecycle.invalidate();
+    cameraRequestRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
+    if (mounted) setStreamActive(false);
   };
 
   useEffect(() => {
+    lifecycle.activate();
     drawFallbackCanvas("Imagem educativa — não é uma foto real");
-    return () => stopCamera();
-  }, []);
+    return () => { lifecycle.dispose(); stopCamera(); };
+  }, [lifecycle]);
 
   const drawFallbackCanvas = (label) => {
     const canvas = canvasRef.current;
@@ -79,6 +90,8 @@ export default function AuthenticitySealDemo() {
 
   // Step 1: Capture Photo
   const handleCapture = async () => {
+    const scope = lifecycle.capture();
+    if (!lifecycle.isCurrent(scope)) return;
     setLoading(true);
     setError("");
     setVerificationResult(null);
@@ -95,18 +108,21 @@ export default function AuthenticitySealDemo() {
     }
 
     canvas.toBlob(async (blob) => {
+      if (!lifecycle.isCurrent(scope)) return;
+      if (!blob) { setError("Não foi possível capturar a imagem."); setLoading(false); return; }
       const file = new File([blob], "captura_original.jpg", { type: "image/jpeg" });
       setCapturedBlob(file);
       setCapturedPreview(canvas.toDataURL("image/jpeg"));
 
       try {
         const seal = await captureSeal(file);
+        if (!lifecycle.isCurrent(scope)) return;
         setSealData(seal);
         setStep(2);
       } catch (err) {
-        setError("Erro ao gerar selo de autenticidade.");
+        if (lifecycle.isCurrent(scope)) setError("Erro ao gerar selo de autenticidade.");
       } finally {
-        setLoading(false);
+        if (lifecycle.isCurrent(scope)) setLoading(false);
       }
     }, "image/jpeg", 0.92);
   };
@@ -114,22 +130,27 @@ export default function AuthenticitySealDemo() {
   // Step 2A: Verify Original Photo
   const handleVerifyOriginal = async () => {
     if (!capturedBlob) return;
+    const scope = lifecycle.capture();
+    if (!lifecycle.isCurrent(scope)) return;
     setLoading(true);
     setError("");
     try {
       const res = await verifySeal(capturedBlob);
+      if (!lifecycle.isCurrent(scope)) return;
       setVerificationResult(res);
       setStep(3);
     } catch (err) {
-      setError("Erro ao verificar selo.");
+      if (lifecycle.isCurrent(scope)) setError("Erro ao verificar selo.");
     } finally {
-      setLoading(false);
+      if (lifecycle.isCurrent(scope)) setLoading(false);
     }
   };
 
   // Step 2B: Tamper 1 single pixel and verify
   const handleSimulateTamper = async () => {
     if (!capturedPreview) return;
+    const scope = lifecycle.capture();
+    if (!lifecycle.isCurrent(scope)) return;
     setLoading(true);
     setError("");
 
@@ -138,6 +159,7 @@ export default function AuthenticitySealDemo() {
     const img = new Image();
 
     img.onload = () => {
+      if (!lifecycle.isCurrent(scope)) return;
       canvas.width = img.width;
       canvas.height = img.height;
       ctx.drawImage(img, 0, 0);
@@ -148,17 +170,20 @@ export default function AuthenticitySealDemo() {
       ctx.putImageData(imgData, 0, 0);
 
       canvas.toBlob(async (blob) => {
+        if (!lifecycle.isCurrent(scope)) return;
+        if (!blob) { setError("Não foi possível preparar a imagem."); setLoading(false); return; }
         const tamperedFile = new File([blob], "foto_alterada_1pixel.jpg", { type: "image/jpeg" });
         setTamperedBlob(tamperedFile);
 
         try {
           const res = await verifySeal(tamperedFile);
+          if (!lifecycle.isCurrent(scope)) return;
           setVerificationResult(res);
           setStep(3);
         } catch (err) {
-          setError("Erro na verificação de adulteração.");
+          if (lifecycle.isCurrent(scope)) setError("Erro na verificação de adulteração.");
         } finally {
-          setLoading(false);
+          if (lifecycle.isCurrent(scope)) setLoading(false);
         }
       }, "image/jpeg", 0.92);
     };
@@ -173,6 +198,7 @@ export default function AuthenticitySealDemo() {
     setSealData(null);
     setVerificationResult(null);
     setError("");
+    setLoading(false);
     stopCamera();
     drawFallbackCanvas("Imagem educativa — não é uma foto real");
   };

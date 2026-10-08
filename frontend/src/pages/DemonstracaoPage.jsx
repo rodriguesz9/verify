@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AudioLines, BadgeCheck, Expand, MessageCircle, ScanSearch } from "lucide-react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -6,6 +6,7 @@ import AudioDeepfakeDemo from "../components/demonstracao/AudioDeepfakeDemo";
 import AuthenticitySealDemo from "../components/demonstracao/AuthenticitySealDemo";
 import WhatsAppSimulator from "../components/demonstracao/WhatsAppSimulator";
 import ForensicTimeline from "../components/demonstracao/ForensicTimeline";
+import { subscribeAnalysisReset } from "../services/privacyStorage.js";
 
 const TABS = [
   { id: "audio", label: "Análise da fala", sub: "Sinais de golpe", icon: AudioLines, color: "#FF3B5C" },
@@ -16,6 +17,12 @@ const TABS = [
 
 export default function DemonstracaoPage() {
   const [activeTab, setActiveTab] = useState("audio");
+  const [privacyEpoch, setPrivacyEpoch] = useState(0);
+
+  useEffect(() => subscribeAnalysisReset(() => {
+    // New keys discard private child state and detach callbacks from old instances.
+    setPrivacyEpoch((epoch) => epoch + 1);
+  }), []);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -80,7 +87,7 @@ export default function DemonstracaoPage() {
         </div>
 
         {/* Tab Content */}
-        <div className="transition-all">
+        <div key={privacyEpoch} className="transition-all">
           {activeTab === "audio" && <AudioDeepfakeDemo />}
           {activeTab === "seal" && <AuthenticitySealDemo />}
           {activeTab === "whatsapp" && <WhatsAppSimulator />}

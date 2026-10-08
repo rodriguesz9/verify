@@ -20,16 +20,21 @@ export default function WhatsAppSimulator() {
   const [messages, setMessages] = useState([
     {
       sender: "bot",
-      text: "👋 Olá! Sou o *Verify*, assistente de checagem de fatos e proteção contra golpes.\n\nEnvie qualquer notícia, link, áudio ou mensagem suspeita que eu verifico na hora para você!",
+      text: "👋 Olá! Este é o simulador do Verify.\n\nEnvie uma mensagem de texto para consultar sinais de risco e evidências disponíveis. Se faltar informação, o resultado será inconclusivo. Não envia mensagens ao WhatsApp real.",
       time: "Agora"
     }
   ]);
   const [inputText, setInputText] = useState("");
   const [typing, setTyping] = useState(false);
-  const chatBottomRef = useRef(null);
+  const chatContainerRef = useRef(null);
 
   useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const chat = chatContainerRef.current;
+    if (!chat) return;
+    const reduceMotion = document.documentElement.getAttribute("data-elderly-mode") === "true"
+      || window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    // Scroll only the conversation; remounting after logout must not jump the page.
+    chat.scrollTo({ top: chat.scrollHeight, behavior: reduceMotion ? "auto" : "smooth" });
   }, [messages, typing]);
 
   const handleSend = async (messageToSend) => {
@@ -85,7 +90,7 @@ export default function WhatsAppSimulator() {
           Bot de WhatsApp <span className="text-[#25D366]">(Simulador na Tela)</span>
         </h2>
         <p className="font-mono text-sm text-[#3A6070] mt-3 max-w-2xl mx-auto">
-          Experimente mensagens de exemplo e veja o bot responder ao vivo como se estivesse no smartphone.
+          Teste mensagens fictícias nesta tela. A resposta depende das verificações disponíveis; não é uma integração com o WhatsApp real.
         </p>
       </div>
 
@@ -113,7 +118,7 @@ export default function WhatsAppSimulator() {
           <div className="flex-1 min-w-0">
             <h4 className="font-syne font-bold text-sm text-[#E9EDEF] truncate">Verify Checagem</h4>
             <span className="font-mono text-[11px] text-[#25D366]">
-              {typing ? "digitando laudo..." : "online • proteção ativa"}
+              {typing ? "consultando sinais..." : "simulação educativa"}
             </span>
           </div>
           <div className="flex gap-3 text-[#8696A0] text-sm">
@@ -123,7 +128,7 @@ export default function WhatsAppSimulator() {
         </div>
 
         {/* WhatsApp Chat Area */}
-        <div className="h-96 overflow-y-auto p-4 space-y-3 bg-[#0B141B] bg-opacity-95">
+        <div ref={chatContainerRef} className="h-96 overflow-y-auto p-4 space-y-3 bg-[#0B141B] bg-opacity-95">
           {messages.map((m, idx) => (
             <div
               key={idx}
@@ -150,11 +155,10 @@ export default function WhatsAppSimulator() {
               <span className="w-2 h-2 rounded-full bg-[#25D366] animate-bounce" />
               <span className="w-2 h-2 rounded-full bg-[#25D366] animate-bounce [animation-delay:0.2s]" />
               <span className="w-2 h-2 rounded-full bg-[#25D366] animate-bounce [animation-delay:0.4s]" />
-              <span className="ml-1 text-[11px] text-[#25D366]">Analisando nas camadas forenses...</span>
+              <span className="ml-1 text-[11px] text-[#25D366]">Consultando a mensagem...</span>
             </div>
           )}
 
-          <div ref={chatBottomRef} />
         </div>
 
         {/* WhatsApp Input Bar */}
@@ -165,12 +169,14 @@ export default function WhatsAppSimulator() {
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
             placeholder="Digite uma mensagem para testar..."
+            aria-label="Mensagem para testar no simulador"
             className="flex-1 bg-[#2A3942] text-[#E9EDEF] text-xs font-sans rounded-full px-4 py-2.5 outline-none placeholder-[#8696A0]"
           />
           <button
             type="button"
             onClick={() => handleSend()}
             disabled={typing || !inputText.trim()}
+            aria-label="Enviar mensagem de teste"
             className="w-10 h-10 rounded-full bg-[#25D366] text-[#04080C] flex items-center justify-center font-bold hover:scale-105 active:scale-95 transition-all cursor-pointer shadow disabled:opacity-50"
           >
             ➤

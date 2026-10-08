@@ -14,6 +14,7 @@ from app.core.auth import get_current_user
 from app.core.database import Base, get_db
 from app.models.history import ContentType, Verification, VerdictLabel
 from app.models.user import User, UserTier
+from app.services.readiness import DatabaseReadiness
 
 
 TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
@@ -82,7 +83,7 @@ class DbQueryIntegrationTests(unittest.TestCase):
                 verdict_score=80,
                 verdict_label=VerdictLabel.SUSPICIOUS,
                 ai_summary="First saved audit",
-                raw_result=fake_report(score=80),
+                raw_result=fake_report(score=80, analysis_status="partial", score_semantics="legacy_decision_index_not_probability"),
             )
             second = Verification(
                 user_id=self.user_id,
@@ -91,7 +92,7 @@ class DbQueryIntegrationTests(unittest.TestCase):
                 verdict_score=60,
                 verdict_label=VerdictLabel.AUTHENTIC,
                 ai_summary="Second saved audit",
-                raw_result=fake_report(score=60, verdict="Authentic"),
+                raw_result=fake_report(score=60, verdict="Authentic", analysis_status="partial", score_semantics="legacy_decision_index_not_probability"),
             )
             session.add(self.user)
             # No ORM relationship orders these objects; PostgreSQL enforces the
@@ -118,7 +119,11 @@ class DbQueryIntegrationTests(unittest.TestCase):
         self.assertEqual(body["daily_used"], 2)
         self.assertEqual(body["total"], 2)
         self.assertEqual(body["avg_score"], 70.0)
+        self.assertEqual(body["avg_score_count"], 2)
         self.assertEqual(body["plan"], UserTier.STANDARD.value)
+
+    def test_readiness_connects_to_real_test_database(self):
+        self.assertEqual(asyncio.run(DatabaseReadiness(self.engine).check()), "ok")
 
 
 if __name__ == "__main__":

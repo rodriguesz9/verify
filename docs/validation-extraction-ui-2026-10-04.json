@@ -1,0 +1,290 @@
+{
+  "tested_at": "2026-10-04",
+  "scope": "Browser/API/disposable DB with fictitious controls; NOT provider validation or accuracy benchmark",
+  "repository_copy": "verify-reviewed",
+  "commit_base": "5db970da8f8a109472050ed96e3ab77d20e7f5e7",
+  "new_commit": false,
+  "push": false,
+  "deploy": false,
+  "configuration": {
+    "providers": [],
+    "private_env_used": false,
+    "paid_calls": 0,
+    "server": "validation_ui_server.py",
+    "local_page_control": "explicit simulated HTTP response, not public HTTPS",
+    "owned_db_sessions": 2
+  },
+  "regression": {
+    "backend": {
+      "python": "3.11",
+      "runtime": "verify-ci-runtime:20261004",
+      "database": "disposable SQLite",
+      "network": "none",
+      "tests": 265,
+      "passed": 265,
+      "skipped": 0
+    },
+    "frontend": {
+      "node": "22.21.1",
+      "tests": 82,
+      "passed": 82,
+      "skipped": 0,
+      "build": true,
+      "modules": 1974
+    },
+    "local_controls": {
+      "total": 19,
+      "passed_strict": 18,
+      "non_literal_case": "OCR05: Valor -> valor; negation/value/date preserved, no acceptance criterion changed"
+    }
+  },
+  "browser": {
+    "ocr_review_required_before_factual_lookup": true,
+    "original_and_reviewed_reports_separate": true,
+    "link_visible_text_preserved": true,
+    "hidden_link_values_excluded": true,
+    "video_audio_present_but_ASR_not_configured": true,
+    "responsive_checks": [
+      {
+        "view": "OCR review",
+        "easy_mode": true,
+        "viewport": 390,
+        "document_scroll_width": 375
+      },
+      {
+        "view": "video report",
+        "easy_mode": true,
+        "viewport": 390,
+        "document_scroll_width": 375
+      }
+    ],
+    "console_errors": 0,
+    "console_warning_types": [
+      "React Router v7 future flags"
+    ],
+    "screenshot": "verify-video-cobertura-mobile-2026-10-04.jpg"
+  },
+  "disposable_db_records": [
+    {
+      "content_type": "IMAGE",
+      "analysis_status": "inconclusive",
+      "verdict": "Suspicious",
+      "veracity_status": "unverified",
+      "query_input": "impresso-degradado.jpg",
+      "text_review": null,
+      "ocr_text": "CONTROLE DE TESTE\nNao pague taxa para liberar seu Pix.\nvalor: R$ 123,45\nData: 03/10/2026",
+      "provider_coverage": {
+        "sightengine": {
+          "status": "unavailable",
+          "reason": "Sightengine API keys not configured."
+        },
+        "huggingface": {
+          "status": "not_configured",
+          "reason": "Token Hugging Face não configurado."
+        },
+        "hive": {
+          "status": "not_configured",
+          "reason": "Hive v3 exige Secret Key e autorização de custo em HIVE_V3_MEDIA_TYPES."
+        },
+        "hive_deepfake": {
+          "status": "not_configured",
+          "reason": "Hive v3 exige Secret Key e autorização de custo em HIVE_V3_MEDIA_TYPES."
+        },
+        "ocr": {
+          "status": "success",
+          "reason": null
+        },
+        "gemini_vision": {
+          "status": "unavailable",
+          "reason": "GEMINI_API_KEY não configurada"
+        }
+      },
+      "media_details": {
+        "width": 1120,
+        "height": 408,
+        "frames": 1,
+        "format": "JPEG"
+      },
+      "source_extraction": null,
+      "transcription": null,
+      "no_review_or_pdf_credentials_persisted": true,
+      "audio_coverage": {}
+    },
+    {
+      "content_type": "TEXT",
+      "analysis_status": "inconclusive",
+      "verdict": "Suspicious",
+      "veracity_status": "unverified",
+      "query_input": "CONTROLE DE TESTE\nNao pague taxa para liberar seu Pix.\nValor: R$ 123,45\nData: 03/10/2026",
+      "text_review": {
+        "analyzed_at": "2026-10-04T19:21:56.455468+00:00",
+        "content_type": "image",
+        "file_hash_sha256": "d10c623494619e8a203e3d9f9b5626cf3a8436fb89d002ed3df9605c60faeb36",
+        "filename": "impresso-degradado.jpg",
+        "method": "ocr",
+        "original_text": "CONTROLE DE TESTE\nNao pague taxa para liberar seu Pix.\nvalor: R$ 123,45\nData: 03/10/2026",
+        "provider": "tesseract",
+        "status": "user_confirmed",
+        "reviewed_text": "CONTROLE DE TESTE\nNao pague taxa para liberar seu Pix.\nValor: R$ 123,45\nData: 03/10/2026",
+        "changed": true,
+        "reviewed_at": "2026-10-04T19:25:13.200997+00:00"
+      },
+      "ocr_text": null,
+      "provider_coverage": {
+        "google_fact_check": {
+          "status": "not_configured",
+          "reason": "GOOGLE_FACT_CHECK_KEY não configurada."
+        },
+        "serper": {
+          "status": "not_configured",
+          "reason": "Serper não configurado."
+        }
+      },
+      "media_details": null,
+      "source_extraction": null,
+      "transcription": null,
+      "no_review_or_pdf_credentials_persisted": true,
+      "audio_coverage": {}
+    },
+    {
+      "content_type": "TEXT",
+      "analysis_status": "inconclusive",
+      "verdict": "Suspicious",
+      "veracity_status": "unverified",
+      "query_input": "https://example.test/controle.html",
+      "text_review": null,
+      "ocr_text": null,
+      "provider_coverage": {
+        "google_fact_check": {
+          "status": "not_configured",
+          "reason": "GOOGLE_FACT_CHECK_KEY não configurada."
+        },
+        "openrouter": {
+          "status": "not_configured",
+          "reason": null
+        },
+        "gemini": {
+          "status": "not_configured",
+          "reason": "Gemini não configurado."
+        },
+        "serper": {
+          "status": "not_configured",
+          "reason": "Serper não configurado."
+        }
+      },
+      "media_details": null,
+      "source_extraction": {
+        "method": "static_html",
+        "truncated": false,
+        "rendered_browser": false
+      },
+      "transcription": null,
+      "claims": [
+        "CONTROLE FICTÍCIO.",
+        "Não pague uma taxa para liberar seu Pix.",
+        "Valor informado: R$ 123,45.",
+        "Data informada: 03/10/2026."
+      ],
+      "content_analysis": null,
+      "audio_coverage": {},
+      "no_review_or_pdf_credentials_persisted": true
+    },
+    {
+      "content_type": "VIDEO",
+      "analysis_status": "inconclusive",
+      "verdict": "Suspicious",
+      "veracity_status": "unverified",
+      "query_input": "video-tts-auxiliar.mp4",
+      "text_review": null,
+      "ocr_text": null,
+      "provider_coverage": {
+        "sightengine": {
+          "status": "unavailable",
+          "reason": "Sightengine API keys not configured.",
+          "analyzed_frames": 0,
+          "sampled_frames": 3,
+          "frame_status_counts": {
+            "unavailable": 3
+          }
+        },
+        "huggingface": {
+          "status": "not_configured",
+          "reason": "Token Hugging Face não configurado.",
+          "analyzed_frames": 0,
+          "sampled_frames": 3,
+          "frame_status_counts": {
+            "not_configured": 3
+          }
+        },
+        "hive": {
+          "status": "not_configured",
+          "reason": "Hive v3 exige Secret Key e autorização de custo em HIVE_V3_MEDIA_TYPES.",
+          "analyzed_frames": 0,
+          "sampled_frames": 3,
+          "frame_status_counts": {
+            "not_configured": 3
+          }
+        },
+        "hive_deepfake": {
+          "status": "not_configured",
+          "reason": "Hive v3 exige Secret Key e autorização de custo em HIVE_V3_MEDIA_TYPES.",
+          "analyzed_frames": 0,
+          "sampled_frames": 3,
+          "frame_status_counts": {
+            "not_configured": 3
+          }
+        }
+      },
+      "media_details": {
+        "duration_seconds": 6.959002,
+        "has_audio": true,
+        "has_video": true,
+        "width": 640,
+        "height": 480,
+        "video_frame_rate": 25,
+        "video_duration_seconds": 6.92
+      },
+      "source_extraction": null,
+      "transcription": "",
+      "claims": null,
+      "content_analysis": {
+        "analysis_status": "inconclusive",
+        "veracity_status": "unverified",
+        "origin": "video_transcription",
+        "summary": "Não houve texto utilizável para checagem. Confira o arquivo original.",
+        "provider_coverage": {},
+        "claim_assessments": []
+      },
+      "audio_coverage": {
+        "sightengine_audio": {
+          "status": "disabled",
+          "reason": "Detector acústico Sightengine não habilitado; exige acesso ao modelo ai_speech."
+        },
+        "hive": {
+          "status": "not_configured",
+          "reason": "Hive v3 exige Secret Key e autorização de custo em HIVE_V3_MEDIA_TYPES."
+        },
+        "transcription": {
+          "status": "not_configured",
+          "reason": null
+        }
+      },
+      "no_review_or_pdf_credentials_persisted": true
+    }
+  ],
+  "matrix": {
+    "executed_at_least_one_dimension": 22,
+    "pending": 8,
+    "pending_ids": [
+      "AUD04",
+      "AUD05",
+      "AUD06",
+      "IMG01",
+      "IMG04",
+      "VID02",
+      "VID03",
+      "VID04"
+    ],
+    "public_https_LNK10_still_pending": true
+  }
+}

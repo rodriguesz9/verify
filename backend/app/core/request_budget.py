@@ -10,9 +10,11 @@ from starlette.responses import JSONResponse
 from starlette.requests import Request
 from fastapi import HTTPException
 from app.services.whatsapp_security import authenticate_webhook
+from app.core.report_limits import MAX_SNAPSHOT_BODY_BYTES
+from app.services.extracted_text_review import MAX_REVIEW_BODY_BYTES
 
 ANALYSIS_PATHS = (
-    "/api/check-text", "/api/check-url", "/api/upload", "/api/whatsapp/",
+    "/api/check-text", "/api/check-extracted-text", "/api/check-url", "/api/upload", "/api/whatsapp/",
     "/api/verificar/", "/api/capturar/", "/api/selo/", "/api/analyze-batch",
 )
 AUTH_PATHS = {"/api/auth/login", "/api/auth/register", "/api/auth/google"}
@@ -99,6 +101,12 @@ class RequestBudgetMiddleware:
         if self.active >= self.concurrency or self.active_by_ip.get(ip, 0) >= 2:
             return await self._reject(scope, receive, send, 429, "Muitas análises em andamento. Tente novamente mais tarde.", True)
         limit = min(self.max_body, 64 * 1024) if is_auth else self.max_body
+        if path == "/api/verificar/relatorio-pdf":
+            # Export receives a small signed result, never a second media file.
+            # Bound chunked bodies BEFORE JSON parsing or the usual upload buffer.
+            limit = min(limit, MAX_SNAPSHOT_BODY_BYTES)
+        if path == "/api/check-extracted-text":
+            limit = min(limit, MAX_REVIEW_BODY_BYTES)
         declared = headers.get(b"content-length", b"")
         if declared.isdigit() and int(declared) > limit:
             return await self._reject(scope, receive, send, 413, "Envio excede o limite de tamanho da requisição.")

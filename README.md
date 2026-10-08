@@ -4,11 +4,29 @@ Aplicação de apoio à checagem de mensagens, links, imagens, áudio e vídeos.
 
 Não é uma perícia, um certificado de autenticidade ou uma garantia de detecção de deepfake.
 
+Documentação consolidada em 07/10/2026: [manual completo do projeto](docs/DOCUMENTACAO-COMPLETA.md) · [plano original de 14 dias](docs/PLANO-ENTREGA-14-DIAS.md) · [índice de documentação e evidências](docs/README.md). Inclui arquitetura, API, banco, todas as variáveis suportadas, Docker, APIs, deploy, testes, privacidade, operação, tarefas, responsáveis e critérios de aceite. Em caso de divergência com guias anteriores, conferir o código e o manual atual.
+
+Prazo antecipado em 07/10: [fechamento até 11/10/2026](docs/ENTREGA-ATE-11-OUTUBRO.md), com prioridades, critérios de publicação e limitações do perfil gratuito. [Evidências desta rodada](docs/FECHAMENTO-2026-10-07.md). Não confundir a revisão local com a versão publicada.
+
+Revisão de entrega em `entrega/banca-2026-10-08`: [registro do candidato](docs/ENTREGA-BANCA-2026-10-08.md), [status e configuração das verificações](docs/STATUS-VERIFICACOES-2026-10-08.md), [roteiro da banca](docs/ROTEIRO-BANCA.md). **424 testes backend e 142 frontend passaram em 08/10; build concluído.** A execução PostgreSQL anterior repetiu os mesmos 424, não 848 testes distintos; somente três são integração real PostgreSQL, os demais usam SQLite/mocks. A renovação de sessão não reenvia POST/FormData automaticamente; troca de contexto impede retry/logout antigos. Pedidos já enviados e cookies tardios exigem homologação adicional. [Retomada privada de transcrição](docs/TRANSCRICAO-PENDENTE-2026-10-07.md): mesma conta/aba e arquivo não criam outro job durante a janela local; UI simulada observou 1 upload, 1 criação, 2 consultas. Não garante retomada após reinício/réplicas/perda de contexto e não homologa fala. Gemini 3.8 respondeu ao controle de texto, mas OCR/inspeção retornaram 503; OCR local e conferência passaram pela interface. OpenRouter auxilia texto, OCR remoto segue não homologado. Matriz anterior: 22 casos parcialmente executados e 8 pendentes, não 22 vereditos corretos. Push de candidato não comprova deploy; testes funcionais não garantem precisão universal.
+
 Guias novos: [configurar APIs sem novas contratações](docs/APIS-SEM-CUSTO.md) · [ativar Hugging Face, Hive e Gemini; situação do OpenRouter](docs/ATIVAR-DETECTORES.md) · [landing, Modo Fácil e testes visuais](docs/INTERFACE-MODO-FACIL.md).
 
 Nova integração: OpenRouter com **modelos gratuitos e preço máximo zero**, extração literal e OCR alternativo; Hive **v3** com detecção combinada em uma chamada; transcrição AssemblyAI com modelo explícito e polling corrigido. Resultados e pendências em [INTEGRACOES-GRATUITAS.md](docs/INTEGRACOES-GRATUITAS.md). Teste real Hive de imagem passou; não equivale a validar todas as modalidades ou precisão universal.
 
 Última revisão multimodal: **OCR local gratuito, AssemblyAI preferido para fala, bloqueio de silêncio e amostras portuguesas declaradamente sintéticas**. HF compartilhado respondeu, mas errou um controle: fica experimental, sem decidir o veredito. Testes reais, configuração e limites em [MULTIMODAL-2026-10-03.md](docs/MULTIMODAL-2026-10-03.md).
+
+Primeira etapa do [plano de entrega em 14 dias](docs/PLANO-ENTREGA-14-DIAS.md): histórico paginado com busca completa, remoção do cache persistente de consultas e PDF da análise original. Mudanças **locais, ainda não implantadas**; funcionamento, reprodução dos testes e pendências em [PRIMEIRA-ETAPA-2026-10-03.md](docs/PRIMEIRA-ETAPA-2026-10-03.md).
+
+Primeira bateria de 04/10: testes pela interface de texto/link/imagem/áudio/vídeo, correções de OCR/transcrição, falso alerta de domínio e upload WebM. [Resultados, falhas reais e limites por API](docs/VALIDACAO-INTERFACE-2026-10-04.md). Naquela bateria, 223 testes backend e 71 frontend passaram; isso não certifica precisão dos detectores nem implantação. A matriz tinha 20 controles executados parcialmente e 10 pendentes.
+
+Continuação: [conferência do texto antes da checagem](docs/CONFERENCIA-TEXTO-2026-10-04.md). Na revisão local, `/app` permite corrigir OCR/transcrição e gera uma nova análise textual com a leitura original preservada; não altera nem repete os detectores da mídia. Exige `HMAC_SECRET_KEY` forte/estável em produção para vincular a origem. Ainda sem commit/push/deploy.
+
+Etapa seguinte: [PDF, saúde do banco e CI](docs/PDF-READINESS-CI-2026-10-04.md). PDF distingue pontuação ausente de zero; `/ready` verifica conectividade do banco; runner offline e workflow de testes/build preparados sem credenciais de provedores. 256 testes backend passaram no Docker/Python 3.11 com SQLite e no Python 3.12 com PostgreSQL descartável; 79 frontend e build passaram. Execução remota do workflow e deploy ainda pendentes.
+
+Continuação de extração: [HTML, OCR degradado e vídeo com áudio](docs/CONTROLES-EXTRACAO-2026-10-04.md). Corrigidos título de artigo apagado/texto oculto incluído e perda dos motivos de indisponibilidade em vídeos. **265 testes backend, 82 frontend e build passaram**. Controles locais: 18/19 cumpriram a comparação estrita; OCR05 alterou apenas “Valor” para “valor”, diferença mantida no registro. A matriz agora tem **22 casos executados parcialmente e 8 pendentes**, não 22 acertos de classificação. UI/histórico validados em ambiente descartável sem APIs; nenhuma homologação nova de provedor ou deploy.
+
+Continuação de relatórios: [PDF para texto, links e texto conferido](docs/PDF-TEXTO-LINK-2026-10-04.md). Exporta a análise original, incluindo entrada, texto da página efetivamente analisado, avaliações/fontes/limitações e procedência da conferência humana quando houver. **274 testes backend, 84 frontend e build passaram**. Interface → API de exportação respondeu PDF/200 em texto, link e link reaberto do histórico; registros originais permaneceram idênticos. O navegador integrado não confirmou o arquivo salvo: essa última fronteira permanece pendente. Sem novas chamadas a APIs, commit/push ou deploy.
 
 ## Estado atual — revisão de 3 de outubro de 2026
 
@@ -22,9 +40,9 @@ A revisão corrige esses comportamentos e separa veracidade da informação da o
 - [Teste limitado com provedores reais](docs/audit-providers-2026-10-02.json).
 - [Origem e limites das mídias de teste](backend/tests/fixtures/README.md).
 
-Última execução, incluindo resiliência multimodal: **178 testes backend + 93 subtestes, 30 casos de interface e 25 controles HTTP locais aprovados; build concluído**. Houve dois avisos de descontinuação de dependências (AnyIO/Starlette e python-jose), não erros. São testes funcionais, não medição da precisão dos detectores. Um HTTP 200 não significa análise conclusiva. As suítes usam respostas controladas e chaves externas desligadas; testes reais e pendências estão em [MULTIMODAL-2026-10-03.md](docs/MULTIMODAL-2026-10-03.md).
+Última execução local da primeira etapa: **212 testes backend + 141 subtestes, 67 testes frontend e 24 controles HTTP aprovados; build da interface concluído**. O registro dos controles está em [release-controls-local-2026-10-03.json](docs/release-controls-local-2026-10-03.json). As verificações visuais estão registradas no documento da etapa. Na execução final houve um aviso de descontinuação do python-jose, não erro; uma execução anterior também avisou sobre AnyIO/Starlette. São testes funcionais, não medição da precisão dos detectores. Um HTTP 200 não significa análise conclusiva. As suítes usam respostas controladas e chaves externas desligadas; testes reais e pendências estão em [MULTIMODAL-2026-10-03.md](docs/MULTIMODAL-2026-10-03.md).
 
-Preparação para o push: a suíte backend também passou com **PostgreSQL 16 descartável**. A atualização de um enum antigo foi repetida sem erro, e `FALSE` foi gravado/lido corretamente. Corrigidos isolamento de conexões e ordem dos dados nos testes reais de banco. A imagem Docker da raiz compilou, carregou a API e confirmou FFmpeg/ffprobe/ExifTool; agora ambos os contextos de build excluem `.env`, bancos locais e caches, e ambos os comandos respeitam `PORT`. Não houve acesso ao banco de produção, teste pago novo de provedores ou comprovação de precisão.
+Primeira etapa: a suíte atual também passou com **PostgreSQL 16.13 descartável: 212 testes + 141 subtestes**, sem tocar serviços existentes; contêineres temporários removidos. **Docker da raiz compilou offline** e confirmou API/PDF, FFmpeg/ffprobe, Tesseract português/inglês, ExifTool e ausência de `.env`. O Dockerfile isolado de `backend` não pôde ser concluído sem rede por falta de cache de dependências; **seu build e o deploy novo continuam pendentes**. Na revisão anterior (`5db970d`), a atualização de enum foi repetida e `FALSE` gravado/lido corretamente. Ambos os contextos de build excluem `.env`, bancos locais e caches e respeitam `PORT`. Não houve acesso ao banco de produção, teste pago novo de provedores ou comprovação de precisão.
 
 ## O que a aplicação faz
 
@@ -46,7 +64,7 @@ O registro SHA-256 compara bytes com um registro anterior. Não comprova autoria
 
 - Falta de evidência, erro de API ou discordância relevante: **inconclusivo**.
 - Indícios concordantes de detectores: **resultado parcial**, sujeito a revisão.
-- C2PA só é tratado como credencial validada quando a validação e a confiança criptográfica estiverem configuradas.
+- C2PA permanece inspeção sem confiança/voto até homologar CLI, configuração e corpus real; presença de âncoras não certifica validação.
 - Ausência de sinais de IA nunca transforma uma mídia em “autêntica”.
 - Corroborada/refutada é classificação atribuída às checagens correspondentes; `False` não é sinônimo de `AI_Generated`. OCR/transcrição têm relatório factual separado.
 - Pontuações são sinais não calibrados. Não são porcentagens de acerto do Verify.
@@ -54,6 +72,8 @@ O registro SHA-256 compara bytes com um registro anterior. Não comprova autoria
 As políticas experimentais estão em `backend/app/services/evidence_policy.py` e `claim_policy.py`. Limiares precisam de validação com um conjunto rotulado representativo; concordância entre dois serviços ou famílias editoriais não garante independência estatística.
 
 `GET /api/capabilities` informa configuração/ferramentas sem expor chaves nem fazer chamadas pagas. Presença de configuração não comprova acesso ou quota: disponibilidade operacional fica `not_tested`. Para métricas offline com resultados inconclusivos incluídos, use `backend/scripts/evaluate_predictions.py`, seguindo o [formato e plano de avaliação](docs/VERIFICACOES-2026-10-03.md#como-medir-precisão-de-verdade-sem-esconder-inconclusivos).
+
+`GET /health` indica vida do processo. `GET /ready` faz `SELECT 1` com prazo de 2 s e cache/coalescência por 2 s/processo: 200 se o banco responder, 503 se indisponível/timeout, sem detalhes de conexão ou chamadas a provedores. Isso não certifica migrações, gravação, quotas ou precisão. Os `railway.toml` locais apontam para `/ready` no próximo deploy; a configuração remota não foi alterada.
 
 ## Arquitetura
 
@@ -63,7 +83,11 @@ As políticas experimentais estão em `backend/app/services/evidence_policy.py` 
 - Mídia: Pillow, FFmpeg/ffprobe; ExifTool e c2patool opcionais.
 - Hospedagem: frontend na Vercel, API e banco na Railway.
 
-Uploads, relatórios completos e PDFs usam o mesmo fluxo de análise de mídia. Arquivos aceitos: imagens decodificáveis JPEG/PNG/WebP/GIF, áudio e vídeo suportados pelo servidor. Limites: 25 MB, 20 megapixels e dois minutos. Imagens animadas têm cobertura limitada ao primeiro quadro.
+Uploads e relatórios completos usam o mesmo fluxo de análise de mídia. **PDF reutiliza o relatório original assinado: não reenvia o arquivo nem consulta detectores novamente.** Arquivos aceitos: imagens decodificáveis JPEG/PNG/WebP/GIF, áudio e vídeo suportados pelo servidor. Limites: 25 MB, 20 megapixels e dois minutos. Imagens animadas têm cobertura limitada ao primeiro quadro.
+
+O histórico usa páginas de 20 itens, busca e filtros em todos os registros da conta, incluindo vídeo. Consultas e resumos não ficam em cache persistente do navegador. O relatório atual fica apenas na sessão da aba, isolado por conta e limpo ao sair/trocar de conta; preferências de acessibilidade permanecem. Isso não substitui a política de retenção/exclusão do banco, ainda pendente.
+
+Exportação de mídia/texto/link: `POST /api/verificar/relatorio-pdf` recebe JSON `{"snapshot_token":"<cópia assinada emitida pelo servidor>"}`. Validade: uma hora; relatórios autenticados exigem a conta original. Abrir um relatório compatível no histórico renova a exportação sem nova análise. Texto/link preservam tipo, entrada original, data/versão e avaliações; link também preserva texto extraído e método. Relatórios antigos sem esses dados continuam indisponíveis: não há reconstrução por consulta nova. Em produção, configure `HMAC_SECRET_KEY` forte e estável; sem isso a exportação fica indisponível. A cópia assinada **não é criptografada**; não compartilhe nem registre seu token. Para anônimos, quem possuir essa cópia pode exportá-la até expirar. A interface informa que o PDF foi preparado, não que o navegador necessariamente salvou o arquivo.
 
 ## Executar com Docker
 
@@ -76,7 +100,8 @@ docker compose up --build
 - Interface: http://localhost:5174
 - API: http://localhost:8001
 - Documentação: http://localhost:8001/docs
-- Saúde: http://localhost:8001/health
+- Vida do processo: http://localhost:8001/health
+- Conectividade do banco: http://localhost:8001/ready
 - PostgreSQL de desenvolvimento: porta 5433
 
 O Compose é para desenvolvimento: possui senhas de exemplo, volumes locais e recarga automática. Não exponha o banco nem use essas senhas em produção. O Dockerfile do backend instala FFmpeg e ExifTool; c2patool exige instalação adicional.
@@ -85,13 +110,15 @@ O perfil opcional `whatsapp` não foi certificado de ponta a ponta com um númer
 
 ## Testes reproduzíveis
 
-Dentro de `backend`, com dependências instaladas:
+Dentro de `backend`, com dependências de `requirements.txt`, FFmpeg/ffprobe e Poppler (`pdftotext`/`pdftoppm`) instalados:
 
 ```bash
-TEST_DATABASE_URL=sqlite+aiosqlite:////tmp/verify-test.db python -m pytest -q
+python -B scripts/run_offline_tests.py
 ```
 
-Use **somente um banco descartável de testes**: a suíte de integração recria suas tabelas. Os testes desabilitam credenciais externas; não dependem de créditos pagos.
+O runner ignora `.env` e URLs de banco herdadas, gera seus próprios SQLite temporários/segredos e bloqueia HTTP real; falha se houver tentativa inesperada ou teste pulado. A opção `--postgres-test-url` aceita somente PostgreSQL local explicitamente fornecido, sem parâmetros extras, com `test` no nome do banco. Use **somente um banco descartável**: a suíte recria suas tabelas. Não use banco real nem túnel para produção. As credenciais fictícias e os bancos de CI não precisam ser adicionados no Railway/Vercel.
+
+O workflow `.github/workflows/tests.yml` prepara SQLite/PostgreSQL, testes backend, `npm ci`, `npm test` e `npm run build`. Não busca segredos, testa APIs reais ou faz deploy. Antes de tratá-lo como bloqueio de publicação, executar no GitHub e exigir os checks nas regras da branch/integrações de deploy. [Reprodução e limites](docs/PDF-READINESS-CI-2026-10-04.md).
 
 Compilação da interface:
 

@@ -102,9 +102,16 @@ def analyze_scam_indicators(text: str, url: str | None = None) -> Dict[str, Any]
                 suspicious_url_reason = f"O domínio termina em '{tld}'. A extensão isolada é um sinal fraco e não comprova golpe ou falsidade."
                 break
         official_domains = {
-            "gov": ("gov.br",), "caixa": ("caixa.gov.br",),
+            "caixa": ("caixa.gov.br",),
             "correios": ("correios.com.br",), "bb": ("bb.com.br",),
         }
+        # A generic 'gov' label is not impersonation of Brazil: nasa.gov and
+        # gov.uk are counterexamples. Match the specific Brazilian name only;
+        # a legitimate suffix still does not certify the page's claims.
+        if (re.search(r"(?:^|[.-])gov[.-]br(?:[.-]|$)", hostname)
+                and not (hostname == "gov.br" or hostname.endswith(".gov.br"))):
+            has_suspicious_url = impersonates_institution = True
+            suspicious_url_reason = "O domínio imita 'gov.br', mas não termina no domínio oficial brasileiro. Confirme pelo canal oficial."
         for entity, domains in official_domains.items():
             if re.search(r"(?:^|[.-])" + entity + r"(?:[.-]|$)", hostname):
                 if not any(hostname == domain or hostname.endswith("." + domain) for domain in domains):

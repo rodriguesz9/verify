@@ -1,0 +1,47 @@
+{
+  "tested_at": "2026-10-07T19:56:24.205330+00:00",
+  "scope": "Extra diagnostic generations; add to UI transport tally, not an accuracy benchmark.",
+  "request_accounting": {
+    "provider": "gemini",
+    "model": "gemini-3.7-flash",
+    "free_credits_confirmed": true,
+    "scope": "Extra diagnostic generations; add to UI transport tally, not an accuracy benchmark.",
+    "prior_generation_ceiling_reported": 6,
+    "diagnostic_generation_ceiling": 2,
+    "diagnostic_generations_started": 2,
+    "combined_reported_generation_ceiling": 8,
+    "deadline_seconds": 60,
+    "no_retries": true,
+    "no_model_fallback": true
+  },
+  "controls": [
+    {
+      "provider": "gemini",
+      "case": "text",
+      "model_requested": "gemini-3.7-flash",
+      "thinking_level": "LOW",
+      "deadline_seconds": 60,
+      "available": false,
+      "status": "provider_error",
+      "http_status": 503,
+      "provider_error_status": "UNAVAILABLE",
+      "reason_class": "provider_unavailable",
+      "elapsed_ms": 3882
+    },
+    {
+      "provider": "gemini",
+      "case": "ocr",
+      "model_requested": "gemini-3.7-flash",
+      "thinking_level": "LOW",
+      "deadline_seconds": 60,
+      "available": false,
+      "status": "provider_error",
+      "http_status": 503,
+      "provider_error_status": "UNAVAILABLE",
+      "reason_class": "provider_unavailable",
+      "elapsed_ms": 2540
+    }
+  ],
+  "source": "https://ai.google.dev/gemini-api/docs/models",
+  "pricing_reference": "https://ai.google.dev/gemini-api/docs/pricing"
+}

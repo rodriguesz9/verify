@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-04",
+  "scope": "local text/link PDF export, not detector accuracy or deployment",
+  "backend": {"tests": 274, "failures": 0, "skips": 0, "runtime": "Python 3.11 / Docker / SQLite / network none"},
+  "frontend": {"tests": 84, "failures": 0, "skips": 0, "runtime": "Node 22", "build_modules": 1974, "build": "passed"},
+  "interface": {
+    "data": "public fictitious controls only",
+    "providers": [],
+    "http_events": [
+      {"path": "/api/check-text", "method": "POST", "status": 200, "content_type": "application/json", "cache_control": "no-store"},
+      {"path": "/api/verificar/relatorio-pdf", "method": "POST", "status": 200, "content_type": "application/pdf", "cache_control": "no-store"},
+      {"path": "/api/check-url", "method": "POST", "status": 200, "content_type": "application/json", "cache_control": "no-store"},
+      {"path": "/api/verificar/relatorio-pdf", "method": "POST", "status": 200, "content_type": "application/pdf", "cache_control": "no-store"},
+      {"path": "/api/verificar/relatorio-pdf", "method": "POST", "status": 200, "content_type": "application/pdf", "cache_control": "no-store"}
+    ],
+    "second_session_records": 2,
+    "records_equal_before_after_export_and_history": true,
+    "no_credentials_persisted": true,
+    "console_errors": 0,
+    "router_future_warnings": 2,
+    "local_page_control": "simulated HTTP, NOT public HTTPS validation",
+    "human_review_pdf": "offline endpoint test, not repeated UI control",
+    "browser_saved_download": "not_confirmed_event_timeout",
+    "feedback": "PDF preparado; check browser downloads, not a guarantee of saved file"
+  },
+  "pdf_example": {"source": "fictitious link report from own disposable DB", "pages": 2, "bytes": 4539, "rendered_and_visually_inspected_pages": 2},
+  "matrix": {"partially_executed": 22, "pending": 8, "no_accuracy_claim": true},
+  "production_modified": false,
+  "external_provider_calls": 0,
+  "commit_push_deploy": false,
+  "owned_test_services_stopped": true
+}

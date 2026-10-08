@@ -1,0 +1,182 @@
+{
+  "tested_at": "2026-10-04T11:47:52.419209+00:00",
+  "scope": "Local controls; NOT 30-case completion, API validation or accuracy benchmark",
+  "total": 16,
+  "passed": 16,
+  "results": [
+    {
+      "case_id": "TXT01",
+      "execution": "local_rule_simulated_evidence_NOT_UI_NOT_REAL_API",
+      "expected": {
+        "veracity": "supported",
+        "verdict": "Authentic"
+      },
+      "observed": {
+        "veracity": "supported",
+        "verdict": "Authentic"
+      },
+      "passed": true
+    },
+    {
+      "case_id": "TXT02",
+      "execution": "local_rule_simulated_evidence_NOT_UI_NOT_REAL_API",
+      "expected": {
+        "veracity": "refuted",
+        "verdict": "False"
+      },
+      "observed": {
+        "veracity": "refuted",
+        "verdict": "False"
+      },
+      "passed": true
+    },
+    {
+      "case_id": "TXT03",
+      "execution": "local_rule_simulated_evidence_NOT_UI_NOT_REAL_API",
+      "expected": {
+        "veracity": "unverified",
+        "verdict": "Suspicious"
+      },
+      "observed": {
+        "veracity": "unverified",
+        "verdict": "Suspicious"
+      },
+      "passed": true
+    },
+    {
+      "case_id": "TXT04",
+      "execution": "local_rule_simulated_evidence_NOT_UI_NOT_REAL_API",
+      "expected": {
+        "veracity": "unverified",
+        "verdict": "Suspicious"
+      },
+      "observed": {
+        "veracity": "unverified",
+        "verdict": "Suspicious"
+      },
+      "passed": true
+    },
+    {
+      "case_id": "TXT05",
+      "execution": "local_rule_simulated_evidence_NOT_UI_NOT_REAL_API",
+      "expected": {
+        "veracity": "conflicting",
+        "verdict": "Suspicious"
+      },
+      "observed": {
+        "veracity": "conflicting",
+        "verdict": "Suspicious"
+      },
+      "passed": true
+    },
+    {
+      "case_id": "TXT06",
+      "execution": "local_rule_simulated_evidence_NOT_UI_NOT_REAL_API",
+      "expected": {
+        "veracity": "unverified",
+        "verdict": "Suspicious"
+      },
+      "observed": {
+        "veracity": "unverified",
+        "verdict": "Suspicious"
+      },
+      "passed": true
+    },
+    {
+      "case_id": "TXT07",
+      "execution": "local_rule_simulated_evidence_NOT_UI_NOT_REAL_API",
+      "expected": {
+        "veracity": "unverified",
+        "verdict": "Suspicious"
+      },
+      "observed": {
+        "veracity": "unverified",
+        "verdict": "Suspicious"
+      },
+      "passed": true
+    },
+    {
+      "case_id": "TXT08",
+      "execution": "local_rule_simulated_evidence_NOT_UI_NOT_REAL_API",
+      "expected": {
+        "veracity": "unverified",
+        "verdict": "Scam"
+      },
+      "observed": {
+        "veracity": "unverified",
+        "verdict": "Scam"
+      },
+      "passed": true
+    },
+    {
+      "case_id": "OCR01",
+      "execution": "local_tesseract_NOT_UI",
+      "sha256": "7ffa0355f5dcd0137aa1cf4925b27048710ba90581f3a58ebe44028fae676da5",
+      "expected_text": "CONTROLE DE TESTE\nNao pague taxa para liberar seu Pix.\nValor: R$ 123,45\nData: 03/10/2026",
+      "observed_text": "CONTROLE DE TESTE\nNao pague taxa para liberar seu Pix.\nValor: R$ 123,45\nData: 03/10/2026",
+      "status": "success",
+      "passed": true
+    },
+    {
+      "case_id": "OCR02",
+      "execution": "local_tesseract_NOT_UI",
+      "sha256": "71d73a3911796ed1af33ba76bfad2dafe25ed24390e18f605b688649d02fcb95",
+      "expected_text": "CONTROLE DE TESTE\nPague uma taxa para liberar seu Pix.\nValor: R$ 123,45\nData: 03/10/2026",
+      "observed_text": "CONTROLE DE TESTE\nPague uma taxa para liberar seu Pix.\nValor: R$ 123,45\nData: 03/10/2026",
+      "status": "success",
+      "passed": true
+    },
+    {
+      "case_id": "OCR03",
+      "execution": "local_tesseract_NOT_UI",
+      "sha256": "dc4681601782da6aa447d9c3790f3d08475fdefb96aeb6440a46aecd983fa650",
+      "expected_text": "R$ 1.000,00\nR$ 10,00\nTaxa: 10%\nTaxa: 100%",
+      "observed_text": "R$ 1.000,00\nR$ 10,00\nTaxa: 10%\nTaxa: 100%",
+      "status": "success",
+      "passed": true
+    },
+    {
+      "case_id": "OCR04",
+      "execution": "local_tesseract_NOT_UI",
+      "sha256": "7c802cfed688dcb6cbe3ca1b3a777504637319c3d1e93295c18f8f5f292ae9b0",
+      "expected_text": "Data: 03/10/2026\nOutra data: 30/10/2026",
+      "observed_text": "Data: 03/10/2026\nOutra data: 30/10/2026",
+      "status": "success",
+      "passed": true
+    },
+    {
+      "case_id": "OCR06",
+      "execution": "local_tesseract_NOT_UI",
+      "sha256": "2360c0ab7196e94a6aa0ea47258c2a4f26e6a962d857123faad1aa9e29b942ab",
+      "expected_text": "",
+      "observed_text": "",
+      "status": "no_text",
+      "passed": true
+    },
+    {
+      "case_id": "AUD03",
+      "execution": "local_ffmpeg_and_silence_gate_NOT_UI",
+      "duration_seconds": 1.007,
+      "status": "no_speech",
+      "remote_calls": 0,
+      "passed": true
+    },
+    {
+      "case_id": "VID01",
+      "execution": "local_ffmpeg_sampling_NOT_UI_NOT_DETECTOR",
+      "duration_seconds": 3.0,
+      "sampled_frames": 3,
+      "timestamps_seconds": [
+        0.3,
+        1.5,
+        2.7
+      ],
+      "passed": true
+    },
+    {
+      "case_id": "LNK09",
+      "execution": "local_private_url_guard_NOT_UI",
+      "passed": true
+    }
+  ]
+}

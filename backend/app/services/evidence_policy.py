@@ -53,7 +53,7 @@ def media_report(forensics: dict, kind: str = "image") -> dict:
         detail = speech.get("transcription_detail")
         detail = detail if isinstance(detail, dict) else {}
         coverage["transcription"] = {"status": "success" if speech.get("transcription") else detail.get("status", "unavailable"),
-            "decision_role": "transcription_only", "provider": speech.get("transcription_provider"),
+            "decision_role": "transcription_only", "provider": speech.get("transcription_provider") or detail.get("provider"),
             "reason": detail.get("reason"), "model_used": detail.get("model_used"), "ai_score": None, "deepfake_score": None}
     limitations = [
         "Ausência de sinais de IA não comprova autenticidade ou veracidade da cena.",

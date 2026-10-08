@@ -1,5 +1,7 @@
 # Configurar o Verify em produção
 
+**Guia histórico de 03/10.** Para a configuração consolidada de 04/10, usar [manual completo — ambiente](DOCUMENTACAO-COMPLETA.md#ambiente), [provedores](DOCUMENTACAO-COMPLETA.md#provedores) e [deploy](DOCUMENTACAO-COMPLETA.md#deploy). HF atualmente é experimental sem voto; OpenRouter gratuito está integrado; `/ready` é o health check de implantação preparado. As consultas ao painel descritas abaixo ocorreram na etapa antiga e não comprovam valores/saldo/pendências atuais.
+
 Guia de 3 de outubro de 2026. Configuração completa não garante vereditos infalíveis. Os testes locais validam regras e funcionamento; precisão exige avaliação independente com amostras rotuladas.
 
 ## 1. Railway: configurações básicas

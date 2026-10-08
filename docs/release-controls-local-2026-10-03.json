@@ -1,0 +1,149 @@
+{
+  "scope": "local offline controls, not detector accuracy",
+  "cases": [
+    {
+      "case": "login_a",
+      "status": 200,
+      "expected": 200,
+      "ok": true
+    },
+    {
+      "case": "page_1",
+      "status": 200,
+      "expected": 200,
+      "ok": true
+    },
+    {
+      "case": "page_2",
+      "status": 200,
+      "expected": 200,
+      "ok": true
+    },
+    {
+      "case": "page_3",
+      "status": 200,
+      "expected": 200,
+      "ok": true
+    },
+    {
+      "case": "global_search",
+      "status": 200,
+      "expected": 200,
+      "ok": true
+    },
+    {
+      "case": "filter_text",
+      "status": 200,
+      "expected": 200,
+      "ok": true
+    },
+    {
+      "case": "filter_url",
+      "status": 200,
+      "expected": 200,
+      "ok": true
+    },
+    {
+      "case": "filter_image",
+      "status": 200,
+      "expected": 200,
+      "ok": true
+    },
+    {
+      "case": "filter_audio",
+      "status": 200,
+      "expected": 200,
+      "ok": true
+    },
+    {
+      "case": "filter_video",
+      "status": 200,
+      "expected": 200,
+      "ok": true
+    },
+    {
+      "case": "owned_original_report",
+      "status": 200,
+      "expected": 200,
+      "ok": true
+    },
+    {
+      "case": "pdf_original_snapshot",
+      "status": 200,
+      "expected": 200,
+      "ok": true
+    },
+    {
+      "case": "pdf_does_not_add_analysis",
+      "status": 200,
+      "expected": 200,
+      "ok": true
+    },
+    {
+      "case": "tampered_pdf_rejected",
+      "status": 422,
+      "expected": 422,
+      "ok": true
+    },
+    {
+      "case": "unsigned_pdf_rejected",
+      "status": 422,
+      "expected": 422,
+      "ok": true
+    },
+    {
+      "case": "pdf_reupload_rejected",
+      "status": 422,
+      "expected": 422,
+      "ok": true
+    },
+    {
+      "case": "malformed_history_id",
+      "status": 422,
+      "expected": 422,
+      "ok": true
+    },
+    {
+      "case": "logout_a",
+      "status": 204,
+      "expected": 204,
+      "ok": true
+    },
+    {
+      "case": "history_requires_login",
+      "status": 401,
+      "expected": 401,
+      "ok": true
+    },
+    {
+      "case": "login_b",
+      "status": 200,
+      "expected": 200,
+      "ok": true
+    },
+    {
+      "case": "account_b_isolated_history",
+      "status": 200,
+      "expected": 200,
+      "ok": true
+    },
+    {
+      "case": "account_b_cannot_read_a",
+      "status": 404,
+      "expected": 404,
+      "ok": true
+    },
+    {
+      "case": "account_b_cannot_export_a",
+      "status": 403,
+      "expected": 403,
+      "ok": true
+    },
+    {
+      "case": "logout_b",
+      "status": 204,
+      "expected": 204,
+      "ok": true
+    }
+  ]
+}

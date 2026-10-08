@@ -54,7 +54,7 @@ async def main():
         await check("empty_image_rejected", "POST", "/api/upload", 422, files={"file": ("empty.png", b"", "image/png")})
         await check("corrupt_image_rejected", "POST", "/api/verificar/completo", 422,
                     files={"file": ("corrupt.png", b"\x89PNG\r\n\x1a\nnot pixels", "image/png")})
-        await check("synthetic_image_control", "POST", "/api/upload",
+        image_report = await check("synthetic_image_control", "POST", "/api/upload",
                     files={"file": ("sample.png", (FIXTURES / "synthetic-cafe.png").read_bytes(), "image/png")})
         await check("synthetic_video_control", "POST", "/api/upload",
                     files={"file": ("sample.mp4", (FIXTURES / "synthetic-cafe.mp4").read_bytes(), "video/mp4")})
@@ -65,7 +65,14 @@ async def main():
         await check("scam_text", "POST", "/api/check-text", json={"text": "Pague uma taxa de 37 reais para liberar seu Pix no gov-pix-beneficios.site. Faça o Pix agora!"})
         await check("batch_text", "POST", "/api/check-text-batch", json={"texts": ["O céu está bonito hoje.", "Pague uma taxa para receber seu prêmio via Pix urgente!"]})
         await check("whatsapp_simulator", "POST", "/api/whatsapp/simulate", json={"message": "Pague uma taxa para receber seu prêmio via Pix urgente!"})
-        await check("pdf", "POST", "/api/verificar/relatorio-pdf", files={"file": ("sample.png", (FIXTURES / "synthetic-cafe.png").read_bytes(), "image/png")})
+        if image_report.get("pdf_snapshot_token"):
+            await check("pdf_same_analysis", "POST", "/api/verificar/relatorio-pdf",
+                        json={"snapshot_token": image_report["pdf_snapshot_token"]})
+        else:
+            records.append({"case": "pdf_same_analysis", "http_ok": False,
+                            "error_type": "SnapshotUnavailable", "export_status": image_report.get("pdf_export_status")})
+        await check("pdf_reupload_rejected", "POST", "/api/verificar/relatorio-pdf", 422,
+                    files={"file": ("sample.png", (FIXTURES / "synthetic-cafe.png").read_bytes(), "image/png")})
         if args.local_auth:
             identity = {"name": "Auditoria local", "email": f"audit-{int(time.time())}@example.com", "password": "Local-Test-Only-938!"}
             await check("local_register", "POST", "/api/auth/register", json=identity)

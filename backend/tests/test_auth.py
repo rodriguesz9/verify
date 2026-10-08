@@ -22,6 +22,13 @@ class AuthIntegrationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["email"], self.user.email)
         self.assertEqual(response.json()["name"], self.user.name)
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
+
+    def test_api_errors_are_not_saved_in_http_caches(self):
+        response = self.client.get("/api/history/not-a-uuid")
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
 
     def test_health_endpoint_returns_ok_with_security_headers(self):
         response = self.client.get("/health")

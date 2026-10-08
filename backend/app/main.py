@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from dotenv import load_dotenv
@@ -12,6 +13,10 @@ from app.api import check_text, check_url, upload, auth, history, whatsapp, veri
 from app.core.database import init_db, engine
 from app.core.rate_limit import limiter
 from app.core.request_budget import RequestBudgetMiddleware
+from app.services.readiness import DatabaseReadiness
+from app.services.assemblyai_jobs import assemblyai_jobs
+
+readiness_probe = DatabaseReadiness(engine)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -19,7 +24,10 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
-        await engine.dispose()
+        try:
+            await assemblyai_jobs.shutdown()
+        finally:
+            await engine.dispose()
 
 
 app = FastAPI(
@@ -61,6 +69,10 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"]           = "DENY"
     response.headers["X-XSS-Protection"]          = "1; mode=block"
     response.headers["Referrer-Policy"]           = "strict-origin-when-cross-origin"
+    # Analysis/history may contain personal text or a short-lived PDF bearer
+    # capability. Never reuse them from a shared or browser HTTP cache.
+    if request.url.path.startswith("/api/") or request.url.path in {"/health", "/ready"}:
+        response.headers["Cache-Control"] = "no-store"
     return response
 
 # ── Routers ───────────────────────────────────────────────────────────────────
@@ -79,6 +91,17 @@ def root():
 @app.get("/health", tags=["Health"])
 def health():
     return {"status": "ok", "service": "Verify"}
+
+
+@app.get("/ready", tags=["Health"])
+async def ready():
+    database = await readiness_probe.check()
+    return JSONResponse(
+        status_code=200 if database == "ok" else 503,
+        content={"status": "ready" if database == "ok" else "not_ready",
+                 "service": "Verify", "checks": {"database": database}},
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @app.get("/api/capabilities", tags=["Health"])

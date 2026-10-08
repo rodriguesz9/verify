@@ -1,0 +1,1382 @@
+{
+  "scope": "Observações de controles pela interface local; não é benchmark de precisão nem validação de produção",
+  "captured_at": "2026-10-04T12:23:36.882Z",
+  "observations": [
+    {
+      "case_id": "OCR01_IMG03",
+      "filename": "impresso-base.png",
+      "sha256": "7ffa0355f5dcd0137aa1cf4925b27048710ba90581f3a58ebe44028fae676da5",
+      "analyzed_at": "2026-10-04T11:41:13.261320+00:00",
+      "content_type": "image",
+      "verdict": "Suspicious",
+      "veracity_status": "unverified",
+      "authenticity_status": "undetermined",
+      "analysis_status": "inconclusive",
+      "policy_version": "2026-10-03.2",
+      "score": 50,
+      "extracted_text": "CONTROLE DE TESTE\nNao pague taxa para liberar seu Pix.\nValor: R$ 123,45\nData: 03/10/2026",
+      "provider_coverage": {
+        "sightengine": {
+          "status": "success",
+          "model_used": null,
+          "reason": null,
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": 0.001,
+          "deepfake_score": 0.001
+        },
+        "huggingface": {
+          "status": "success",
+          "model_used": "Ateeqq/ai-vs-human-image-detector",
+          "reason": "Detector experimental: sinal não calibrado, não participa do veredito. Não detecta manipulação facial nem comprova autenticidade.",
+          "decision_role": "experimental_signal",
+          "voting_eligible": false,
+          "ai_score": 0.999914288520813,
+          "deepfake_score": null
+        },
+        "hive": {
+          "status": "not_configured",
+          "model_used": null,
+          "reason": "Hive v3 exige Secret Key e autorização de custo em HIVE_V3_MEDIA_TYPES.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "hive_deepfake": {
+          "status": "not_configured",
+          "model_used": null,
+          "reason": "Hive v3 exige Secret Key e autorização de custo em HIVE_V3_MEDIA_TYPES.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "ocr": {
+          "status": "success",
+          "provider": "tesseract",
+          "model_used": "tesseract-lstm-por-eng",
+          "reason": null,
+          "decision_role": "ocr_only",
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "gemini_vision": {
+          "status": "success",
+          "provider": "gemini",
+          "model_used": "gemini-3.7-flash",
+          "reason": null,
+          "decision_role": "inspection_only",
+          "ai_score": null,
+          "deepfake_score": null
+        }
+      },
+      "content_provider_coverage": {
+        "google_fact_check": {
+          "status": "no_results",
+          "reason": "Consulta concluída sem checagens correspondentes.",
+          "matches_returned": 0,
+          "queries": [
+            {
+              "status": "no_results",
+              "reason": null
+            },
+            {
+              "status": "no_results",
+              "reason": null
+            },
+            {
+              "status": "no_results",
+              "reason": null
+            },
+            {
+              "status": "no_results",
+              "reason": null
+            },
+            {
+              "status": "no_results",
+              "reason": null
+            }
+          ]
+        },
+        "serper": {
+          "status": "no_results",
+          "reason": null,
+          "decision_role": "context_only",
+          "matches_returned": 0,
+          "queries": [
+            {
+              "status": "no_results",
+              "reason": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "IMG02",
+      "filename": "synthetic-cafe.png",
+      "sha256": "e73eb7f8d081bebbf528f83ede7f689c41433b0aed0c2a42ed7487d72dbf5ca3",
+      "analyzed_at": "2026-10-04T11:42:23.600559+00:00",
+      "content_type": "image",
+      "verdict": "Suspicious",
+      "veracity_status": "unverified",
+      "authenticity_status": "undetermined",
+      "analysis_status": "inconclusive",
+      "policy_version": "2026-10-03.2",
+      "score": 50,
+      "extracted_text": "",
+      "provider_coverage": {
+        "sightengine": {
+          "status": "success",
+          "model_used": null,
+          "reason": null,
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": 0.99,
+          "deepfake_score": 0.02
+        },
+        "huggingface": {
+          "status": "success",
+          "model_used": "Ateeqq/ai-vs-human-image-detector",
+          "reason": "Detector experimental: sinal não calibrado, não participa do veredito. Não detecta manipulação facial nem comprova autenticidade.",
+          "decision_role": "experimental_signal",
+          "voting_eligible": false,
+          "ai_score": 0.002527158707380295,
+          "deepfake_score": null
+        },
+        "hive": {
+          "status": "not_configured",
+          "model_used": null,
+          "reason": "Hive v3 exige Secret Key e autorização de custo em HIVE_V3_MEDIA_TYPES.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "hive_deepfake": {
+          "status": "not_configured",
+          "model_used": null,
+          "reason": "Hive v3 exige Secret Key e autorização de custo em HIVE_V3_MEDIA_TYPES.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "ocr": {
+          "status": "success",
+          "provider": "gemini",
+          "model_used": "gemini-3.1-flash-lite",
+          "reason": null,
+          "decision_role": "ocr_only",
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "gemini_vision": {
+          "status": "unavailable",
+          "provider": "gemini",
+          "model_used": "fallback",
+          "reason": "Análise visual auxiliar indisponível ou inválida.",
+          "decision_role": "inspection_only",
+          "ai_score": null,
+          "deepfake_score": null
+        }
+      },
+      "content_provider_coverage": {}
+    },
+    {
+      "case_id": "AUD01",
+      "filename": "demo-conversa-sintetica.wav",
+      "sha256": "70d5fa877db6f0fd0ddaa75c3a838017479fc95242b4d56a0c2dfd9cdb6f72ec",
+      "analyzed_at": "2026-10-04T11:45:34.423450+00:00",
+      "content_type": "audio",
+      "verdict": "Suspicious",
+      "veracity_status": "unverified",
+      "authenticity_status": "undetermined",
+      "analysis_status": "inconclusive",
+      "policy_version": "2026-10-03.2",
+      "score": 50,
+      "extracted_text": "Oi vó, tudo bem? Estou saindo da aula agora. Te vejo mais tarde para o café.",
+      "content_risk": {
+        "is_scam_pattern": false,
+        "matched_scam_count": 0,
+        "indicators": [],
+        "matched_excerpts": [],
+        "risk_level": "INDETERMINADO"
+      },
+      "provider_coverage": {
+        "sightengine_audio": {
+          "status": "disabled",
+          "model_used": null,
+          "reason": "Detector acústico Sightengine não habilitado; exige acesso ao modelo ai_speech.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "hive": {
+          "status": "not_configured",
+          "model_used": null,
+          "reason": "Hive v3 exige Secret Key e autorização de custo em HIVE_V3_MEDIA_TYPES.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "transcription": {
+          "status": "success",
+          "provider": "assemblyai",
+          "model_used": "universal-2",
+          "reason": null,
+          "decision_role": "transcription_only",
+          "ai_score": null,
+          "deepfake_score": null
+        }
+      },
+      "content_provider_coverage": {
+        "google_fact_check": {
+          "status": "no_results",
+          "reason": "Consulta concluída sem checagens correspondentes.",
+          "matches_returned": 0,
+          "queries": [
+            {
+              "status": "no_results",
+              "reason": null
+            },
+            {
+              "status": "no_results",
+              "reason": null
+            },
+            {
+              "status": "no_results",
+              "reason": null
+            },
+            {
+              "status": "no_results",
+              "reason": null
+            }
+          ]
+        },
+        "serper": {
+          "status": "no_results",
+          "reason": null,
+          "decision_role": "context_only",
+          "matches_returned": 0,
+          "queries": [
+            {
+              "status": "no_results",
+              "reason": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "AUD02",
+      "filename": "demo-pedido-sintetico.wav",
+      "sha256": "8deefe71c742c3c06f6c50cda552721767d70a872824933749b31192f36e6c7f",
+      "analyzed_at": "2026-10-04T11:46:36.752500+00:00",
+      "content_type": "audio",
+      "verdict": "Suspicious",
+      "veracity_status": "unverified",
+      "authenticity_status": "undetermined",
+      "analysis_status": "inconclusive",
+      "policy_version": "2026-10-03.2",
+      "score": 50,
+      "extracted_text": "Mãe, caí na rua e perdi meu celular. Faz um pic surgente para o guincho, por favor.",
+      "content_risk": {
+        "is_scam_pattern": false,
+        "matched_scam_count": 0,
+        "indicators": [],
+        "matched_excerpts": [],
+        "risk_level": "INDETERMINADO"
+      },
+      "provider_coverage": {
+        "sightengine_audio": {
+          "status": "disabled",
+          "model_used": null,
+          "reason": "Detector acústico Sightengine não habilitado; exige acesso ao modelo ai_speech.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "hive": {
+          "status": "not_configured",
+          "model_used": null,
+          "reason": "Hive v3 exige Secret Key e autorização de custo em HIVE_V3_MEDIA_TYPES.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "transcription": {
+          "status": "success",
+          "provider": "assemblyai",
+          "model_used": "universal-2",
+          "reason": null,
+          "decision_role": "transcription_only",
+          "ai_score": null,
+          "deepfake_score": null
+        }
+      },
+      "content_provider_coverage": {
+        "google_fact_check": {
+          "status": "no_results",
+          "reason": "Consulta concluída sem checagens correspondentes.",
+          "matches_returned": 0,
+          "queries": [
+            {
+              "status": "no_results",
+              "reason": null
+            },
+            {
+              "status": "no_results",
+              "reason": null
+            },
+            {
+              "status": "no_results",
+              "reason": null
+            }
+          ]
+        },
+        "serper": {
+          "status": "no_results",
+          "reason": null,
+          "decision_role": "context_only",
+          "matches_returned": 0,
+          "queries": [
+            {
+              "status": "no_results",
+              "reason": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "REAL_TXT_FALSE",
+      "content_type": "text_or_link",
+      "verdict": "Suspicious",
+      "veracity_status": "unverified",
+      "authenticity_status": "not_applicable",
+      "analysis_status": "inconclusive",
+      "policy_version": "2026-10-03.1",
+      "score": 50,
+      "extracted_text": "",
+      "search_claims": [],
+      "scam_analysis": {
+        "is_scam": false,
+        "scam_count": 0,
+        "detected_patterns": [],
+        "suspicious_url": false,
+        "suspicious_url_reason": "",
+        "advice": ""
+      },
+      "provider_coverage": {
+        "google_fact_check": {
+          "status": "no_results",
+          "reason": "Consulta concluída sem checagens correspondentes.",
+          "matches_returned": 0,
+          "queries": [
+            {
+              "status": "no_results",
+              "reason": null
+            }
+          ]
+        },
+        "openrouter": {
+          "status": "not_configured",
+          "decision_role": "search_hints_only",
+          "free_only": true
+        },
+        "serper": {
+          "status": "success",
+          "reason": null,
+          "decision_role": "context_only",
+          "matches_returned": 5,
+          "queries": [
+            {
+              "status": "success",
+              "reason": null
+            }
+          ]
+        }
+      },
+      "content_provider_coverage": {}
+    },
+    {
+      "case_id": "AUD02_GEMINI",
+      "filename": "demo-pedido-sintetico.wav",
+      "sha256": "8deefe71c742c3c06f6c50cda552721767d70a872824933749b31192f36e6c7f",
+      "analyzed_at": "2026-10-04T12:00:34.518590+00:00",
+      "content_type": "audio",
+      "verdict": "Suspicious",
+      "veracity_status": "unverified",
+      "authenticity_status": "undetermined",
+      "analysis_status": "inconclusive",
+      "policy_version": "2026-10-03.2",
+      "score": 50,
+      "extracted_text": "Mãe, caí na rua e perdi meu celular. Faço um Pix urgente para o guincho, por favor.",
+      "content_risk": {
+        "is_scam_pattern": true,
+        "matched_scam_count": 1,
+        "indicators": [
+          "Há pedido financeiro ou relato de troca/perda de celular na fala. Isso não comprova golpe: confirme por outro canal."
+        ],
+        "matched_excerpts": [
+          "perdi meu celular"
+        ],
+        "risk_level": "ATENÇÃO"
+      },
+      "provider_coverage": {
+        "sightengine_audio": {
+          "status": "disabled",
+          "model_used": null,
+          "reason": "Detector acústico Sightengine não habilitado; exige acesso ao modelo ai_speech.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "hive": {
+          "status": "not_configured",
+          "model_used": null,
+          "reason": "Hive v3 exige Secret Key e autorização de custo em HIVE_V3_MEDIA_TYPES.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "transcription": {
+          "status": "success",
+          "provider": "gemini",
+          "model_used": "gemini-3.1-flash-lite",
+          "reason": null,
+          "decision_role": "transcription_only",
+          "ai_score": null,
+          "deepfake_score": null
+        }
+      },
+      "content_provider_coverage": {
+        "google_fact_check": {
+          "status": "no_results",
+          "reason": "Consulta concluída sem checagens correspondentes.",
+          "matches_returned": 0,
+          "queries": [
+            {
+              "status": "no_results",
+              "reason": null
+            },
+            {
+              "status": "no_results",
+              "reason": null
+            },
+            {
+              "status": "no_results",
+              "reason": null
+            }
+          ]
+        },
+        "serper": {
+          "status": "no_results",
+          "reason": null,
+          "decision_role": "context_only",
+          "matches_returned": 0,
+          "queries": [
+            {
+              "status": "no_results",
+              "reason": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "OCR01_GEMINI",
+      "filename": "impresso-base.png",
+      "sha256": "7ffa0355f5dcd0137aa1cf4925b27048710ba90581f3a58ebe44028fae676da5",
+      "analyzed_at": "2026-10-04T12:01:19.413982+00:00",
+      "content_type": "image",
+      "verdict": "Suspicious",
+      "veracity_status": "unverified",
+      "authenticity_status": "undetermined",
+      "analysis_status": "inconclusive",
+      "policy_version": "2026-10-03.2",
+      "score": 50,
+      "extracted_text": "CONTROLE DE TESTE\nNao pague taxa para liberar seu Pix.\nValor: R$ 123,45\nData: 03/10/2026",
+      "provider_coverage": {
+        "sightengine": {
+          "status": "unavailable",
+          "model_used": null,
+          "reason": "Sightengine API keys not configured.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "huggingface": {
+          "status": "not_configured",
+          "model_used": null,
+          "reason": "Token Hugging Face não configurado.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "hive": {
+          "status": "not_configured",
+          "model_used": null,
+          "reason": "Hive v3 exige Secret Key e autorização de custo em HIVE_V3_MEDIA_TYPES.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "hive_deepfake": {
+          "status": "not_configured",
+          "model_used": null,
+          "reason": "Hive v3 exige Secret Key e autorização de custo em HIVE_V3_MEDIA_TYPES.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "ocr": {
+          "status": "success",
+          "provider": "gemini",
+          "model_used": "gemini-3.1-flash-lite",
+          "reason": null,
+          "decision_role": "ocr_only",
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "gemini_vision": {
+          "status": "success",
+          "provider": "gemini",
+          "model_used": "gemini-3.1-flash-lite",
+          "reason": null,
+          "decision_role": "inspection_only",
+          "ai_score": null,
+          "deepfake_score": null
+        }
+      },
+      "content_provider_coverage": {
+        "google_fact_check": {
+          "status": "no_results",
+          "reason": "Consulta concluída sem checagens correspondentes.",
+          "matches_returned": 0,
+          "queries": [
+            {
+              "status": "no_results",
+              "reason": null
+            },
+            {
+              "status": "no_results",
+              "reason": null
+            },
+            {
+              "status": "no_results",
+              "reason": null
+            },
+            {
+              "status": "no_results",
+              "reason": null
+            },
+            {
+              "status": "no_results",
+              "reason": null
+            }
+          ]
+        },
+        "serper": {
+          "status": "no_results",
+          "reason": null,
+          "decision_role": "context_only",
+          "matches_returned": 0,
+          "queries": [
+            {
+              "status": "no_results",
+              "reason": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "REAL_TXT_TRUE",
+      "content_type": "text_or_link",
+      "verdict": "Suspicious",
+      "veracity_status": "unverified",
+      "authenticity_status": "not_applicable",
+      "analysis_status": "inconclusive",
+      "policy_version": "2026-10-03.1",
+      "score": 50,
+      "extracted_text": "",
+      "search_claims": [
+        "A Apollo 11 pousou na Lua em 20 de julho de 1969."
+      ],
+      "scam_analysis": {
+        "is_scam": false,
+        "scam_count": 0,
+        "detected_patterns": [],
+        "suspicious_url": false,
+        "suspicious_url_reason": "",
+        "advice": ""
+      },
+      "provider_coverage": {
+        "google_fact_check": {
+          "status": "no_results",
+          "reason": "Consulta concluída sem checagens correspondentes.",
+          "matches_returned": 0,
+          "queries": [
+            {
+              "status": "no_results",
+              "reason": null
+            }
+          ]
+        },
+        "openrouter": {
+          "status": "not_configured",
+          "decision_role": "search_hints_only",
+          "free_only": true
+        },
+        "gemini": {
+          "status": "success",
+          "model_used": "gemini-3.1-flash-lite",
+          "reason": null,
+          "decision_role": "search_hints_only"
+        },
+        "serper": {
+          "status": "success",
+          "reason": null,
+          "decision_role": "context_only",
+          "matches_returned": 5,
+          "queries": [
+            {
+              "status": "success",
+              "reason": null
+            }
+          ]
+        }
+      },
+      "content_provider_coverage": {}
+    },
+    {
+      "case_id": "REAL_LINK_BEFORE_FIX",
+      "content_type": "text_or_link",
+      "verdict": "Scam",
+      "veracity_status": "unverified",
+      "authenticity_status": "not_applicable",
+      "analysis_status": "partial",
+      "policy_version": "2026-10-03.1",
+      "score": 15,
+      "extracted_text": "",
+      "search_claims": [
+        "The primary objective of Apollo 11 was to complete a national goal set by President John F. Kennedy on May 25, 1961: perform a crewed lunar landing and return to Earth.",
+        "Launch July 16, 1969",
+        "SPLASHDOWN July 24, 1969",
+        "Neil Armstrong First human to set foot on the Moon.",
+        "He joined NASA’s predecessor, the NACA, as an aeronautical research scientist and pilot in 1955."
+      ],
+      "scam_analysis": {
+        "is_scam": true,
+        "scam_count": 1,
+        "detected_patterns": [],
+        "suspicious_url": true,
+        "suspicious_url_reason": "O domínio usa o nome 'gov', mas não corresponde aos domínios oficiais configurados para essa instituição. Confirme pelo canal oficial.",
+        "advice": "Nunca envie dinheiro, não faça Pix e não digite suas senhas ou CPF em links recebidos por mensagem."
+      },
+      "provider_coverage": {
+        "google_fact_check": {
+          "status": "no_results",
+          "reason": "Consulta concluída sem checagens correspondentes.",
+          "matches_returned": 0,
+          "queries": [
+            {
+              "status": "no_results",
+              "reason": null
+            },
+            {
+              "status": "no_results",
+              "reason": null
+            },
+            {
+              "status": "no_results",
+              "reason": null
+            },
+            {
+              "status": "no_results",
+              "reason": null
+            },
+            {
+              "status": "no_results",
+              "reason": null
+            }
+          ]
+        },
+        "openrouter": {
+          "status": "not_configured",
+          "decision_role": "search_hints_only",
+          "free_only": true
+        },
+        "gemini": {
+          "status": "success",
+          "model_used": "gemini-3.1-flash-lite",
+          "reason": null,
+          "decision_role": "search_hints_only"
+        },
+        "serper": {
+          "status": "success",
+          "reason": null,
+          "decision_role": "context_only",
+          "matches_returned": 12,
+          "queries": [
+            {
+              "status": "success",
+              "reason": null
+            },
+            {
+              "status": "success",
+              "reason": null
+            },
+            {
+              "status": "success",
+              "reason": null
+            }
+          ]
+        }
+      },
+      "content_provider_coverage": {}
+    },
+    {
+      "case_id": "REAL_IMG_COMPOSITE",
+      "filename": "nasa-blue-marble-2012.jpg",
+      "sha256": "7086bb4b90dc2660c3e76fdb4ddf91536a38796ea8da2e153b77758021111a8d",
+      "analyzed_at": "2026-10-04T12:06:18.125819+00:00",
+      "content_type": "image",
+      "verdict": "Suspicious",
+      "veracity_status": "unverified",
+      "authenticity_status": "undetermined",
+      "analysis_status": "inconclusive",
+      "policy_version": "2026-10-03.2",
+      "score": 50,
+      "extracted_text": "",
+      "provider_coverage": {
+        "sightengine": {
+          "status": "success",
+          "model_used": null,
+          "reason": null,
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": 0.001,
+          "deepfake_score": 0.001
+        },
+        "huggingface": {
+          "status": "not_configured",
+          "model_used": null,
+          "reason": "Token Hugging Face não configurado.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "hive": {
+          "status": "not_configured",
+          "model_used": null,
+          "reason": "Hive v3 exige Secret Key e autorização de custo em HIVE_V3_MEDIA_TYPES.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "hive_deepfake": {
+          "status": "not_configured",
+          "model_used": null,
+          "reason": "Hive v3 exige Secret Key e autorização de custo em HIVE_V3_MEDIA_TYPES.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "ocr": {
+          "status": "no_text",
+          "provider": "gemini",
+          "model_used": "gemini-3.1-flash-lite",
+          "reason": null,
+          "decision_role": "ocr_only",
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "gemini_vision": {
+          "status": "success",
+          "provider": "gemini",
+          "model_used": "gemini-3.1-flash-lite",
+          "reason": null,
+          "decision_role": "inspection_only",
+          "ai_score": null,
+          "deepfake_score": null
+        }
+      },
+      "content_provider_coverage": {}
+    },
+    {
+      "case_id": "REAL_LINK_AFTER_FIX",
+      "content_type": "text_or_link",
+      "verdict": "Suspicious",
+      "veracity_status": "unverified",
+      "authenticity_status": "not_applicable",
+      "analysis_status": "inconclusive",
+      "policy_version": "2026-10-03.1",
+      "score": 50,
+      "extracted_text": "",
+      "search_claims": [],
+      "scam_analysis": {
+        "is_scam": false,
+        "scam_count": 0,
+        "detected_patterns": [],
+        "suspicious_url": false,
+        "suspicious_url_reason": "",
+        "advice": ""
+      },
+      "provider_coverage": {
+        "google_fact_check": {
+          "status": "no_results",
+          "reason": "Consulta concluída sem checagens correspondentes.",
+          "matches_returned": 0,
+          "queries": [
+            {
+              "status": "no_results",
+              "reason": null
+            },
+            {
+              "status": "no_results",
+              "reason": null
+            },
+            {
+              "status": "no_results",
+              "reason": null
+            },
+            {
+              "status": "no_results",
+              "reason": null
+            },
+            {
+              "status": "no_results",
+              "reason": null
+            }
+          ]
+        },
+        "openrouter": {
+          "status": "invalid_response",
+          "reason": "OpenRouter não retornou uma resposta completa e válida.",
+          "decision_role": "search_hints_only",
+          "free_only": true
+        },
+        "gemini": {
+          "status": "not_configured",
+          "model_used": null,
+          "reason": "Gemini não configurado.",
+          "decision_role": "search_hints_only"
+        },
+        "serper": {
+          "status": "no_results",
+          "reason": null,
+          "decision_role": "context_only",
+          "matches_returned": 0,
+          "queries": [
+            {
+              "status": "no_results",
+              "reason": null
+            }
+          ]
+        }
+      },
+      "content_provider_coverage": {}
+    },
+    {
+      "case_id": "TXT07_OPENROUTER",
+      "content_type": "text_or_link",
+      "verdict": "Suspicious",
+      "veracity_status": "unverified",
+      "authenticity_status": "not_applicable",
+      "analysis_status": "inconclusive",
+      "policy_version": "2026-10-03.1",
+      "score": 50,
+      "extracted_text": "",
+      "search_claims": [
+        "Não pague uma taxa para liberar seu Pix."
+      ],
+      "scam_analysis": {
+        "is_scam": false,
+        "scam_count": 0,
+        "detected_patterns": [],
+        "suspicious_url": false,
+        "suspicious_url_reason": "",
+        "advice": ""
+      },
+      "provider_coverage": {
+        "google_fact_check": {
+          "status": "no_results",
+          "reason": "Consulta concluída sem checagens correspondentes.",
+          "matches_returned": 0,
+          "queries": [
+            {
+              "status": "no_results",
+              "reason": null
+            }
+          ]
+        },
+        "openrouter": {
+          "status": "success",
+          "model_used": "liquid/lfm-2.5-2.6b:free",
+          "decision_role": "search_hints_only",
+          "free_only": true
+        },
+        "serper": {
+          "status": "no_results",
+          "reason": null,
+          "decision_role": "context_only",
+          "matches_returned": 0,
+          "queries": [
+            {
+              "status": "no_results",
+              "reason": null
+            }
+          ]
+        }
+      },
+      "content_provider_coverage": {}
+    },
+    {
+      "case_id": "OCR01_OPENROUTER",
+      "filename": "impresso-base.png",
+      "sha256": "7ffa0355f5dcd0137aa1cf4925b27048710ba90581f3a58ebe44028fae676da5",
+      "analyzed_at": "2026-10-04T12:10:41.713705+00:00",
+      "content_type": "image",
+      "verdict": "Suspicious",
+      "veracity_status": "unverified",
+      "authenticity_status": "undetermined",
+      "analysis_status": "inconclusive",
+      "policy_version": "2026-10-03.2",
+      "score": 50,
+      "extracted_text": "",
+      "provider_coverage": {
+        "sightengine": {
+          "status": "unavailable",
+          "model_used": null,
+          "reason": "Sightengine API keys not configured.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "huggingface": {
+          "status": "not_configured",
+          "model_used": null,
+          "reason": "Token Hugging Face não configurado.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "hive": {
+          "status": "not_configured",
+          "model_used": null,
+          "reason": "Hive v3 exige Secret Key e autorização de custo em HIVE_V3_MEDIA_TYPES.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "hive_deepfake": {
+          "status": "not_configured",
+          "model_used": null,
+          "reason": "Hive v3 exige Secret Key e autorização de custo em HIVE_V3_MEDIA_TYPES.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "ocr": {
+          "status": "rate_limited",
+          "provider": "gemini",
+          "model_used": null,
+          "reason": "OpenRouter indisponível por saldo/quota (HTTP 429).",
+          "decision_role": "ocr_only",
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "gemini_vision": {
+          "status": "unavailable",
+          "provider": "gemini",
+          "model_used": "fallback",
+          "reason": "GEMINI_API_KEY não configurada",
+          "decision_role": "inspection_only",
+          "ai_score": null,
+          "deepfake_score": null
+        }
+      },
+      "content_provider_coverage": {}
+    },
+    {
+      "case_id": "AUD03_UI_BEFORE_COVERAGE_FIX",
+      "filename": "recorder-no-duration.webm",
+      "sha256": "6b3700925f4315450c93c93a3b7d5a35df0bdceb72478bfcfe7f6279b9b80ba9",
+      "analyzed_at": "2026-10-04T12:15:30.129607+00:00",
+      "content_type": "audio",
+      "verdict": "Suspicious",
+      "veracity_status": "unverified",
+      "authenticity_status": "undetermined",
+      "analysis_status": "inconclusive",
+      "policy_version": "2026-10-03.2",
+      "score": 50,
+      "extracted_text": "",
+      "content_risk": {
+        "is_scam_pattern": false,
+        "matched_scam_count": 0,
+        "indicators": [],
+        "matched_excerpts": [],
+        "risk_level": "INDETERMINADO"
+      },
+      "provider_coverage": {
+        "sightengine_audio": {
+          "status": "disabled",
+          "model_used": null,
+          "reason": "Detector acústico Sightengine não habilitado; exige acesso ao modelo ai_speech.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "hive": {
+          "status": "not_configured",
+          "model_used": null,
+          "reason": "Hive v3 exige Secret Key e autorização de custo em HIVE_V3_MEDIA_TYPES.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "transcription": {
+          "status": "not_configured",
+          "provider": null,
+          "model_used": null,
+          "reason": null,
+          "decision_role": "transcription_only",
+          "ai_score": null,
+          "deepfake_score": null
+        }
+      },
+      "content_provider_coverage": {}
+    },
+    {
+      "case_id": "AUD03_UI_AFTER_FIX",
+      "filename": "recorder-no-duration.webm",
+      "sha256": "6b3700925f4315450c93c93a3b7d5a35df0bdceb72478bfcfe7f6279b9b80ba9",
+      "analyzed_at": "2026-10-04T12:18:41.459537+00:00",
+      "content_type": "audio",
+      "verdict": "Suspicious",
+      "veracity_status": "unverified",
+      "authenticity_status": "undetermined",
+      "analysis_status": "inconclusive",
+      "policy_version": "2026-10-03.2",
+      "score": 50,
+      "extracted_text": "",
+      "content_risk": {
+        "is_scam_pattern": false,
+        "matched_scam_count": 0,
+        "indicators": [],
+        "matched_excerpts": [],
+        "risk_level": "INDETERMINADO"
+      },
+      "provider_coverage": {
+        "sightengine_audio": {
+          "status": "disabled",
+          "model_used": null,
+          "reason": "Detector acústico Sightengine não habilitado; exige acesso ao modelo ai_speech.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "hive": {
+          "status": "not_configured",
+          "model_used": null,
+          "reason": "Hive v3 exige Secret Key e autorização de custo em HIVE_V3_MEDIA_TYPES.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "transcription": {
+          "status": "no_speech",
+          "provider": "local_signal_gate",
+          "model_used": null,
+          "reason": "Áudio silencioso ou com sinal muito baixo. Aumente o volume ou regrave; nenhuma API recebeu o áudio para inventar uma transcrição.",
+          "decision_role": "transcription_only",
+          "ai_score": null,
+          "deepfake_score": null
+        }
+      },
+      "content_provider_coverage": {}
+    },
+    {
+      "case_id": "VID01_UI",
+      "filename": "synthetic-cafe.mp4",
+      "sha256": "55475f1b0e562ab4b4bad2911936b7be749aef97ce4400bbb114c37ee3f45199",
+      "analyzed_at": "2026-10-04T12:20:12.751244+00:00",
+      "content_type": "video",
+      "verdict": "Suspicious",
+      "veracity_status": "unverified",
+      "authenticity_status": "undetermined",
+      "analysis_status": "inconclusive",
+      "policy_version": "2026-10-03.2",
+      "score": 50,
+      "extracted_text": "",
+      "provider_coverage": {
+        "sightengine": {
+          "status": "unavailable",
+          "model_used": null,
+          "reason": "Decisão baseada em concordância no mesmo quadro; médias são apenas descritivas.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "huggingface": {
+          "status": "unavailable",
+          "model_used": null,
+          "reason": "Decisão baseada em concordância no mesmo quadro; médias são apenas descritivas.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "hive": {
+          "status": "unavailable",
+          "model_used": null,
+          "reason": "Decisão baseada em concordância no mesmo quadro; médias são apenas descritivas.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "hive_deepfake": {
+          "status": "unavailable",
+          "model_used": null,
+          "reason": "Modelo facial separado; decisões por quadro, não por média.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        }
+      },
+      "content_provider_coverage": {},
+      "video": {
+        "sampled_frames": 3,
+        "timestamps_seconds": [
+          0.3,
+          1.5,
+          2.7
+        ]
+      }
+    },
+    {
+      "case_id": "TXT08_UI_LOCAL",
+      "content_type": "text_or_link",
+      "verdict": "Scam",
+      "veracity_status": "unverified",
+      "authenticity_status": "not_applicable",
+      "analysis_status": "partial",
+      "policy_version": "2026-10-03.1",
+      "score": 15,
+      "extracted_text": "",
+      "search_claims": [],
+      "scam_analysis": {
+        "is_scam": true,
+        "scam_count": 1,
+        "detected_patterns": [
+          {
+            "category": "Golpe do Pix / Dinheiro Fácil",
+            "risk_level": "ALTO",
+            "description": "Pedido de taxa ou promessa de liberar um suposto saldo. O pagamento antecipado pode causar perda de dinheiro; confirme o procedimento no canal oficial antes de pagar.",
+            "matched_excerpt": "Pague uma taxa",
+            "guidance": [
+              {
+                "title": "Banco Central · orientação sobre golpes e Valores a Receber",
+                "url": "https://www.bcb.gov.br/meubc/faqs/p/golpes-envolvendo-o-meu-bc",
+                "reviewed_at": "2026-10-02"
+              }
+            ]
+          }
+        ],
+        "suspicious_url": false,
+        "suspicious_url_reason": "",
+        "advice": "Nunca envie dinheiro, não faça Pix e não digite suas senhas ou CPF em links recebidos por mensagem."
+      },
+      "provider_coverage": {
+        "google_fact_check": {
+          "status": "not_configured",
+          "reason": "GOOGLE_FACT_CHECK_KEY não configurada.",
+          "matches_returned": 0,
+          "queries": [
+            {
+              "status": "not_configured",
+              "reason": "GOOGLE_FACT_CHECK_KEY não configurada."
+            }
+          ]
+        },
+        "openrouter": {
+          "status": "not_configured",
+          "decision_role": "search_hints_only",
+          "free_only": true
+        },
+        "gemini": {
+          "status": "not_configured",
+          "model_used": null,
+          "reason": "Gemini não configurado.",
+          "decision_role": "search_hints_only"
+        },
+        "serper": {
+          "status": "not_configured",
+          "reason": "Serper não configurado.",
+          "decision_role": "context_only",
+          "matches_returned": 0,
+          "queries": [
+            {
+              "status": "not_configured",
+              "reason": "Serper não configurado."
+            }
+          ]
+        }
+      },
+      "content_provider_coverage": {}
+    },
+    {
+      "case_id": "OCR01_UI_LOCAL_FINAL",
+      "filename": "impresso-base.png",
+      "sha256": "7ffa0355f5dcd0137aa1cf4925b27048710ba90581f3a58ebe44028fae676da5",
+      "analyzed_at": "2026-10-04T12:22:05.645844+00:00",
+      "content_type": "image",
+      "verdict": "Suspicious",
+      "veracity_status": "unverified",
+      "authenticity_status": "undetermined",
+      "analysis_status": "inconclusive",
+      "policy_version": "2026-10-03.2",
+      "score": 50,
+      "extracted_text": "CONTROLE DE TESTE\nNao pague taxa para liberar seu Pix.\nValor: R$ 123,45\nData: 03/10/2026",
+      "provider_coverage": {
+        "sightengine": {
+          "status": "unavailable",
+          "model_used": null,
+          "reason": "Sightengine API keys not configured.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "huggingface": {
+          "status": "not_configured",
+          "model_used": null,
+          "reason": "Token Hugging Face não configurado.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "hive": {
+          "status": "not_configured",
+          "model_used": null,
+          "reason": "Hive v3 exige Secret Key e autorização de custo em HIVE_V3_MEDIA_TYPES.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "hive_deepfake": {
+          "status": "not_configured",
+          "model_used": null,
+          "reason": "Hive v3 exige Secret Key e autorização de custo em HIVE_V3_MEDIA_TYPES.",
+          "decision_role": null,
+          "voting_eligible": true,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "ocr": {
+          "status": "success",
+          "provider": "tesseract",
+          "model_used": "tesseract-lstm-por-eng",
+          "reason": null,
+          "decision_role": "ocr_only",
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "gemini_vision": {
+          "status": "unavailable",
+          "provider": "gemini",
+          "model_used": "fallback",
+          "reason": "GEMINI_API_KEY não configurada",
+          "decision_role": "inspection_only",
+          "ai_score": null,
+          "deepfake_score": null
+        }
+      },
+      "content_provider_coverage": {
+        "google_fact_check": {
+          "status": "not_configured",
+          "reason": "GOOGLE_FACT_CHECK_KEY não configurada.",
+          "matches_returned": 0,
+          "queries": [
+            {
+              "status": "not_configured",
+              "reason": "GOOGLE_FACT_CHECK_KEY não configurada."
+            },
+            {
+              "status": "not_configured",
+              "reason": "GOOGLE_FACT_CHECK_KEY não configurada."
+            },
+            {
+              "status": "not_configured",
+              "reason": "GOOGLE_FACT_CHECK_KEY não configurada."
+            },
+            {
+              "status": "not_configured",
+              "reason": "GOOGLE_FACT_CHECK_KEY não configurada."
+            },
+            {
+              "status": "not_configured",
+              "reason": "GOOGLE_FACT_CHECK_KEY não configurada."
+            }
+          ]
+        },
+        "serper": {
+          "status": "not_configured",
+          "reason": "Serper não configurado.",
+          "decision_role": "context_only",
+          "matches_returned": 0,
+          "queries": [
+            {
+              "status": "not_configured",
+              "reason": "Serper não configurado."
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "blocked_ui_requests": [
+    {
+      "input": "http://127.0.0.1:8000/health",
+      "observed": "URL recusada: porta não permitida; nenhum relatório"
+    },
+    {
+      "input": "http://127.0.0.1/health",
+      "observed": "Endereço privado ou reservado recusado; nenhum relatório"
+    },
+    {
+      "input": "recorder-no-duration.webm",
+      "observed": "MIME video/webm de navegador recusado antes da correção; revalidado após correção"
+    }
+  ]
+}

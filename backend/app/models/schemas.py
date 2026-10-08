@@ -1,5 +1,7 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
+
+MAX_ANALYSIS_URL_LENGTH = 512
 
 
 class AnalysisRequest(BaseModel):
@@ -7,7 +9,16 @@ class AnalysisRequest(BaseModel):
 
 
 class UrlRequest(BaseModel):
-    url: str = Field(..., min_length=5, max_length=4096)
+    # Match the existing PostgreSQL source_url column until a versioned schema
+    # migration can safely widen it. Normalized and redirected URLs are checked
+    # again by the route; no part of an address may be silently discarded.
+    url: str = Field(..., min_length=5, max_length=MAX_ANALYSIS_URL_LENGTH,
+                     description="URL de até 512 caracteres, incluindo http:// ou https://; redirecionamentos têm o mesmo limite.")
+
+    @field_validator("url", mode="before")
+    @classmethod
+    def trim_url(cls, value):
+        return value.strip() if isinstance(value, str) else value
 
 
 class FactCheckResult(BaseModel):

@@ -1,0 +1,42 @@
+[
+  {
+    "case_id": "OCR05",
+    "file": "impresso-degradado.jpg",
+    "sha256": "d10c623494619e8a203e3d9f9b5626cf3a8436fb89d002ed3df9605c60faeb36",
+    "group": "F-IMPRESSO",
+    "parent_sha256": "7ffa0355f5dcd0137aa1cf4925b27048710ba90581f3a58ebe44028fae676da5",
+    "reference_lines": [
+      "CONTROLE DE TESTE",
+      "Nao pague taxa para liberar seu Pix.",
+      "Valor: R$ 123,45",
+      "Data: 03/10/2026"
+    ],
+    "origin": "Conventional transform of printed Pillow control; not a photograph or independent sample",
+    "recipe": {
+      "rotation_degrees": 3.5,
+      "resampling": "bicubic",
+      "expand": true,
+      "fill": "white",
+      "contrast_factor": 0.2,
+      "jpeg_quality": 55,
+      "jpeg_subsampling": 2
+    }
+  },
+  {
+    "case_id": "VID-AUX01",
+    "file": "video-tts-auxiliar.mp4",
+    "sha256": "9df934ae61d92ea89fa944f5e0c7343c7162ee100b34d168d4b854ece7c9f927",
+    "group": "F-CAFE+F-ESPEAK",
+    "parent_sha256": {
+      "video": "55475f1b0e562ab4b4bad2911936b7be749aef97ce4400bbb114c37ee3f45199",
+      "audio": "8deefe71c742c3c06f6c50cda552721767d70a872824933749b31192f36e6c7f"
+    },
+    "origin": "Repeated still AI image with documented eSpeak TTS; conventional mux, NOT human capture, face-swap or lip-sync",
+    "reference_text": "Mãe, caí na rua e perdi meu celular. Faz um Pix urgente para o guincho, por favor.",
+    "recipe": {
+      "video": "loop original, libx264 CRF26 yuv420p",
+      "audio": "AAC from eSpeak WAV",
+      "duration": "shortest track, at most 30 seconds"
+    }
+  }
+]

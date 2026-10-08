@@ -32,12 +32,15 @@ async def check_wayback_machine(url_or_query: str) -> Dict[str, Any]:
     """
     enabled = os.getenv("WAYBACK_API_ENABLED", "true").lower() == "true"
     if not enabled or not url_or_query:
-        return {"checked": False, "found": False}
+        return {"checked": False, "found": False, "status": "disabled" if not enabled else "skipped"}
 
     wayback_api = f"https://archive.org/wayback/available?url={url_or_query}"
     try:
         async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
             resp = await client.get(wayback_api)
+            if resp.status_code != 200:
+                return {"checked": False, "found": False, "status": "error",
+                        "error": f"Consulta Wayback indisponível (HTTP {resp.status_code})."}
             if resp.status_code == 200:
                 data = resp.json()
                 snapshots = data.get("archived_snapshots", {})
@@ -57,6 +60,7 @@ async def check_wayback_machine(url_or_query: str) -> Dict[str, Any]:
 
                     return {
                         "checked": True,
+                        "status": "success",
                         "found": True,
                         "snapshot_date": formatted_date,
                         "raw_timestamp": timestamp_str,
@@ -66,9 +70,10 @@ async def check_wayback_machine(url_or_query: str) -> Dict[str, Any]:
                             f"Registro disponível da URL em {formatted_date}. Não comprova primeira publicação, identidade da imagem ou descontextualização."
                         )
                     }
-        return {"checked": True, "found": False, "summary": "Sem registro prévio na Wayback Machine."}
-    except Exception as exc:
-        return {"checked": False, "found": False, "error": str(exc)[:80]}
+        return {"checked": True, "found": False, "status": "no_results", "summary": "Nenhum registro foi retornado pela Wayback nesta consulta; não comprova ausência de arquivo histórico."}
+    except Exception:
+        # Transport/JSON exceptions can include the original private query URL.
+        return {"checked": False, "found": False, "status": "error", "error": "Consulta Wayback indisponível ou resposta inválida."}
 
 
 async def check_tineye_reverse_search(image_bytes: bytes, filename: str = "image.jpg") -> Dict[str, Any]:
@@ -80,7 +85,7 @@ async def check_tineye_reverse_search(image_bytes: bytes, filename: str = "image
         return {
             "available": False,
             "status": "skipped",
-            "matches_count": 0,
+            "matches_count": None,
             "reason": "TINEYE_API_KEY não configurada"
         }
 
@@ -96,7 +101,11 @@ async def check_tineye_reverse_search(image_bytes: bytes, filename: str = "image
             )
             if resp.status_code == 200:
                 data = resp.json()
-                results = data.get("results", {}).get("matches", [])
+                results_container = data.get("results") if isinstance(data, dict) else None
+                results = results_container.get("matches") if isinstance(results_container, dict) else None
+                if not isinstance(results, list) or any(not isinstance(item, dict) for item in results):
+                    return {"available": False, "status": "invalid_response", "matches_count": None,
+                            "error": "Busca TinEye não retornou correspondências em formato válido."}
                 return {
                     "available": True,
                     "status": "success",
@@ -105,13 +114,14 @@ async def check_tineye_reverse_search(image_bytes: bytes, filename: str = "image
                     "top_matches": results[:3]
                 }
             return {
-                "available": True,
-                "status": "error",
-                "matches_count": 0,
+                "available": False,
+                "status": {401: "invalid_credentials", 403: "access_denied", 402: "quota_exhausted", 429: "rate_limited"}.get(resp.status_code, "error"),
+                "matches_count": None,
                 "error": f"HTTP {resp.status_code}"
             }
-    except Exception as exc:
-        return {"available": True, "status": "error", "matches_count": 0, "error": str(exc)[:80]}
+    except Exception:
+        return {"available": False, "status": "error", "matches_count": None,
+                "error": "Busca TinEye indisponível ou resposta inválida."}
 
 
 async def search_context_and_provenance(
@@ -135,13 +145,13 @@ async def search_context_and_provenance(
     if image_bytes:
         tasks.append(check_tineye_reverse_search(image_bytes, filename))
     else:
-        tasks.append(asyncio.sleep(0, result={"available": False, "matches_count": 0}))
+        tasks.append(asyncio.sleep(0, result={"available": False, "matches_count": None}))
 
     # 3. SerpAPI Google Lens reverse (if image bytes provided)
     if image_bytes:
         tasks.append(search_google_lens_reverse(image_bytes, filename))
     else:
-        tasks.append(asyncio.sleep(0, result={"available": False, "matches_count": 0}))
+        tasks.append(asyncio.sleep(0, result={"available": False, "matches_count": None}))
 
     wayback_res, tineye_res, lens_res = await asyncio.gather(*tasks)
 

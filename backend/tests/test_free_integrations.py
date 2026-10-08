@@ -93,6 +93,23 @@ class FreeRouterTests(unittest.IsolatedAsyncioTestCase):
                 result = await router.analyze_with_openrouter("Uma alegação literal longa.")
                 self.assertFalse(result["available"])
 
+    async def test_truncation_reason_and_empty_ocr_are_explicit_without_retry(self):
+        body = router_response(choices=[{"finish_reason": "length", "message": {"content": "{}"}}])
+        with patch("httpx.AsyncClient.post", new=AsyncMock(return_value=httpx.Response(200, json=body))) as post:
+            result = await router.analyze_with_openrouter("Uma alegação literal de controle.")
+        self.assertIn("limite de tokens", result["reason"])
+        self.assertEqual(post.await_count, 1)
+        with patch("httpx.AsyncClient.post", new=AsyncMock(return_value=httpx.Response(200, json=router_response('{"text":""}')))):
+            result = await router.extract_image_text(valid_png(), "image/png")
+        self.assertTrue(result["available"])
+        self.assertEqual(result["status"], "no_text")
+        self.assertEqual(result["text"], "")
+        with patch("httpx.AsyncClient.post", new=AsyncMock(return_value=httpx.Response(429))) as post:
+            result = await router.extract_image_text(valid_png(), "image/png")
+        self.assertEqual(result["provider"], "openrouter")
+        self.assertEqual(result["status"], "rate_limited")
+        self.assertEqual(post.await_count, 1)
+
     async def test_quota_pause_and_no_paid_fallback_or_retry(self):
         with patch("httpx.AsyncClient.post", new=AsyncMock(return_value=httpx.Response(429, json={"error": "private-secret"}))) as post:
             first = await router.analyze_with_openrouter("Uma alegação longa.")
