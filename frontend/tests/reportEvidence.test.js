@@ -23,6 +23,23 @@ test("full literal OCR and video transcript remain available for human review", 
   assert.equal(video.transcription, text);
 });
 
+test("short OCR fragments remain visible without implying enough text for a factual claim", () => {
+  for (const text of ["A", "NASA", "42", "R$ 5", "123,45", "Não", "🌱🌱🌱🌱🌱"]) {
+    const report = buildReportEvidence({content_type: "image", analysis_status: "inconclusive",
+      forensics: {ocr: {text, status: "success", provider: "tesseract"}},
+      provider_coverage: {ocr: {status: "success", provider: "tesseract", decision_role: "ocr_only"}}});
+    assert.equal(report.extractedText, text);
+    assert.equal(report.extractionMethod, "OCR");
+    assert.equal(report.publicFindings[0].detail,
+      "A leitura retornou apenas um trecho curto; confira com a imagem. Não há texto suficiente para checar uma afirmação.");
+    assert.equal(report.veracityStatus, "unverified");
+    assert.equal(report.missing.length, 0);
+  }
+  const enoughText = buildReportEvidence({content_type: "image", forensics: {ocr: {text: "1234567890"}},
+    provider_coverage: {ocr: {status: "success", decision_role: "ocr_only"}}});
+  assert.match(enoughText.publicFindings[0].detail, /Foi possível obter texto para conferência/);
+});
+
 test("successful empty fact-check retrieval is not misreported as provider failure", () => {
   const report = buildReportEvidence({provider_coverage: {google_fact_check: {
     status: "no_results", queries: [{status: "no_results"}]}}});

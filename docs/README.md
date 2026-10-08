@@ -1,9 +1,10 @@
 # Documentação do Verify
 
-Atualizada em 08/10/2026. Estes documentos descrevem a revisão candidata; não comprovam que todas as mudanças estejam em produção.
+Atualizada em 08/10/2026. Produção confirmada no SHA `ef9655ff9d3fa4d350d149cc5b48e44b3611b729`; filtro lexical de notícias e aviso de fragmentos OCR são uma revisão posterior, no checkpoint antes de sua publicação. Documentos anteriores preservam seu estado histórico e não comprovam publicação de cada mudança posterior.
 
 ## Comece aqui
 
+- [Publicação e controles reais de 08/10](PUBLICACAO-2026-10-08.md): SHA/deploys confirmados, texto/imagens/voz sintética pela interface, PDF/200 sem nova análise, patch local de contexto e fronteiras ainda pendentes.
 - [Correções e diagnóstico de produção de 08/10](CORRECOES-PRODUCAO-2026-10-08.md): Railway online confirmado, versão publicada, 422 de texto/500 de banco separados, novo controle Gemini, interface simples e checkpoints atuais.
 - [Ativar Hive e compreender voz/OCR](ATIVACAO-HIVE-VOZ-2026-10-08.md): uso do saldo autorizado, limites por processo, Secret Key v3, acesso Sightengine e HF desligado sem contratação.
 - [Status de todas as verificações](STATUS-VERIFICACOES-2026-10-08.md): o que respondeu, o que falta, por que chave não basta e como configurar com links oficiais.
@@ -34,7 +35,8 @@ Atualizada em 08/10/2026. Estes documentos descrevem a revisão candidata; não 
 
 | Registro | Assunto e alcance |
 | --- | --- |
-| [Diagnóstico complementar de 08/10](CORRECOES-PRODUCAO-2026-10-08.md) | Produção online no SHA antigo; 482 backend e mesmo runner no modo PG, com quatro integrações reais; 155 frontend; seis chamadas Gemini, duas Hive, UI Lite inconclusiva corretamente. Promoção aguarda autorização |
+| [Publicação e controles de 08/10](PUBLICACAO-2026-10-08.md) | Vercel READY/Railway SUCCESS no SHA ef9655ff; texto, duas imagens e voz sintética pela interface pública; PDF/200, salvamento não confirmado. Revisão posterior antes de publicar: 492 backend, 156 frontend e build; fala humana/vídeo/benchmark continuam sem homologação ampla |
+| [Diagnóstico complementar de 08/10](CORRECOES-PRODUCAO-2026-10-08.md) | Checkpoint anterior à promoção: produção online no SHA antigo; 482 backend e mesmo runner no modo PG, com quatro integrações reais; 155 frontend; seis chamadas Gemini, duas Hive, UI Lite inconclusiva corretamente. A publicação posterior tem registro separado |
 | [Entrega candidata de 08/10](ENTREGA-BANCA-2026-10-08.md) | Registro anterior 424/142 e proteção de refresh; CI desse commit passou posteriormente; não confundir com implantação da revisão seguinte |
 | [Retomada de transcrição](TRANSCRICAO-PENDENTE-2026-10-07.md) | Suíte final 424/124; operação simulada sem API real; não homologa fidelidade nem implantação |
 | [Fechamento de 07/10](FECHAMENTO-2026-10-07.md) | Etapa anterior desta data: correções, Gemini e APIs por modalidade; sem nova publicação |

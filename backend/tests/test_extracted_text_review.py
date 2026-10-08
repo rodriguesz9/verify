@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from helpers import app, FakeSession, fake_user, fake_report, override_auth_and_db, valid_png
 from app.services import extracted_text_review as review
 from app.services.evidence_policy import media_report
-from app.services.media_analysis import analyze_media
+from app.services.media_analysis import analyze_media, extracted_content
 from app.services.media_validation import ValidatedMedia
 from app.services.pdf_snapshot import attach_pdf_snapshot, verify_pdf_snapshot
 from app.core.security import decode_token
@@ -175,6 +175,41 @@ class ReviewEndpointTests(unittest.TestCase):
 
 
 class MediaReviewStageTests(unittest.IsolatedAsyncioTestCase):
+    async def test_short_ocr_preserves_labels_and_numbers_without_fact_check_or_review_token(self):
+        media = ValidatedMedia(valid_png(), "controle.png", "image/png", "image", {})
+        for text in ("A", "NASA", "42", "R$ 5", "123,45", "Não"):
+            for review_first in (False, True):
+                with self.subTest(text=text, review_first=review_first), \
+                     patch("app.services.media_analysis.image_layers", new=AsyncMock(return_value={
+                         "ocr": {"text": text, "provider": "tesseract", "available": True, "status": "success"}})), \
+                     patch("app.core.pipeline.run_pipeline", new=AsyncMock()) as pipeline:
+                    report = await analyze_media(media, review_first=review_first)
+                pipeline.assert_not_awaited()
+                self.assertEqual(report["forensics"]["ocr"]["text"], text)
+                self.assertEqual(report["forensics"]["ocr"]["status"], "success")
+                self.assertEqual(report["content_analysis"]["analysis_status"], "inconclusive")
+                self.assertEqual(report["content_analysis"]["veracity_status"], "unverified")
+                self.assertEqual(report["content_analysis"]["summary"],
+                                 "A leitura retornou apenas um trecho curto; confira com a imagem. "
+                                 "Não há texto suficiente para checar uma afirmação.")
+                attached = review.attach_text_review(report)
+                self.assertEqual(attached["text_review_status"], "unavailable")
+                self.assertNotIn("text_review_token", attached)
+                self.assertEqual(attached["forensics"]["ocr"]["text"], text)
+
+    async def test_missing_short_and_overlong_extraction_have_distinct_reasons(self):
+        cases = (("   ", "Não houve texto utilizável"),
+                 ("A", "apenas um trecho curto"),
+                 ("x" * 5001, "ultrapassa o limite de 5000 caracteres"))
+        for text, reason in cases:
+            for review_first in (False, True):
+                with self.subTest(length=len(text), review_first=review_first), \
+                     patch("app.core.pipeline.run_pipeline", new=AsyncMock()) as pipeline:
+                    result = await extracted_content(text, "ocr", review_first=review_first)
+                pipeline.assert_not_awaited()
+                self.assertEqual(result["analysis_status"], "inconclusive")
+                self.assertIn(reason, result["summary"])
+
     async def test_image_review_stops_before_content_sources(self):
         media = ValidatedMedia(valid_png(), "controle.png", "image/png", "image", {})
         with patch("app.services.media_analysis.image_layers", new=AsyncMock(return_value={"ocr": {"text": ORIGINAL, "provider": "tesseract"}})), \

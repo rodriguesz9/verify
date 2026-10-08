@@ -16,10 +16,23 @@ from app.services.evidence_policy import media_report, detector_score, DETECTOR_
 from app.services.media_validation import ValidatedMedia, extract_video_frames, extract_video_audio
 
 
+def _fact_check_extracted_reason(text: str, origin: str) -> str | None:
+    if not isinstance(text, str) or not text.strip():
+        return "Não houve texto utilizável para checagem. Confira o arquivo original."
+    if len(text.strip()) < 10:
+        reference = "a imagem" if origin == "ocr" else "o arquivo original"
+        return (f"A leitura retornou apenas um trecho curto; confira com {reference}. "
+                "Não há texto suficiente para checar uma afirmação.")
+    if len(text.strip()) > 5000:
+        return "O texto extraído ultrapassa o limite de 5000 caracteres para checagem. Confira o arquivo original."
+    return None
+
+
 async def check_content(text: str, origin: str, timeout: float = 30) -> dict:
-    if not isinstance(text, str) or not 10 <= len(text.strip()) <= 5000:
+    reason = _fact_check_extracted_reason(text, origin)
+    if reason:
         return {"analysis_status": "inconclusive", "veracity_status": "unverified",
-                "origin": origin, "summary": "Texto extraído ausente ou fora dos limites para checagem."}
+                "origin": origin, "summary": reason}
     from app.core.pipeline import run_pipeline
     try:
         result = await asyncio.wait_for(run_pipeline(text.strip(), use_ai_extraction=False), timeout)
@@ -33,11 +46,12 @@ async def check_content(text: str, origin: str, timeout: float = 30) -> dict:
 async def extracted_content(text: str, origin: str, *, review_first: bool, timeout: float = 30) -> dict:
     if not review_first:
         return await check_content(text, origin, timeout=timeout)
-    usable = isinstance(text, str) and 10 <= len(text.strip()) <= 5000
+    reason = _fact_check_extracted_reason(text, origin)
+    usable = reason is None
     return {"analysis_status": "pending_user_review" if usable else "inconclusive",
             "veracity_status": "unverified", "origin": origin,
             "summary": "O texto aguarda sua conferência. Ainda não foram consultadas fontes para checar as afirmações."
-                       if usable else "Não houve texto utilizável para checagem. Confira o arquivo original.",
+                       if usable else reason,
             "provider_coverage": {}, "claim_assessments": []}
 
 

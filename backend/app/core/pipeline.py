@@ -11,6 +11,7 @@ from app.core.serper_client import search_news
 from app.core.scam_detector import analyze_scam_indicators
 from app.core.openrouter_service import analyze_with_openrouter
 from app.services.claim_policy import text_report, input_claims
+from app.services.news_relevance import filter_context_news
 
 
 def _verdicts_agree(v1: str, v2: str) -> bool:
@@ -217,17 +218,22 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
     domain_info = domain_task.result() if domain_task and not domain_task.exception() else { "score": None, "note": "Domínio não analisado" }
 
     serper_news_results = []
+    raw_news_count = 0
     seen_links: set[str] = set()
     for task in serper_news_tasks:
         if task.exception():
             continue
         for item in task.result():
+            raw_news_count += 1
             link = item.get("link")
             if link and link in seen_links:
                 continue
             if link:
                 seen_links.add(link)
             serper_news_results.append(item)
+
+    unique_news_count = len(serper_news_results)
+    serper_news_results, news_relevance = filter_context_news(analysis_text, serper_news_results)
 
     dates_in_text = extract_dates_from_text(analysis_text)
     source_info = extract_source_from_url(source_url) if source_url else {"source_name": "Nenhuma", "is_trusted": False, "score": 50}
@@ -271,7 +277,9 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
                    else "not_configured" if all(q["status"] == "not_configured" for q in news_queries) else "error")
     ai["provider_coverage"]["serper"] = {"status": news_status, "queries": news_queries, "decision_role": "context_only",
                                           "matches_returned": len(serper_news_results),
-                                          "reason": next((q["reason"] for q in news_queries if q["reason"]), None)}
+                                          "raw_matches_returned": raw_news_count, "unique_matches_returned": unique_news_count,
+                                          "relevance_filter": news_relevance,
+                                          "reason": "Busca concluída sem notícias com correspondência lexical utilizável; isso não prova falsidade." if news_status == "no_results" else next((q["reason"] for q in news_queries if q["reason"]), None)}
 
     if scam_info["is_scam"]:
         ai["verdict"] = "Scam"

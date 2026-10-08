@@ -131,6 +131,8 @@ export function publicCoveragePresentation(result = {}) {
 function publicEvidenceFindings(findings, coverage, result) {
   const publicFindings = [];
   const technicalFindings = [];
+  const ocrText = typeof result.forensics?.ocr?.text === "string" ? result.forensics.ocr.text.trim() : "";
+  const ocrLength = Array.from(ocrText).length;
   for (const finding of findings) {
     if (/^(?:pattern-|claim-|speech-)/.test(finding.id) || ["url", "page-extraction"].includes(finding.id)
         || finding.id.startsWith("retrieval-")) {
@@ -144,7 +146,9 @@ function publicEvidenceFindings(findings, coverage, result) {
     const layer = finding.id.startsWith("helper-") ? coverage[finding.id.slice(7)] : null;
     if (layer && ["ocr_only", "transcription_only"].includes(layer.decision_role)) {
       publicFindings.push({...finding, detail: layer.status === "success"
-        ? "Foi possível obter texto para conferência. Compare a leitura com o arquivo original, principalmente negações, valores e datas. Essa leitura não comprova a origem do arquivo nem a verdade da informação."
+        ? layer.decision_role === "ocr_only" && ocrLength > 0 && ocrLength < 10
+          ? "A leitura retornou apenas um trecho curto; confira com a imagem. Não há texto suficiente para checar uma afirmação."
+          : "Foi possível obter texto para conferência. Compare a leitura com o arquivo original, principalmente negações, valores e datas. Essa leitura não comprova a origem do arquivo nem a verdade da informação."
         : finding.detail});
       continue;
     }
