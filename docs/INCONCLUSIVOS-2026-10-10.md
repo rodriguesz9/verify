@@ -27,7 +27,7 @@ Uma notícia histórica correta pode nunca ter sido objeto de um ClaimReview. Wi
 
 Uma busca web Serper adicional procura páginas candidatas. Até três páginas, incluindo a submetida quando houver, são lidas com o mecanismo existente de DNS/IP público validado, TLS, redirects e tamanho/tempo limitados. Sem nova API, chave ou contratação.
 
-O campo `source_attribution` declara `decision_role=source_attribution_only`. Um match exige a frase completa no corpo efetivamente recuperado, com igualdade normalizada conservadora. Snippet, título de busca, descrição, texto oculto e preâmbulo negativo não substituem a frase da fonte. Preservam-se URL final, trecho, frase comparada, papel da fonte e horário UTC de leitura.
+O campo `source_attribution` declara `decision_role=source_attribution_only`. Um match exige a frase completa no corpo efetivamente recuperado, com igualdade normalizada conservadora. Snippet, título de busca, descrição, ocultação explícita reconhecida pelo extrator e preâmbulo negativo não substituem a frase da fonte. O extrator estático não resolve integralmente visibilidade por CSS de classes/folhas externas ou JavaScript; a referência é atribuição no corpo recuperado, não prova de visibilidade no navegador nem verdade. Preservam-se URL final, trecho, frase comparada, papel da fonte e horário UTC de leitura.
 
 Limites: uma busca extra por análise; consulta literal de 20–500 caracteres sem corte silencioso; três páginas de até 2 MiB, três redirects/8 s cada; etapa inteira de até 20 s; oito frases candidatas, até três matches; HTML estático de até 50 mil caracteres por página. O fragmento no ponto de corte não pode produzir match. Consome quota da conta Serper existente; não adiciona crédito/cartão. Falha de leitura e serviço ausente são observáveis. `coverage.max_source_bytes` registra o teto usado.
 
@@ -66,7 +66,7 @@ Vídeo usa diagnósticos por quadro/tempo, não médias de fornecedores em tempo
 
 ## 7. Regressão local e fronteiras da validação
 
-Suíte offline final após o ajuste de tamanho: **553 testes backend**, 11,062 s, zero falhas/skips/tentativas HTTP inesperadas, contêiner sem rede/credenciais e SQLite descartável. **169 testes frontend**, zero falhas/skips; build Vite concluído com 1.977 módulos na revisão `8aca4c7`, sem mudança posterior no frontend neste ajuste. Estes são testes de contrato/regra/fluxo, não 722 casos independentes de precisão de detector.
+Suíte offline final após os ajustes de tamanho e orçamento de saída OpenRouter: **554 testes backend**, 10,462 s, zero falhas/skips/tentativas HTTP inesperadas, contêiner sem rede/credenciais e SQLite descartável. **169 testes frontend**, zero falhas/skips; build Vite concluído com 1.977 módulos na revisão `8aca4c7`, sem mudança posterior no frontend nestes ajustes. Estes são testes de contrato/regra/fluxo, não 723 casos independentes de precisão de detector.
 
 A revisão cruzada corrigiu mais três pontos: uma resposta exclusivamente facial não pode sugerir que a geração por IA foi consultada; um sinal acústico não certifica toda a gravação; o diagnóstico de origem não deve apagar o aviso financeiro do resumo/compartilhamento. Os três ganharam controles de regressão.
 
@@ -78,7 +78,26 @@ As correções principais foram publicadas em `8aca4c754c31832e6a7c87d5d46e7b5fe
 
 O primeiro controle dessa versão pela interface, em 10/10 às 20:45 UTC, usou uma frase literal de um artigo público sobre Elizabeth II. Gemini `gemini-3.1-flash-lite` respondeu. A resposta OpenRouter veio truncada, foi descartada e não virou evidência; Gemini foi o fallback. Google Fact Check respondeu sem ClaimReviews. A busca de referências respondeu, mas duas das três páginas selecionadas excederam o teto inicial de 512 KiB: a interface mostrou ausência de correspondência, não confirmou falsidade.
 
-Esse resultado motivou o ajuste para 2 MiB, alinhado à leitura de links já existente, sem relaxar proteção de rede ou comparação literal. Dois controles adicionais asseguram aceitação de uma página válida acima de 1 MiB e rejeição acima de 2 MiB. A nova publicação e seus controles serão registrados conforme forem confirmados.
+Esse resultado motivou o ajuste para 2 MiB, alinhado à leitura de links já existente, sem relaxar proteção de rede ou comparação literal. Dois controles adicionais asseguram aceitação de uma página válida acima de 1 MiB e rejeição acima de 2 MiB. Publicado em `09e1a0853e6b237d9b04254309d5cd5c32c3455c`, com [CI candidata](https://github.com/rodriguesz9/verify/actions/runs/38085372131) e [CI master](https://github.com/rodriguesz9/verify/actions/runs/38085526030) aprovadas. Railway SUCCESS em `dbd28f86-8786-45d9-bfcf-5d6d4e8fbcfb` e Vercel READY em `dpl_Fb4Mh1HZvZ4AUKxuqr7HdoWY6Q3F`, ambos nesse SHA.
+
+### Controles de mídia pela interface publicada
+
+Nenhum destes arquivos é a entrada exata do colega. Foram controles públicos/sintéticos previamente documentados e autorizados; uma execução por arquivo, sem repetir para obter rótulo desejado. As quatro respostas chegaram à tela de resultado (no áudio, passando primeiro pela conferência de transcrição).
+
+| Controle e horário UTC em 10/10 | Respostas observadas | Resultado e alcance |
+| --- | --- | --- |
+| `demo-conversa-sintetica.wav`, 20:50:39 | AssemblyAI `universal-2`: transcrição igual à fala de controle; Hive v3: sinal acústico 0,9741; Sightengine voz desabilitado | `isolated_ai`: “Sinal de possível voz sintética”. Canonical `Suspicious/inconclusive`; um detector não confirma identidade, clonagem ou toda a faixa. |
+| NASA `nasa-zinnia-iss046e009018.jpg`, 20:52:43 | Hive e Sightengine válidos, sem sinal alto; Gemini `gemini-3.1-flash-lite`: OCR e inspeção visual responderam | `no_high_signal`: “Sem indícios fortes nas consultas feitas”. Não certifica foto autêntica. OCR devolveu “A”, curto e insuficiente; nenhuma afirmação foi checada a partir dessa letra. |
+| `ai-plant-windowsill.png`, 20:54:04 | Hive v3 e Sightengine com sinal alto concordante de IA; Gemini inspeção visual respondeu e OCR `no_text` | `consensus_ai`, canonical `AI_Generated/partial`: “Indícios de geração por IA”. Origem sintética conhecida do controle, sem generalizar a outros geradores. |
+| `synthetic-cafe.mp4`, 20:54:54 | Hive e Sightengine responderam nos três quadros; concordância de IA no mesmo quadro em 0,3 s, 1,5 s e 2,7 s; arquivo sem áudio | `consensus_ai`, canonical `AI_Generated/partial`: “Indícios de IA em quadros amostrados”. Sequência de uma imagem sintética, não ensaio de face swap, lipsync ou vídeo gerado temporalmente. |
+
+Voz, NASA e planta foram processadas na implantação `8aca4c7`; o vídeo após a publicação `09e1a08`, que não alterou detecção de mídia. HF permaneceu desabilitado; nenhuma assinatura/recarga foi criada. Os sinais numéricos acima são saídas brutas não calibradas, não probabilidades comprovadas de falsidade.
+
+### Mitigação adicional do OpenRouter gratuito
+
+A extração de pistas literais tinha um teto de saída de 768 tokens. Foi ampliado para 2.048, dentro do teto global existente, sem retry extra, modelo pago ou alteração do prazo de 25 s. Permanecem `openrouter/free`, filtro de preço zero e descarte de respostas `finish_reason=length`, mesmo que um trecho pareça JSON válido. Gemini continua como fallback; essas pistas não votam na verdade.
+
+A [documentação oficial](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens#reasoning-tokens-and-max_tokens) explica que raciocínio e saída final podem compartilhar esse orçamento. O [router gratuito](https://openrouter.ai/docs/guides/routing/routers/free-router) escolhe modelos disponíveis conforme capacidades. O mecanismo é uma causa plausível da truncagem, não uma causa confirmada daquele pedido sem seus dados de uso/modelo. Mais orçamento reduz a restrição; não garante resposta de todo modelo nem elimina limites externos. O novo controle offline inspeciona o pedido completo e conserva preço zero, chamada única, prazo e papel auxiliar.
 
 ## 8. Pendências reais para a entrega
 

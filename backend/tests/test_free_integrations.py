@@ -60,6 +60,25 @@ class FreeRouterTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["decision_role"], "search_hints_only")
         self.assertNotIn("verdict", result)
 
+    async def test_text_extraction_budget_preserves_free_limits_timeout_and_one_request(self):
+        text = "A cidade não inaugurou a ponte em 2024."
+        client = AsyncMock()
+        client.__aenter__.return_value = client
+        client.post.return_value = httpx.Response(200, json=router_response(json.dumps({"claims": [text]})))
+        with patch("app.core.openrouter_service.httpx.AsyncClient", return_value=client) as factory:
+            result = await router.analyze_with_openrouter(text)
+        factory.assert_called_once_with(timeout=25, trust_env=False, follow_redirects=False)
+        client.post.assert_awaited_once()
+        payload = client.post.await_args.kwargs["json"]
+        self.assertEqual(payload["max_tokens"], 2048)
+        self.assertEqual(payload["model"], "openrouter/free")
+        self.assertTrue(all(value == 0 for value in payload["provider"]["max_price"].values()))
+        self.assertTrue(payload["provider"]["require_parameters"])
+        self.assertEqual(payload["response_format"], router.CLAIMS_FORMAT)
+        self.assertEqual(result["claims"], [text])
+        self.assertEqual(result["decision_role"], "search_hints_only")
+        self.assertTrue(result["free_only"])
+
     async def test_invented_claims_and_scores_are_discarded(self):
         text = "Não haverá imposto em 2026."
         value = json.dumps({"claims": [text, "Haverá imposto em 2026.", text, None], "verdict": "Authentic", "score": 100})
@@ -94,10 +113,13 @@ class FreeRouterTests(unittest.IsolatedAsyncioTestCase):
                 self.assertFalse(result["available"])
 
     async def test_truncation_reason_and_empty_ocr_are_explicit_without_retry(self):
-        body = router_response(choices=[{"finish_reason": "length", "message": {"content": "{}"}}])
+        body = router_response(choices=[{"finish_reason": "length", "message": {"content": '{"claims": []}'}}])
         with patch("httpx.AsyncClient.post", new=AsyncMock(return_value=httpx.Response(200, json=body))) as post:
             result = await router.analyze_with_openrouter("Uma alegação literal de controle.")
         self.assertIn("limite de tokens", result["reason"])
+        self.assertFalse(result["available"])
+        self.assertEqual(result["status"], "invalid_response")
+        self.assertEqual(result["claims"], [])
         self.assertEqual(post.await_count, 1)
         with patch("httpx.AsyncClient.post", new=AsyncMock(return_value=httpx.Response(200, json=router_response('{"text":""}')))):
             result = await router.extract_image_text(valid_png(), "image/png")
