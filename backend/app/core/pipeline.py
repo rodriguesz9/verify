@@ -7,11 +7,13 @@ from app.core.gemini_analyzer import extract_claims_with_ai, generate_final_repo
 from app.core.fact_checker import query_fact_check_api
 from app.core.domain_checker import check_domain_reputation
 from app.core.gptzero_client import detect_ai_text
-from app.core.serper_client import search_news
+from app.core.serper_client import search_news, search_web, NewsSearch
 from app.core.scam_detector import analyze_scam_indicators
 from app.core.openrouter_service import analyze_with_openrouter
 from app.services.claim_policy import text_report, input_claims
 from app.services.news_relevance import filter_context_news
+from app.services.factual_queries import build_fact_check_queries
+from app.services.source_attribution import collect_source_attribution
 
 
 def _verdicts_agree(v1: str, v2: str) -> bool:
@@ -72,6 +74,25 @@ async def _run_openrouter_check(text: str) -> dict | None:
 async def _run_gemini_check(text: str, context: dict) -> dict:
     """Run Gemini final report."""
     return await generate_final_report(text, context)
+
+
+async def _retrieve_source_attribution(text: str, queries: list[str], source_url: str | None) -> dict:
+    """A single additional search, with bounded safe page retrieval.
+
+    Source attribution cannot vote on the factual decision. Search snippets
+    remain leads; only a complete sentence in a retrieved document can match.
+    """
+    try:
+        async with asyncio.timeout(20):
+            query = next((query for query in queries if 20 <= len(query.strip()) <= 500), None)
+            leads = (await search_web(query) if query else NewsSearch(
+                status="no_results", reason="Nenhuma frase completa cabe no limite da busca; nenhum texto foi cortado."))
+            return await collect_source_attribution(text, queries, source_url, search_results=leads)
+    except Exception:
+        return {"status": "error", "decision_role": "source_attribution_only", "matches": [],
+                "reason": "A leitura das referências não foi concluída no prazo ou com segurança.",
+                "limitations": ["Referências não confirmam automaticamente verdade, falsidade ou a página inteira."],
+                "coverage": {"status": "error", "decision_role": "source_attribution_only"}}
 
 
 def extract_dates_from_text(text: str) -> list[str]:
@@ -182,7 +203,7 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
         claims = []
     # Retrieve literal input as well as extraction. Model paraphrases are search
     # hints only: they cannot change the statement that receives the verdict.
-    fact_check_queries = list(dict.fromkeys([analysis_text, *input_claims(analysis_text), *claims]))[:5]
+    fact_check_queries, query_plan = build_fact_check_queries(analysis_text, claims, limit=5)
     ai_task = asyncio.create_task(detect_ai_text(analysis_text))
     domain_task = (asyncio.create_task(asyncio.to_thread(check_domain_reputation, source_url)) if source_url else None)
     fact_tasks = [
@@ -195,7 +216,8 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
         asyncio.create_task(search_news(query[:200]))
         for query in serper_news_queries
     ]
-    tasks = [*fact_tasks, *serper_news_tasks, ai_task]
+    attribution_task = asyncio.create_task(_retrieve_source_attribution(analysis_text, fact_check_queries, source_url))
+    tasks = [*fact_tasks, *serper_news_tasks, ai_task, attribution_task]
     if domain_task:
         tasks.append(domain_task)
     
@@ -257,14 +279,22 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
     ai["search_claims"] = claims
     ai["scam_analysis"] = scam_info
     ai["serper_news"] = serper_news_results
+    source_attribution = attribution_task.result()
+    ai["source_attribution"] = source_attribution
     queries = [{"status": "error" if task.exception() else getattr(task.result(), "status", "success" if task.result() else "no_results"),
                 "reason": "Falha na consulta." if task.exception() else getattr(task.result(), "reason", None)} for task in fact_tasks]
     status = ("success" if fact_checks else "no_results" if any(q["status"] in {"success", "no_results"} for q in queries)
               else "not_configured" if all(q["status"] == "not_configured" for q in queries) else "error")
     ai["provider_coverage"] = {"google_fact_check": {
-        "status": status, "queries": queries, "matches_returned": len(fact_checks),
+        "status": status, "queries": queries, "query_plan": query_plan, "matches_returned": len(fact_checks),
         "reason": "Consulta concluída sem checagens correspondentes." if status == "no_results" else
                   next((q["reason"] for q in queries if q["reason"]), None)}}
+    ai["provider_coverage"]["web_references"] = {
+        **source_attribution.get("coverage", {}),
+        "status": "success" if source_attribution["status"] == "found" else source_attribution["status"],
+        "decision_role": "source_attribution_only", "matches_returned": len(source_attribution.get("matches", [])),
+        "reason": source_attribution.get("reason"),
+    }
     if use_ai_extraction:
         ai["provider_coverage"]["openrouter"] = {key: value for key, value in openrouter_result.items()
             if key in {"available", "status", "reason", "model_used", "decision_role", "free_only", "response_issue"}}

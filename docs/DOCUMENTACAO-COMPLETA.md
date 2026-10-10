@@ -1,5 +1,7 @@
 # Verify — documentação completa e manual de entrega
 
+**Adendo atual de 10/10:** [correções das verificações inconclusivas](INCONCLUSIVOS-2026-10-10.md) documenta os campos `media_signal`, `source_attribution`, `provider_coverage.google_fact_check.query_plan`, limites e testes. [Publicação de 08/10](PUBLICACAO-2026-10-08.md) comprova a revisão anterior. A base/configurações e números datados no corpo abaixo são histórico de 07/10; não usar o antigo Hive “pausado” como estado atual: o responsável autorizou saldo existente e configurou imagem/áudio com limites, sem contratação ou recarga pelo agente.
+
 **Atualização:** 07/10/2026. **Novo prazo solicitado:** esta semana, até 11/10/2026. O calendário anterior de 04–17/10 permanece como histórico; consulte o [fechamento acelerado](ENTREGA-ATE-11-OUTUBRO.md).
 
 Este é o manual consolidado da **revisão local** do Verify. Base Git examinada: `5db970da8f8a109472050ed96e3ab77d20e7f5e7`, acrescida das alterações locais registradas nos documentos de 03–07/10. Essas alterações ainda não têm um novo commit de entrega nem comprovação de publicação. O número `1.0.0` da API e `0.1.0` do pacote frontend não identificam o commit servido em produção. Resultados mais recentes, mudanças e bloqueios estão no [registro de 07/10](FECHAMENTO-2026-10-07.md).

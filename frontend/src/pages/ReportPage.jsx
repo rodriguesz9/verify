@@ -6,7 +6,7 @@ import { useAuth } from "../hooks/authContext";
 import Footer from "../components/Footer";
 import AnimatedScore from "../components/report/AnimatedScore";
 import EvidenceExplanation from "../components/report/EvidenceExplanation";
-import { visibleDetectorScore, reportMediaHeadline, providerCoveragePresentation, publicCoveragePresentation, transcriptionPresentation, isTechnicalReportText } from "../utils/reportEvidence";
+import { visibleDetectorScore, reportMediaHeadline, reportSourceHeadline, publicMediaRiskNotice, providerCoveragePresentation, publicCoveragePresentation, transcriptionPresentation, isTechnicalReportText } from "../utils/reportEvidence";
 import { pdfExportError, pdfExportState, publicReportDetails } from "../utils/reportExport";
 import { Shield, AlertTriangle, ArrowRight, Volume2, Phone, ChevronDown, ChevronUp, FileJson, Download } from "lucide-react";
 
@@ -160,10 +160,18 @@ export default function ReportPage() {
     border: "rgba(255,203,85,.3)", headline: "Não há evidência suficiente para concluir. Isso não significa que o conteúdo seja falso ou autêntico."
   } : BADGE_STYLES[verdict] || BADGE_STYLES.Suspicious;
   const mediaHeadline = reportMediaHeadline(result);
-  const badge = mediaHeadline ? {...defaultBadge, ...mediaHeadline} : defaultBadge;
+  const diagnosisHeadline = mediaHeadline || reportSourceHeadline(result);
+  const badge = diagnosisHeadline ? {...defaultBadge, ...diagnosisHeadline} : defaultBadge;
+  const publicSummary = diagnosisHeadline?.diagnostic ? [badge.headline, publicMediaRiskNotice(result)].filter(Boolean).join(" ")
+    : typeof result.summary === "string" && !isTechnicalReportText(result.summary) ? result.summary : publicCoverage.detail;
+  const publicExplanation = !diagnosisHeadline?.diagnostic && typeof result.plain_explanation === "string"
+    && !isTechnicalReportText(result.plain_explanation) ? result.plain_explanation : "";
+  const publicRedFlags = Array.isArray(result.red_flags)
+    ? result.red_flags.filter((flag) => typeof flag === "string" && !isTechnicalReportText(flag)) : [];
 
-  const shareText = result.whatsapp_share_text ||
-    `⚠️ *Alerta do Verify:* Resultado: ${badge.title}.\n\n📝 *Resumo:* ${result.summary || ""}\n\n🛡️ *Checado em:* ${window.location.origin}`;
+  const shareText = !diagnosisHeadline?.diagnostic && typeof result.whatsapp_share_text === "string"
+    && !isTechnicalReportText(result.whatsapp_share_text) ? result.whatsapp_share_text :
+    `⚠️ *Alerta do Verify:* Resultado: ${badge.title}.\n\n📝 *Resumo:* ${publicSummary}\n\n🛡️ *Checado em:* ${typeof window === "undefined" ? "" : window.location.origin}`;
 
   const handleCopyText = () => {
     navigator.clipboard.writeText(shareText);
@@ -177,7 +185,7 @@ export default function ReportPage() {
       return;
     }
     window.speechSynthesis.cancel();
-    const textToRead = `${badge.headline}. O que você precisa saber: ${result.summary || ""}. ${result.plain_explanation || ""}. Dica de segurança: ${result.elderly_tip || ""}`;
+    const textToRead = `${badge.headline}. O que você precisa saber: ${publicSummary}. ${publicExplanation}. Dica de segurança: ${result.elderly_tip || ""}`;
     const utterance = new SpeechSynthesisUtterance(textToRead);
     utterance.lang = "pt-BR";
     utterance.rate = 0.92;
@@ -259,7 +267,7 @@ export default function ReportPage() {
                 {badge.title}
               </h2>
             </div>
-            <AnimatedScore value={inconclusive ? null : result.score} color={badge.color} />
+            <AnimatedScore value={inconclusive || diagnosisHeadline?.diagnostic ? null : result.score} color={badge.color} />
           </div>
           <p className="text-base text-[#CDE8F0] leading-relaxed mt-2">{badge.headline}</p>
 
@@ -391,11 +399,11 @@ export default function ReportPage() {
                 <Shield size={14} /> O Que Você Precisa Saber
               </h3>
               <p className="text-lg text-[#CDE8F0] font-syne font-bold leading-relaxed mb-3">
-                "{result.summary}"
+                "{publicSummary}"
               </p>
-              {result.plain_explanation && (
+              {publicExplanation && (
                 <p className="text-sm text-[#8AA2B4] leading-relaxed pt-3 border-t border-[#132435]">
-                  {result.plain_explanation}
+                  {publicExplanation}
                 </p>
               )}
             </div>
@@ -409,13 +417,13 @@ export default function ReportPage() {
               </div>
             )}
 
-            {result.red_flags && result.red_flags.length > 0 && (
+            {publicRedFlags.length > 0 && (
               <div className="p-6 rounded-xl bg-[#0A1520] border border-[#132435]">
                 <h4 className="text-[10px] font-mono uppercase tracking-[8px] text-[#FF3B5C] font-bold mb-4 flex items-center gap-2">
                   <AlertTriangle size={14} /> Sinais de Alerta Detectados
                 </h4>
                 <div className="space-y-3">
-                  {result.red_flags.map((flag, idx) => (
+                  {publicRedFlags.map((flag, idx) => (
                     <div key={idx} className="flex items-start gap-3 text-sm text-[#CDE8F0]">
                       <span className="text-[#FF3B5C] font-bold">✕</span>
                       <span>{flag}</span>

@@ -1,5 +1,6 @@
 """One media workflow shared by uploads, demos, PDFs and WhatsApp."""
 import asyncio
+import math
 from collections import Counter
 from fastapi import HTTPException
 from app.core.gemini_client import gemini_timeout_seconds
@@ -12,7 +13,7 @@ from app.services.c2pa_service import verify_c2pa
 from app.services.reverse_search_service import search_context_and_provenance
 from app.services.audio_service import analyze_audio_quick_for_demonstration
 from app.services.speech_detector import detect_synthetic_speech
-from app.services.evidence_policy import media_report, detector_score, DETECTOR_FIELDS
+from app.services.evidence_policy import media_report, media_signal_explanation, detector_score, DETECTOR_FIELDS, MEDIA_SIGNAL_VERSION
 from app.services.media_validation import ValidatedMedia, extract_video_frames, extract_video_audio
 
 
@@ -141,6 +142,38 @@ def video_provider_coverage(frame_reports: list[dict], name: str, reason: str) -
             "reason": " ".join(failures[:5]) if not successful and failures else reason}
 
 
+def video_media_signal(frame_reports: list[dict], timestamps: list[float]) -> dict:
+    """Describe up to twelve sampled frames; never vote on cross-frame means."""
+    observations = []
+    for report, timestamp in list(zip(frame_reports[:12], timestamps[:12])):
+        signal = report.get("media_signal", {})
+        if (signal.get("version") != MEDIA_SIGNAL_VERSION
+                or isinstance(timestamp, bool) or not isinstance(timestamp, (int, float))
+                or not math.isfinite(timestamp) or not 0 <= timestamp <= 120):
+            continue
+        observations.append({"timestamp_seconds": timestamp, **signal})
+    states = Counter(observation["state"] for observation in observations)
+    # A stronger observation must occur within a single frame. Two different
+    # providers high at different timestamps still mean isolated observations.
+    priorities = ("disagreement", "consensus_manipulation", "consensus_ai",
+                  "isolated_manipulation", "isolated_ai", "no_high_signal")
+    state = next((name for name in priorities if states.get(name)), "unavailable")
+    valid, strong = {}, {}
+    for dimension in ("ai", "manipulation"):
+        valid[dimension] = sorted({name for observation in observations
+                                  for name in observation["valid_providers"][dimension]})
+        strong[dimension] = sorted({name for observation in observations
+                                   for name in observation["strong_providers"][dimension]})
+    return {"version": MEDIA_SIGNAL_VERSION, "state": state, "scope": "sampled_video_frames",
+            "independent_provider_count": len(set(valid["ai"]) | set(valid["manipulation"])),
+            "ai_provider_count": len(valid["ai"]), "manipulation_provider_count": len(valid["manipulation"]),
+            "valid_providers": valid, "strong_providers": strong,
+            "sampled_frames": len(observations), "state_counts": dict(states),
+            "observed_timestamps_seconds": [observation["timestamp_seconds"] for observation in observations
+                                            if observation["state"] not in {"unavailable", "no_high_signal"}],
+            "observations": observations}
+
+
 async def analyze_media(media: ValidatedMedia, *, review_first: bool = False) -> dict:
     if media.kind == "image":
         forensics = await image_layers(media.data, media.mime_type, media.filename)
@@ -160,9 +193,11 @@ async def analyze_media(media: ValidatedMedia, *, review_first: bool = False) ->
             frames, results = await video_visual_layers(media)
             track_report = None
         frame_reports = [media_report(result) for result in results]
+        signal = video_media_signal(frame_reports, [t for t, _ in frames])
         forensics = {"video": {"sampled_frames": len(frames), "timestamps_seconds": [t for t, _ in frames],
                                   "frames": [{"timestamp_seconds": frames[i][0], "detections": result,
                                               "analysis_status": frame_reports[i]["analysis_status"],
+                                              "media_signal": frame_reports[i]["media_signal"],
                                               "verdict": frame_reports[i]["verdict"]}
                                              for i, result in enumerate(results)]}}
         for name, field in DETECTOR_FIELDS.items():
@@ -178,6 +213,7 @@ async def analyze_media(media: ValidatedMedia, *, review_first: bool = False) ->
         forensics["hive_deepfake"] = {"available": bool(deep_count), "status": "aggregate_only", "deepfake_score": None,
                                      "analyzed_frames": deep_count}
         report = media_report(forensics, "video")
+        report["media_signal"] = signal
         if not media.details.get("has_audio"):
             report["limitations"].append("Vídeo sem faixa de áudio: nenhuma fala foi transcrita ou checada.")
         # A mean across different timestamps is not same-frame agreement.
@@ -225,6 +261,16 @@ async def analyze_media(media: ValidatedMedia, *, review_first: bool = False) ->
                     report["red_flags"].append(audio_flag)
                 report["limitations"].append("Sinais de fala sintética não identificam a pessoa, não comprovam clonagem de voz nem verificam sincronização labial ou toda a gravação.")
                 report["plain_explanation"] = report["whatsapp_share_text"] = report["summary"]
+        if report["analysis_status"] == "inconclusive":
+            visual_explanation = media_signal_explanation(signal, "video")
+            if visual_explanation:
+                if track_report is not None:
+                    track_explanation = media_signal_explanation(track_report.get("media_signal", {}), "audio")
+                    visual_explanation += " Faixa de áudio: " + (track_explanation or
+                        "A origem da gravação continua inconclusiva; a leitura da fala não confirma sua origem.")
+                else:
+                    visual_explanation += " Este vídeo não tem faixa de áudio; nenhuma fala foi analisada."
+                report["summary"] = report["plain_explanation"] = report["whatsapp_share_text"] = visual_explanation
     else:
         forensics = await audio_layers(media.data, media.mime_type, duration_seconds=media.details.get("duration_seconds"))
         audio = forensics["audio"]
@@ -234,7 +280,7 @@ async def analyze_media(media: ValidatedMedia, *, review_first: bool = False) ->
         report["content_analysis"] = await extracted_content(report["transcription"], "transcription", review_first=review_first, timeout=24)
         report["limitations"].append("Transcrição e indícios de golpe no discurso não determinam se a voz foi clonada.")
         if report["content_risk"].get("is_scam_pattern") and report["analysis_status"] == "inconclusive":
-            report["summary"] = "A fala contém sinais de pedido financeiro suspeito. A origem da voz continua inconclusiva."
+            report["summary"] = "A fala contém sinais de pedido financeiro suspeito. " + report["summary"]
             report["plain_explanation"] = report["summary"]
             report["whatsapp_share_text"] = report["summary"]
     report["media_details"] = media.details

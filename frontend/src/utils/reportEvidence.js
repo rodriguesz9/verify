@@ -30,6 +30,114 @@ export function safeSourceUrl(value) {
   }
 }
 
+const mediaSignalStates = ["consensus_ai", "consensus_manipulation", "isolated_ai", "isolated_manipulation",
+  "disagreement", "no_high_signal", "unavailable"];
+const highMediaSignal = (state) => ["consensus_ai", "consensus_manipulation", "isolated_ai", "isolated_manipulation"].includes(state);
+
+// The additive diagnosis summarizes observations. It never changes the saved
+// verdict, decision index or provider records, and never exposes raw scores.
+export function mediaSignalPresentation(signal, scope) {
+  if (!signal || signal.version !== "1" || !["image", "audio", "sampled_video_frames"].includes(scope)
+      || signal.scope !== scope || !mediaSignalStates.includes(signal.state)) return null;
+  const voice = scope === "audio";
+  const video = scope === "sampled_video_frames";
+  const labels = {
+    consensus_ai: voice ? "Indícios de possível voz sintética" : video ? "Indícios de IA em quadros amostrados" : "Indícios de geração por IA",
+    consensus_manipulation: voice ? "Indícios de possível alteração do áudio" : video ? "Indícios de manipulação em quadros amostrados" : "Indícios de possível manipulação",
+    isolated_ai: voice ? "Sinal de possível voz sintética" : "Sinal de possível IA — confirmação pendente",
+    isolated_manipulation: voice ? "Sinal de possível alteração do áudio — confirmação pendente" : "Sinal de possível manipulação — confirmação pendente",
+    disagreement: "Detectores em desacordo",
+    no_high_signal: "Sem indícios fortes nas consultas feitas",
+    unavailable: "Análise da origem indisponível",
+  };
+  const explanations = {
+    consensus_ai: "Consultas de detectores independentes registraram indícios de geração por IA.",
+    consensus_manipulation: "Consultas de detectores independentes registraram indícios de possível manipulação.",
+    isolated_ai: "Um detector registrou um sinal forte, sem confirmação independente suficiente. A confirmação continua pendente; este sinal não conclui que o arquivo foi gerado por IA.",
+    isolated_manipulation: "Um detector registrou um sinal forte de possível alteração, sem confirmação independente suficiente. A confirmação continua pendente; este sinal não conclui que o arquivo foi manipulado.",
+    disagreement: "As consultas retornaram sinais incompatíveis. É necessária uma conferência humana; não há uma conclusão segura sobre a origem.",
+    no_high_signal: "Nas consultas que retornaram resultados utilizáveis, não apareceram sinais fortes. Isso não prova autenticidade: alterações podem passar despercebidas, e nem todas as dimensões podem ter sido analisadas.",
+    unavailable: "Nenhuma consulta sobre a origem retornou observação utilizável nesta análise. A leitura de texto e a checagem da informação, quando disponíveis, continuam úteis e são avaliadas separadamente.",
+  };
+  let explanation = explanations[signal.state];
+  if (voice) explanation += " A observação trata da faixa de áudio: não comprova clonagem, identidade da pessoa nem a verdade da fala; não determina que toda a gravação seja sintética.";
+  else if (video) {
+    explanation += " A observação se limita aos quadros amostrados; não verifica o vídeo inteiro, a identidade da pessoa ou a sincronização entre boca e voz.";
+    const times = Array.isArray(signal.observed_timestamps_seconds) ? signal.observed_timestamps_seconds
+      .filter((value) => typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 120).slice(0, 12) : [];
+    if (times.length && !["no_high_signal", "unavailable"].includes(signal.state)) explanation += ` Sinais observados nos tempos ${times.map((time) => `${time.toFixed(1)} s`).join(", ")}.`;
+  }
+  else explanation += " A produção da imagem é separada da verdade da informação retratada.";
+  return {state: signal.state, title: labels[signal.state], label: labels[signal.state], explanation,
+    highSignal: highMediaSignal(signal.state), diagnostic: true};
+}
+
+export function sourceAttributionPresentation(result = {}) {
+  const content = result.content_analysis && typeof result.content_analysis === "object" ? result.content_analysis : result;
+  const record = content.source_attribution;
+  if (!record || record.decision_role !== "source_attribution_only"
+      || !["found", "no_results", "error", "not_configured"].includes(record.status)) return null;
+  const matches = (Array.isArray(record.matches) ? record.matches : []).filter((item) => item
+    && item.match_method === "literal_sentence" && ["submitted_source", "retrieved_reference"].includes(item.source_role)
+    && safeSourceUrl(item.url) && typeof item.excerpt === "string" && item.excerpt.trim()
+    && typeof item.claim === "string" && item.claim.trim()).slice(0, 20).map((item, index) => ({
+      id: `attribution-${index}`, url: safeSourceUrl(item.url), title: typeof item.title === "string" ? item.title : "Publicação localizada",
+      excerpt: item.excerpt, claim: item.claim, sourceRole: item.source_role,
+    }));
+  const status = record.status === "found" && !matches.length ? "error" : record.status;
+  const coverage = record.coverage && typeof record.coverage === "object" ? record.coverage : {};
+  const title = status === "found" ? "Trecho localizado em uma fonte"
+    : status === "no_results" ? "Sem correspondência nas fontes consultadas" : "Pesquisa de fontes não concluída";
+  const explanation = status === "found"
+    ? "Uma fonte publica o trecho literal enviado. Isso indica onde o texto aparece; não confirma que a afirmação seja verdadeira, a autoria original ou a autenticidade de uma mídia."
+    : status === "no_results"
+      ? "A pesquisa não localizou uma publicação com correspondência literal nesta consulta. Isso não prova falsidade nem ausência de uma fonte original; a busca tem alcance limitado."
+      : status === "not_configured"
+        ? "A pesquisa de publicações não está habilitada nesta análise. Não foi possível verificar onde o trecho aparece; isso não determina verdade ou falsidade."
+        : "A pesquisa de publicações não foi concluída. Não foi possível verificar onde o trecho aparece; isso não determina verdade ou falsidade.";
+  const limitations = strings(record.limitations).filter((item) => !isTechnicalReportText(item)).slice(0, 8);
+  if (coverage.search_status === "not_configured") limitations.push("A busca de referências não está habilitada nesta análise.");
+  if (coverage.search_status === "rate_limited") limitations.push("O limite de consultas disponível foi atingido; a busca de referências ficou limitada.");
+  const count = (field) => Number.isInteger(coverage[field]) && coverage[field] >= 0 ? coverage[field] : null;
+  const selectedClaims = count("selected_claim_count"), selectedPages = count("selected_url_count"), fetchedPages = count("fetched_count");
+  const scope = selectedClaims !== null && selectedPages !== null && fetchedPages !== null
+    ? `Alcance desta pesquisa: ${selectedClaims} frases selecionadas, ${selectedPages} páginas selecionadas e ${fetchedPages} páginas com leitura concluída.` : "";
+  return {status, title, explanation, matches: status === "found" ? matches : [], scope, limitations: [...new Set(limitations)]};
+}
+
+export function factCheckQueryPresentation(layer = {}) {
+  const plan = layer.query_plan;
+  if (!plan || plan.version !== "literal_sentence_queries_v1" || plan.decision_role !== "retrieval_only") return null;
+  const count = (field) => Number.isInteger(plan[field]) && plan[field] >= 0 ? plan[field] : null;
+  const selected = count("selected_count"), candidates = count("candidate_count"), omitted = count("omitted_count");
+  const separate = count("literal_segments_queried"), notSeparate = count("literal_segments_not_queried_separately");
+  const details = [];
+  if (selected !== null && candidates !== null && selected <= candidates) details.push(`O plano de busca selecionou ${selected} de ${candidates} consultas candidatas${omitted !== null ? `; ${omitted} não foram selecionadas` : ""}.`);
+  if (separate !== null && notSeparate !== null) details.push(`${separate} trechos tiveram consultas próprias; ${notSeparate} não tiveram consulta separada.`);
+  if (plan.whole_text_queried === true) details.push("O texto integral também entrou no plano de busca; trechos sem consulta própria podem estar incluídos nessa pesquisa.");
+  const methodLabels = {extracted_literal_sentence: "trechos literais selecionados na leitura", whole_literal_input: "texto integral", literal_sentence_fallback: "frases literais do conteúdo"};
+  const methods = [...new Set(strings(plan.query_methods).filter((method) => Object.hasOwn(methodLabels, method)).map((method) => methodLabels[method]))];
+  if (methods.length) details.push(`Tipos de busca: ${methods.join(", ")}.`);
+  details.push("Esse plano descreve o alcance da pesquisa, não quantas afirmações foram confirmadas. Ausência de uma checagem publicada não prova verdade nem falsidade.");
+  return {detail: details.join(" ")};
+}
+
+export function reportSourceHeadline(result = {}) {
+  if (!["text", "url"].includes(result.content_type) || result.verdict !== "Suspicious"
+      || (result.veracity_status != null && result.veracity_status !== "unverified")) return null;
+  const attribution = sourceAttributionPresentation(result);
+  return attribution ? {title: attribution.title,
+    headline: `${attribution.explanation} A veracidade da afirmação continua não determinada pelas checagens disponíveis.`, diagnostic: true} : null;
+}
+
+export function publicMediaRiskNotice(result = {}) {
+  if (!["image", "audio", "video"].includes(result.content_type)) return "";
+  const risks = [result.content_risk, result.forensics?.audio?.content_risk,
+    result.audio_analysis?.content_risk, result.audio_analysis?.forensics?.audio?.content_risk];
+  if (!risks.some((risk) => risk?.is_scam_pattern === true) && result.content_analysis?.verdict !== "Scam") return "";
+  return "A leitura disponível contém sinais de pedido financeiro suspeito. Confira a fala ou o texto original e confirme por um canal oficial antes de enviar dinheiro ou dados.";
+}
+
 // Read only known public states. Provider details can contain internal job
 // identifiers or upload locations and must never become presentation text.
 export function transcriptionPresentation(result = {}) {
@@ -110,10 +218,18 @@ export function publicCoveragePresentation(result = {}) {
   const partial = layers.some((layer) => layer.status === "partial");
   const media = ["image", "audio", "video"].includes(result.content_type);
   const inconclusive = result.analysis_status === "inconclusive";
-  const title = inconclusive ? "Não foi possível chegar a uma conclusão"
+  const signal = mediaSignalPresentation(result.media_signal, result.content_type === "video" ? "sampled_video_frames" : result.content_type);
+  const voiceSignal = result.content_type === "video" && result.media_details?.has_audio !== false
+    ? mediaSignalPresentation(result.audio_analysis?.media_signal, "audio") : null;
+  const attribution = sourceAttributionPresentation(result);
+  const diagnosisAvailable = Boolean(signal || voiceSignal || attribution);
+  const title = diagnosisAvailable ? "O alcance deste resultado" : inconclusive ? "Não foi possível chegar a uma conclusão"
     : failed ? "Algumas etapas não foram concluídas"
     : partial ? "Análise com alcance limitado" : "Como usar este resultado";
-  const detail = inconclusive
+  const detail = diagnosisAvailable
+    ? media ? "As observações sobre a origem aparecem separadas da leitura e da checagem da informação. Cada resultado vale apenas para as consultas e partes do arquivo descritas; não é uma certificação de autenticidade ou verdade."
+      : "A pesquisa de fontes indica onde um trecho aparece. Checagens publicadas avaliam afirmações; encontrar o mesmo texto em uma publicação não confirma sua verdade. Confira as correspondências e o alcance da pesquisa abaixo."
+    : inconclusive
     ? media ? "As evidências disponíveis não bastam para confirmar a origem do arquivo ou a informação. Isso não significa que o conteúdo seja falso ou verdadeiro."
       : "As evidências disponíveis não bastam para confirmar nem refutar a informação. Isso não significa que o conteúdo seja falso ou verdadeiro."
     : failed ? "Parte da análise não ficou disponível. Considere apenas as observações descritas neste relatório e confirme a informação por outra fonte."
@@ -122,6 +238,9 @@ export function publicCoveragePresentation(result = {}) {
   const limitations = [];
   if (inconclusive) limitations.push(media ? "A origem do arquivo não foi confirmada." : "A informação não foi confirmada nem refutada pelas evidências disponíveis.");
   if (failed) limitations.push("Não foi possível concluir todas as etapas desta análise.");
+  if (layers.some((layer) => layer.status === "not_configured")) limitations.push("Algumas consultas não estão habilitadas nesta análise; a cobertura ficou limitada.");
+  if (layers.some((layer) => ["budget_exhausted", "rate_limited"].includes(layer.status))) limitations.push("O limite de consultas disponível foi atingido; parte da análise não pôde ser feita.");
+  if (layers.some((layer) => layer.status === "timeout")) limitations.push("Algumas consultas não terminaram dentro do tempo disponível.");
   if (partial) limitations.push("A análise abrange apenas parte das observações disponíveis, não todo o arquivo.");
   if (result.detector_disagreement === true || result.visual_detector_disagreement === true
       || result.audio_analysis?.detector_disagreement === true) limitations.push("Os sinais obtidos ficaram em desacordo. É necessária uma conferência humana.");
@@ -134,7 +253,7 @@ function publicEvidenceFindings(findings, coverage, result) {
   const ocrText = typeof result.forensics?.ocr?.text === "string" ? result.forensics.ocr.text.trim() : "";
   const ocrLength = Array.from(ocrText).length;
   for (const finding of findings) {
-    if (/^(?:pattern-|claim-|speech-)/.test(finding.id) || ["url", "page-extraction"].includes(finding.id)
+    if (/^(?:pattern-|claim-|speech-|attribution-)/.test(finding.id) || ["url", "page-extraction"].includes(finding.id)
         || finding.id.startsWith("retrieval-")) {
       publicFindings.push(finding);
       continue;
@@ -154,7 +273,15 @@ function publicEvidenceFindings(findings, coverage, result) {
     }
     technicalFindings.push(finding);
   }
-  if (result.analysis_status === "partial" && ["ai_indications", "manipulation_indications"].includes(result.authenticity_status)) {
+  const signal = mediaSignalPresentation(result.media_signal, result.content_type === "video" ? "sampled_video_frames" : result.content_type);
+  const voiceSignal = result.content_type === "video" && result.media_details?.has_audio !== false
+    ? mediaSignalPresentation(result.audio_analysis?.media_signal, "audio") : null;
+  if (signal || voiceSignal) {
+    if (signal) publicFindings.push({id: "media-diagnosis", title: signal.title, detail: signal.explanation,
+      origin: result.content_type === "video" ? "Observação dos quadros amostrados · separada do áudio e da informação" : "Observação sobre o arquivo · separada da informação"});
+    if (voiceSignal) publicFindings.push({id: "audio-diagnosis", title: `Áudio do vídeo: ${voiceSignal.title}`, detail: voiceSignal.explanation,
+      origin: "Observação da faixa de áudio · separada das imagens e da informação"});
+  } else if (result.analysis_status === "partial" && ["ai_indications", "manipulation_indications"].includes(result.authenticity_status)) {
     publicFindings.push({id: "media-production", title: result.authenticity_status === "ai_indications"
       ? "Indícios sobre a produção do arquivo" : "Indícios de possível alteração",
     detail: result.content_type === "video"
@@ -191,6 +318,8 @@ function videoOriginEvidence(result) {
       ? "Este relatório não traz uma conclusão separada para as imagens. O resultado geral pode incluir o áudio; não podemos usá-lo para dizer como as imagens foram produzidas."
       : "O resultado visual se refere apenas aos quadros selecionados. Isso não verifica todas as imagens, a identidade da pessoa ou a sincronização entre boca e voz.",
   };
+  const visualSignal = mediaSignalPresentation(result.media_signal, "sampled_video_frames");
+  if (visualSignal) Object.assign(visual, {label: visualSignal.label, explanation: visualSignal.explanation, signal: visualSignal});
   if (visualDisagreement === true) visual.explanation += " Detectores discordaram em pelo menos um quadro; confira os resultados por tempo.";
 
   const track = result.audio_analysis && typeof result.audio_analysis === "object" && !Array.isArray(result.audio_analysis)
@@ -214,10 +343,14 @@ function videoOriginEvidence(result) {
           ? "Existe uma faixa de áudio, mas a origem da voz ficou indeterminada. Transcrição disponível não comprova voz humana nem clonagem."
           : "O relatório não informa a presença de uma faixa de áudio. Não podemos deduzir origem humana ou voz clonada do resultado geral.",
   };
+  const audioSignal = hasAudio === false ? null : mediaSignalPresentation(track.media_signal, "audio");
+  if (audioSignal) Object.assign(audio, {label: audioSignal.label, explanation: audioSignal.explanation, signal: audioSignal});
   if (audio.detectorDisagreement === true) audio.explanation += " Detectores da voz discordaram; revisão humana necessária.";
   const visualFlag = ["ai_indications", "manipulation_indications"].includes(visual.status);
   const audioFlag = audio.status === "ai_indications";
-  const interpretation = audioFlag && !visualFlag
+  const interpretation = visualSignal || audioSignal
+    ? `Imagens do vídeo: ${visual.label}. ${visual.explanation} Áudio do vídeo: ${audio.label}. ${audio.explanation}`
+    : audioFlag && !visualFlag
     ? `Há indícios de possível fala sintética na faixa de áudio. ${visual.status === "not_separated" ? "A origem visual não está separada neste relatório." : "A origem das imagens continua não determinada."} Isso não significa que todo o vídeo foi gerado por IA nem que a informação falada seja falsa.`
     : visualFlag
       ? `Há indícios de ${visual.status === "manipulation_indications" ? "manipulação" : "geração por IA"} em quadros amostrados${audioFlag ? " e indícios de possível fala sintética no áudio" : ""}. Essas observações não verificam o vídeo inteiro nem demonstram que a informação retratada seja falsa.`
@@ -230,6 +363,17 @@ function videoOriginEvidence(result) {
 export function reportMediaHeadline(result = {}) {
   if (result.content_type === "video") {
     const origins = videoOriginEvidence(result);
+    const visualSignal = origins.visual.signal;
+    const audioSignal = origins.audio.signal;
+    if (visualSignal || audioSignal) {
+      const rank = {disagreement: 6, consensus_manipulation: 5, consensus_ai: 5, isolated_manipulation: 4,
+        isolated_ai: 4, no_high_signal: 1, unavailable: 0};
+      const primary = audioSignal && (!visualSignal || rank[audioSignal.state] > rank[visualSignal.state]) ? audioSignal : visualSignal;
+      const title = visualSignal?.highSignal && audioSignal?.highSignal
+        ? `Imagens: ${visualSignal.title} · Áudio: ${audioSignal.title}`
+        : primary === audioSignal ? `Áudio do vídeo: ${primary.title}` : `Imagens do vídeo: ${primary.title}`;
+      return {title, headline: origins.interpretation, diagnostic: true};
+    }
     const visualFlag = ["ai_indications", "manipulation_indications"].includes(origins.visual.status);
     const audioFlag = origins.audio.status === "ai_indications";
     const title = audioFlag && !visualFlag ? "INDÍCIOS DE FALA SINTÉTICA"
@@ -240,6 +384,8 @@ export function reportMediaHeadline(result = {}) {
       : "ORIGEM DO VÍDEO NÃO DETERMINADA";
     return {title, headline: origins.interpretation};
   }
+  const signal = mediaSignalPresentation(result.media_signal, result.content_type);
+  if (signal) return {title: signal.title, headline: signal.explanation, diagnostic: true};
   if (result.content_type === "audio") {
     if (result.authenticity_status === "ai_indications" && result.analysis_status === "partial") {
       return {title: "INDÍCIOS DE FALA SINTÉTICA", headline: "Há indícios de possível fala sintética no áudio. Isso não comprova clonagem, identidade da pessoa, origem de toda a gravação ou veracidade da informação falada."};
@@ -293,6 +439,7 @@ export function buildReportEvidence(result = {}, query = "") {
   }
   const missing = [];
   const content = result.content_analysis && typeof result.content_analysis === "object" ? result.content_analysis : result;
+  const sourceAttribution = sourceAttributionPresentation(result);
   if (content !== result && content.provider_coverage && typeof content.provider_coverage === "object") {
     for (const [name, layer] of Object.entries(content.provider_coverage)) coverage[`conteúdo/${name}`] = layer;
   }
@@ -321,11 +468,12 @@ export function buildReportEvidence(result = {}, query = "") {
     if (provider === "google_fact_check" || provider === "conteúdo/google_fact_check") {
       const queries = Array.isArray(layer.queries) ? layer.queries : [];
       const failedQueries = queries.filter((item) => item && !["success", "no_results"].includes(item.status));
+      const queryScope = factCheckQueryPresentation(layer);
       if (["success", "no_results"].includes(layer.status)) {
         findings.push({id: `retrieval-${provider}`, title: "Consulta de checagens publicadas",
-          detail: layer.status === "no_results"
+          detail: (layer.status === "no_results"
             ? "A consulta respondeu, mas não trouxe checagens para esta busca. Isso não significa que a informação seja falsa nem que todas as fontes existentes foram consultadas."
-            : "Foram recuperadas checagens publicadas. Apenas as que correspondem à afirmação, ao contexto e à política editorial podem fundamentar uma conclusão.",
+            : "Foram recuperadas checagens publicadas. Apenas as que correspondem à afirmação, ao contexto e à política editorial podem fundamentar uma conclusão.") + (queryScope ? ` ${queryScope.detail}` : ""),
           origin: `${queries.length} consultas registradas · recuperação, não confirmação automática`});
         if (failedQueries.length) missing.push(`${provider}: ${failedQueries.length} consultas não concluídas; a recuperação foi parcial.`);
       } else {
@@ -440,9 +588,18 @@ export function buildReportEvidence(result = {}, query = "") {
   const input = result.query_input || query;
   const checkedContent = !media && typeof input === "string" ? input : "";
   const videoForensics = result.forensics?.video;
-  const sampledFrames = typeof videoForensics?.sampled_frames === "number" ? videoForensics.sampled_frames : null;
-  const timestamps = Array.isArray(videoForensics?.timestamps_seconds)
-    ? videoForensics.timestamps_seconds.filter((value) => typeof value === "number" && Number.isFinite(value)) : [];
+  const visualSignal = mediaSignalPresentation(result.media_signal, "sampled_video_frames");
+  const sampledFramesValue = visualSignal ? result.media_signal.sampled_frames ?? videoForensics?.sampled_frames : videoForensics?.sampled_frames;
+  const sampledFrames = Number.isInteger(sampledFramesValue) && sampledFramesValue >= 0 ? sampledFramesValue : null;
+  const videoObservations = visualSignal && Array.isArray(result.media_signal.observations) ? result.media_signal.observations
+    .filter((item) => item && mediaSignalStates.includes(item.state) && typeof item.timestamp_seconds === "number"
+      && Number.isFinite(item.timestamp_seconds) && item.timestamp_seconds >= 0 && item.timestamp_seconds <= 120)
+    .slice(0, 12).map((item) => ({timestamp: item.timestamp_seconds,
+      label: mediaSignalPresentation({version: "1", scope: "sampled_video_frames", state: item.state}, "sampled_video_frames").label})) : [];
+  const timestampValues = Array.isArray(videoForensics?.timestamps_seconds) ? videoForensics.timestamps_seconds
+    : videoObservations.map((item) => item.timestamp);
+  const timestamps = Array.isArray(timestampValues)
+    ? timestampValues.filter((value) => typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 120) : [];
   const ocrText = typeof result.forensics?.ocr?.text === "string" ? result.forensics.ocr.text.trim() : "";
   const speechText = transcriptionState.text;
   const origin = ["ocr", "transcription"].includes(content.origin) ? content.origin : null;
@@ -453,7 +610,8 @@ export function buildReportEvidence(result = {}, query = "") {
   const {publicFindings, technicalFindings} = publicEvidenceFindings(findings, coverage, result);
   return {
     media, video, inconclusive, findings, sources, guidance, missing, checkedContent, claimAssessments,
-    publicFindings, technicalFindings, publicMissing: publicPresentation.limitations, publicPresentation,
+    publicFindings, technicalFindings, publicMissing: publicPresentation.limitations, publicPresentation, sourceAttribution,
+    mediaDiagnosis: mediaSignalPresentation(result.media_signal, result.content_type),
     veracityStatus: typeof content.veracity_status === "string" ? content.veracity_status : "unverified",
     contentSummary: typeof content.summary === "string" ? content.summary : "",
     contentOrigin: content.origin || "text",
@@ -461,13 +619,14 @@ export function buildReportEvidence(result = {}, query = "") {
     extractedText: ocrText || speechText || (origin ? contentText : ""),
     extractionProvider: coverage.ocr?.provider || coverage.transcription?.provider || null,
     claims: strings(content.claims), positives: strings(result.positive_signals || result.positives),
-    limitations: strings(result.limitations), sampledFrames, timestamps,
+    limitations: strings(result.limitations), sampledFrames, timestamps, videoObservations,
     audioTrackPresent: videoOrigins?.hasAudio ?? null,
     visualOrigin: videoOrigins?.visual ?? null,
     audioOrigin: videoOrigins?.audio ?? null,
     transcription: speechText,
     transcriptionState,
-    interpretation: video ? videoOrigins.interpretation : inconclusive
+    interpretation: video ? videoOrigins.interpretation : mediaSignalPresentation(result.media_signal, result.content_type)?.explanation
+      || (!media && reportSourceHeadline(result) ? sourceAttribution.explanation : null) || (inconclusive
       ? "Não foi possível determinar a origem ou confirmar a informação com as evidências disponíveis. Ausência de resposta não é prova de conteúdo falso."
       : result.verdict === "Scam"
         ? "A mensagem apresenta sinais associados a golpes. Eles justificam cautela, mas não comprovam quem enviou a mensagem nem tornam toda afirmação dela falsa."
@@ -477,6 +636,6 @@ export function buildReportEvidence(result = {}, query = "") {
             ? "As checagens correspondentes refutam a afirmação. A conclusão é atribuída às fontes consultadas: abra seus argumentos e confira a data e o contexto."
           : result.verdict === "Authentic"
             ? "A análise aponta apoio à informação. Confira se as fontes tratam da mesma afirmação, data e contexto; o indicador não é garantia de veracidade."
-            : "Os sinais precisam ser confrontados com o original e fontes independentes. O relatório não substitui uma checagem humana.",
+            : "Os sinais precisam ser confrontados com o original e fontes independentes. O relatório não substitui uma checagem humana."),
   };
 }

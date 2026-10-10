@@ -1,5 +1,7 @@
 # Roteiro básico para apresentar o Verify à banca
 
+**Atualização de 10/10:** ler [correções de resultados inconclusivos](INCONCLUSIVOS-2026-10-10.md) antes do ensaio. Um sinal isolado aparece como possível IA/voz sintética, não prova de falsidade; “Trecho localizado em uma fonte” não confirma a notícia inteira. Hive usa apenas saldo já autorizado e limites existentes; orientações abaixo que o mandam manter pausado registram a autorização mais restrita de uma etapa anterior. Não recarregar, adicionar cartão ou aumentar limites por este roteiro.
+
 Preparado em **07/10/2026**. Duração: **8–12 minutos**, mais perguntas. Este roteiro não certifica o deploy nem garante acerto de todas as APIs. Referências: [arquitetura](general.md), [matriz de controles](MATRIZ-VALIDACAO-30-CASOS.md), [diagnóstico real de 07/10](FECHAMENTO-2026-10-07.md), [retomada de transcrição](TRANSCRICAO-PENDENTE-2026-10-07.md) e [plano de fechamento](ENTREGA-ATE-11-OUTUBRO.md).
 
 ## Objetivo da apresentação

@@ -104,13 +104,92 @@ test("human-readable evidence preserves exact negations, money, date and retriev
   assert.doesNotMatch(visible, /tesseract|\bOCR\b/i);
 });
 
-test("a returned isolated detector score never becomes a public truth or AI finding", () => {
+test("a legacy isolated raw detector score never becomes a public truth or AI finding", () => {
   const result = screenshotControl();
   result.provider_coverage.sightengine.ai_score = .99;
   const evidence = reportHelpers.buildReportEvidence(result);
   assert.equal(evidence.publicFindings.length, 0);
   assert.ok(evidence.technicalFindings.length > 0);
   assert.doesNotMatch(visibleDefault(renderPage(result)), /99\.0%|Sinal de geração por IA|INFORMAÇÃO CORROBORADA/);
+});
+
+test("versioned isolated media signal becomes a safe public warning while raw signals stay closed", () => {
+  const result = {...screenshotControl(), media_signal: {version: "1", state: "isolated_ai", scope: "image",
+    independent_provider_count: 1, ai_provider_count: 1, manipulation_provider_count: 0,
+    strong_providers: {ai: ["sightengine"], manipulation: []}},
+    plain_explanation: "Sightengine: 99.0%", red_flags: ["Sightengine: 99.0%", "Confira a fonte original."]};
+  result.provider_coverage.sightengine.ai_score = .99;
+  const original = structuredClone(result);
+  const html = renderPage(result);
+  const visible = visibleDefault(html);
+  assert.match(visible, /Sinal de possível IA — confirmação pendente/);
+  assert.match(visible, /sem confirmação independente suficiente/);
+  assert.match(visible, /não conclui que o arquivo foi gerado por IA/);
+  assert.match(visible, /não estão habilitadas nesta análise/);
+  assert.doesNotMatch(visible, /ANÁLISE INCONCLUSIVA|99\.0%|sightengine|Hive|HTTP 402|HIVE_V3_MEDIA_TYPES|INFORMAÇÃO CORROBORADA/i);
+  assert.match(html, /99\.0%/);
+  assert.doesNotMatch(html, /<details\b[^>]*\bopen(?:=|\s|>)/);
+  assert.deepEqual(result, original);
+});
+
+test("no high signal is a useful result without turning inconclusive media into authentic media", () => {
+  const result = {...screenshotControl(), media_signal: {version: "1", state: "no_high_signal", scope: "image"}};
+  const visible = visibleDefault(renderPage(result));
+  assert.match(visible, /Sem indícios fortes nas consultas feitas/);
+  assert.match(visible, /não prova autenticidade/);
+  assert.doesNotMatch(visible, /INFORMAÇÃO CORROBORADA|0\.1%|autêntica garantida/);
+});
+
+test("synthetic voice diagnosis retains a qualified financial warning in the public summary and sharing text", () => {
+  const result = {content_type: "audio", verdict: "Suspicious", analysis_status: "inconclusive", score: 50,
+    media_signal: {version: "1", state: "isolated_ai", scope: "audio"},
+    content_risk: {is_scam_pattern: true},
+    summary: "A fala contém sinais de pedido financeiro suspeito. Hive 97.4%.",
+    whatsapp_share_text: "A fala contém sinais de pedido financeiro suspeito. Hive 97.4%."};
+  const visible = visibleDefault(renderPage(result));
+  assert.match(visible, /Sinal de possível voz sintética/);
+  assert.match(visible, /leitura disponível contém sinais de pedido financeiro suspeito/);
+  const sharing = visible.split("MENSAGEM PRONTA PARA O WHATSAPP").at(-1);
+  assert.match(sharing, /Sinal de possível voz sintética/);
+  assert.match(sharing, /pedido financeiro suspeito/);
+  assert.match(sharing, /confirme por um canal oficial/);
+  assert.doesNotMatch(visible, /Hive|97\.4%/);
+});
+
+test("unavailable media origin does not conceal available literal reading", () => {
+  const result = {...screenshotControl(), media_signal: {version: "1", state: "unavailable", scope: "image"},
+    forensics: {ocr: {text: "Não pague R$ 123,45 em 11/10/2026."}},
+    provider_coverage: {hive: {status: "budget_exhausted", reason: "Hive: HIVE_V3_MEDIA_TYPES"},
+      ocr: {status: "success", decision_role: "ocr_only", provider: "tesseract"}}};
+  const visible = visibleDefault(renderPage(result));
+  assert.match(visible, /Análise da origem indisponível/);
+  assert.match(visible, /Não pague R\$ 123,45 em 11\/10\/2026\./);
+  assert.match(visible, /limite de consultas disponível foi atingido/);
+  assert.doesNotMatch(visible, /Hive|HIVE_V3_MEDIA_TYPES|tesseract/i);
+});
+
+test("literal publication source is shown without a global truth or media origin card for plain text", () => {
+  const literal = "Não pague R$ 123,45 em 11/10/2026.";
+  const result = {content_type: "text", analysis_status: "inconclusive", verdict: "Suspicious", score: null,
+    veracity_status: "unverified", authenticity_status: "not_applicable", source_attribution: {
+      status: "found", decision_role: "source_attribution_only", matches: [{url: "https://example.com/article",
+        title: "Publicação de controle", excerpt: literal, claim: literal,
+        match_method: "literal_sentence", source_role: "retrieved_reference"}]},
+    provider_coverage: {google_fact_check: {status: "no_results", queries: [{status: "no_results"}],
+      query_plan: {version: "literal_sentence_queries_v1", decision_role: "retrieval_only", selected_count: 5,
+        candidate_count: 7, omitted_count: 2, literal_segments_queried: 4, literal_segments_not_queried_separately: 2,
+        whole_text_queried: true, query_methods: ["extracted_literal_sentence", "whole_literal_input"]}}}};
+  const original = structuredClone(result);
+  const visible = visibleDefault(renderPage(result));
+  assert.match(visible, /Trecho localizado em uma fonte/);
+  assert.match(visible, /Uma fonte publica o trecho literal enviado/);
+  assert.match(visible, /não confirma que a afirmação seja verdadeira/);
+  assert.match(visible, /Não pague R\$ 123,45 em 11\/10\/2026\./);
+  assert.match(visible, /https:\/\/example\.com\/article/);
+  assert.match(visible, /5 de 7 consultas candidatas/);
+  assert.match(visible, /trechos sem consulta própria podem estar incluídos/);
+  assert.doesNotMatch(visible, /Origem\/produção da mídia|Veracidade da informação|INFORMAÇÃO CORROBORADA|afirmações não checadas/);
+  assert.deepEqual(result, original);
 });
 
 test("concluded media indications remain visible without calibrating service scores", () => {

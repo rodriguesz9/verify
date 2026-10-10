@@ -7,7 +7,7 @@ import unicodedata
 from datetime import datetime, timezone
 from urllib.parse import urlsplit
 
-POLICY_VERSION = "2026-10-03.1"
+POLICY_VERSION = "2026-10-10.1"
 # Editorial families: related sites never count twice. Publishers can still err.
 PUBLISHERS = {
     "aosfatos.org": "aosfatos", "boatos.org": "boatos",
@@ -21,6 +21,8 @@ RATINGS = {"true": "supported", "verdadeiro": "supported", "verdadeira": "suppor
 RELATIVE_TIME = re.compile(r"\b(hoje|ontem|amanh[ãa]|agora|nesta semana|neste m[eê]s|neste ano|este ano|atualmente|recentemente|"
                            r"semana passada|m[eê]s passado|ano passado|semana que vem|neste momento|[uú]ltim[oa]s? (dias?|horas?)|"
                            r"today|yesterday|tomorrow|now|currently|this week|last week|this year)\b", re.I)
+_LITERAL_SEPARATOR = re.compile(r"(?<=[.!?])\s+|\n+")
+_TITLE_ABBREVIATION = re.compile(r"\b(?:dr|dra|sr|sra|prof|profa)\.$", re.I)
 
 
 def normalize_claim(text: str) -> str:
@@ -41,8 +43,20 @@ def publisher_family(url: str | None) -> str | None:
 
 
 def input_claims(text: str) -> list[str]:
-    # Literal input slices, not generated paraphrases. All slices need coverage.
-    return [part.strip() for part in re.split(r"(?<=[.!?])\s+|\n+", text.strip()) if part.strip()]
+    # Literal slices only. Do not separate a person's title from their name,
+    # or alter internal punctuation in decimals/dates. All slices need coverage.
+    parts, start = [], 0
+    for separator in _LITERAL_SEPARATOR.finditer(text):
+        if _TITLE_ABBREVIATION.search(text[:separator.start()]):
+            continue
+        part = text[start:separator.start()].strip()
+        if part:
+            parts.append(part)
+        start = separator.end()
+    last = text[start:].strip()
+    if last:
+        parts.append(last)
+    return parts
 
 
 def _review_date_ok(value, now):

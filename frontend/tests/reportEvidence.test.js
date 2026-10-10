@@ -1,7 +1,23 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {animatedScoreAt, normalizeScore, safeSourceUrl, buildReportEvidence, visibleDetectorScore, reportMediaHeadline} from "../src/utils/reportEvidence.js";
+import {animatedScoreAt, normalizeScore, safeSourceUrl, buildReportEvidence, visibleDetectorScore, reportMediaHeadline,
+  mediaSignalPresentation, sourceAttributionPresentation, reportSourceHeadline, factCheckQueryPresentation} from "../src/utils/reportEvidence.js";
+
+test("a facial-only response does not claim absence of AI evidence in an unqueried dimension", () => {
+  const presentation = mediaSignalPresentation({version: "1", state: "no_high_signal", scope: "image",
+    ai_provider_count: 0, manipulation_provider_count: 1}, "image");
+  assert.match(presentation.explanation, /consultas que retornaram resultados utilizáveis/);
+  assert.match(presentation.explanation, /nem todas as dimensões/);
+  assert.doesNotMatch(presentation.explanation, /não registraram indícios fortes de IA ou manipulação/);
+});
+
+test("audio consensus headline does not certify every segment as synthetic", () => {
+  const headline = reportMediaHeadline({content_type: "audio", verdict: "AI_Generated", analysis_status: "partial",
+    media_signal: {version: "1", state: "consensus_ai", scope: "audio"}});
+  assert.match(headline.headline, /não determina que toda a gravação seja sintética/);
+  assert.match(headline.headline, /não comprova clonagem/);
+});
 
 test("extraction notices require actual text, not merely the type of media", () => {
   assert.equal(buildReportEvidence({content_type: "image", veracity_status: "unverified", forensics: {}}).extractionMethod, null);
@@ -409,5 +425,101 @@ test("audio headline refers to voice and does not certify cloning or change imag
   assert.equal(reportMediaHeadline({content_type: "text", verdict: "Scam"}), null);
   const page = readFileSync(new URL("../src/pages/ReportPage.jsx", import.meta.url), "utf8");
   assert.match(page, /reportMediaHeadline\(result\)/);
-  assert.match(page, /const badge = mediaHeadline \? \{\.\.\.defaultBadge, \.\.\.mediaHeadline\}/);
+  assert.match(page, /const badge = diagnosisHeadline \? \{\.\.\.defaultBadge, \.\.\.diagnosisHeadline\}/);
+});
+
+const diagnosis = (state, scope = "image", extra = {}) => ({version: "1", state, scope,
+  independent_provider_count: 1, ai_provider_count: 1, manipulation_provider_count: 0,
+  strong_providers: {ai: ["PRIVATE-PROVIDER"], manipulation: []}, ...extra});
+
+test("versioned media observations expose uncertainty without changing canonical verdict or scores", () => {
+  for (const [state, title] of [["isolated_ai", "Sinal de possível IA — confirmação pendente"],
+    ["isolated_manipulation", "Sinal de possível manipulação — confirmação pendente"],
+    ["disagreement", "Detectores em desacordo"], ["no_high_signal", "Sem indícios fortes nas consultas feitas"],
+    ["unavailable", "Análise da origem indisponível"], ["consensus_ai", "Indícios de geração por IA"],
+    ["consensus_manipulation", "Indícios de possível manipulação"]]) {
+    const result = {content_type: "image", analysis_status: "inconclusive", verdict: "Suspicious", score: null,
+      authenticity_status: "undetermined", media_signal: diagnosis(state)};
+    const original = structuredClone(result);
+    const headline = reportMediaHeadline(result);
+    assert.equal(headline.title, title);
+    assert.equal(buildReportEvidence(result).publicFindings[0].title, title);
+    assert.doesNotMatch(JSON.stringify(headline), /PRIVATE-PROVIDER|\d+%/);
+    assert.deepEqual(result, original);
+  }
+  assert.match(reportMediaHeadline({content_type: "image", media_signal: diagnosis("no_high_signal")}).headline, /não prova autenticidade/);
+  assert.match(reportMediaHeadline({content_type: "audio", media_signal: diagnosis("isolated_ai", "audio")}).headline, /confirmação continua pendente/);
+  assert.equal(reportMediaHeadline({content_type: "audio", media_signal: diagnosis("isolated_ai", "audio")}).title, "Sinal de possível voz sintética");
+});
+
+test("unknown media diagnosis versions, states and modality mismatches keep legacy fallback", () => {
+  for (const signal of [diagnosis("isolated_ai", "audio"), diagnosis("unexpected"), diagnosis("isolated_ai", "image", {version: "2"})]) {
+    assert.equal(reportMediaHeadline({content_type: "image", media_signal: signal}), null);
+    assert.equal(buildReportEvidence({content_type: "image", media_signal: signal}).publicFindings.length, 0);
+  }
+  assert.equal(mediaSignalPresentation(diagnosis("consensus_ai", "text"), "text"), null);
+});
+
+test("video voice diagnosis never assigns an audio signal to sampled visual frames", () => {
+  const result = {content_type: "video", media_details: {has_audio: true}, analysis_status: "inconclusive",
+    media_signal: diagnosis("no_high_signal", "sampled_video_frames", {sampled_frames: 3, observed_timestamps_seconds: [],
+      observations: [0, 2, 4].map((time) => ({timestamp_seconds: time, state: "no_high_signal"}))}),
+    audio_analysis: {analysis_status: "inconclusive", media_signal: diagnosis("isolated_ai", "audio")}};
+  const original = structuredClone(result);
+  const report = buildReportEvidence(result);
+  assert.equal(report.visualOrigin.label, "Sem indícios fortes nas consultas feitas");
+  assert.equal(report.audioOrigin.label, "Sinal de possível voz sintética");
+  assert.equal(reportMediaHeadline(result).title, "Áudio do vídeo: Sinal de possível voz sintética");
+  assert.doesNotMatch(report.visualOrigin.label, /IA em quadros|voz sintética/);
+  assert.equal(report.sampledFrames, 3);
+  assert.deepEqual(report.timestamps, [0, 2, 4]);
+  assert.deepEqual(result, original);
+  const absent = buildReportEvidence({...result, media_details: {has_audio: false}});
+  assert.equal(absent.audioOrigin.status, "no_track");
+  assert.equal(absent.audioOrigin.signal, undefined);
+  assert.ok(absent.publicFindings.every((item) => item.id !== "audio-diagnosis"));
+});
+
+const attribution = {status: "found", decision_role: "source_attribution_only", matches: [{
+  url: "https://example.com/article", title: "Publicação de controle", excerpt: "Não pague R$ 123,45 em 11/10/2026.",
+  claim: "Não pague R$ 123,45 em 11/10/2026.", match_method: "literal_sentence", source_role: "retrieved_reference",
+}]};
+
+test("literal source attribution preserves quotation but cannot corroborate factual truth", () => {
+  const result = {content_type: "text", verdict: "Suspicious", analysis_status: "inconclusive", veracity_status: "unverified", score: null,
+    source_attribution: attribution};
+  const original = structuredClone(result);
+  const report = buildReportEvidence(result);
+  assert.equal(report.sourceAttribution.matches[0].excerpt, attribution.matches[0].excerpt);
+  assert.equal(report.veracityStatus, "unverified");
+  assert.equal(report.claimAssessments.length, 0);
+  assert.equal(report.sources.length, 0);
+  assert.equal(reportSourceHeadline(result).title, "Trecho localizado em uma fonte");
+  assert.match(reportSourceHeadline(result).headline, /não confirma que a afirmação seja verdadeira/);
+  assert.deepEqual(result, original);
+  for (const status of ["supported", "refuted", "mixed", "conflicting"]) assert.equal(reportSourceHeadline({...result, veracity_status: status}), null);
+  assert.equal(reportSourceHeadline({...result, content_type: "image"}), null);
+});
+
+test("source attribution ignores unsafe URLs, unknown match methods and unintended evidence roles", () => {
+  for (const change of [{url: "javascript:alert(1)"}, {url: "https://user:secret@example.com"},
+    {match_method: "semantic_similarity"}, {source_role: "truth_vote"}]) {
+    const result = sourceAttributionPresentation({source_attribution: {...attribution,
+      matches: [{...attribution.matches[0], ...change}]}});
+    assert.equal(result.status, "error");
+    assert.deepEqual(result.matches, []);
+  }
+  assert.equal(sourceAttributionPresentation({source_attribution: {...attribution, decision_role: "truth_vote"}}), null);
+});
+
+test("query audit explains planned and separate retrieval without claiming omitted claims were unchecked", () => {
+  const plan = {version: "literal_sentence_queries_v1", decision_role: "retrieval_only", candidate_count: 9,
+    selected_count: 5, omitted_count: 4, literal_segments_queried: 4, literal_segments_not_queried_separately: 4,
+    whole_text_queried: true, query_methods: ["extracted_literal_sentence", "whole_literal_input", "literal_sentence_fallback", "PRIVATE"]};
+  const report = factCheckQueryPresentation({query_plan: plan});
+  assert.match(report.detail, /5 de 9 consultas candidatas; 4 não foram selecionadas/);
+  assert.match(report.detail, /4 não tiveram consulta separada/);
+  assert.match(report.detail, /podem estar incluídos nessa pesquisa/);
+  assert.match(report.detail, /não quantas afirmações foram confirmadas/);
+  assert.doesNotMatch(report.detail, /PRIVATE|afirmações não checadas|documento inteiro foi verificado/);
 });

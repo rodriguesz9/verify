@@ -28,7 +28,7 @@ export default function EvidenceExplanation({result, query}) {
         </details>
       </div> : null}
 
-      {(result.veracity_status || evidence.video) && <div className={`mb-6 grid min-w-0 gap-3 text-sm ${evidence.video ? "lg:grid-cols-3" : "sm:grid-cols-2"}`}>
+      {evidence.media && (result.veracity_status || evidence.video || evidence.mediaDiagnosis) && <div className={`mb-6 grid min-w-0 gap-3 text-sm ${evidence.video ? "lg:grid-cols-3" : "sm:grid-cols-2"}`}>
         <div className="rounded-xl border border-[#1D3B4D] p-4"><h4 className="font-bold mb-2">Veracidade da informação</h4>
           <p>{({supported: "Corroborada nas checagens", refuted: "Refutada nas checagens", mixed: "Afirmações mistas", conflicting: "Fontes em desacordo", unverified: "Não determinada"})[evidence.veracityStatus] || "Não determinada"}</p>
           {evidence.media && <p className="mt-2 text-xs text-[#8AA2B4]">{evidence.extractionMethod
@@ -48,8 +48,8 @@ export default function EvidenceExplanation({result, query}) {
             <p className="mt-2 text-sm leading-6 text-[#A7BFCD]">{evidence.audioOrigin.explanation}</p>
           </div>
         </> : <div className="rounded-xl border border-[#1D3B4D] p-4"><h4 className="font-bold mb-2">Origem/produção da mídia</h4>
-          <p>{({not_applicable: "Não se aplica à análise de texto", ai_indications: "Indícios de geração por IA", manipulation_indications: "Indícios de manipulação", undetermined: "Não determinada"})[result.authenticity_status] || "Não determinada"}</p>
-          <p className="mt-2 text-xs text-[#8AA2B4]">Mídia gerada por IA pode apresentar informação verdadeira; uma gravação real pode apresentar informação falsa.</p>
+          <p>{evidence.mediaDiagnosis?.label || ({ai_indications: "Indícios de geração por IA", manipulation_indications: "Indícios de manipulação", undetermined: "Não determinada"})[result.authenticity_status] || "Não determinada"}</p>
+          <p className="mt-2 text-xs text-[#8AA2B4]">{evidence.mediaDiagnosis?.explanation || "Mídia gerada por IA pode apresentar informação verdadeira; uma gravação real pode apresentar informação falsa."}</p>
         </div>}
       </div>}
       {evidence.media && result.content_analysis && <p className="mb-5 text-sm leading-6 text-[#A7BFCD]">{evidence.transcriptionState.notice
@@ -94,6 +94,22 @@ export default function EvidenceExplanation({result, query}) {
       </div>}
 
       <div className="border-t border-[#1D3B4D] pt-5">
+        {evidence.sourceAttribution && <section className="mb-6 min-w-0 rounded-xl border border-[#00D4FF]/30 bg-[#070F17] p-4" aria-labelledby="source-attribution-heading">
+          <h4 id="source-attribution-heading" className="font-bold mb-2">{evidence.sourceAttribution.title}</h4>
+          <p className="text-sm leading-6 text-[#A7BFCD]">{evidence.sourceAttribution.explanation}</p>
+          {evidence.sourceAttribution.scope && <p className="mt-3 text-xs leading-5 text-[#8AA2B4]">{evidence.sourceAttribution.scope}</p>}
+          {evidence.sourceAttribution.limitations.length > 0 && <details className="mt-3 text-sm leading-6 text-[#A7BFCD]">
+            <summary className="cursor-pointer font-bold">Limites da pesquisa de fontes</summary>
+            <ul className="mt-3 list-disc pl-5 space-y-2">{evidence.sourceAttribution.limitations.map((item, index) => <li key={index}>{item}</li>)}</ul>
+          </details>}
+          {evidence.sourceAttribution.matches.length > 0 && <div className="mt-4 space-y-4">{evidence.sourceAttribution.matches.map((source) => <article key={source.id} className="border-t border-[#1D3B4D] pt-4">
+            <p className="text-xs text-[#8AA2B4]">{source.sourceRole === "submitted_source" ? "Fonte enviada para esta checagem" : "Referência recuperada na pesquisa"} · correspondência literal</p>
+            <p className="mt-2 text-sm font-bold">{source.title}</p>
+            <blockquote className="mt-3 border-l-2 border-[#00D4FF] pl-3 whitespace-pre-wrap text-sm leading-6">{source.excerpt}</blockquote>
+            <p className="mt-3 text-xs leading-5 text-[#8AA2B4]">A presença deste trecho na fonte não é uma avaliação de verdade ou falsidade.</p>
+            <a href={source.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 mt-3 text-sm text-[#00D4FF] underline underline-offset-4">Abrir publicação <ExternalLink size={13} aria-hidden="true" /></a>
+          </article>)}</div>}
+        </section>}
         <h4 className="flex items-center gap-2 font-bold mb-3"><FileText size={16} aria-hidden="true" /> Fontes e checagens encontradas</h4>
         {evidence.sources.length > 0 ? <>
           <p className="text-sm leading-6 text-[#A7BFCD] mb-4">Compare a afirmação, a data e o contexto. Uma notícia relacionada não confirma automaticamente o conteúdo enviado.</p>
@@ -124,6 +140,10 @@ export default function EvidenceExplanation({result, query}) {
         <p>{evidence.sampledFrames} quadros amostrados{evidence.timestamps.length ? `, nos tempos ${evidence.timestamps.map((time) => `${time.toFixed(1)} s`).join(", ")}` : ""}. Não é uma inspeção de todos os quadros nem da sincronização labial. A faixa de áudio, quando disponível, tem análise separada.</p>
         {evidence.audioTrackPresent === false ? <p className="mt-2">Este vídeo não contém faixa de áudio. Nenhuma fala foi transcrita ou checada.</p>
           : evidence.audioTrackPresent === true ? <p className="mt-2">O vídeo contém uma faixa de áudio, tratada separadamente. Isso não garante transcrição da fala nem detecção de voz sintética; confira a cobertura abaixo.</p> : null}
+        {evidence.videoObservations.length > 0 && <details className="mt-4">
+          <summary className="cursor-pointer font-bold">Observações por quadro amostrado</summary>
+          <ul className="mt-3 space-y-2">{evidence.videoObservations.map((item, index) => <li key={`${item.timestamp}-${index}`}>{item.timestamp.toFixed(1)} s · {item.label}</li>)}</ul>
+        </details>}
       </div>}
       {evidence.transcription && <details className="mt-5 p-4 rounded-xl border border-[#1D3B4D]">
         <summary className="cursor-pointer font-bold text-sm">Transcrição disponível · não comprova origem da voz</summary>

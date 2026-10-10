@@ -1,0 +1,86 @@
+# Verificações inconclusivas — diagnóstico e correções de 10/10/2026
+
+## 1. Reclamação e versão examinada
+
+Foram relatados resultados inconclusivos em notícias, link educacional, foto publicada, imagem gerada por IA, voz robótica e vídeo. Os conteúdos exatos e os relatórios desses casos não foram fornecidos. Não é possível atribuir os registros do servidor a uma pessoa específica nem medir acertos nesses exemplos sem os arquivos.
+
+No início desta rodada, `git fetch origin` confirmou HEAD/remoto `4332d7ccf4bcc991dc1840bdfbb52e80267fb88b`, sem commits novos. Railway servia a implantação `62d892f0-51ab-46ad-bbb9-3f9c2760ff22` (SUCCESS) e Vercel `dpl_FmSVsJ7QFYxjL23pp7Dzh178669M` (READY), ambas nesse SHA. O checkout original estava modificado e foi preservado; a revisão foi feita no checkout de entrega.
+
+Os logs de 09/10 entre 17:55 e 18:45 em Brasília mostram respostas 200 de texto/upload, além de rejeições 400/422 de links. HTTP 200 não informa se o resultado foi conclusivo, nem se corresponde ao teste relatado. Não foram copiados telefones, chaves, cookies, tokens assinados ou conteúdo privado para este registro.
+
+## 2. Reprodução anterior à correção
+
+Pela interface pública, foi enviada uma frase curta sobre Elizabeth II, data e local de falecimento. OpenRouter e Serper responderam; Google Fact Check respondeu sem checagens. Resultado: inconclusivo, com notícias relacionadas apresentadas como contexto. Neste controle, a causa não foi indisponibilidade de Gemini/Railway: o texto não tinha duas avaliações editoriais válidas da mesma afirmação literal.
+
+Uma notícia histórica correta pode nunca ter sido objeto de um ClaimReview. Wikipedia, Brasil Escola ou uma referência oficial não se tornam avaliações editoriais apenas por aparecer na busca. A política anterior confundia, na apresentação, ausência de checagem publicada com outros motivos de abstenção.
+
+## 3. Correções de recuperação textual
+
+- A seleção anterior priorizava texto completo e os primeiros fragmentos; títulos, autoria e chamadas podiam consumir os cinco lugares antes de uma frase selecionada pela extração.
+- `build_fact_check_queries` prioriza frases literais selecionadas pela extração e reserva a entrada integral quando houver pelo menos duas vagas. Pistas inventadas/paráfrases não viram afirmações verificadas.
+- Uma pista parcial seleciona a frase envolvente completa: não retira “não”, valores, datas ou qualificadores. Pista repetida em contextos diferentes preserva os contextos.
+- Dr., Dra., Sr., Sra., Prof. e Profa. não separam título e nome na segmentação. Números/datas permanecem literais.
+- `provider_coverage.google_fact_check.query_plan` registra limite, métodos, consultas selecionadas/omitidas e presença da entrada integral, sem repetir o conteúdo do usuário no audit. Consulta planejada não é afirmação confirmada; ausência de consulta separada não implica ausência da frase na busca integral.
+- A política textual passa a `2026-10-10.1` pela mudança de segmentação; famílias editoriais, ratings, duas fontes distintas e comparação exata conservadora continuam iguais.
+
+## 4. Referências gerais sem inventar confirmação
+
+Uma busca web Serper adicional procura páginas candidatas. Até três páginas, incluindo a submetida quando houver, são lidas com o mecanismo existente de DNS/IP público validado, TLS, redirects e tamanho/tempo limitados. Sem nova API, chave ou contratação.
+
+O campo `source_attribution` declara `decision_role=source_attribution_only`. Um match exige a frase completa no corpo efetivamente recuperado, com igualdade normalizada conservadora. Snippet, título de busca, descrição, texto oculto e preâmbulo negativo não substituem a frase da fonte. Preservam-se URL final, trecho, frase comparada, papel da fonte e horário UTC de leitura.
+
+Limites: uma busca extra por análise; consulta literal de 20–500 caracteres sem corte silencioso; três páginas de até 512 KiB, três redirects/8 s cada; etapa inteira de até 20 s; oito frases candidatas, até três matches; HTML estático de até 50 mil caracteres por página. O fragmento no ponto de corte não pode produzir match. Consome quota da conta Serper existente; não adiciona crédito/cartão. Falha de leitura e serviço ausente são observáveis.
+
+Na interface, **“Trecho localizado em uma fonte”** significa somente que a página publica aquele trecho. Não significa verdade, autoria, endosso, fonte independente ou certificação de artigo inteiro. Uma página enviada não pode confirmar a si mesma de maneira independente. Verdade/refutação, afirmações mistas e conflitos editoriais preservam prioridade sobre esse diagnóstico.
+
+Correspondência literal limita recall: sinônimos, formatação, paráfrases e páginas comprimidas/protegidas/JavaScript podem ficar sem match. Uma ampliação semântica futura exige relação verificável que preserve sujeito, negação, valores e datas; similaridade ou concordância de LLM não são suficientes.
+
+## 5. Mídia: mostrar o sinal, não criar certeza
+
+O campo aditivo `media_signal.version=1` distingue:
+
+| Estado | Interpretação pública |
+| --- | --- |
+| `consensus_ai` | Indícios de geração por IA em consultas independentes elegíveis |
+| `consensus_manipulation` | Indícios de possível manipulação |
+| `isolated_ai` | Sinal de possível IA/voz sintética; confirmação pendente |
+| `isolated_manipulation` | Sinal de possível alteração; confirmação pendente |
+| `disagreement` | Detectores em desacordo |
+| `no_high_signal` | Sem indícios fortes nas consultas feitas; não prova autenticidade |
+| `unavailable` | Nenhuma observação utilizável da origem; não prova falsidade |
+
+O diagnóstico exige resposta explicitamente bem-sucedida, disponibilidade verdadeira, score válido e camada elegível. Hive imagem/facial conta uma família, não dois votos; HF experimental não conta. Resultados armazenados, índices, campos de confiança e limiares não foram alterados. `POLICY_VERSION` da decisão de mídia permanece `2026-10-03.2`.
+
+No perfil atual, só o Hive está habilitado como detector acústico. Um sinal alto isolado agora aparece claramente como **possível voz sintética**, sem certificar voz humana, identidade ou clonagem. Não se ativou Sightengine voz restrito/enterprise, nem um endpoint pago HF para fabricar consenso.
+
+Vídeo usa diagnósticos por quadro/tempo, não médias de fornecedores em tempos diferentes. A amostra visual e `audio_analysis.media_signal` são independentes; uma voz sintética não torna a imagem um deepfake. Resumo, explicação e mensagem de compartilhamento inconclusivos também diferenciam essas situações. OCR/transcrição leem conteúdo; não autenticam a origem da mídia.
+
+## 6. Interface e exportação
+
+- Cabeçalhos distintos para sinais isolados, divergência, ausência de sinal forte e indisponibilidade; índice principal permanece “Não determinado” quando não há medição adequada.
+- Texto/link não exibem um card irrelevante de origem de mídia.
+- Fontes com trecho literal e plano de busca separados das checagens factuais.
+- Nomes de provedores, variáveis e scores brutos continuam nos detalhes fechados; avisos públicos usam linguagem simples.
+- Áudio/vídeo preservam conferência humana da leitura e os estados pendentes de transcrição, sem reenvio automático.
+- O snapshot assinado preserva novos campos. O PDF já reutiliza resumo original; o layout de exportação ainda não tem uma seção própria para todos os novos cards de atribuição/diagnóstico. Não declarar equivalência visual total sem implementar e ensaiar essa parte.
+
+## 7. Regressão local e fronteiras da validação
+
+Suíte final offline: **551 testes backend**, 10,890 s, zero falhas/skips/tentativas HTTP inesperadas, contêiner sem rede/credenciais e SQLite descartável. **169 testes frontend**, zero falhas/skips; build Vite concluído com 1.977 módulos. Estes são testes de contrato/regra/fluxo, não 720 casos independentes de precisão de detector.
+
+A revisão cruzada corrigiu mais três pontos: uma resposta exclusivamente facial não pode sugerir que a geração por IA foi consultada; um sinal acústico não certifica toda a gravação; o diagnóstico de origem não deve apagar o aviso financeiro do resumo/compartilhamento. Os três ganharam controles de regressão.
+
+Novos controles incluem negação/data divergente, snippet sem corpo, conteúdo oculto, limites de fontes, erro de busca, prefixos de pessoa, pista parcial, Hive isolado, conflito, scores inválidos, quadros em tempos distintos e separação de faixa de áudio. A primeira execução encontrou duas diferenças de redação em assertions novas; a execução final passou após ajuste textual, sem mudança decisória.
+
+Publicação e smoke da revisão nova serão registrados abaixo após confirmação, não inferidos por build ou push.
+
+## 8. Pendências reais para a entrega
+
+1. Receber entradas exatas e relatórios do colega. Reproduzir uma vez e comparar falhas de API, orçamento, oposição de detectores e ausência de indícios; não ajustar limiares para um exemplo famoso.
+2. Voz/vídeos humanos autorizados, além dos controles sintéticos. A caixa local `arquivos-para-validacao/` permanece disponível; nenhum arquivo é enviado automaticamente.
+3. Matriz independente de detecção com falsos positivos, falsos negativos, abstenções e cobertura, por modalidade. Foto publicada não é certificado de pixels; texto robótico não basta para comprovar clonagem.
+4. Fluxo autenticado real de conta/histórico/PDF, exportação salva/aberta, viewport mobile efetivamente aplicado e ensaio com pessoas leigas.
+5. Limites financeiros compartilhados entre processos/réplicas: reservas Hive atuais reiniciam no deploy e não limitam custo global. Manter valores autorizados, sem reset deliberado ou recarga para obter o rótulo desejado.
+6. Retenção/exclusão, backup-restauração e gates adicionais do [fechamento até 11/10](ENTREGA-ATE-11-OUTUBRO.md) antes de lançamento irrestrito.
+
+Não há promessa de vereditos 100% certeiros. O ganho desta revisão é recuperação literal mais útil e uma explicação que diferencia observações reais, limitações de política e falhas de serviço.
