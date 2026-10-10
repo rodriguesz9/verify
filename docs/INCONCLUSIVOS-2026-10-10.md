@@ -29,7 +29,7 @@ Uma busca web Serper adicional procura páginas candidatas. Até três páginas,
 
 O campo `source_attribution` declara `decision_role=source_attribution_only`. Um match exige a frase completa no corpo efetivamente recuperado, com igualdade normalizada conservadora. Snippet, título de busca, descrição, texto oculto e preâmbulo negativo não substituem a frase da fonte. Preservam-se URL final, trecho, frase comparada, papel da fonte e horário UTC de leitura.
 
-Limites: uma busca extra por análise; consulta literal de 20–500 caracteres sem corte silencioso; três páginas de até 512 KiB, três redirects/8 s cada; etapa inteira de até 20 s; oito frases candidatas, até três matches; HTML estático de até 50 mil caracteres por página. O fragmento no ponto de corte não pode produzir match. Consome quota da conta Serper existente; não adiciona crédito/cartão. Falha de leitura e serviço ausente são observáveis.
+Limites: uma busca extra por análise; consulta literal de 20–500 caracteres sem corte silencioso; três páginas de até 2 MiB, três redirects/8 s cada; etapa inteira de até 20 s; oito frases candidatas, até três matches; HTML estático de até 50 mil caracteres por página. O fragmento no ponto de corte não pode produzir match. Consome quota da conta Serper existente; não adiciona crédito/cartão. Falha de leitura e serviço ausente são observáveis. `coverage.max_source_bytes` registra o teto usado.
 
 Na interface, **“Trecho localizado em uma fonte”** significa somente que a página publica aquele trecho. Não significa verdade, autoria, endosso, fonte independente ou certificação de artigo inteiro. Uma página enviada não pode confirmar a si mesma de maneira independente. Verdade/refutação, afirmações mistas e conflitos editoriais preservam prioridade sobre esse diagnóstico.
 
@@ -66,13 +66,19 @@ Vídeo usa diagnósticos por quadro/tempo, não médias de fornecedores em tempo
 
 ## 7. Regressão local e fronteiras da validação
 
-Suíte final offline: **551 testes backend**, 10,890 s, zero falhas/skips/tentativas HTTP inesperadas, contêiner sem rede/credenciais e SQLite descartável. **169 testes frontend**, zero falhas/skips; build Vite concluído com 1.977 módulos. Estes são testes de contrato/regra/fluxo, não 720 casos independentes de precisão de detector.
+Suíte offline final após o ajuste de tamanho: **553 testes backend**, 11,062 s, zero falhas/skips/tentativas HTTP inesperadas, contêiner sem rede/credenciais e SQLite descartável. **169 testes frontend**, zero falhas/skips; build Vite concluído com 1.977 módulos na revisão `8aca4c7`, sem mudança posterior no frontend neste ajuste. Estes são testes de contrato/regra/fluxo, não 722 casos independentes de precisão de detector.
 
 A revisão cruzada corrigiu mais três pontos: uma resposta exclusivamente facial não pode sugerir que a geração por IA foi consultada; um sinal acústico não certifica toda a gravação; o diagnóstico de origem não deve apagar o aviso financeiro do resumo/compartilhamento. Os três ganharam controles de regressão.
 
 Novos controles incluem negação/data divergente, snippet sem corpo, conteúdo oculto, limites de fontes, erro de busca, prefixos de pessoa, pista parcial, Hive isolado, conflito, scores inválidos, quadros em tempos distintos e separação de faixa de áudio. A primeira execução encontrou duas diferenças de redação em assertions novas; a execução final passou após ajuste textual, sem mudança decisória.
 
-Publicação e smoke da revisão nova serão registrados abaixo após confirmação, não inferidos por build ou push.
+### Publicação confirmada e primeiro controle real
+
+As correções principais foram publicadas em `8aca4c754c31832e6a7c87d5d46e7b5fe8ecf630`. A [CI da candidata](https://github.com/rodriguesz9/verify/actions/runs/38084709246) e a [CI de master](https://github.com/rodriguesz9/verify/actions/runs/38084871274) concluíram com sucesso. Railway confirmou SUCCESS na implantação `ff91031a-abd3-4777-b150-59b04eeb2a7f`; Vercel confirmou READY em `dpl_DErTcB8SCsGw486YpCFeqjB9C9vC`, ambas nesse SHA. São verificações de publicação, não evidências de precisão factual.
+
+O primeiro controle dessa versão pela interface, em 10/10 às 20:45 UTC, usou uma frase literal de um artigo público sobre Elizabeth II. Gemini `gemini-3.1-flash-lite` respondeu. A resposta OpenRouter veio truncada, foi descartada e não virou evidência; Gemini foi o fallback. Google Fact Check respondeu sem ClaimReviews. A busca de referências respondeu, mas duas das três páginas selecionadas excederam o teto inicial de 512 KiB: a interface mostrou ausência de correspondência, não confirmou falsidade.
+
+Esse resultado motivou o ajuste para 2 MiB, alinhado à leitura de links já existente, sem relaxar proteção de rede ou comparação literal. Dois controles adicionais asseguram aceitação de uma página válida acima de 1 MiB e rejeição acima de 2 MiB. A nova publicação e seus controles serão registrados conforme forem confirmados.
 
 ## 8. Pendências reais para a entrega
 

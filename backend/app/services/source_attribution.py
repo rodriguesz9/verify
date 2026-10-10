@@ -21,7 +21,7 @@ MAX_MATCHES = 3
 MAX_INPUT_SEGMENTS = 8
 MAX_CLAIM_CHARACTERS = 1000
 MAX_SOURCE_CHARACTERS = 50000
-MAX_SOURCE_BYTES = 512 * 1024
+MAX_SOURCE_BYTES = 2 * 1024 * 1024
 FETCH_TIMEOUT_SECONDS = 8.0
 _ALLOWED_TYPES = {"text/html", "application/xhtml+xml", "text/plain"}
 _HIDDEN_STYLE = re.compile(
@@ -202,7 +202,7 @@ async def collect_source_attribution(text, queries, source_url=None, *, search_r
 
     coverage = {
         "version": ATTRIBUTION_VERSION, "search_status": search_status,
-        "max_sources": MAX_SOURCES, "candidate_url_count": len(urls),
+        "max_sources": MAX_SOURCES, "max_source_bytes": MAX_SOURCE_BYTES, "candidate_url_count": len(urls),
         "selected_url_count": len(selected_urls), "omitted_url_count": len(urls) - len(selected_urls),
         "invalid_url_count": invalid_urls, "fetched_count": fetched_count,
         "failed_fetch_count": sum(failures.values()), "fetch_failure_counts": failures,

@@ -42,12 +42,31 @@ class SourceAttributionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(match["match_method"], "literal_sentence")
         self.assertEqual(match["source_role"], "submitted_source")
         self.assertIsNotNone(datetime.fromisoformat(match["retrieved_at"]).utcoffset())
-        self.assertEqual(fetch.await_args.kwargs["max_bytes"], 512 * 1024)
+        self.assertEqual(fetch.await_args.kwargs["max_bytes"], 2 * 1024 * 1024)
         self.assertEqual(fetch.await_args.kwargs["max_redirects"], 3)
         self.assertEqual(fetch.await_args.kwargs["total_timeout"], 8.0)
         self.assertEqual(fetch.await_args.kwargs["allowed_types"], {"text/html", "application/xhtml+xml", "text/plain"})
         self.assertNotIn("verdict", result)
         self.assertNotIn("score", result)
+
+    async def test_one_megabyte_page_keeps_visible_claim_after_hidden_script_is_removed(self):
+        html = f"<html><head><script>{'X' * (1024 * 1024)}</script></head><body><article><p>{CLAIM}</p></article></body></html>"
+        resource = FetchedResource(html.encode(), "text/html", "https://example.test/final", "utf-8")
+        self.assertGreater(len(resource.data), 1024 * 1024)
+        self.assertLess(len(resource.data), 2 * 1024 * 1024)
+        result, _ = await self.collect(resource)
+        self.assertEqual(result["status"], "found")
+        self.assertEqual(result["matches"][0]["excerpt"], CLAIM)
+        self.assertEqual(result["coverage"]["max_source_bytes"], 2 * 1024 * 1024)
+        self.assertEqual(result["coverage"]["source_text_truncated_count"], 0)
+
+    async def test_page_larger_than_two_megabytes_is_still_rejected(self):
+        resource = FetchedResource(b"X" * (2 * 1024 * 1024 + 1), "text/plain", "https://example.test/final", "utf-8")
+        result, _ = await self.collect(resource)
+        self.assertEqual(result["status"], "error")
+        self.assertEqual(result["matches"], [])
+        self.assertEqual(result["coverage"]["max_source_bytes"], 2 * 1024 * 1024)
+        self.assertEqual(result["coverage"]["oversize_fetch_count"], 1)
 
     async def test_date_negation_amount_identity_and_qualifiers_do_not_match(self):
         for changed in (CLAIM.replace("14/10/2026", "15/10/2026"), CLAIM.replace("não recebeu", "recebeu"),
