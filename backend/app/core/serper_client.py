@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 
 NEWS_ENDPOINT = "https://google.serper.dev/news"
 WEB_ENDPOINT = "https://google.serper.dev/search"
+MAX_NEWS_QUERY_CHARS = 500
 
 
 class NewsSearch(list):
@@ -59,13 +60,15 @@ async def search_web(query: str) -> list[dict]:
 
 
 async def search_news(query: str) -> list[dict]:
+    if not isinstance(query, str) or not 1 <= len(query.strip()) <= MAX_NEWS_QUERY_CHARS:
+        return NewsSearch(status="not_requested", reason="Busca omitida: nenhuma consulta literal cabe no limite de 500 caracteres; nenhum texto foi cortado.")
     key = os.getenv("SERPERAPI_KEY", "").strip()
     if not key:
         return NewsSearch(status="not_configured", reason="Serper não configurado.")
     try:
         async with httpx.AsyncClient(timeout=10, trust_env=False, follow_redirects=False) as client:
             response = await client.post(NEWS_ENDPOINT, headers={"X-API-KEY": key, "Content-Type": "application/json"},
-                                         json={"q": query[:200], "gl": "br", "hl": "pt-br", "num": 5})
+                                         json={"q": query.strip(), "gl": "br", "hl": "pt-br", "num": 5})
         if response.status_code != 200:
             return NewsSearch(status="rate_limited" if response.status_code in {402, 429} else "error",
                               reason=f"Serper indisponível (HTTP {response.status_code}).")

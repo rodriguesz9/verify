@@ -7,7 +7,7 @@ from app.core.gemini_analyzer import extract_claims_with_ai, generate_final_repo
 from app.core.fact_checker import query_fact_check_api
 from app.core.domain_checker import check_domain_reputation
 from app.core.gptzero_client import detect_ai_text
-from app.core.serper_client import search_news, search_web, NewsSearch
+from app.core.serper_client import search_news, search_web, NewsSearch, MAX_NEWS_QUERY_CHARS
 from app.core.scam_detector import analyze_scam_indicators
 from app.core.openrouter_service import analyze_with_openrouter
 from app.services.claim_policy import text_report, input_claims
@@ -211,9 +211,10 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
         for query in fact_check_queries
     ]
 
-    serper_news_queries = claims[:3] or [analysis_text[:200]]
+    serper_news_queries, news_query_plan = build_fact_check_queries(
+        analysis_text, claims, limit=3, max_query_chars=MAX_NEWS_QUERY_CHARS)
     serper_news_tasks = [
-        asyncio.create_task(search_news(query[:200]))
+        asyncio.create_task(search_news(query))
         for query in serper_news_queries
     ]
     attribution_task = asyncio.create_task(_retrieve_source_attribution(analysis_text, fact_check_queries, source_url))
@@ -277,6 +278,7 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
     # Model extraction assists search, but NEVER votes on the final verdict.
     ai = text_report(analysis_text, context["fact_checks"], scam_info)
     ai["search_claims"] = claims
+    ai["search_claims_decision_role"] = "search_hints_only"
     ai["scam_analysis"] = scam_info
     ai["serper_news"] = serper_news_results
     source_attribution = attribution_task.result()
@@ -303,13 +305,15 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
     news_queries = [{"status": "error" if task.exception() else getattr(task.result(), "status", "success" if task.result() else "no_results"),
                      "reason": "Falha na busca de contexto." if task.exception() else getattr(task.result(), "reason", None)}
                     for task in serper_news_tasks]
-    news_status = ("success" if serper_news_results else "no_results" if any(q["status"] in {"success", "no_results"} for q in news_queries)
+    news_status = ("not_requested" if not news_queries else "success" if serper_news_results else "no_results" if any(q["status"] in {"success", "no_results"} for q in news_queries)
                    else "not_configured" if all(q["status"] == "not_configured" for q in news_queries) else "error")
     ai["provider_coverage"]["serper"] = {"status": news_status, "queries": news_queries, "decision_role": "context_only",
+                                          "query_plan": news_query_plan,
                                           "matches_returned": len(serper_news_results),
                                           "raw_matches_returned": raw_news_count, "unique_matches_returned": unique_news_count,
                                           "relevance_filter": news_relevance,
-                                          "reason": "Busca concluída sem notícias com correspondência lexical utilizável; isso não prova falsidade." if news_status == "no_results" else next((q["reason"] for q in news_queries if q["reason"]), None)}
+                                          "reason": "Busca omitida: nenhuma frase completa cabe no limite de 500 caracteres; nenhum texto foi cortado." if news_status == "not_requested" else
+                                                    "Busca concluída sem notícias com correspondência lexical utilizável; isso não prova falsidade." if news_status == "no_results" else next((q["reason"] for q in news_queries if q["reason"]), None)}
 
     if scam_info["is_scam"]:
         ai["verdict"] = "Scam"

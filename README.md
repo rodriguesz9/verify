@@ -4,7 +4,7 @@ Aplicação de apoio à checagem de mensagens, links, imagens, áudio e vídeos.
 
 Não é uma perícia, um certificado de autenticidade ou uma garantia de detecção de deepfake.
 
-**Revisão de 10/10:** [diagnóstico das análises inconclusivas e correções](docs/INCONCLUSIVOS-2026-10-10.md). Busca prioriza frases literais completas; fontes gerais com trechos recuperados não decidem verdade; sinais isolados, discordância e indisponibilidade de mídia agora têm explicações diferentes. **554 testes backend e 169 frontend passaram localmente; build concluído.** Ver registro para publicação/smoke e pendências; números e configurações de etapas anteriores abaixo são históricos, não validação de precisão universal.
+**Revisão de 10–11/10:** [diagnóstico das análises inconclusivas e correções](docs/INCONCLUSIVOS-2026-10-10.md). Busca prioriza frases literais completas, também nas notícias, sem corte silencioso; fontes gerais com trechos recuperados não decidem verdade; sinais isolados, discordância e indisponibilidade de mídia agora têm explicações diferentes. **567 testes backend e 170 frontend passaram localmente; build concluído.** Ver registro para publicação/smoke e pendências; números e configurações de etapas anteriores abaixo são históricos, não validação de precisão universal.
 
 Documentação consolidada em 07/10/2026: [manual completo do projeto](docs/DOCUMENTACAO-COMPLETA.md) · [plano original de 14 dias](docs/PLANO-ENTREGA-14-DIAS.md) · [índice de documentação e evidências](docs/README.md). Inclui arquitetura, API, banco, todas as variáveis suportadas, Docker, APIs, deploy, testes, privacidade, operação, tarefas, responsáveis e critérios de aceite. Em caso de divergência com guias anteriores, conferir o código e o manual atual.
 

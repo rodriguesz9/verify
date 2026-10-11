@@ -10,7 +10,8 @@ QUERY_PLAN_VERSION = "literal_sentence_queries_v1"
 MAX_FACT_CHECK_QUERY_CHARS = 5000
 
 
-def build_fact_check_queries(text: str, extracted_claims, limit: int = 5) -> tuple[list[str], dict]:
+def build_fact_check_queries(text: str, extracted_claims, limit: int = 5, *,
+                             max_query_chars: int = MAX_FACT_CHECK_QUERY_CHARS) -> tuple[list[str], dict]:
     """Prioritize extracted literal sentences, retaining a full-input fallback.
 
     A partial literal hint selects its entire containing sentence. It is only
@@ -22,6 +23,9 @@ def build_fact_check_queries(text: str, extracted_claims, limit: int = 5) -> tup
         raise TypeError("Query input must be text.")
     if isinstance(limit, bool) or not isinstance(limit, int) or limit < 1:
         raise ValueError("Query limit must be a positive integer.")
+    if (isinstance(max_query_chars, bool) or not isinstance(max_query_chars, int)
+            or not 1 <= max_query_chars <= MAX_FACT_CHECK_QUERY_CHARS):
+        raise ValueError("Query character limit must be an integer between 1 and 5000.")
 
     whole = text.strip()
     segments = input_claims(text)
@@ -55,7 +59,7 @@ def build_fact_check_queries(text: str, extracted_claims, limit: int = 5) -> tup
         add_candidate(sentence, "literal_sentence_fallback")
 
     admissible = {key: candidate for key, candidate in candidates.items()
-                  if len(candidate["text"]) <= MAX_FACT_CHECK_QUERY_CHARS}
+                  if len(candidate["text"]) <= max_query_chars}
     selected = {}
     whole_key = normalize_claim(whole)
     reserve_whole = limit > 1 and whole_key in admissible
@@ -75,6 +79,7 @@ def build_fact_check_queries(text: str, extracted_claims, limit: int = 5) -> tup
         "version": QUERY_PLAN_VERSION,
         "decision_role": "retrieval_only",
         "limit": limit,
+        "max_query_chars": max_query_chars,
         "candidate_count": len(candidates),
         "selected_count": len(selected),
         "omitted_count": len(candidates) - len(selected),

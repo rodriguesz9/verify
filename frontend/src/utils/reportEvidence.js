@@ -183,7 +183,7 @@ export function transcriptionPresentation(result = {}) {
 
 export function providerCoveragePresentation(name, layer = {}, result = {}) {
   const labels = {success: "Respondeu", partial: "Cobertura parcial", no_results: "Consulta sem resultados",
-    no_text: "Sem texto legível", no_speech: "Sem fala transcritível"};
+    no_text: "Sem texto legível", no_speech: "Sem fala transcritível", not_requested: "Consulta não realizada"};
   const regular = {label: typeof layer?.status === "string" && Object.hasOwn(labels, layer.status) ? labels[layer.status] : "Não disponível",
     detail: typeof layer?.reason === "string" ? layer.reason : "", notice: false};
   if (!["transcription", "áudio/transcription"].includes(name) && layer?.decision_role !== "transcription_only") return regular;
@@ -214,7 +214,8 @@ export function publicCoveragePresentation(result = {}) {
   const layers = coverage.flatMap((value) => value && typeof value === "object" && !Array.isArray(value)
     ? Object.values(value).filter((layer) => layer && typeof layer === "object" && !Array.isArray(layer)
       && layer.decision_role !== "experimental_signal" && layer.voting_eligible !== false) : []);
-  const failed = layers.some((layer) => !["success", "partial", "no_results", "no_text", "no_speech", "disabled"].includes(layer.status));
+  const failed = layers.some((layer) => !["success", "partial", "no_results", "no_text", "no_speech", "disabled", "not_requested"].includes(layer.status));
+  const skipped = layers.some((layer) => layer.status === "not_requested");
   const partial = layers.some((layer) => layer.status === "partial");
   const media = ["image", "audio", "video"].includes(result.content_type);
   const inconclusive = result.analysis_status === "inconclusive";
@@ -225,7 +226,7 @@ export function publicCoveragePresentation(result = {}) {
   const diagnosisAvailable = Boolean(signal || voiceSignal || attribution);
   const title = diagnosisAvailable ? "O alcance deste resultado" : inconclusive ? "Não foi possível chegar a uma conclusão"
     : failed ? "Algumas etapas não foram concluídas"
-    : partial ? "Análise com alcance limitado" : "Como usar este resultado";
+    : partial || skipped ? "Análise com alcance limitado" : "Como usar este resultado";
   const detail = diagnosisAvailable
     ? media ? "As observações sobre a origem aparecem separadas da leitura e da checagem da informação. Cada resultado vale apenas para as consultas e partes do arquivo descritas; não é uma certificação de autenticidade ou verdade."
       : "A pesquisa de fontes indica onde um trecho aparece. Checagens publicadas avaliam afirmações; encontrar o mesmo texto em uma publicação não confirma sua verdade. Confira as correspondências e o alcance da pesquisa abaixo."
@@ -238,13 +239,14 @@ export function publicCoveragePresentation(result = {}) {
   const limitations = [];
   if (inconclusive) limitations.push(media ? "A origem do arquivo não foi confirmada." : "A informação não foi confirmada nem refutada pelas evidências disponíveis.");
   if (failed) limitations.push("Não foi possível concluir todas as etapas desta análise.");
+  if (skipped) limitations.push("Algumas consultas não foram realizadas; a cobertura ficou limitada.");
   if (layers.some((layer) => layer.status === "not_configured")) limitations.push("Algumas consultas não estão habilitadas nesta análise; a cobertura ficou limitada.");
   if (layers.some((layer) => ["budget_exhausted", "rate_limited"].includes(layer.status))) limitations.push("O limite de consultas disponível foi atingido; parte da análise não pôde ser feita.");
   if (layers.some((layer) => layer.status === "timeout")) limitations.push("Algumas consultas não terminaram dentro do tempo disponível.");
   if (partial) limitations.push("A análise abrange apenas parte das observações disponíveis, não todo o arquivo.");
   if (result.detector_disagreement === true || result.visual_detector_disagreement === true
       || result.audio_analysis?.detector_disagreement === true) limitations.push("Os sinais obtidos ficaram em desacordo. É necessária uma conferência humana.");
-  return {title, detail, limitations, incomplete: inconclusive || failed || partial};
+  return {title, detail, limitations, incomplete: inconclusive || failed || partial || skipped};
 }
 
 function publicEvidenceFindings(findings, coverage, result) {
@@ -508,7 +510,7 @@ export function buildReportEvidence(result = {}, query = "") {
             : "Foram recuperadas notícias relacionadas. Notícias relacionadas não confirmam automaticamente a afirmação.",
           origin: "Camada auxiliar · não participa da decisão de veracidade"});
       } else {
-        missing.push(`${provider}: auxílio de pesquisa ${layer.status === "no_results" ? "sem resultados" : "indisponível"}; isso não determina verdade ou falsidade.`);
+        missing.push(`${provider}: auxílio de pesquisa ${layer.status === "no_results" ? "sem resultados" : layer.status === "not_requested" ? "não realizado" : "indisponível"}; isso não determina verdade ou falsidade.`);
       }
       continue;
     }

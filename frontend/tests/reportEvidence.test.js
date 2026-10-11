@@ -2,7 +2,25 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {animatedScoreAt, normalizeScore, safeSourceUrl, buildReportEvidence, visibleDetectorScore, reportMediaHeadline,
-  mediaSignalPresentation, sourceAttributionPresentation, reportSourceHeadline, factCheckQueryPresentation} from "../src/utils/reportEvidence.js";
+  mediaSignalPresentation, sourceAttributionPresentation, reportSourceHeadline, factCheckQueryPresentation,
+  providerCoveragePresentation} from "../src/utils/reportEvidence.js";
+
+test("an omitted complete news query is not presented as an unavailable provider", () => {
+  const reason = "Busca omitida: nenhuma frase completa cabe no limite de 500 caracteres; nenhum texto foi cortado.";
+  const presentation = providerCoveragePresentation("serper", {status: "not_requested", reason,
+    decision_role: "context_only", query_plan: {selected_count: 0, max_query_chars: 500}});
+  assert.equal(presentation.label, "Consulta não realizada");
+  assert.equal(presentation.detail, reason);
+  assert.equal(presentation.notice, false);
+  const report = buildReportEvidence({analysis_status: "inconclusive", veracity_status: "unverified",
+    provider_coverage: {serper: {status: "not_requested", reason, decision_role: "context_only"}}});
+  assert.equal(report.veracityStatus, "unverified");
+  assert.equal(report.publicPresentation.incomplete, true);
+  assert.deepEqual(report.publicMissing, ["A informação não foi confirmada nem refutada pelas evidências disponíveis.",
+    "Algumas consultas não foram realizadas; a cobertura ficou limitada."]);
+  assert.deepEqual(report.missing, ["serper: auxílio de pesquisa não realizado; isso não determina verdade ou falsidade."]);
+  assert.doesNotMatch(report.publicMissing.join(" "), /Não foi possível concluir todas as etapas/);
+});
 
 test("a facial-only response does not claim absence of AI evidence in an unqueried dimension", () => {
   const presentation = mediaSignalPresentation({version: "1", state: "no_high_signal", scope: "image",

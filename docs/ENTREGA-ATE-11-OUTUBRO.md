@@ -1,6 +1,6 @@
 # Verify — fechamento de 07 a 11/10/2026
 
-**Checkpoint de 10/10:** [diagnóstico e correções dos inconclusivos](INCONCLUSIVOS-2026-10-10.md): consultas literais, atribuição limitada de fontes e diagnóstico útil de mídia; 554 backend/169 frontend e build locais aprovados. Hive foi autorizado com saldo existente e limites de imagem/áudio; a linha “pausado” abaixo é estado histórico de 07/10, não configuração atual. Voz/vídeos humanos, precisão independente e demais gates de lançamento continuam pendentes.
+**Checkpoint de 10–11/10:** [diagnóstico e correções dos inconclusivos](INCONCLUSIVOS-2026-10-10.md): consultas literais sem corte também nas notícias, atribuição limitada de fontes e diagnóstico útil de mídia; 567 backend/170 frontend e build locais aprovados. Hive foi autorizado com saldo existente e limites de imagem/áudio; a linha “pausado” abaixo é estado histórico de 07/10, não configuração atual. Voz/vídeos humanos, precisão independente e demais gates de lançamento continuam pendentes.
 
 Prazo informado nesta rodada: **terminar nesta semana**, interpretado como domingo, 11/10/2026. Este roteiro antecipa o plano de 14 dias; não apaga seus riscos, critérios de aceite ou evidências anteriores.
 
