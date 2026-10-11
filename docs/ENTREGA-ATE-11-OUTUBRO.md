@@ -1,6 +1,6 @@
 # Verify — fechamento de 07 a 11/10/2026
 
-**Checkpoint de 10/10:** [diagnóstico e correções dos inconclusivos](INCONCLUSIVOS-2026-10-10.md): consultas literais, atribuição limitada de fontes e diagnóstico útil de mídia; 551 backend/169 frontend e build locais aprovados. Hive foi autorizado com saldo existente e limites de imagem/áudio; a linha “pausado” abaixo é estado histórico de 07/10, não configuração atual. Voz/vídeos humanos, precisão independente e demais gates de lançamento continuam pendentes.
+**Checkpoint de 10/10:** [diagnóstico e correções dos inconclusivos](INCONCLUSIVOS-2026-10-10.md): consultas literais, atribuição limitada de fontes e diagnóstico útil de mídia; 554 backend/169 frontend e build locais aprovados. Hive foi autorizado com saldo existente e limites de imagem/áudio; a linha “pausado” abaixo é estado histórico de 07/10, não configuração atual. Voz/vídeos humanos, precisão independente e demais gates de lançamento continuam pendentes.
 
 Prazo informado nesta rodada: **terminar nesta semana**, interpretado como domingo, 11/10/2026. Este roteiro antecipa o plano de 14 dias; não apaga seus riscos, critérios de aceite ou evidências anteriores.
 
@@ -32,7 +32,9 @@ Orçamento inicial de trabalho restante: aproximadamente 20–30 horas, a revisa
 
 ## 3. Lista rastreável de fechamento
 
-| ID | Prioridade | Trabalho | Aceite | Situação nesta rodada |
+Checkpoint histórico de 07–08/10, preservado para rastreabilidade. Não representa o deploy atual: a publicação, os serviços e os controles posteriores estão no [registro de 10/10 com retomada em 11/10](INCONCLUSIVOS-2026-10-10.md). Em especial, SEM-06 teve inspeção Lite respondendo, e SEM-14 teve publicação confirmada em ambas as plataformas. Isso não encerra os critérios de precisão, voz/vídeo humano, sessão/PDF e operação.
+
+| ID | Prioridade | Trabalho | Aceite | Situação no checkpoint histórico |
 | --- | --- | --- | --- | --- |
 | SEM-01 | P0 | Bloquear login de conta inativa, verificar identidade Google e associação segura | Sem cookie/mutação em falha; email verificado booleano; conflitos falham fechado | Correção e regressões locais prontas; Google real pendente |
 | SEM-02 | P0 | Alinhar URL de entrada/final com coluna de 512 | Excesso retorna 422 antes de análise/persistência; não truncar; contar protocolo automático | Implementado e testado localmente; fluxo PostgreSQL publicado pendente |
