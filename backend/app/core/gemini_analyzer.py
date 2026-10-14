@@ -262,7 +262,7 @@ async def analyze_image_with_vision(image_bytes: bytes, mime_type: str, context_
     """
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     if not api_key:
-        return _fallback_forensic_report("GEMINI_API_KEY não configurada")
+        return _fallback_forensic_report("GEMINI_API_KEY não configurada", "not_configured")
 
     prompt = f"""
 Faça uma inspeção visual auxiliar desta imagem. Isso não é perícia, prova de origem ou medição de precisão.

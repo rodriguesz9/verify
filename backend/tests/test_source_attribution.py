@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, patch
 from fastapi import HTTPException
 
 from app.services.public_fetch import FetchedResource
-from app.services.source_attribution import _article_sentences, collect_source_attribution
+from app.services.source_attribution import _article_parts, _article_sentences, collect_source_attribution
 
 CLAIM = "A Dra. Ávila não recebeu R$ 1.500,00 em 14/10/2026."
 
@@ -25,6 +25,160 @@ def page(text=CLAIM, *, url="https://example.test/final", content_type="text/htm
 
 
 class SourceAttributionTests(unittest.IsolatedAsyncioTestCase):
+    async def test_recovery_reuses_failures_and_bodies_with_six_total_fetch_attempts(self):
+        urls = [f"https://example.test/article-{i}" for i in range(8)]
+        cache = {}
+        async def fetch(url, **kwargs):
+            if url == urls[0]:
+                raise HTTPException(403, "Blocked control")
+            return page(url=url)
+        with patch("app.services.source_attribution.fetch_public_resource", new=AsyncMock(side_effect=fetch)) as request:
+            initial = await collect_source_attribution(CLAIM, [CLAIM], search_results=SearchResults(
+                [{"link": url} for url in urls[:3]]), include_documents=True, fetched_cache=cache)
+            recovered = await collect_source_attribution(CLAIM, [CLAIM], search_results=SearchResults(
+                [{"link": url} for url in urls]), include_documents=True, fetched_cache=cache, max_sources=6)
+        self.assertEqual(initial["coverage"]["new_fetch_count"], 3)
+        self.assertEqual(recovered["coverage"]["new_fetch_count"], 3)
+        self.assertEqual(recovered["coverage"]["reused_fetch_count"], 3)
+        self.assertEqual(recovered["coverage"]["selected_url_count"], 6)
+        self.assertEqual(recovered["coverage"]["failed_fetch_count"], 1)
+        self.assertEqual(request.await_count, 6)
+        self.assertEqual(len(cache), 6)
+        self.assertEqual([call.args[0] for call in request.await_args_list].count(urls[0]), 1)
+
+    async def test_changed_recovery_leads_do_not_reset_six_page_ceiling(self):
+        cache = {}
+        with patch("app.services.source_attribution.fetch_public_resource", new=AsyncMock(return_value=page())) as request:
+            await collect_source_attribution(CLAIM, [CLAIM], search_results=SearchResults(
+                [{"link": f"https://example.test/old-{i}"} for i in range(3)]),
+                include_documents=True, fetched_cache=cache)
+            recovered = await collect_source_attribution(CLAIM, [CLAIM], search_results=SearchResults(
+                [{"link": f"https://example.test/new-{i}"} for i in range(6)]),
+                include_documents=True, fetched_cache=cache, max_sources=6)
+        self.assertEqual(request.await_count, 6)
+        self.assertEqual(recovered["coverage"]["new_fetch_count"], 3)
+        self.assertEqual(recovered["coverage"]["cumulative_fetch_attempt_count"], 6)
+
+    def test_article_body_paragraphs_do_not_merge_headline_byline_or_publication_date(self):
+        body = "Elizabeth II morreu em 8 de setembro de 2022."
+        html = f'''<main><article><h1>Elizabeth II morreu em 9 de setembro de 2022.</h1>
+            <div class="byline">Por Reuters</div>
+            <p class="publication-date">Publicado em 09/09/2022</p>
+            <section itemprop="articleBody"><p>{body}</p>
+            <p>O reinado terminou depois de sete décadas.</p></section></article></main>'''
+        resource = FetchedResource(html.encode(), "text/html", "https://example.test/final", "utf-8")
+        sentences, _, truncated, roles = _article_parts(resource)
+        self.assertFalse(truncated)
+        self.assertEqual(roles, ["context", "context", "body", "body"])
+        self.assertEqual(sentences[2], body)
+        self.assertEqual(sentences[1], "Por Reuters")
+        self.assertNotIn("Publicado", " ".join(sentences))
+        self.assertNotIn("09/09/2022", " ".join(sentences))
+
+    def test_video_fallback_and_metadata_table_do_not_merge_with_body_event_date(self):
+        body = "On July 16, 1969, the Saturn V rocket launches on the Apollo 11 mission."
+        markup = f'<article><h1>Mission launch</h1><video><p>Enable JavaScript to view this video</p></video><div>July 10, 2018</div><table><tr><th>Historical Date</th><td>July 16, 1969</td></tr></table><p>{body}</p></article>'
+        sentences, _, _, roles = _article_parts(FetchedResource(markup.encode(), "text/html", "https://example.test/resource", "utf-8"))
+        index = sentences.index(body)
+        self.assertEqual(roles[index], "body")
+        self.assertNotIn("Enable JavaScript", " ".join(sentences))
+        self.assertEqual(roles[sentences.index("Historical DateJuly 16, 1969")], "context")
+
+    async def test_article_heading_is_context_not_a_body_match(self):
+        html = f"<article><h1>{CLAIM}</h1><p>A página trata de assunto distinto.</p></article>"
+        result, _ = await self.collect(FetchedResource(html.encode(), "text/html", "https://example.test/final", "utf-8"))
+        self.assertEqual(result["matches"], [])
+
+    async def test_visible_heading_in_nonheading_tag_is_still_context_only(self):
+        for kind in ("headline", "article-title", "subtitle", "content-head__title"):
+            with self.subTest(kind=kind):
+                html = f'<article><div class="{kind}">{CLAIM}</div><p>A página trata de assunto distinto.</p></article>'
+                result, _ = await self.collect(FetchedResource(html.encode(), "text/html", "https://example.test/final", "utf-8"))
+                self.assertEqual(result["matches"], [])
+
+    async def test_article_body_is_not_json_ld_or_search_metadata(self):
+        html = f'''<head><title>{CLAIM}</title><meta name="description" content="{CLAIM}"></head>
+            <body><article><script type="application/ld+json">{{"articleBody":"{CLAIM}"}}</script>
+            <section itemprop="articleBody"><p>Texto sobre assunto distinto.</p></section></article></body>'''
+        result, _ = await self.collect(FetchedResource(html.encode(), "text/html", "https://example.test/final", "utf-8"))
+        self.assertEqual(result["matches"], [])
+
+    def test_rich_article_is_selected_instead_of_outer_main_or_teaser(self):
+        body = "Elizabeth II morreu em 8 de setembro de 2022."
+        html = f'''<main><h1>Notícias de hoje</h1><p>Uma notícia diferente abre o portal.</p>
+            <article><p>Um cartão de outra notícia.</p></article>
+            <article><h1>Um título que não é o corpo.</h1><p>{body}</p>
+            <p>O monarca seguinte foi o rei Charles III.</p></article>
+            <section><p>Elizabeth II morreu em 9 de setembro de 2022.</p></section></main>'''
+        sentences, _, _, roles = _article_parts(FetchedResource(html.encode(), "text/html", "https://example.test/final", "utf-8"))
+        self.assertEqual([sentence for sentence, role in zip(sentences, roles) if role == "body"],
+                         [body, "O monarca seguinte foi o rei Charles III."])
+        self.assertNotIn("outra notícia", " ".join(sentences))
+        self.assertNotIn("9 de setembro", " ".join(sentences))
+
+    async def test_caption_and_quoted_block_do_not_supply_body_evidence(self):
+        for container in ("figcaption", "blockquote", "caption"):
+            with self.subTest(container=container):
+                html = f"<article><{container}>{CLAIM}</{container}><p>Outra afirmação ocupa o corpo.</p></article>"
+                result, _ = await self.collect(FetchedResource(html.encode(), "text/html", "https://example.test/final", "utf-8"))
+                self.assertEqual(result["matches"], [])
+
+    async def test_unfinished_denial_heading_never_exposes_body_fragment_as_proof(self):
+        positive = CLAIM.replace("não recebeu", "recebeu")
+        html = f"<article><h1>Falso que:</h1><p>{positive}</p><p>A checagem encontrou registros diferentes.</p></article>"
+        resource = FetchedResource(html.encode(), "text/html", "https://example.test/final", "utf-8")
+        result, _ = await self.collect(resource, text=positive)
+        sentences, _, _, roles = _article_parts(resource)
+        self.assertEqual(result["matches"], [])
+        self.assertEqual(sentences[:2], ["Falso que:", positive])
+        self.assertEqual(roles[:2], ["context", "context"])
+
+    async def test_denial_heading_and_wire_credit_outside_article_are_not_erased(self):
+        positive = CLAIM.replace("não recebeu", "recebeu")
+        html = f'<main><h1>Falso que:</h1><div class="byline">Por Reuters</div><article><p>{positive}</p></article></main>'
+        resource = FetchedResource(html.encode(), "text/html", "https://example.test/final", "utf-8")
+        result, _ = await self.collect(resource, text=positive)
+        sentences, _, _, roles = _article_parts(resource)
+        self.assertEqual(result["matches"], [])
+        self.assertEqual(sentences, ["Falso que:", "Por Reuters", positive])
+        self.assertEqual(roles, ["context", "context", "context"])
+
+    def test_no_sentence_punctuation_is_invented_at_a_paragraph_boundary(self):
+        html = '<article><p>A afirmação é que:</p><p>Elizabeth II não morreu em setembro de 2022.</p></article>'
+        sentences, _, _, roles = _article_parts(FetchedResource(html.encode(), "text/html", "https://example.test/final", "utf-8"))
+        self.assertEqual(sentences, ["A afirmação é que: Elizabeth II não morreu em setembro de 2022."])
+        self.assertEqual(roles, ["body"])
+
+    def test_body_inline_markup_keeps_date_and_punctuation_without_title_prefix(self):
+        html = '<article><h1>Notícia</h1><p>Elizabeth <b>II</b> morreu em <time>8 de setembro de 2022</time>.</p></article>'
+        sentences, _, _, roles = _article_parts(FetchedResource(html.encode(), "text/html", "https://example.test/final", "utf-8"))
+        self.assertEqual(sentences[1], "Elizabeth II morreu em 8 de setembro de 2022.")
+        self.assertEqual(roles, ["context", "body"])
+
+    async def test_inline_letter_and_number_markup_does_not_invent_word_or_quantity_boundaries(self):
+        claim = "Elizabeth II recebeu R$ 1.500,00 no Castelo Balmoral durante 16 dias."
+        html = '<article><p>Elizabeth <b>II</b> recebeu R$ 1.<span>500</span>,00 n<strong>o</strong> Castelo Balmoral durante 1<em>6</em> dias.</p></article>'
+        resource = FetchedResource(html.encode(), "text/html", "https://example.test/final", "utf-8")
+        result, _ = await self.collect(resource, text=claim)
+        self.assertEqual(result["matches"][0]["excerpt"], claim)
+
+    def test_text_only_container_preserves_inline_whitespace_and_excludes_comments(self):
+        html = '<main><div itemprop="articleBody">Elizabeth <b>II</b> morreu<br>em 8 de setembro de 20<span>22</span>.<!--Não morreu.--> O reinado teve 7<i>0</i> anos.</div></main>'
+        sentences, _, _, roles = _article_parts(FetchedResource(html.encode(), "text/html", "https://example.test/final", "utf-8"))
+        self.assertEqual(sentences, ["Elizabeth II morreu em 8 de setembro de 2022.", "O reinado teve 70 anos."])
+        self.assertEqual(roles, ["body", "body"])
+
+    async def test_internal_document_roles_are_opt_in_and_wire_credit_is_context(self):
+        html = f'<article><p itemprop="author">Por Associated Press</p><p>{CLAIM}</p></article>'
+        resource = FetchedResource(html.encode(), "text/html", "https://example.test/final", "utf-8")
+        with patch("app.services.source_attribution.fetch_public_resource", new=AsyncMock(return_value=resource)):
+            regular = await collect_source_attribution(CLAIM, [CLAIM], "https://example.test/final")
+            internal = await collect_source_attribution(CLAIM, [CLAIM], "https://example.test/final", include_documents=True)
+        self.assertNotIn("_documents", regular)
+        self.assertNotIn("sentence_roles", json.dumps(regular))
+        self.assertEqual(internal["_documents"][0]["sentence_roles"], ["context", "body"])
+        self.assertEqual(regular["matches"][0]["excerpt"], CLAIM)
+
     def test_publication_metadata_cannot_supply_event_date(self):
         body = "A rainha Elizabeth II morreu no Castelo de Balmoral, na Escócia."
         for metadata in (
@@ -64,7 +218,7 @@ class SourceAttributionTests(unittest.IsolatedAsyncioTestCase):
         with patch("app.services.source_attribution.fetch_public_resource", new=AsyncMock(side_effect=fetch)) as request:
             result = await collect_source_attribution(CLAIM, [CLAIM], search_results=SearchResults([
                 {"link": url} for url in urls]), include_documents=True)
-        self.assertEqual([call.args[0] for call in request.await_args_list], [urls[0], urls[3], urls[4]])
+        self.assertEqual([call.args[0] for call in request.await_args_list], [urls[4], urls[0], urls[3]])
         self.assertEqual(result["coverage"]["selected_url_count"], 3)
         self.assertEqual(len(result["_documents"]), 3)
 

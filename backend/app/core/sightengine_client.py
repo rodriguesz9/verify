@@ -16,7 +16,7 @@ async def check_deepfake(file_bytes: bytes) -> dict:
     Models used: 'deepfake', 'genai'
     """
     if not SIGHTENGINE_API_USER or not SIGHTENGINE_API_SECRET:
-        return {"available": False, "reason": "Sightengine API keys not configured."}
+        return {"available": False, "status": "not_configured", "reason": "Credenciais Sightengine não configuradas."}
 
     params = {
         "models": "deepfake,genai",
@@ -47,6 +47,10 @@ async def check_deepfake(file_bytes: bytes) -> dict:
                 "raw": data
             }
     except httpx.HTTPStatusError as exc:
-        return {"available": False, "status": "error", "reason": f"Sightengine indisponível (HTTP {exc.response.status_code})."}
+        status = {401: "invalid_credentials", 403: "access_denied", 402: "quota_exhausted",
+                  429: "rate_limited", 503: "unavailable"}.get(exc.response.status_code, "error")
+        return {"available": False, "status": status, "reason": f"Sightengine indisponível (HTTP {exc.response.status_code})."}
+    except httpx.TimeoutException:
+        return {"available": False, "status": "timeout", "reason": "Tempo limite do detector de imagem Sightengine atingido."}
     except Exception:
         return {"available": False, "status": "error", "reason": "Não foi possível obter resposta do Sightengine."}

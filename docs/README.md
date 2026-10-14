@@ -1,6 +1,8 @@
 # Documentação do Verify
 
-Atualização de 13/10: [cruzamento fundamentado de fontes, controles e limites](CRUZAMENTO-FONTES-2026-10-13.md) e [reativação segura do Railway](REATIVAR-RAILWAY-2026-10-13.md). Complementa Google Fact Check, sem confirmar o que não tem duas evidências correspondentes. Controles públicos locais ainda foram inconclusivos; registros abaixo são históricos.
+Revisão de 14/10: [validação atual das APIs e pendências](VALIDACAO-APIS-2026-10-14.md) e [guia de retomada atualizado](REATIVAR-RAILWAY-2026-10-13.md). Gemini é o padrão da comparação de corpos; OpenRouter mantém extração auxiliar e fallback gratuito. Recuperação limitada tenta até seis páginas, selecionando no máximo três corpos para comparar com a afirmação original intacta. Os resultados reais e controles de interface devem ser lidos no registro da rodada, não presumidos pelo número de APIs/chaves.
+
+Checkpoint histórico de 13/10: [cruzamento fundamentado de fontes, controles e limites](CRUZAMENTO-FONTES-2026-10-13.md). Complementou Google Fact Check, sem confirmar o que não tinha duas evidências correspondentes. Naquela rodada, controles públicos locais foram inconclusivos; não substituir esse registro pelos resultados de revisões posteriores.
 
 Atualização de 10/10: [resultados inconclusivos — causas, correções e validação](INCONCLUSIVOS-2026-10-10.md). Consultas literais melhores, referências gerais sem voto de verdade e diagnóstico separado de sinal isolado/discordância/ausência/indisponibilidade. A publicação e o smoke da revisão são registrados nesse documento quando confirmados; registros abaixo são históricos.
 
@@ -8,8 +10,9 @@ Atualizada em 08/10/2026. Código publicado e ensaiado no SHA `cba8d3f77cb60ae19
 
 ## Comece aqui
 
-- [Cruzamento atual de fontes](CRUZAMENTO-FONTES-2026-10-13.md): política, contrato, configuração, testes e limites reais do novo caminho factual.
-- [Railway expirado: como recuperar](REATIVAR-RAILWAY-2026-10-13.md): preservar banco/volume, revisar variáveis sem copiar segredos e validar após retomada.
+- [Validação de APIs de 14/10](VALIDACAO-APIS-2026-10-14.md): revisão atual, fornecedores realmente chamados, controles públicos/sintéticos, resultados e pendências, sem promessa de precisão universal.
+- [Cruzamento de fontes de 13/10](CRUZAMENTO-FONTES-2026-10-13.md): contrato e evidências históricas da primeira revisão; configuração atual complementada pelo registro de 14/10.
+- [Railway expirado: como recuperar](REATIVAR-RAILWAY-2026-10-13.md): guia de 13/10 revisado em 14/10; preservar banco/volume, revisar variáveis sem copiar segredos e validar após retomada.
 - [Publicação e controles reais de 08/10](PUBLICACAO-2026-10-08.md): duas revisões publicadas, CI/deploys confirmados, texto/imagens/voz sintética pela interface, PDF/200 sem nova análise, filtro de contexto rechecado e fronteiras ainda pendentes.
 - [Correções e diagnóstico de produção de 08/10](CORRECOES-PRODUCAO-2026-10-08.md): Railway online confirmado, versão publicada, 422 de texto/500 de banco separados, novo controle Gemini, interface simples e checkpoints atuais.
 - [Ativar Hive e compreender voz/OCR](ATIVACAO-HIVE-VOZ-2026-10-08.md): uso do saldo autorizado, limites por processo, Secret Key v3, acesso Sightengine e HF desligado sem contratação.
@@ -41,6 +44,8 @@ Atualizada em 08/10/2026. Código publicado e ensaiado no SHA `cba8d3f77cb60ae19
 
 | Registro | Assunto e alcance |
 | --- | --- |
+| [Validação de APIs de 14/10](VALIDACAO-APIS-2026-10-14.md) | Revisão de recuperação documental, comparação Gemini primária/OpenRouter gratuito alternativo e controles locais com resultados próprios; ensaio pela interface e homologação no Railway precisam de confirmação específica |
+| [Cruzamento de fontes de 13/10](CRUZAMENTO-FONTES-2026-10-13.md) | 637 backend/181 frontend/build; buscas e comparação OpenRouter não produziram cobertura factual suficiente nos controles reais. Histórico, não evidência de que todas as modalidades funcionam |
 | [Publicação e controles de 08/10](PUBLICACAO-2026-10-08.md) | Base ef9655ff e revisão posterior cba8d3f publicadas; texto rechecado 200/4,924 s sem notícias irrelevantes; duas imagens/voz sintética na base; PDF/200, salvamento não confirmado. 492 backend/156 frontend/build locais e CI posterior passaram; fala humana/vídeo/benchmark continuam sem homologação ampla |
 | [Diagnóstico complementar de 08/10](CORRECOES-PRODUCAO-2026-10-08.md) | Checkpoint anterior à promoção: produção online no SHA antigo; 482 backend e mesmo runner no modo PG, com quatro integrações reais; 155 frontend; seis chamadas Gemini, duas Hive, UI Lite inconclusiva corretamente. A publicação posterior tem registro separado |
 | [Entrega candidata de 08/10](ENTREGA-BANCA-2026-10-08.md) | Registro anterior 424/142 e proteção de refresh; CI desse commit passou posteriormente; não confundir com implantação da revisão seguinte |

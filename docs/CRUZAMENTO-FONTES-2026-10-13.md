@@ -2,6 +2,8 @@
 
 Registro de 13/10/2026, horário de Brasília. O usuário informou que o Railway expirou e autorizou testes locais, commit e envio ao GitHub após os testes. Não houve renovação, contratação, recarga, alteração de variáveis remotas nem acesso ao banco de produção. Publicar código não demonstra retorno da hospedagem.
 
+Este é um registro histórico. Recuperação, provedor primário e controles foram revistos em 14/10; para o funcionamento atual, consulte [validação de APIs](VALIDACAO-APIS-2026-10-14.md) e o [guia de retomada atualizado](REATIVAR-RAILWAY-2026-10-13.md).
+
 ## Dois caminhos factuais
 
 Google Fact Check continua recuperando checagens editoriais publicadas, avaliadas pela política existente de correspondência literal e famílias distintas. Quando faltam checagens correspondentes, o novo caminho pode comparar a afirmação original com **trechos completos dos corpos de páginas recuperadas**, usando as APIs existentes de busca e leitura/comparação.

@@ -15,10 +15,46 @@ from app.services.news_relevance import filter_context_news
 from app.services.factual_queries import build_fact_check_queries
 from app.services.source_attribution import collect_source_attribution
 from app.services.source_corroboration import corroborate_sources
-from app.services.source_corroboration import source_family
+from app.services.source_corroboration import select_comparison_documents, usable_source_families
+from app.services.source_corroboration import document_selection_audit
 from app.services.source_decision import apply_source_decision
 
-SOURCE_SITE_FILTER = "(site:g1.globo.com OR site:agenciabrasil.ebc.com.br OR site:bbc.com OR site:royal.uk OR site:reuters.com OR site:apnews.com)"
+SOURCE_SITE_FILTER = "(site:royal.uk OR site:brasilescola.uol.com.br OR site:mundoeducacao.uol.com.br OR site:science.nasa.gov OR site:cnnbrasil.com.br OR site:aosfatos.org OR site:bbc.com)"
+PRIMARY_SITE_FILTER = "(site:royal.uk OR site:science.nasa.gov OR site:ibge.gov.br OR site:bcb.gov.br OR site:who.int)"
+EXPLAINER_SITE_FILTER = "(site:brasilescola.uol.com.br OR site:mundoeducacao.uol.com.br OR site:cnnbrasil.com.br OR site:aosfatos.org)"
+
+
+def _source_recovery_query(query):
+    """Neutral identity/event leads, NEVER a rewritten assertion or truth vote.
+
+    Literal search comes first. A wrong date can rank coverage of that date
+    above an event biography. Only narrow named-event aliases may broaden the
+    second query; the untouched original statement still receives every guard.
+    Unknown constructions keep the complete literal recovery query.
+    """
+    identity = re.search(r"\b[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][a-záàâãéêíóôõúç]{2,}\s+(?:[IVXLCDM]{1,6}|[1-9]\d?)\b", query)
+    events = [(r"\b(?:morreu|faleceu|falecimento|morte|death|died)\b", "morte OR falecimento OR morreu OR death OR died"),
+              (r"\b(?:nasceu|nascimento|birth|born)\b", "nascimento OR nasceu OR birth OR born"),
+              (r"\b(?:lançada|lançado|lançou|lançamento|launched|launch)\b", "lançamento OR lançada OR launched OR launch")]
+    matched = [aliases for pattern, aliases in events if re.search(pattern, query, re.I)]
+    if identity and len(matched) == 1:
+        return f'"{identity[0]}" ({matched[0]}) {SOURCE_SITE_FILTER}', "literal_identity_event_anchors"
+    return f"{query} {SOURCE_SITE_FILTER}", "whole_literal_claim_curated_sites"
+
+
+def _source_recovery_queries(query, limit):
+    combined, method = _source_recovery_query(query)
+    if limit < 3 or method != "literal_identity_event_anchors":
+        return [(combined, method)]
+    identity = re.search(r'"[^"\n]+"', combined)[0]
+    if re.search(r"\b(?:morreu|faleceu|falecimento|morte|death|died)\b", query, re.I):
+        primary, editorial, genre = "death OR died", "morte OR falecimento OR morreu", "biography"
+    elif re.search(r"\b(?:nasceu|nascimento|birth|born)\b", query, re.I):
+        primary, editorial, genre = "birth OR born", "nascimento OR nasceu", "biography"
+    else:
+        primary, editorial, genre = "launched OR launch", "lançamento OR lançada", "mission"
+    return [(f"{identity} ({primary}) {genre} {PRIMARY_SITE_FILTER}", "literal_identity_event_primary_sources"),
+            (f"{identity} ({editorial}) {EXPLAINER_SITE_FILTER}", "literal_identity_event_editorial_explainers")]
 
 
 def _verdicts_agree(v1: str, v2: str) -> bool:
@@ -89,31 +125,58 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
     remain leads; only a complete sentence in a retrieved document can match.
     """
     crosscheck_enabled = use_source_crosscheck and os.getenv("SOURCE_CROSSCHECK_ENABLED", "true").strip().lower() == "true"
-    deadline = 30 if crosscheck_enabled else 20
+    deadline = 45 if crosscheck_enabled else 20
+    attribution, plan = None, []
     try:
         async with asyncio.timeout(deadline):
             query = next((query for query in queries if 20 <= len(query.strip()) <= 500), None)
             leads = (await search_web(query) if query else NewsSearch(
                 status="no_results", reason="Nenhuma frase completa cabe no limite da busca; nenhum texto foi cortado."))
             plan = [{"method": "whole_literal_claim", "status": getattr(leads, "status", "success" if leads else "no_results")}] if query else []
-            families = {source_family(item.get("link")) for item in leads if isinstance(item, dict)} - {None, source_family(source_url)}
-            configured = os.getenv("SOURCE_CROSSCHECK_SEARCH_LIMIT", "2").strip()
-            limit = (int(configured) if configured in {"1", "2"} else 2) if crosscheck_enabled else 1
-            qualified = f"{query} {SOURCE_SITE_FILTER}" if query else ""
-            if (crosscheck_enabled and limit == 2
-                    and len(families) < 2 and 20 <= len(qualified) <= 500
-                    and getattr(leads, "status", "success" if leads else "no_results") in {"success", "no_results"}):
-                extra = await search_web(qualified)
-                plan.append({"method": "whole_literal_claim_curated_sites", "status": getattr(extra, "status", "success" if extra else "no_results")})
-                combined = NewsSearch([*leads, *extra], status="success" if leads or extra else getattr(extra, "status", "no_results"))
-                leads = combined
+            fetched_cache = {}
             attribution = await collect_source_attribution(text, queries, source_url, search_results=leads,
-                include_documents=crosscheck_enabled)
+                include_documents=crosscheck_enabled, fetched_cache=fetched_cache)
+            families = usable_source_families(text, attribution.get("_documents", []), source_url) if crosscheck_enabled else set()
+            configured = os.getenv("SOURCE_CROSSCHECK_SEARCH_LIMIT", "3").strip()
+            limit = (int(configured) if configured in {"1", "2", "3"} else 3) if crosscheck_enabled else 1
+            if (crosscheck_enabled and limit >= 2 and query
+                    and len(families) < 2
+                    and getattr(leads, "status", "success" if leads else "no_results") in {"success", "no_results"}):
+                for qualified, recovery_method in _source_recovery_queries(query, limit):
+                    if not 20 <= len(qualified) <= 500:
+                        continue
+                    extra = await search_web(qualified)
+                    extra_status = getattr(extra, "status", "success" if extra else "no_results")
+                    plan.append({"method": recovery_method, "status": extra_status,
+                                 "decision_role": "retrieval_only_original_claim_unchanged"})
+                    leads = NewsSearch([*leads, *extra], status="success" if leads or extra else extra_status)
+                    if extra_status not in {"success", "no_results"}:
+                        break  # Never work around a quota/credential failure.
+                attribution = await collect_source_attribution(text, queries, source_url, search_results=leads,
+                    include_documents=True, max_sources=6, fetched_cache=fetched_cache)
+                families = usable_source_families(text, attribution.get("_documents", []), source_url)
+            if crosscheck_enabled:
+                attribution["selection_audit"] = document_selection_audit(text, attribution.get("_documents", []), source_url)
+                attribution["_documents"] = select_comparison_documents(text, attribution.get("_documents", []), source_url)
             attribution.setdefault("coverage", {})["search_queries"] = plan
             attribution["coverage"]["max_search_queries"] = limit
             attribution["coverage"]["retrieval_deadline_seconds"] = deadline
+            attribution["coverage"]["usable_source_family_count"] = len(families)
+            attribution["coverage"]["max_comparison_documents"] = 3
             return attribution
     except Exception:
+        if isinstance(attribution, dict):
+            # Preserve successfully read first-wave evidence if recovery fails;
+            # never hide the missing wave or treat it as additional support.
+            documents = attribution.get("_documents", [])
+            if crosscheck_enabled:
+                attribution["selection_audit"] = document_selection_audit(text, documents, source_url)
+                attribution["_documents"] = select_comparison_documents(text, documents, source_url)
+            attribution.setdefault("coverage", {}).update(
+                search_queries=plan, retrieval_deadline_seconds=deadline,
+                recovery_status="timeout_or_error", usable_source_family_count=len(usable_source_families(text, documents, source_url)))
+            attribution.setdefault("limitations", []).append("A recuperação adicional não terminou; somente a primeira leitura concluída foi preservada.")
+            return attribution
         return {"status": "error", "decision_role": "source_attribution_only", "matches": [],
                 "reason": "A leitura das referências não foi concluída no prazo ou com segurança.",
                 "limitations": ["Referências não confirmam automaticamente verdade, falsidade ou a página inteira."],

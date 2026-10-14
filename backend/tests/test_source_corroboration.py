@@ -8,6 +8,7 @@ from app.core.gemini_client import GeminiError
 from app.core.openrouter_service import GeneratedText, OpenRouterError
 from app.services.source_corroboration import (
     corroborate_sources, source_family, crosscheck_timeout_seconds, _same_event,
+    select_comparison_documents, usable_source_families, document_selection_audit,
 )
 
 CLAIM = "A Rainha Elizabeth II morreu em 8 de setembro de 2022 no Castelo Balmoral."
@@ -47,7 +48,8 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
     async def run_comparison(self, text=CLAIM, docs=None, relation="supports", transform=None, raw=None, source_url=None):
         async def answer(prompt, **kwargs):
             return raw if raw is not None else response(prompt, relation, transform)
-        with patch.dict(os.environ, {"SOURCE_CROSSCHECK_ENABLED": "true", "SOURCE_CROSSCHECK_TIMEOUT_SECONDS": "60"}), \
+        with patch.dict(os.environ, {"SOURCE_CROSSCHECK_ENABLED": "true", "SOURCE_CROSSCHECK_TIMEOUT_SECONDS": "60",
+                                    "SOURCE_CROSSCHECK_PRIMARY_PROVIDER": "openrouter"}), \
              patch("app.services.source_corroboration.openrouter_service.generate", new=AsyncMock(side_effect=answer)) as router, \
              patch("app.services.source_corroboration.gemini_client.generate_text", new=AsyncMock()) as gemini:
             result = await corroborate_sources(text, documents() if docs is None else docs, source_url)
@@ -64,7 +66,7 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["coverage"]["grounded_evidence_count"], 2)
         self.assertNotIn("score", result)
         self.assertNotIn("verdict", result)
-        evidence = result["claims"][0]["evidence"][0]
+        evidence = next(item for item in result["claims"][0]["evidence"] if item["publisher_family"] == "bbc")
         self.assertEqual(evidence["excerpt"], FIRST)
         self.assertEqual(evidence["url"], "https://www.bbc.com/portuguese/noticia")
         self.assertEqual(evidence["retrieved_at"], DATE)
@@ -90,6 +92,213 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
         wrong = claim.replace("8 de setembro", "9 de setembro")
         result, _, _ = await self.run_comparison(wrong, documents(first, second), "refutes")
         self.assertEqual(result["state"], "refuted")
+
+    async def test_explicit_nominal_death_date_in_portuguese_and_royal_appositive(self):
+        claim = "Elizabeth II morreu em 8 de setembro de 2022."
+        first = "O falecimento da Rainha Elizabeth II aconteceu em 8 de setembro de 2022."
+        second = "Following the death of his mother Queen Elizabeth II on 8 September 2022, Charles became King."
+        for text, relation, state in ((claim, "supports", "corroborated"),
+                                      (claim.replace("8 de setembro", "9 de setembro"), "refutes", "refuted")):
+            result, router, _ = await self.run_comparison(text, documents(first, second), relation)
+            self.assertEqual(result["state"], state)
+            router.assert_awaited_once()
+
+    async def test_nominal_subject_relationship_never_dates_the_queen_herself(self):
+        claim = "Elizabeth II morreu em 8 de setembro de 2022."
+        variants = (
+            "O falecimento da mãe da Rainha Elizabeth II aconteceu em 8 de setembro de 2022.",
+            "The death of the mother of Queen Elizabeth II on 8 September 2022 changed the family.",
+            "A mãe da Rainha Elizabeth II morreu em 8 de setembro de 2022.",
+            "The mother of Queen Elizabeth II died on 8 September 2022.",
+        )
+        for quote in variants:
+            for relation in ("supports", "refutes"):
+                result, router, _ = await self.run_comparison(claim, documents(quote, quote.replace("mother", "father").replace("mãe", "pai")), relation)
+                self.assertEqual(result["state"], "insufficient", (quote, relation))
+                router.assert_not_awaited()
+
+    async def test_nominal_death_reference_does_not_borrow_tribute_funeral_or_announcement_date(self):
+        claim = "Elizabeth II morreu em 8 de setembro de 2022."
+        for quote in (
+            "A homenagem após o falecimento da Rainha Elizabeth II aconteceu em 8 de setembro de 2022.",
+            "The tribute following the death of his mother Queen Elizabeth II on 8 September 2022 was held in London.",
+            "O funeral após o falecimento da Rainha Elizabeth II aconteceu em 8 de setembro de 2022.",
+            "O anúncio do falecimento da Rainha Elizabeth II aconteceu em 8 de setembro de 2022.",
+            "The announcement of the death of Queen Elizabeth II on 8 September 2022 was published later.",
+            "O falecimento da Rainha Elizabeth II aconteceu em 8 de setembro de 2022, com funeral em 19 de setembro de 2022.",
+        ):
+            result, router, _ = await self.run_comparison(claim, documents(quote, quote + " Registro histórico."))
+            self.assertEqual(result["state"], "insufficient", quote)
+            router.assert_not_awaited()
+
+    async def test_tiny_launch_mission_and_walk_aliases_preserve_distinct_actions(self):
+        launch = "A missão Apollo 11 foi lançada em 16 de julho de 1969."
+        result, _, _ = await self.run_comparison(launch, documents(
+            "Apollo 11 mission was launched on July 16, 1969.",
+            "O lançamento da missão Apollo 11 ocorreu em 16 de julho de 1969."))
+        self.assertEqual(result["state"], "corroborated")
+        walked = "Neil Armstrong pisou na Lua em 20 de julho de 1969."
+        result, _, _ = await self.run_comparison(walked, documents(
+            "Neil Armstrong walked on the Moon on July 20, 1969.",
+            "Em 20 de julho de 1969, Neil Armstrong pisou na Lua."))
+        self.assertEqual(result["state"], "corroborated")
+        unrelated = "Neil Armstrong observed a spacecraft landing on the Moon on July 20, 1969."
+        result, router, _ = await self.run_comparison(walked, documents(unrelated, unrelated.replace("observed", "saw")))
+        self.assertEqual(result["state"], "insufficient")
+        router.assert_not_awaited()
+
+    async def test_generic_human_walking_requires_explicit_human_body_and_preserves_negation(self):
+        positive = "O homem pisou na Lua."
+        first = "Humans walked on the Moon during a documented mission."
+        second = "Os astronautas pisaram na Lua durante uma missão documentada."
+        result, router, _ = await self.run_comparison(positive, documents(first, second))
+        self.assertEqual(result["state"], "corroborated")
+        router.assert_awaited_once()
+        negative = "O homem nunca pisou na Lua."
+        result, router, _ = await self.run_comparison(negative, documents(first, second), "refutes")
+        self.assertEqual(result["state"], "refuted")
+        router.assert_awaited_once()
+        no_human = "No human has ever walked on the Moon."
+        result, _, _ = await self.run_comparison(positive, documents(no_human, no_human.replace("human", "astronaut")))
+        self.assertEqual(result["state"], "insufficient")
+
+    async def test_machine_walk_or_people_elsewhere_do_not_refute_generic_human_claim(self):
+        negative = "O homem nunca pisou na Lua."
+        for first, second in (
+            ("The rover walked on the Moon.", "A sonda pisou na Lua durante uma missão."),
+            ("The rover carried astronauts as it walked on the Moon.", "As pessoas observaram o robô que pisou na Lua."),
+            ("The astronauts watched as the rover walked on the Moon.", "Os astronautas controlaram a sonda que pisou na Lua."),
+            ("The spacecraft landed on the Moon carrying people.", "A nave pousou na Lua levando astronautas."),
+        ):
+            result, router, gemini = await self.run_comparison(negative, documents(first, second), "refutes")
+            self.assertEqual(result["state"], "insufficient", first)
+            self.assertEqual(result["coverage"]["eligible_family_count"], 0)
+            router.assert_not_awaited()
+            gemini.assert_not_awaited()
+
+    async def test_negating_quantity_of_proofs_is_not_negating_human_walking(self):
+        negative = "O homem nunca pisou na Lua."
+        first = "As provas de que o homem realmente pisou na Lua nas missões Apollo não são poucas."
+        second = "As evidências de que pessoas pisaram na Lua não são escassas."
+        for relation in ("supports", "refutes"):
+            result, router, gemini = await self.run_comparison(negative, documents(first, second), relation)
+            self.assertEqual(result["state"], "insufficient")
+            router.assert_not_awaited()
+            gemini.assert_not_awaited()
+
+    async def test_apolo_spelling_and_historical_present_launches_preserve_mission_identity(self):
+        claim = "A missão Apollo 11 foi lançada em 16 de julho de 1969."
+        first = "On July 16, 1969, the Saturn V rocket launches on the Apollo 11 mission."
+        second = "Em 16 de julho de 1969, o foguete Saturn V lançou a espaçonave Apolo 11."
+        result, router, _ = await self.run_comparison(claim, documents(first, second))
+        self.assertEqual(result["state"], "corroborated")
+        router.assert_awaited_once()
+
+    async def test_context_roles_are_not_quotes_but_preserve_adjacent_rumor_guard(self):
+        docs = [document([FIRST, "Texto contextual sem relação direta."], sentence_roles=["context", "body"]),
+                document([SECOND, "Outra seção contextual."], "https://royal.uk/story", sentence_roles=["context", "body"])]
+        result, router, _ = await self.run_comparison(docs=docs)
+        self.assertEqual(result["status"], "not_requested")
+        router.assert_not_awaited()
+        self.assertEqual(select_comparison_documents(CLAIM, docs), [])
+        docs = [document(["Segundo um boato não confirmado.", FIRST], sentence_roles=["context", "body"]),
+                document(["A afirmação é falsa.", SECOND], "https://royal.uk/story", sentence_roles=["context", "body"])]
+        result, router, _ = await self.run_comparison(docs=docs)
+        self.assertEqual(result["status"], "not_requested")
+        router.assert_not_awaited()
+
+    async def test_context_metadata_retained_without_borrowing_its_date_or_quote_id(self):
+        docs = [document(["Publicado em 9 de setembro de 2022.", FIRST], sentence_roles=["context", "body"]),
+                document(["Updated 9 September 2022.", SECOND], "https://royal.uk/story", sentence_roles=["context", "body"])]
+        result, router, _ = await self.run_comparison(docs=docs)
+        self.assertEqual(result["state"], "corroborated")
+        prompt = json.loads(router.await_args.args[0])
+        self.assertTrue(all(passage["excerpt_id"].endswith(":e2") for source in prompt["sources"] for passage in source["passages"]))
+        self.assertTrue(all("9" in passage["context"] for source in prompt["sources"] for passage in source["passages"]))
+        self.assertTrue(all("9" not in item["excerpt"] for item in result["claims"][0]["evidence"]))
+
+    async def test_invalid_roles_contract_excludes_document_without_provider_call(self):
+        for roles in (None, "body", ["body", "context"], ["title"], [None], [{}]):
+            docs = [document(), document(SECOND, "https://royal.uk/story", sentence_roles=roles)]
+            result, router, _ = await self.run_comparison(docs=docs)
+            self.assertEqual(result["status"], "not_requested", roles)
+            self.assertEqual(result["coverage"]["eligible_family_count"], 1)
+            router.assert_not_awaited()
+
+    def test_selection_prefers_actual_distinct_families_and_primary_with_six_candidate_cap(self):
+        docs = [document(FIRST), document(SECOND, "https://bbc.com/another"),
+                document(FIRST.replace("faleceu", "morreu"), "https://cnnbrasil.com.br/page"),
+                document(SECOND.replace("morreu", "faleceu"), "https://royal.uk/page"),
+                document("Elizabeth II morreu em 8 de setembro de 2022.", "https://ebc.com.br/page"),
+                document("Queen Elizabeth II died on 8 September 2022 at Balmoral Castle.", "https://uol.com.br/page"),
+                document(SECOND, "https://nasa.gov/seventh")]
+        before = json.dumps(docs)
+        selected = select_comparison_documents(CLAIM, docs)
+        self.assertEqual(len(selected), 3)
+        self.assertIs(selected[0], docs[3])
+        self.assertEqual(usable_source_families(CLAIM, docs), {"royal", "bbc", "cnn"})
+        self.assertNotIn(docs[1], selected)
+        self.assertNotIn(docs[6], selected)
+        self.assertEqual(json.dumps(docs), before)
+
+    def test_recovery_helpers_ignore_metadata_unrelated_dates_and_submitted_family(self):
+        unrelated = "Em 8 de setembro de 2022, a Rainha Elizabeth II recebeu homenagem após sua morte no Castelo Balmoral."
+        docs = [document(unrelated), document(SECOND, "https://royal.uk/story"),
+                document(FIRST, "https://ebc.com.br/story")]
+        self.assertEqual(usable_source_families(CLAIM, docs), {"royal", "ebc"})
+        self.assertEqual(usable_source_families(CLAIM, docs, "https://royal.uk/original"), {"ebc"})
+        self.assertEqual(len(select_comparison_documents(CLAIM, docs)), 2)
+
+    def test_recovery_helpers_collapse_context_wire_credits_and_copied_selected_sentence(self):
+        filler = ["Detalhe contextual sem relação com a afirmação."] * 5
+        docs = [document(["Fonte: Reuters", *filler, FIRST], sentence_roles=["context"] * 6 + ["body"]),
+                document(["Por Reuters", *filler, SECOND], "https://royal.uk/story", sentence_roles=["context"] * 6 + ["body"])]
+        self.assertEqual(usable_source_families(CLAIM, docs), {"reuters"})
+        copies = documents([FIRST, "Contexto completamente diferente."], ["Outra seção contextual.", FIRST])
+        self.assertEqual(len(usable_source_families(CLAIM, copies)), 1)
+
+    async def test_distant_initial_denial_context_is_not_discarded_from_vote(self):
+        filler = ["Informação biográfica sem correspondência com o evento."] * 5
+        docs = [document(["Esta afirmação é falsa.", *filler, FIRST], sentence_roles=["context"] + ["body"] * 6),
+                document(["A mensagem é falsa.", *filler, SECOND], "https://royal.uk/story", sentence_roles=["context"] + ["body"] * 6)]
+        result, router, _ = await self.run_comparison(docs=docs)
+        self.assertEqual(result["state"], "insufficient")
+        router.assert_not_awaited()
+        self.assertEqual(document_selection_audit(CLAIM, docs)["eligible_family_count"], 0)
+
+    async def test_distant_initial_title_is_context_not_quote_or_entity_substitute(self):
+        filler = ["Informação biográfica sobre o reinado e o período histórico."] * 5
+        docs = [document(["Biografia de Elizabeth II", *filler, FIRST], sentence_roles=["context"] + ["body"] * 6),
+                document(["Queen Elizabeth II biography", *filler, SECOND], "https://royal.uk/story", sentence_roles=["context"] + ["body"] * 6)]
+        result, router, _ = await self.run_comparison(docs=docs)
+        self.assertEqual(result["state"], "corroborated")
+        prompt = json.loads(router.await_args.args[0])
+        self.assertTrue(all(passage["excerpt_id"].endswith(":e7") for source in prompt["sources"] for passage in source["passages"]))
+        self.assertTrue(all("Elizabeth II" in passage["context"].split("Informação")[0] for source in prompt["sources"] for passage in source["passages"]))
+        anonymous = FIRST.replace("Elizabeth II", "monarca")
+        docs[0]["sentences"][-1] = anonymous
+        self.assertNotIn(docs[0], select_comparison_documents(CLAIM, docs))
+
+    def test_oversize_initial_qualifier_abstains_without_silent_truncation(self):
+        docs = [document(["Contexto inicial " + "qualificador " * 400, FIRST], sentence_roles=["context", "body"]),
+                document(SECOND, "https://royal.uk/story")]
+        audit = document_selection_audit(CLAIM, docs)
+        self.assertEqual(audit["eligible_family_count"], 1)
+        self.assertEqual(len(audit["excluded_sources"]), 1)
+        self.assertIn("Contexto inicial excede", audit["excluded_sources"][0]["exclusion_reason"])
+        self.assertNotIn("qualificador qualificador", json.dumps(audit))
+
+    def test_selection_audit_is_bounded_private_body_free_and_uses_same_policy(self):
+        docs = documents() + [document("Registro sem relação com a afirmação.", "https://unknown.example/story")] * 10
+        audit = document_selection_audit(CLAIM, docs)
+        self.assertEqual(audit["eligible_family_count"], len(usable_source_families(CLAIM, docs)))
+        self.assertEqual(audit["selected_source_urls"], [doc["url"] for doc in select_comparison_documents(CLAIM, docs)])
+        self.assertLessEqual(len(audit["selected_source_urls"]), 3)
+        self.assertLessEqual(len(audit["excluded_sources"]), 6)
+        self.assertNotIn(FIRST, json.dumps(audit, ensure_ascii=False))
+        self.assertNotIn(CLAIM, json.dumps(audit, ensure_ascii=False))
+        invalid = document_selection_audit(None, docs)
+        self.assertEqual(invalid["eligible_family_count"], 0)
 
     async def test_roman_identity_and_country_changes_cannot_be_supported(self):
         for claim, first, second in ((CLAIM, FIRST.replace("Elizabeth II", "Elizabeth I"), SECOND.replace("Elizabeth II", "Elizabeth I")),
@@ -155,7 +364,7 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
             with self.subTest(relation=relation):
                 result, router, _ = await self.run_comparison(claim, documents(quote, quote.replace("morte", "falecimento")), relation=relation)
                 self.assertEqual(result["state"], "insufficient")
-                router.assert_awaited_once()
+                router.assert_not_awaited()
                 self.assertFalse(result["claims"][0]["evidence"])
 
     async def test_wrong_dates_cannot_be_labeled_support(self):
@@ -252,7 +461,9 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_opposing_grounded_documents_block_positive_global(self):
         def relations(body):
-            body["claims"][0]["evidence"][1]["relation"] = "refutes"
+            for evidence in body["claims"][0]["evidence"]:
+                if "não morreu" in evidence["quote"]:
+                    evidence["relation"] = "refutes"
         result, _, _ = await self.run_comparison(docs=documents(FIRST, SECOND.replace("morreu", "não morreu")), transform=relations)
         self.assertEqual(result["state"], "conflicting")
         self.assertFalse(result["coverage"]["complete_claim_coverage"])
@@ -322,7 +533,8 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
         docs = documents([FIRST, "Contexto diverso apresentado nesta reportagem."], ["Documento sobre o período histórico.", FIRST])
         result, _, _ = await self.run_comparison(docs=docs)
         self.assertEqual(result["state"], "insufficient")
-        self.assertEqual(len(result["claims"][0]["evidence"]), 1)
+        self.assertEqual(result["coverage"]["eligible_family_count"], 1)
+        self.assertEqual(result["status"], "not_requested")
 
     async def test_cited_wire_is_one_dependency_family_not_two_publishers(self):
         docs = documents("Segundo a Reuters, " + FIRST, "Conforme a Reuters, " + SECOND)
@@ -375,7 +587,7 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
         docs = documents(["Esta afirmação é falsa.", FIRST], ["A mensagem é falsa.", SECOND])
         result, _, _ = await self.run_comparison(docs=docs)
         self.assertEqual(result["state"], "insufficient")
-        self.assertEqual(len(result["claims"][0]["excluded_evidence"]), 2)
+        self.assertEqual(len(result["excluded_sources"]), 2)
 
     async def test_false_neighbor_cannot_refute_central_sentence_that_confirms_claim(self):
         claim = "A Dra. Ávila recebeu R$ 1.500,00 em 04/10/2026."
@@ -448,7 +660,8 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
     async def test_free_quota_failure_falls_back_to_existing_gemini_once_and_sanitizes(self):
         async def gemini_answer(prompt, **kwargs):
             return response(prompt)
-        with patch("app.services.source_corroboration.openrouter_service.generate", new=AsyncMock(
+        with patch.dict(os.environ, {"SOURCE_CROSSCHECK_PRIMARY_PROVIDER": "openrouter"}), \
+             patch("app.services.source_corroboration.openrouter_service.generate", new=AsyncMock(
                 side_effect=OpenRouterError("rate_limited", "PRIVATE-KEY-BODY"))) as router, \
              patch("app.services.source_corroboration.gemini_client.generate_text", new=AsyncMock(side_effect=gemini_answer)) as gemini:
             result = await corroborate_sources(CLAIM, documents())
@@ -461,8 +674,72 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(gemini.await_args.kwargs["response_schema"]["type"], "OBJECT")
         self.assertNotIn("model_name", gemini.await_args.kwargs)
 
+    async def test_default_gemini_comparison_primary_uses_structured_schema_once(self):
+        async def answer(prompt, **kwargs):
+            return response(prompt)
+        with patch.dict(os.environ, {}), \
+             patch("app.services.source_corroboration.gemini_client.generate_text", new=AsyncMock(side_effect=answer)) as gemini, \
+             patch("app.services.source_corroboration.openrouter_service.generate", new=AsyncMock()) as router:
+            os.environ.pop("SOURCE_CROSSCHECK_PRIMARY_PROVIDER", None)
+            result = await corroborate_sources(CLAIM, documents())
+        self.assertEqual(result["state"], "corroborated")
+        self.assertEqual(result["provider_coverage"]["gemini"]["status"], "success")
+        self.assertEqual(result["provider_coverage"]["openrouter"]["status"], "not_requested")
+        gemini.assert_awaited_once()
+        router.assert_not_awaited()
+        self.assertEqual(gemini.await_args.kwargs["response_schema"]["type"], "OBJECT")
+        self.assertEqual(gemini.await_args.kwargs["max_tokens"], 2048)
+        self.assertNotIn("model_name", gemini.await_args.kwargs)
+
+    async def test_gemini_transport_failure_falls_back_to_free_router_without_truth_voting(self):
+        async def answer(prompt, **kwargs):
+            return response(prompt)
+        for failure in ("rate_limited", "timeout", "not_configured", "unavailable"):
+            with patch.dict(os.environ, {"SOURCE_CROSSCHECK_PRIMARY_PROVIDER": "gemini"}), \
+                 patch("app.services.source_corroboration.gemini_client.generate_text", new=AsyncMock(
+                     side_effect=GeminiError("PRIVATE-CREDENTIAL", failure))) as gemini, \
+                 patch("app.services.source_corroboration.openrouter_service.generate", new=AsyncMock(side_effect=answer)) as router:
+                result = await corroborate_sources(CLAIM, documents())
+            self.assertEqual(result["state"], "corroborated", failure)
+            self.assertEqual(result["provider_coverage"]["gemini"]["status"], failure)
+            self.assertEqual(result["provider_coverage"]["openrouter"]["status"], "success")
+            gemini.assert_awaited_once()
+            router.assert_awaited_once()
+            self.assertNotIn("PRIVATE", json.dumps(result))
+
+    async def test_gemini_invalid_configuration_or_output_is_not_repaired_by_router(self):
+        for failure in ("invalid_configuration", "invalid_response", "input_too_large"):
+            with patch.dict(os.environ, {"SOURCE_CROSSCHECK_PRIMARY_PROVIDER": "gemini"}), \
+                 patch("app.services.source_corroboration.gemini_client.generate_text", new=AsyncMock(
+                     side_effect=GeminiError("PRIVATE-CREDENTIAL", failure))) as gemini, \
+                 patch("app.services.source_corroboration.openrouter_service.generate", new=AsyncMock()) as router:
+                result = await corroborate_sources(CLAIM, documents())
+            self.assertEqual(result["status"], failure)
+            self.assertEqual(result["state"], "insufficient")
+            gemini.assert_awaited_once()
+            router.assert_not_awaited()
+        with patch.dict(os.environ, {"SOURCE_CROSSCHECK_PRIMARY_PROVIDER": "gemini"}), \
+             patch("app.services.source_corroboration.gemini_client.generate_text", new=AsyncMock(return_value='{"claims":[')) as gemini, \
+             patch("app.services.source_corroboration.openrouter_service.generate", new=AsyncMock()) as router:
+            result = await corroborate_sources(CLAIM, documents())
+        self.assertEqual(result["status"], "invalid_response")
+        gemini.assert_awaited_once()
+        router.assert_not_awaited()
+
+    async def test_invalid_primary_provider_configuration_never_calls_either_provider(self):
+        for provider in ("", "random", "gemini,openrouter"):
+            with patch.dict(os.environ, {"SOURCE_CROSSCHECK_PRIMARY_PROVIDER": provider}), \
+                 patch("app.services.source_corroboration.gemini_client.generate_text", new=AsyncMock()) as gemini, \
+                 patch("app.services.source_corroboration.openrouter_service.generate", new=AsyncMock()) as router:
+                result = await corroborate_sources(CLAIM, documents())
+            self.assertEqual(result["status"], "invalid_configuration")
+            self.assertEqual(result["state"], "insufficient")
+            gemini.assert_not_awaited()
+            router.assert_not_awaited()
+
     async def test_transport_failures_do_not_create_evidence(self):
-        with patch("app.services.source_corroboration.openrouter_service.generate", new=AsyncMock(
+        with patch.dict(os.environ, {"SOURCE_CROSSCHECK_PRIMARY_PROVIDER": "openrouter"}), \
+             patch("app.services.source_corroboration.openrouter_service.generate", new=AsyncMock(
                 side_effect=OpenRouterError("timeout", "PRIVATE"))), \
              patch("app.services.source_corroboration.gemini_client.generate_text", new=AsyncMock(
                 side_effect=GeminiError("PRIVATE", "rate_limited"))):
@@ -472,7 +749,8 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("PRIVATE", json.dumps(result))
 
     async def test_truncated_provider_output_never_repairs_or_falls_back(self):
-        with patch("app.services.source_corroboration.openrouter_service.generate", new=AsyncMock(
+        with patch.dict(os.environ, {"SOURCE_CROSSCHECK_PRIMARY_PROVIDER": "openrouter"}), \
+             patch("app.services.source_corroboration.openrouter_service.generate", new=AsyncMock(
                 side_effect=OpenRouterError("invalid_response", "length"))) as router, \
              patch("app.services.source_corroboration.gemini_client.generate_text", new=AsyncMock()) as gemini:
             result = await corroborate_sources(CLAIM, documents())

@@ -21,6 +21,7 @@ VERSION = "source_corroboration_v1"
 MAX_INPUT = 5000
 MAX_CLAIMS = 5
 MAX_SOURCES = 3
+MAX_RECOVERY_DOCUMENTS = 6
 MAX_SENTENCE = 1200
 MAX_PASSAGES = 8
 MAX_PROMPT_BODY = 18000
@@ -48,17 +49,21 @@ _STOP = set("a o as os um uma uns umas de da do das dos em no na nos nas e ou qu
 _DEATH_WORDS = ("morreu", "faleceu", "falecimento", "morte", "falecido", "falecida", "morto", "morta", "death", "died", "die", "deceased")
 _ALIASES = {**{word: "event-death" for word in _DEATH_WORDS},
             **{word: "event-birth" for word in ("nasceu", "nascimento", "birth", "born")},
+            **{word: "event-launch" for word in ("launch", "launched", "launches", "lançamento", "lançou", "lançada", "lançado")},
+            **{word: "mission" for word in ("mission", "missão")},
+            **{word: "moon" for word in ("moon", "lua")},
+            **{word: "event-walk" for word in ("walked", "pisou", "pisaram")},
             "castle": "castelo", "scotland": "escócia", "brazil": "brasil", "england": "inglaterra",
-            "portugal": "portugal"}
-_NEGATION = re.compile(r"\b(não|nao|nunca|jamais|nem|not|never|didn't|wasn't)\b", re.I)
+            "portugal": "portugal", "apolo": "apollo"}
+_NEGATION = re.compile(r"\b(não|nao|nunca|jamais|nem|not|never|didn't|wasn't|no\s+(?:humans?|man|men|astronauts?|persons?|people))\b", re.I)
 _UNASSERTED = re.compile(r"\b(boato|rumor|alegou|alega|supostamente|mensagem não confirmada|postagem|satírico|sátira|fictional|allegedly)\b", re.I)
 _UNCERTAIN = re.compile(r"\b(?:pode|poderia|teria|talvez|provável|possível|may|might|could|possibly|alleged)\b", re.I)
 _PLANNED = re.compile(r"\b(?:será|serão|vai|vão|irá|irão|planeja|previsto|prevista|agendado|agendada|will|scheduled|planned|plans)\b", re.I)
-_PAST_EVENT = re.compile(r"\b(?:recebeu|morreu|faleceu|nasceu|lançou|pagou|enviou|inaugurou|cancelou|died|received|launched|paid|sent|born)\b", re.I)
+_PAST_EVENT = re.compile(r"\b(?:recebeu|morreu|faleceu|nasceu|lançou|lançada|lançado|pisou|pisaram|pagou|enviou|inaugurou|cancelou|died|received|launched|walked|paid|sent|born)\b", re.I)
 _DATE_METADATA = re.compile(r"\b(?:publicad[oa]|publicação|atualizad[oa]|atualização|published|publication|updated|last update|posted)\b", re.I)
 _DATE_BYLINE = re.compile(r"^\s*(?:por|by)\s+.{1,100}\b\d{1,2}[/-]\d{1,2}[/-]\d{4}\b", re.I)
 _OTHER_DATED_EVENT = re.compile(r"\b(?:anunciou|anunciad[oa]|anúncio|divulgou|divulgad[oa]|comunicado|announced|announcement|"
-                               r"assinou|assinad[oa]|emitiu|emitid[oa]|signed|issued)\b", re.I)
+                               r"assinou|assinad[oa]|emitiu|emitid[oa]|signed|issued|homenagem|tributo|tribute|funeral|enterro|burial)\b", re.I)
 _COMPOUND = re.compile(r"\b(?:e|também|além disso|mas|porém|and|also|but)\b", re.I)
 _FALSE_CONTEXT = re.compile(r"\b(?:é falso|é falsa|afirmação falsa|afirmação é falsa|mensagem falsa|mensagem é falsa|desmentid[oa]|false claim|not true|não é verdade)\b", re.I)
 _FALSE_PREFIX = re.compile(r"^\s*(?:é fals[oa] que|não é verdade que|it is false that|it is not true that)\s+", re.I)
@@ -78,6 +83,14 @@ _NAME_ORDINAL = re.compile(r"\b([A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][a-záàâãéêí�
 _NAME_ROMAN = re.compile(r"\b([A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][a-záàâãéêíóôõúç]{2,})[ \t]+([IVXLCDM]{1,6})\b")
 _SINGLE_EVENT = (("death", re.compile(r"\b(?:" + "|".join(_DEATH_WORDS) + r")\b", re.I)),
                  ("birth", re.compile(r"\b(?:nasceu|nascimento|birth|born)\b", re.I)))
+_RELATIONAL_SUBJECT = re.compile(r"\b(?:mãe|pai|filh[oa]|espos[oa]|mother|father|daughter|son|wife|husband)\s+(?:da|do|de|of)\b", re.I)
+_DISTINCT_ACTIONS = (("event-walk", re.compile(r"\b(?:walked|pisou|pisaram)\b", re.I)),
+                     ("event-launch", re.compile(r"\b(?:launch|launched|launches|lançamento|lançou|lançada|lançado)\b", re.I)))
+_HUMAN_AGENT = re.compile(r"\b(?:homem|homens|human[oa]s?|pessoas?|astronautas?|man|men|humans?|people|persons?|astronauts?)\b", re.I)
+_WALK_PREDICATE = _DISTINCT_ACTIONS[0][1]
+_MACHINE_AGENT = re.compile(r"\b(?:rovers?|robôs?|robots?|spacecraft|sondas?)\b", re.I)
+_WALK_NEGATION = re.compile(r"\b(?:não|nao|nunca|jamais|nem|not|never|didn't|wasn't)\s+"
+    r"(?:(?:has|have|did|foi|was|realmente|ever|ainda)\s+){0,2}(?:pisou|pisaram|walked)\b", re.I)
 
 _EVIDENCE_SCHEMA = {"type": "object", "properties": {
     "source_id": {"type": "string"}, "excerpt_id": {"type": "string"},
@@ -241,24 +254,62 @@ def _units(text):
     return currencies, units
 
 
-def _singleton_date_bound(quote, event):
+def _nominal_subject(before_date, event):
+    """Only named nominal event + direct date connector, no event inference."""
+    nominal = (r"(?:falecimento|morte|death)" if event == "death" else r"(?:nascimento|birth)")
+    matches = list(re.finditer(r"\b" + nominal + r"\s+(?:da|do|de|of)\s+", before_date, re.I))
+    if len(matches) != 1:
+        return None
+    remainder = before_date[matches[0].end():]
+    if matches[0][0].lower().startswith(("death", "birth")):
+        match = re.fullmatch(r"(.{1,160}?)\s+on\s*", remainder, re.I)
+    else:
+        match = re.fullmatch(r"(.{1,160}?)\s+(?:aconteceu|ocorreu|se deu)\s+em\s*", remainder, re.I)
+    return match[1] if match else None
+
+
+def _singleton_subject_matches(claim, subject, event):
+    if _RELATIONAL_SUBJECT.search(subject):
+        return False
+    if claim is None:
+        return True
+    identities = _name_identity_tokens(claim)
+    if identities:
+        return identities <= _name_identity_tokens(subject)
+    predicate = r"\b(?:morreu|faleceu|died|die)\b" if event == "death" else r"\b(?:nasceu|born)\b"
+    direct = re.search(predicate, claim, re.I)
+    claimed_subject = claim[:direct.start()] if direct else None
+    if claimed_subject is None:
+        spans = sorted({match.span() for date in (_LONG_DATE, _EN_DATE, _NUM_DATE, _ISO_DATE)
+                        for match in date.finditer(claim)})
+        claimed_subject = _nominal_subject(claim[:spans[0][0]], event) if len(spans) == 1 else None
+    names = _names(claimed_subject or "")
+    return bool(names) and names <= _tokens(subject)
+
+
+def _singleton_date_bound(quote, event, claim=None):
     """Accept narrow explicit date/predicate constructions, not bags of words.
 
     A date next to a tribute, funeral or discovery cannot date a death merely
-    mentioned elsewhere. Nominal/indirect constructions deliberately abstain.
+    mentioned elsewhere. A tiny nominal grammar accepts a named subject with
+    an explicit occurrence/date connector, never announcement/tribute dates.
     This is a lexical safeguard, not a general temporal or semantic parser.
     """
     pattern = r"\b(?:morreu|faleceu|died|die)\b" if event == "death" else r"\b(?:nasceu|born)\b"
     predicates = list(re.finditer(pattern, quote, re.I))
     spans = sorted({match.span() for date in (_LONG_DATE, _EN_DATE, _NUM_DATE, _ISO_DATE)
                     for match in date.finditer(quote)})
-    if len(predicates) != 1 or len(spans) != 1:
+    if len(spans) != 1 or len(predicates) > 1:
         return False
-    predicate = predicates[0]
     start, end = spans[0]
+    if not predicates:
+        subject = _nominal_subject(quote[:start], event)
+        return subject is not None and _singleton_subject_matches(claim, subject, event)
+    predicate = predicates[0]
     if predicate.end() <= start:
         bridge = quote[predicate.end():start]
-        return bool(re.fullmatch(r"\s*(?:aos?\s+\d+\s+anos,?\s+)?(?:em|on|no dia|na data de)\s*", bridge, re.I))
+        return (bool(re.fullmatch(r"\s*(?:aos?\s+\d+\s+anos,?\s+)?(?:em|on|no dia|na data de)\s*", bridge, re.I))
+                and _singleton_subject_matches(claim, quote[:predicate.start()], event))
     if end <= predicate.start() and re.fullmatch(r"\s*(?:em|on)\s*", quote[:start], re.I):
         # Only a directly named subject may bridge a leading date to the
         # predicate; unknown actions/qualifiers cannot borrow that date.
@@ -270,7 +321,8 @@ def _singleton_date_bound(quote, event):
         words = re.findall(r"[^\W\d_]+", subject, re.UNICODE)
         neutral = {"a", "o", "as", "os", "the", "da", "do", "de", "of", "rainha", "rei", "queen", "king",
                    "não", "nao", "not", "nunca", "never", "jamais", "did", "was"}
-        return bool(words) and all(word.casefold() in neutral or word[0].isupper() for word in words)
+        return (bool(words) and all(word.casefold() in neutral or word[0].isupper() for word in words)
+                and _singleton_subject_matches(claim, subject, event))
     return False
 
 
@@ -282,6 +334,18 @@ def _relation_guard(claim, quote, context, relation, retrieved_at):
         return "Instrução financeira, médica ou jurídica não recebe aprovação automática; procure confirmação especializada."
     if not _same_event(claim, quote):
         return "Entidades e âncoras do mesmo evento não foram preservadas."
+    if any(pattern.search(claim) and not pattern.search(quote) for _, pattern in _DISTINCT_ACTIONS):
+        return "Ação alegada não aparece no trecho; pouso de uma nave não comprova caminhada de pessoas."
+    if _WALK_PREDICATE.search(claim) and _HUMAN_AGENT.search(claim):
+        if not _HUMAN_AGENT.search(quote):
+            return "Caminhada humana exige sujeito humano explícito no corpo; caminhada de robô/sonda não comprova ação de pessoas."
+        for predicate in _WALK_PREDICATE.finditer(quote):
+            if _MACHINE_AGENT.search(quote[max(0, predicate.start() - 160):predicate.start()]):
+                return "Sujeito da caminhada pode ser máquina; referência a pessoas em outra parte não comprova caminhada humana."
+        for statement in (claim, quote):
+            scoped = {match.start() for match in _WALK_NEGATION.finditer(statement)}
+            if any(match.start() not in scoped for match in _NEGATION.finditer(statement)):
+                return "Negação fora do predicado de caminhada; negar quantidade de provas não nega a ocorrência do evento."
     if _COMPOUND.search(claim) and not _tokens(claim) <= _tokens(quote):
         return "Afirmação composta contém partes sem correspondência no trecho; confirmação parcial não cobre o conjunto."
     if _UNCERTAIN.search(quote) and not _UNCERTAIN.search(claim):
@@ -307,7 +371,7 @@ def _relation_guard(claim, quote, context, relation, retrieved_at):
         return "Moeda ou unidade não foi preservada; mesma quantidade numérica não basta."
     if "invalid-date" in claim_dates | quote_dates:
         return "Data inválida; comparação descartada."
-    if claim_dates and claim_events and quote_dates and not _singleton_date_bound(quote, next(iter(claim_events))):
+    if claim_dates and claim_events and quote_dates and not _singleton_date_bound(quote, next(iter(claim_events)), claim):
         return "Data não está ligada explicitamente ao predicado de morte/nascimento; outro evento ou construção indireta exige revisão humana."
     if _PAST_EVENT.search(claim) and any(date > datetime.fromisoformat(retrieved_at.replace("Z", "+00:00")).date().isoformat()
                                       for date in claim_dates):
@@ -345,11 +409,11 @@ def _relation_guard(claim, quote, context, relation, retrieved_at):
 
 
 def _prepare_sources(documents, claims, source_url):
-    sources, excluded, passages = [], [], {}
+    sources, excluded, passages, selected_documents = [], [], {}, []
     submitted = source_identity(source_url)
     body_hashes, urls = set(), set()
-    budget = 0
-    for raw in documents[:MAX_SOURCES]:
+    candidates = []
+    for raw in documents[:MAX_RECOVERY_DOCUMENTS]:
         if not isinstance(raw, dict):
             excluded.append({"exclusion_reason": "Documento fora do contrato de leitura."})
             continue
@@ -362,7 +426,13 @@ def _prepare_sources(documents, claims, source_url):
                 or any(not isinstance(sentence, str) for sentence in raw_sentences)):
             excluded.append({"url": identity["url"], "exclusion_reason": "Corpo de documento inválido."})
             continue
-        sentences = [sentence.strip() for sentence in raw_sentences if sentence.strip()]
+        roles = raw.get("sentence_roles", ["body"] * len(raw_sentences))
+        if (not isinstance(roles, list) or len(roles) != len(raw_sentences)
+                or any(not isinstance(role, str) or role not in {"body", "context"} for role in roles)):
+            excluded.append({"url": identity["url"], "exclusion_reason": "Papéis das sentenças fora do contrato de leitura."})
+            continue
+        cleaned = [(sentence.strip(), role) for sentence, role in zip(raw_sentences, roles) if sentence.strip()]
+        sentences, sentence_roles = [item[0] for item in cleaned], [item[1] for item in cleaned]
         body = " ".join(sentences)
         if len(body) > 50000 or len(sentences) > 5000:
             excluded.append({"url": identity["url"], "exclusion_reason": "Documento excede o contrato de leitura limitada."})
@@ -383,7 +453,10 @@ def _prepare_sources(documents, claims, source_url):
             continue
         # A wire credit can appear far from the selected quote. Collapse the
         # full bounded body BEFORE deciding whether two sources merit a call.
-        identity["publisher_family"] = source_family(identity["url"], body)
+        dependency_family = source_family(identity["url"], body)
+        if dependency_family != identity["publisher_family"]:
+            identity["source_type"] = "editorial"
+        identity["publisher_family"] = dependency_family
         stamp = raw.get("retrieved_at")
         try:
             when = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
@@ -392,34 +465,120 @@ def _prepare_sources(documents, claims, source_url):
         except (ValueError, TypeError, AttributeError):
             excluded.append({"url": identity["url"], "exclusion_reason": "Documento sem data válida de recuperação."})
             continue
-        source = {**identity, "source_id": f"s{len(sources) + 1}",
+        source = {**identity,
                   "title": raw.get("title", "")[:300] if isinstance(raw.get("title"), str) else "Página consultada",
                   "source_role": role, "retrieved_at": stamp, "truncated": raw.get("truncated") is True,
-                  "passages": []}
+                  "passages": [], "candidates": [], "raw": raw}
+        leading_context_indices = []
+        for index, sentence_role in enumerate(sentence_roles):
+            if sentence_role != "context":
+                break
+            leading_context_indices.append(index)
+        if len(" ".join(sentences[index] for index in leading_context_indices)) > 3 * MAX_SENTENCE:
+            excluded.append({"url": identity["url"], "exclusion_reason": "Contexto inicial excede o limite; qualificadores não foram descartados para obter uma conclusão."})
+            continue
         ranked = sorted(range(len(sentences)), key=lambda i: max((len(_tokens(claim) & _tokens(sentences[i]))
                         for claim in claims), default=0), reverse=True)
-        selected = []
         for index in ranked:
             quote = sentences[index]
-            if not (20 <= len(quote) <= MAX_SENTENCE) or not any(_same_event(claim, quote) for claim in claims):
+            if sentence_roles[index] != "body" or not (20 <= len(quote) <= MAX_SENTENCE):
                 continue
-            # Adjacent full sentences are retained, never truncated for a quote.
-            context = " ".join(sentences[max(0, index - 1):index + 2])
-            if len(context) > 3 * MAX_SENTENCE or budget + len(context) + len(quote) > MAX_PROMPT_BODY:
+            # Initial title/subtitle qualifiers remain attached even when the
+            # factual sentence occurs much later. Context stays complete and
+            # bounded, never promoted to evidence or dropped to force a vote.
+            context_indices = sorted(set(leading_context_indices + list(range(max(0, index - 1), min(len(sentences), index + 2)))))
+            context = " ".join(sentences[item] for item in context_indices)
+            if len(context) > 3 * MAX_SENTENCE:
                 continue
-            passage = {"excerpt_id": f"{source['source_id']}:e{index + 1}", "quote": quote, "context": context}
-            selected.append((index, passage))
-            budget += len(context) + len(quote)
-            if len(selected) >= MAX_PASSAGES:
+            # Pure lexical admissibility is evaluated BEFORE a model call.
+            # Neither titles/context nor a potentially unrelated date may make
+            # a source look usable merely through token overlap.
+            if not any(_relation_guard(claim, quote, context, relation, stamp) is None
+                       for claim in claims for relation in ("supports", "refutes")):
+                continue
+            source["candidates"].append((index, {"quote": quote, "context": context}))
+            if len(source["candidates"]) >= MAX_PASSAGES:
                 break
-        for _, passage in sorted(selected):
-            source["passages"].append(passage)
-            passages[(source["source_id"], passage["excerpt_id"])] = {**source, **passage}
-        if source["passages"]:
-            sources.append(source)
+        if source["candidates"]:
+            candidates.append(source)
         else:
             excluded.append({"url": identity["url"], "exclusion_reason": "Nenhuma sentença completa elegível dentro dos limites de comparação."})
-    return sources, passages, excluded
+    # Favor primary material, then distinct actual dependency families; retain
+    # input ordering for ties. Host names alone are not independence evidence.
+    candidates.sort(key=lambda source: source["source_type"] != "primary")
+    distinct, repeated, families = [], [], set()
+    for source in candidates:
+        if source["publisher_family"] not in families:
+            distinct.append(source)
+            families.add(source["publisher_family"])
+        else:
+            repeated.append(source)
+    budget, quote_fingerprints = 0, set()
+    for source in distinct + repeated:
+        if len(sources) >= MAX_SOURCES:
+            break
+        selected = []
+        for index, candidate in source["candidates"]:
+            fingerprint = normalize_claim(candidate["quote"])
+            if fingerprint in quote_fingerprints:
+                continue
+            cost = len(candidate["context"]) + len(candidate["quote"])
+            if budget + cost > MAX_PROMPT_BODY:
+                continue
+            selected.append((index, candidate, fingerprint))
+            budget += cost
+        if not selected:
+            excluded.append({"url": source["url"], "exclusion_reason": "Trechos repetidos ou limite global de comparação; não é evidência independente."})
+            continue
+        raw = source.pop("raw")
+        source.pop("candidates")
+        source["source_id"] = f"s{len(sources) + 1}"
+        for index, candidate, fingerprint in sorted(selected):
+            passage = {"excerpt_id": f"{source['source_id']}:e{index + 1}", **candidate}
+            source["passages"].append(passage)
+            passages[(source["source_id"], passage["excerpt_id"])] = {**source, **passage}
+            quote_fingerprints.add(fingerprint)
+        sources.append(source)
+        selected_documents.append(raw)
+    return sources, passages, excluded, selected_documents
+
+
+def select_comparison_documents(text, documents, source_url=None):
+    """Pure bounded selection: <=3 original documents from first <=6 inputs.
+
+    At least one complete BODY sentence must be potentially admissible for
+    support/refutation. No fetch, model call, title/snippet vote or mutation.
+    This is retrieval eligibility, not a verdict or certified independence.
+    """
+    if not isinstance(text, str) or not 0 < len(text) <= MAX_INPUT or not isinstance(documents, list):
+        return []
+    claims = input_claims(text)[:MAX_CLAIMS]
+    return _prepare_sources(documents, claims, source_url)[3] if claims else []
+
+
+def usable_source_families(text, documents, source_url=None):
+    """Actual eligible dependency families of the bounded selected bodies."""
+    if not isinstance(text, str) or not 0 < len(text) <= MAX_INPUT or not isinstance(documents, list):
+        return set()
+    claims = input_claims(text)[:MAX_CLAIMS]
+    sources = _prepare_sources(documents, claims, source_url)[0] if claims else []
+    return {source["publisher_family"] for source in sources}
+
+
+def document_selection_audit(text, documents, source_url=None):
+    """Bounded pure diagnostics: fixed reasons/public URLs, no body or model.
+
+    The same selector owns eligibility. This output cannot be used as evidence
+    or as a truth decision and contains no submitted text or complete quotes.
+    """
+    if not isinstance(text, str) or not 0 < len(text) <= MAX_INPUT or not isinstance(documents, list):
+        return {"excluded_sources": [{"exclusion_reason": "Entrada fora do contrato de seleção documental."}],
+                "selected_source_urls": [], "eligible_family_count": 0}
+    claims = input_claims(text)[:MAX_CLAIMS]
+    sources, _, excluded, _ = _prepare_sources(documents, claims, source_url)
+    return {"excluded_sources": excluded[:MAX_RECOVERY_DOCUMENTS],
+            "selected_source_urls": [source["url"] for source in sources],
+            "eligible_family_count": len({source["publisher_family"] for source in sources})}
 
 
 def _gemini_schema(schema):
@@ -435,30 +594,34 @@ def _gemini_schema(schema):
 
 async def _compare(prompt, coverage):
     # Shared coverage preserves which provider was in flight at whole deadline.
-    coverage["openrouter"]["status"] = "pending"
-    try:
-        raw = await openrouter_service.generate(prompt, system_instruction=SYSTEM_INSTRUCTION,
-                temperature=0, max_tokens=2048, response_format=RESPONSE_FORMAT)
-        coverage["openrouter"].update(status="success", model_used=getattr(raw, "model_name", None))
-        return raw, coverage, "success"
-    except openrouter_service.OpenRouterError as exc:
-        coverage["openrouter"]["status"] = exc.status
-        if exc.status in {"invalid_response", "invalid_configuration"}:
-            return None, coverage, exc.status
-    except Exception:
-        coverage["openrouter"]["status"] = "error"
-    coverage["gemini"]["status"] = "pending"
-    try:
-        raw = await gemini_client.generate_text(prompt, system_instruction=SYSTEM_INSTRUCTION,
-                temperature=0, max_tokens=2048, response_schema=_gemini_schema(SCHEMA))
-        coverage["gemini"].update(status="success", model_used=getattr(raw, "model_name", None))
-        return raw, coverage, "success"
-    except gemini_client.GeminiError as exc:
-        coverage["gemini"]["status"] = exc.status
-        return None, coverage, exc.status
-    except Exception:
-        coverage["gemini"]["status"] = "error"
-        return None, coverage, "error"
+    primary = os.getenv("SOURCE_CROSSCHECK_PRIMARY_PROVIDER", "gemini").strip().lower()
+    if primary not in {"gemini", "openrouter"}:
+        return None, coverage, "invalid_configuration"
+    providers = (primary, "openrouter" if primary == "gemini" else "gemini")
+    status = "error"
+    for provider in providers:
+        coverage[provider]["status"] = "pending"
+        try:
+            if provider == "gemini":
+                raw = await gemini_client.generate_text(prompt, system_instruction=SYSTEM_INSTRUCTION,
+                    temperature=0, max_tokens=2048, response_schema=_gemini_schema(SCHEMA))
+            else:
+                raw = await openrouter_service.generate(prompt, system_instruction=SYSTEM_INSTRUCTION,
+                    temperature=0, max_tokens=2048, response_format=RESPONSE_FORMAT)
+            coverage[provider].update(status="success", model_used=getattr(raw, "model_name", None))
+            return raw, coverage, "success"
+        except (openrouter_service.OpenRouterError, gemini_client.GeminiError) as exc:
+            status = exc.status
+            coverage[provider]["status"] = status
+            # Only unavailable transport/configuration presence can switch
+            # provider. Malformed output/configuration never gets a repair or
+            # repeated attempt to achieve a desired relation/verdict.
+            if status not in {"error", "timeout", "rate_limited", "not_configured", "unavailable"}:
+                return None, coverage, status
+        except Exception:
+            status = "error"
+            coverage[provider]["status"] = status
+    return None, coverage, status
 
 
 def _decode(raw, claims, passages):
@@ -543,7 +706,7 @@ async def corroborate_sources(text, documents, source_url=None):
     segments = input_claims(text) if valid_input else []
     claims = [{"claim_id": f"c{index + 1}", "claim": claim} for index, claim in enumerate(segments[:MAX_CLAIMS])]
     valid_documents = isinstance(documents, list)
-    sources, passages, excluded = _prepare_sources(documents if valid_documents else [], [c["claim"] for c in claims], source_url)
+    sources, passages, excluded, _ = _prepare_sources(documents if valid_documents else [], [c["claim"] for c in claims], source_url)
     families = {source["publisher_family"] for source in sources}
     provider_coverage = {"openrouter": {"status": "not_requested", "decision_role": "grounded_comparison_assistant", "free_only": True},
                          "gemini": {"status": "not_requested", "decision_role": "grounded_comparison_assistant"}}

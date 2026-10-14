@@ -2,6 +2,8 @@
 
 Guia de 13 de outubro de 2026, horário de Brasília. Preparado após o usuário informar expiração do Railway. Não houve contratação, recarga, alteração de variáveis da conta, leitura do `.env` privado ou confirmação de recuperação do banco durante a elaboração deste guia.
 
+Revisão de configuração de **14/10/2026**: atualiza a ordem Gemini/OpenRouter e a recuperação documental limitada; não altera nem substitui os resultados históricos de 13/10. Os controles atuais e suas pendências ficam no [registro de validação de APIs de 14/10](VALIDACAO-APIS-2026-10-14.md). Railway continua expirado; testes locais não comprovam retorno da produção, e testes pela interface ainda precisam de registro específico.
+
 Objetivo: recuperar o backend existente, preservar contas/histórico e validar o fluxo Vercel → Railway → PostgreSQL → fornecedores → relatório. Renovação da hospedagem não garante disponibilidade de todas as APIs nem precisão universal dos vereditos.
 
 ## 1. Antes de renovar: preservar dados e identificar a interrupção
@@ -102,7 +104,7 @@ Cookies cross-site podem ser restringidos pelo navegador mesmo com flags correta
 | --- | --- |
 | `GOOGLE_FACT_CHECK_KEY` | Recupera checagens editoriais existentes; sem resultado não significa notícia falsa ou API quebrada. |
 | `SERPERAPI_KEY` | Busca de notícias/páginas para recuperar referências. Créditos e limites da conta continuam valendo. |
-| `OPENROUTER_API_KEY`, `OPENROUTER_ENABLED=true`, `OPENROUTER_MODEL=openrouter/free` | Extração auxiliar/fallback de OCR com rota gratuita; API/modelos podem ficar indisponíveis. |
+| `OPENROUTER_API_KEY`, `OPENROUTER_ENABLED=true`, `OPENROUTER_MODEL=openrouter/free` | Extração auxiliar, fallback de OCR e alternativa gratuita de comparação documental; API/modelos podem ficar indisponíveis. Não vota por conhecimento próprio. |
 | `OPENROUTER_DAILY_LIMIT=40` | Limite local por processo, inclui tentativas com falha; não aumenta limite externo nem é controle financeiro global. |
 | `OPENROUTER_FALLBACK_MODELS` | Manter vazio ou usar somente variantes específicas `:free` aceitas pelo código; não `openrouter/auto`. |
 | `GEMINI_API_KEY`, `GEMINI_MODEL_NAME`, `GEMINI_MEDIA_MODEL_NAME` | Preservar os modelos explícitos escolhidos no último deploy; o usuário havia configurado `gemini-3.1-flash-lite`. Confirmar acesso/cota atual, sem trocar modelos automaticamente na retomada. |
@@ -111,7 +113,7 @@ Cookies cross-site podem ser restringidos pelo navegador mesmo com flags correta
 | `GEMINI_FALLBACK_MODELS` | Manter vazio se não houver modelo alternativo explicitamente habilitado e testado. |
 | `LOCAL_OCR_ENABLED=true` | Tesseract local lê texto de imagens sem API. OCR não detecta falsidade nem comprova origem. |
 
-Não confundir `SERPERAPI_KEY` com `SERPAPI_KEY`: são fornecedores distintos. A segunda não substitui a primeira na busca textual deste pipeline. Gemini/OpenRouter auxiliam leitura e pesquisa; concordância entre respostas não é prova factual.
+Não confundir `SERPERAPI_KEY` com `SERPAPI_KEY`: são fornecedores distintos. A segunda não substitui a primeira na busca textual deste pipeline. Gemini/OpenRouter auxiliam leitura, pesquisa e comparação de corpos efetivamente recuperados; concordância entre respostas não é prova factual.
 
 ### Novo cruzamento fundamentado
 
@@ -119,15 +121,26 @@ A implementação iniciada em 13/10 reutiliza as APIs existentes, sem nova contr
 
 ```text
 SOURCE_CROSSCHECK_ENABLED=true
+SOURCE_CROSSCHECK_PRIMARY_PROVIDER=gemini
 SOURCE_CROSSCHECK_TIMEOUT_SECONDS=60
-SOURCE_CROSSCHECK_SEARCH_LIMIT=2
+SOURCE_CROSSCHECK_SEARCH_LIMIT=3
 ```
 
-`SOURCE_CROSSCHECK_ENABLED` controla a camada adicional; o default da revisão é `true`. O prazo de comparação é único, compartilhado entre OpenRouter e eventual fallback Gemini, com limite permitido de 10–60 segundos; não é prazo por tentativa nem garantia de resposta. A busca/leitura usa `SERPERAPI_KEY`; comparação usa OpenRouter com `openrouter/free`/preço máximo zero e Gemini como alternativa, preservando o `GEMINI_MODEL_NAME` já escolhido. Falha de ambos não se transforma em voto factual.
+`SOURCE_CROSSCHECK_ENABLED` controla a camada adicional; o default da revisão é `true`. `SOURCE_CROSSCHECK_PRIMARY_PROVIDER` aceita somente `gemini` ou `openrouter`, com **Gemini como padrão**. No perfil acima, OpenRouter continua a extração auxiliar de afirmações/termos literais e Gemini compara as afirmações originais com citações dos corpos recuperados. Se essa comparação ficar indisponível por transporte, quota ou ausência de configuração, OpenRouter gratuito pode servir de alternativa. Configuração inválida, JSON inválido ou resposta incompleta não acionam outra tentativa para reparar a conclusão.
 
-`SOURCE_CROSSCHECK_SEARCH_LIMIT` aceita 1 ou 2 (default 2): a segunda busca é condicional, preserva a frase literal inteira e limita a sites curados. Busca/leitura compartilham 30 segundos e até três páginas; não repetem quota/erro para contornar o fornecedor. OCR/ASR automático não conferido mantém uma busca/prazo de 20 segundos; texto conferido entra na nova comparação. [Política, controles e limites atuais](CRUZAMENTO-FONTES-2026-10-13.md).
+O prazo de comparação é único, compartilhado entre o provedor primário e eventual fallback, com limite permitido de 10–60 segundos; não é prazo por tentativa nem garantia de resposta. A busca/leitura usa `SERPERAPI_KEY`. Gemini preserva o `GEMINI_MODEL_NAME` explícito já escolhido; OpenRouter preserva `openrouter/free`/variante específica `:free` e preço máximo zero. Falha de ambos não se transforma em voto factual. A opção `openrouter` apenas inverte essa ordem de comparação, sem transformar as duas IAs em fontes independentes.
 
-Google Fact Check continua como caminho especializado. O cruzamento pode buscar sustentação/refutação em corpos de páginas quando houver correspondência segura e duas famílias editoriais; sem cobertura suficiente ou diante de contexto ambíguo/conflito, deve se abster. Ativar a variável não basta para homologar essa política: sua configuração deve coincidir com o código e o `.env.example` efetivamente publicados e os controles precisam ser realizados após a retomada.
+`SOURCE_CROSSCHECK_SEARCH_LIMIT` aceita 1, 2 ou 3 (default 3):
+
+1. A primeira busca usa a afirmação literal inteira elegível, sem cortar datas, valores ou negações. Até três páginas são inicialmente tentadas.
+2. Se faltarem duas famílias **com corpos utilizáveis** e a busca responder com sucesso/sem resultados, pode haver recuperação em sites curados. Com limite 3 e construções reconhecidas, duas consultas neutras separam fontes oficiais e explicações editoriais/biográficas; com limite 2, há uma consulta combinada. Para outras construções, mantém uma consulta literal com filtro de sites. São pistas de recuperação, não reescrevem o que será julgado. Erro/quota interrompe o plano, sem contornar o fornecedor.
+3. A leitura adicional pode levar o total a **seis tentativas cumulativas de páginas**, dentro de **45 segundos** compartilhados pela busca/leitura. Corpos e falhas já obtidos são reutilizados; falha não é repetida ou removida do teto. Das páginas elegíveis, até **três documentos** seguem para comparação.
+
+A afirmação original — inclusive data errada ou negação — permanece intacta na seleção de evidência, nas guardas e na decisão. Identidade/evento de busca, título, snippet, data de publicação, documento enviado pelo usuário e citação de contexto não viram evidência positiva automaticamente. Títulos/subtítulos iniciais e sentenças adjacentes qualificam o corpo; a comparação exige sentença de corpo completa e validada.
+
+Não repetir buscas após quota/erro para contornar o fornecedor. OCR/ASR automático não conferido mantém uma busca/prazo de 20 segundos e não executa a nova comparação; texto conferido entra nesse caminho. [Contrato histórico e limites de 13/10](CRUZAMENTO-FONTES-2026-10-13.md), [revisão e validação de 14/10](VALIDACAO-APIS-2026-10-14.md).
+
+Google Fact Check continua como caminho especializado. O cruzamento pode buscar sustentação/refutação em corpos de páginas quando houver correspondência segura e duas famílias elegíveis (editoriais ou primárias); cópias/dependência de agência contam uma vez. Sem cobertura suficiente ou diante de contexto ambíguo/conflito, deve se abster. Ativar a variável não basta para homologar essa política: sua configuração deve coincidir com o código e o `.env.example` efetivamente publicados e os controles precisam ser realizados após a retomada.
 
 Uma fonte enviada pelo usuário não é confirmação independente; notícias relacionadas, títulos/snippets e várias cópias da mesma matéria não bastam. O teste de retomada precisa conferir trechos recuperados, datas/valores/negações, independência, refutação e conflito, não procurar qualquer resultado “verdadeiro” para encerrar a validação.
 
@@ -195,6 +208,10 @@ Os **567 testes backend e 170 frontend** são o checkpoint histórico de 11/10, 
 
 Checkpoint local final de 13/10: **637 backend, 181 frontend e build passaram**, sem chamadas externas na suíte. Controles públicos separados executaram busca/leitura e uma comparação OpenRouter, mas continuaram inconclusivos; Gemini e detectores de mídia não foram chamados nesta rodada. [Resultados e limites](CRUZAMENTO-FONTES-2026-10-13.md). Homologação no Railway segue pendente enquanto a hospedagem estiver expirada.
 
+Em 14/10, as primeiras tentativas locais dos controles de Elizabeth II com 8/9 e 9/9 permaneceram inconclusivas. Diagnóstico separado demonstrou que os corpos públicos Royal/UOL conhecidos tinham trechos elegíveis nas guardas; isso não significa que a busca daquelas tentativas os tivesse recuperado. A revisão melhora recuperação/seleção e comparação, mas integração respondendo não basta para afirmar veredito correto. Os resultados finais, fornecedores realmente chamados, regressões e pendências são registrados separadamente em [validação de 14/10](VALIDACAO-APIS-2026-10-14.md), sem reclassificar tentativas antigas como acertos.
+
+Testes pela API local não equivalem a ensaio pela interface. O ensaio de navegador permanece pendente nesta rodada por decisão do usuário; produção depende da retomada da hospedagem e de nova validação ponta a ponta.
+
 O runner offline bloqueia rede/credenciais, testa regras/erros com controles e usa bancos descartáveis. Build e CI demonstram compilação/regressões, não acesso à conta, saldo, disponibilidade atual ou acerto de veredito numa notícia real. Produção indisponível continua impedindo homologação ponta a ponta; não registrar resultado local como teste concluído no Railway.
 
 ## 8. Erros comuns e verificação segura
@@ -210,7 +227,7 @@ O runner offline bloqueia rede/credenciais, testa regras/erros com controles e u
 | OpenRouter sem modelo gratuito | Disponibilidade/cota da rota gratuita; não substituir por modelo pago silenciosamente. |
 | Hive indisponível | Secret Key v3, versão, media types e reserva; acesso de projeto v2 não equivale a v3. |
 | Áudio transcreve, mas origem inconclusiva | Separação entre ASR e detector acústico; acesso real ao detector e quantidade de fala. |
-| Texto continua inconclusivo com buscas respondendo | Cobertura/relação entre evidência e afirmação, não necessariamente erro de integração. |
+| Texto continua inconclusivo com buscas respondendo | Fontes realmente recuperadas, sentenças de corpo elegíveis, cobertura/relação com afirmação original, dependência/cópias e motivo da seleção. Não confundir HTTP 200 com duas evidências utilizáveis. |
 
 Não colar logs brutos, arquivos `.env`, cookies, tokens de relatório, credenciais ou URLs de banco em chat/issue. Para pedir ajuda, basta domínio público, hora, modalidade, mensagem/status, commit e nomes das variáveis presentes com valores ocultos.
 
@@ -222,7 +239,7 @@ Não colar logs brutos, arquivos `.env`, cookies, tokens de relatório, credenci
 - [ ] `DATABASE_URL` privada, JWT/HMAC fortes e estáveis, cookies/CORS de produção.
 - [ ] Domínio backend confirmado; `VITE_API_URL` correto e frontend rebuildado quando necessário.
 - [ ] APIs/opções configuradas somente nas modalidades autorizadas e com orçamento vigente.
-- [ ] Regressões finais de 13/10 registradas separadamente dos controles de 11/10.
+- [ ] Regressões da revisão desejada registradas separadamente dos checkpoints de 11/10 e 13/10; consultar validação de 14/10.
 - [ ] Testes reais pela interface realizados após retomada, com evidência e limitações por modalidade.
 - [ ] Cadastro/login/histórico/isolamento e exportação reaberta validados sem dados privados indevidos.
 - [ ] Nenhuma afirmação de “100% de precisão” ou “todas as APIs funcionando” sem evidência correspondente.

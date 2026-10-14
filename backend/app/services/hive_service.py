@@ -113,9 +113,14 @@ async def _request_hive_v3(file_bytes, filename, media_type, mime_type, duration
             return {"available": False, "status": "pending", "api_version": "v3",
                     "reason": "Hive aceitou a tarefa, mas não retornou detecção síncrona. Não houve reenvio."}
         if response.status_code != 200:
-            return {"available": False, "status": "rate_limited" if response.status_code in {402, 429} else "error",
+            status = {401: "invalid_credentials", 403: "access_denied", 402: "quota_exhausted",
+                      429: "rate_limited", 503: "unavailable"}.get(response.status_code, "error")
+            return {"available": False, "status": status,
                     "api_version": "v3", "reason": f"Hive v3 indisponível (HTTP {response.status_code})."}
         return parse_hive_v3_scores(response.json(), media_type)
+    except httpx.TimeoutException:
+        return {"available": False, "status": "timeout", "api_version": "v3",
+                "reason": "Tempo limite do detector Hive v3 atingido; não houve reenvio."}
     except Exception:
         return {"available": False, "status": "error", "api_version": "v3",
                 "reason": "Não foi possível obter resposta válida do Hive v3."}
