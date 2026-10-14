@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, patch
 
 import httpx
 
-from app.core.pipeline import run_pipeline
+from app.core.pipeline import run_pipeline, _retrieve_source_attribution, SOURCE_SITE_FILTER
 from app.core.serper_client import NewsSearch, WEB_ENDPOINT, search_web
 
 
@@ -65,7 +65,7 @@ class ReferencePipelineTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(report["score"], 50)
         self.assertEqual(report["source_attribution"], attribution)
         self.assertEqual(report["provider_coverage"]["web_references"]["decision_role"], "source_attribution_only")
-        web.assert_awaited_once_with(sentence)
+        self.assertEqual([call.args[0] for call in web.await_args_list], [sentence, sentence + " " + SOURCE_SITE_FILTER])
 
     async def test_query_selection_preserves_enclosing_negation_and_audit(self):
         text = "Título. Autor. Atualização. Contexto. Não é verdade que a vacina altera o DNA."
@@ -86,3 +86,47 @@ class ReferencePipelineTests(unittest.IsolatedAsyncioTestCase):
         report, _, _ = await self.run_control("Uma mensagem factual suficientemente longa.", attribution)
         self.assertEqual(report["provider_coverage"]["web_references"]["status"], "error")
         self.assertEqual(report["analysis_status"], "inconclusive")
+
+
+class CuratedSourceSearchTests(unittest.IsolatedAsyncioTestCase):
+    async def test_explicitly_disabled_crosscheck_keeps_legacy_search_and_deadline(self):
+        text = "Elizabeth II morreu em 8 de setembro de 2022."
+        with (patch.dict(os.environ, {"SOURCE_CROSSCHECK_ENABLED": "true", "SOURCE_CROSSCHECK_SEARCH_LIMIT": "2"}),
+              patch("app.core.pipeline.search_web", new=AsyncMock(return_value=NewsSearch())) as search,
+              patch("app.core.pipeline.collect_source_attribution", new=AsyncMock(return_value={"status": "no_results", "coverage": {}})) as collect):
+            result = await _retrieve_source_attribution(text, [text], None, use_source_crosscheck=False)
+        search.assert_awaited_once_with(text)
+        self.assertFalse(collect.await_args.kwargs["include_documents"])
+        self.assertEqual(result["coverage"]["max_search_queries"], 1)
+        self.assertEqual(result["coverage"]["retrieval_deadline_seconds"], 20)
+
+    async def retrieve(self, query, leads, extra=None, limit="2"):
+        attribution = {"status": "no_results", "coverage": {}, "matches": []}
+        with (patch.dict(os.environ, {"SOURCE_CROSSCHECK_ENABLED": "true", "SOURCE_CROSSCHECK_SEARCH_LIMIT": limit}),
+              patch("app.core.pipeline.search_web", new=AsyncMock(side_effect=[leads, extra or NewsSearch()])) as search,
+              patch("app.core.pipeline.collect_source_attribution", new=AsyncMock(return_value=attribution)) as collect):
+            result = await _retrieve_source_attribution(query, [query], None)
+        return result, search, collect
+
+    async def test_second_search_preserves_literal_negative_claim_and_is_bounded(self):
+        text = "Elizabeth II não morreu em 9 de setembro de 2022."
+        result, search, collect = await self.retrieve(text, NewsSearch([{"link": "https://wikipedia.org/example"}]),
+            NewsSearch([{"link": "https://www.bbc.com/example"}]))
+        self.assertEqual([call.args[0] for call in search.await_args_list], [text, text + " " + SOURCE_SITE_FILTER])
+        self.assertEqual(len(collect.await_args.kwargs["search_results"]), 2)
+        self.assertEqual(len(result["coverage"]["search_queries"]), 2)
+        self.assertEqual(result["coverage"]["retrieval_deadline_seconds"], 30)
+
+    async def test_two_families_or_failure_or_explicit_one_search_does_not_retry(self):
+        text = "Elizabeth II morreu em 8 de setembro de 2022."
+        for leads, limit in ((NewsSearch([{"link": "https://g1.globo.com/a"}, {"link": "https://www.bbc.com/a"}]), "2"),
+                             (NewsSearch(status="rate_limited"), "2"), (NewsSearch(status="not_configured"), "2"),
+                             (NewsSearch(status="error"), "2"), (NewsSearch(status="no_results"), "1")):
+            _, search, _ = await self.retrieve(text, leads, limit=limit)
+            search.assert_awaited_once_with(text)
+
+    async def test_qualified_query_too_long_is_omitted_not_cut(self):
+        text = "Um contexto completo " + "x" * 430 + " não morreu em 9 de setembro de 2022."
+        self.assertLessEqual(len(text), 500)
+        _, search, _ = await self.retrieve(text, NewsSearch())
+        search.assert_awaited_once_with(text)

@@ -32,6 +32,11 @@ _CONSENT_UI = re.compile(
     r"(?:^|[-_\s])(?:cookie[-_]?(?:banner|consent|notice|dialog|modal)|"
     r"consent[-_]?(?:banner|notice|dialog|modal))(?:$|[-_\s])", re.I,
 )
+_PUBLICATION_DATE_TEXT = re.compile(
+    r"^(?:publicad[oa]|atualizad[oa]|[úu]ltima atualiza[çc][ãa]o|published|updated|last updated|last modified)\b",
+    re.I,
+)
+_PUBLICATION_DATE_PROPERTIES = {"datepublished", "datemodified", "datecreated"}
 _SEARCH_FAILURES = {
     "not_configured": "Busca de referências não configurada.",
     "timeout": "Busca de referências excedeu o prazo.",
@@ -91,13 +96,21 @@ def _article_sentences(resource):
             if tag.attrs is None:
                 continue
             identifiers = " ".join([str(tag.get("id", "")), *tag.get("class", [])])
+            properties = {value.casefold() for value in str(tag.get("itemprop", "")).split()}
+            # Publication/maintenance dates must not become a date of the
+            # narrated event by concatenation. Keep inline <time> in narrative
+            # paragraphs unless explicitly marked as publication metadata.
+            publication_date = bool(properties & _PUBLICATION_DATE_PROPERTIES) or (
+                tag.name == "time" and (tag.find_parent("p") is None
+                                        or _PUBLICATION_DATE_TEXT.search(tag.get_text(" ", strip=True))))
             if (tag.name in {"script", "style", "nav", "footer", "aside", "form", "template",
                              "noscript", "head", "dialog", "button", "input", "select", "textarea"}
                     or tag.has_attr("hidden")
                     or str(tag.get("aria-hidden", "")).lower() == "true"
                     or str(tag.get("role", "")).lower() == "dialog"
                     or _HIDDEN_STYLE.search(str(tag.get("style", "")))
-                    or _CONSENT_UI.search(identifiers)):
+                    or _CONSENT_UI.search(identifiers)
+                    or publication_date):
                 tag.decompose()
         main = soup.find("main") or soup.find("article") or soup.body or soup
         # Keep neighboring block text in the same sentence until punctuation.
@@ -136,7 +149,7 @@ async def _fetch_article(url):
         return {"failure": "error"}
 
 
-async def collect_source_attribution(text, queries, source_url=None, *, search_results=None):
+async def collect_source_attribution(text, queries, source_url=None, *, search_results=None, include_documents=False):
     """Return exact page excerpts with explicit bounded retrieval coverage.
 
     ``search_results`` is a list (optionally carrying ``status``/``reason``).
@@ -171,10 +184,24 @@ async def collect_source_attribution(text, queries, source_url=None, *, search_r
         title = item.get("title")
         urls.setdefault(url, title[:300] if isinstance(title, str) else "")
     selected_urls = list(urls)[:MAX_SOURCES] if candidates else []
+    if include_documents and candidates:
+        from app.services.source_corroboration import source_family
+        # Prefer distinct eligible publishers over three pages of one group;
+        # retain the submitted page for attribution, never independent proof.
+        preferred, families = ([submitted] if submitted else []), set()
+        if submitted:
+            families.add(source_family(submitted))
+        for candidate in urls:
+            family = source_family(candidate)
+            if family and family not in families:
+                preferred.append(candidate)
+                families.add(family)
+        selected_urls = list(dict.fromkeys([*preferred, *urls]))[:MAX_SOURCES]
     fetched = await asyncio.gather(*[_fetch_article(url) for url in selected_urls])
     failures = {"oversize": 0, "unsupported_content": 0, "timeout": 0,
                 "blocked_or_unavailable": 0, "error": 0}
     matches, seen_matches = [], set()
+    documents = []
     fetched_count = truncated_count = 0
     for requested_url, result in zip(selected_urls, fetched):
         if "failure" in result:
@@ -182,6 +209,10 @@ async def collect_source_attribution(text, queries, source_url=None, *, search_r
             continue
         fetched_count += 1
         truncated_count += int(result["truncated"])
+        if include_documents:
+            documents.append({**result,
+                "source_role": "submitted_source" if submitted in {requested_url, result["url"]}
+                               else "retrieved_reference"})
         source_sentences = {}
         for sentence in result["sentences"]:
             if len(sentence) <= MAX_CLAIM_CHARACTERS:
@@ -211,6 +242,8 @@ async def collect_source_attribution(text, queries, source_url=None, *, search_r
         "selected_claim_count": len(candidates), "omitted_claim_count": eligible_count - len(candidates),
         "matches_count": min(len(matches), MAX_MATCHES), "omitted_match_count": max(0, len(matches) - MAX_MATCHES),
     }
+    if include_documents:
+        coverage["source_selection"] = "distinct_eligible_families_then_other_references"
     limitations = [
         "Trecho publicado na fonte consultada; isso não comprova verdade, autoria, endosso ou independência editorial.",
         "Comparação literal de até oito frases e três páginas; paráfrases e partes não consultadas podem ficar sem correspondência.",
@@ -233,5 +266,10 @@ async def collect_source_attribution(text, queries, source_url=None, *, search_r
         "As páginas lidas não continham uma frase completa correspondente." if fetched_count else
         "As páginas selecionadas não puderam ser lidas com segurança." if selected_urls or invalid_urls else
         _SEARCH_FAILURES.get(search_status, "A busca não retornou páginas para atribuição."))
-    return {"status": status, "decision_role": "source_attribution_only", "matches": matches[:MAX_MATCHES],
-            "reason": reason, "limitations": limitations, "coverage": coverage}
+    response = {"status": status, "decision_role": "source_attribution_only", "matches": matches[:MAX_MATCHES],
+                "reason": reason, "limitations": limitations, "coverage": coverage}
+    if include_documents:
+        # Internal handoff only. The pipeline removes this before any report,
+        # history or signed export: full page bodies are not public results.
+        response["_documents"] = documents
+    return response

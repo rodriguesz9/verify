@@ -31,6 +31,7 @@ HOSTS = {"generativelanguage.googleapis.com": "gemini", "openrouter.ai": "openro
          "factchecktools.googleapis.com": "facts", "google.serper.dev": "news",
          "api.assemblyai.com": "assemblyai", "api.sightengine.com": "sightengine",
          "router.huggingface.co": "hf", "www.nasa.gov": "public_fetch", "science.nasa.gov": "public_fetch"}
+ALLOW_CROSSCHECK_SOURCES = False
 LOCAL_PAGE_CONTROL_URL = "https://example.test/controle.html"
 
 
@@ -60,7 +61,11 @@ def request_provider(request):
     sni = request.extensions.get("sni_hostname")
     if isinstance(sni, bytes):
         sni = sni.decode("ascii", errors="ignore")
-    if sni not in {"www.nasa.gov", "science.nasa.gov"} or request.headers.get("host") != sni:
+    allowed_source = sni in {"www.nasa.gov", "science.nasa.gov"}
+    if ALLOW_CROSSCHECK_SOURCES and isinstance(sni, str):
+        from app.services.source_corroboration import source_family
+        allowed_source = bool(source_family("https://" + sni))
+    if not allowed_source or request.headers.get("host") != sni:
         return None
     try:
         if request.url.scheme == "https" and request.url.port in {None, 443} and ipaddress.ip_address(request.url.host).is_global:
@@ -71,6 +76,7 @@ def request_provider(request):
 
 
 def main():
+    global ALLOW_CROSSCHECK_SOURCES
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--env-file", required=True)
     parser.add_argument("--providers", default="")
@@ -82,11 +88,13 @@ def main():
     parser.add_argument("--transcription", choices=("assemblyai", "gemini"), default="assemblyai")
     parser.add_argument("--local-ocr", choices=("true", "false"), default="true")
     parser.add_argument("--local-page-control", action="store_true", help="Simulate retrieval of example.test control only; NOT public fetch validation.")
+    parser.add_argument("--source-crosscheck-pages", action="store_true", help="Allow HTTPS pinned public bodies from the curated source families only, within the public-fetch session cap.")
     parser.add_argument("--container", action="store_true")
     parser.add_argument("--port", type=int, default=8027)
     parser.add_argument("--record-dir", required=True)
     args = parser.parse_args()
     selected = {p.strip() for p in args.providers.split(",") if p.strip()}
+    ALLOW_CROSSCHECK_SOURCES = args.source_crosscheck_pages
     if not selected <= KEYS.keys() or not 1024 <= args.port <= 65535:
         parser.error("Unsupported provider/port.")
     if selected and not args.free_credits_confirmed:
@@ -133,7 +141,8 @@ def main():
     existing = json.loads(journal.read_text()) if journal.exists() else {}
     counts = Counter(existing.get("counts", {}))
     events = existing.get("events", [])
-    caps = {**CAPS, "gemini": args.gemini_request_cap}
+    caps = {**CAPS, "gemini": args.gemini_request_cap,
+            "public_fetch": 6 if args.source_crosscheck_pages else CAPS["public_fetch"]}
     # Retain session budgets across controlled restarts/model comparisons.
     old_posts = sum(e.get("provider") == "assemblyai" and e.get("method") == "POST" for e in events)
     jobs = Counter(existing.get("asr_jobs", {"upload": (old_posts + 1) // 2, "job": old_posts // 2}))

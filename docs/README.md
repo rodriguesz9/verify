@@ -1,11 +1,15 @@
 # Documentação do Verify
 
+Atualização de 13/10: [cruzamento fundamentado de fontes, controles e limites](CRUZAMENTO-FONTES-2026-10-13.md) e [reativação segura do Railway](REATIVAR-RAILWAY-2026-10-13.md). Complementa Google Fact Check, sem confirmar o que não tem duas evidências correspondentes. Controles públicos locais ainda foram inconclusivos; registros abaixo são históricos.
+
 Atualização de 10/10: [resultados inconclusivos — causas, correções e validação](INCONCLUSIVOS-2026-10-10.md). Consultas literais melhores, referências gerais sem voto de verdade e diagnóstico separado de sinal isolado/discordância/ausência/indisponibilidade. A publicação e o smoke da revisão são registrados nesse documento quando confirmados; registros abaixo são históricos.
 
 Atualizada em 08/10/2026. Código publicado e ensaiado no SHA `cba8d3f77cb60ae1906ab1ccb292c77f6f3e7b40`, com filtro lexical de notícias e aviso de fragmentos OCR; commits posteriores exclusivos de documentação não mudam esse código. A base ef9655ff e documentos anteriores preservam evidências históricas, não homologam todas as modalidades.
 
 ## Comece aqui
 
+- [Cruzamento atual de fontes](CRUZAMENTO-FONTES-2026-10-13.md): política, contrato, configuração, testes e limites reais do novo caminho factual.
+- [Railway expirado: como recuperar](REATIVAR-RAILWAY-2026-10-13.md): preservar banco/volume, revisar variáveis sem copiar segredos e validar após retomada.
 - [Publicação e controles reais de 08/10](PUBLICACAO-2026-10-08.md): duas revisões publicadas, CI/deploys confirmados, texto/imagens/voz sintética pela interface, PDF/200 sem nova análise, filtro de contexto rechecado e fronteiras ainda pendentes.
 - [Correções e diagnóstico de produção de 08/10](CORRECOES-PRODUCAO-2026-10-08.md): Railway online confirmado, versão publicada, 422 de texto/500 de banco separados, novo controle Gemini, interface simples e checkpoints atuais.
 - [Ativar Hive e compreender voz/OCR](ATIVACAO-HIVE-VOZ-2026-10-08.md): uso do saldo autorizado, limites por processo, Secret Key v3, acesso Sightengine e HF desligado sem contratação.

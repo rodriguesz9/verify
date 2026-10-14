@@ -4,6 +4,8 @@ Aplicação de apoio à checagem de mensagens, links, imagens, áudio e vídeos.
 
 Não é uma perícia, um certificado de autenticidade ou uma garantia de detecção de deepfake.
 
+**Revisão de 13/10:** [cruzamento fundamentado de fontes](docs/CRUZAMENTO-FONTES-2026-10-13.md) complementa Google Fact Check com corpos recuperados, citações validadas e cobertura por afirmação, sem votação de IAs nem porcentagem inventada. Interface, histórico e PDF distinguem documentos de checagens editoriais. **637 testes backend, 181 frontend e build passaram localmente; os controles públicos ainda abstiveram.** Railway expirado conforme informado pelo titular; envio Git não comprova serviço online. [O que configurar e conferir na retomada](docs/REATIVAR-RAILWAY-2026-10-13.md). Descrições e contagens das etapas abaixo são históricas.
+
 **Revisão de 10–11/10:** [diagnóstico das análises inconclusivas e correções](docs/INCONCLUSIVOS-2026-10-10.md). Busca prioriza frases literais completas, também nas notícias, sem corte silencioso; fontes gerais com trechos recuperados não decidem verdade; sinais isolados, discordância e indisponibilidade de mídia agora têm explicações diferentes. **567 testes backend e 170 frontend passaram localmente; build concluído.** Ver registro para publicação/smoke e pendências; números e configurações de etapas anteriores abaixo são históricos, não validação de precisão universal.
 
 Documentação consolidada em 07/10/2026: [manual completo do projeto](docs/DOCUMENTACAO-COMPLETA.md) · [plano original de 14 dias](docs/PLANO-ENTREGA-14-DIAS.md) · [índice de documentação e evidências](docs/README.md). Inclui arquitetura, API, banco, todas as variáveis suportadas, Docker, APIs, deploy, testes, privacidade, operação, tarefas, responsáveis e critérios de aceite. Em caso de divergência com guias anteriores, conferir o código e o manual atual.
@@ -56,7 +58,7 @@ Primeira etapa: a suíte atual também passou com **PostgreSQL 16.13 descartáve
 
 | Entrada | Verificações disponíveis | Limite importante |
 | --- | --- | --- |
-| Texto | Padrões de risco e checagens atribuídas: duas famílias editoriais distintas com correspondência literal conservadora | LLM não decide verdade; paráfrase, contexto relativo, discordância ou cobertura incompleta ficam inconclusivos |
+| Texto | Padrões de risco, checagens publicadas e cruzamento de corpos recuperados de duas famílias elegíveis | Comparação assistida exige citação validada; modelo sozinho, ambiguidade, discordância e cobertura incompleta não decidem verdade |
 | Link | Consulta pública limitada com validação DNS/IP/TLS; conteúdo segue a política factual de texto | Não certifica legitimidade nem consulta idade do domínio; bloqueios e limites podem impedir leitura |
 | Imagem | Decodificação real, Sightengine/Hive/Hugging Face, metadados, C2PA, OCR e inspeção visual auxiliar | Metadados podem ser forjados; visão de um LLM não é prova de geração por IA |
 | Áudio | Transcrição Gemini/AssemblyAI, triagem do discurso, Hive específico e Sightengine `ai_speech` opt-in | Transcrição não prova clonagem; segundo detector exige autorização ao modelo, não só chave |
@@ -74,10 +76,10 @@ O registro SHA-256 compara bytes com um registro anterior. Não comprova autoria
 - Indícios concordantes de detectores: **resultado parcial**, sujeito a revisão.
 - C2PA permanece inspeção sem confiança/voto até homologar CLI, configuração e corpus real; presença de âncoras não certifica validação.
 - Ausência de sinais de IA nunca transforma uma mídia em “autêntica”.
-- Corroborada/refutada é classificação atribuída às checagens correspondentes; `False` não é sinônimo de `AI_Generated`. OCR/transcrição têm relatório factual separado.
+- Corroborada/refutada é classificação atribuída às checagens ou aos trechos de documentos correspondentes, com bases distintas no relatório; `False` não é sinônimo de `AI_Generated`. OCR/transcrição têm relatório factual separado.
 - Pontuações são sinais não calibrados. Não são porcentagens de acerto do Verify.
 
-As políticas experimentais estão em `backend/app/services/evidence_policy.py` e `claim_policy.py`. Limiares precisam de validação com um conjunto rotulado representativo; concordância entre dois serviços ou famílias editoriais não garante independência estatística.
+As políticas experimentais estão em `backend/app/services/evidence_policy.py`, `claim_policy.py`, `source_corroboration.py` e `source_decision.py`. Limiares precisam de validação com um conjunto rotulado representativo; concordância entre dois serviços ou famílias editoriais não garante independência estatística.
 
 `GET /api/capabilities` informa configuração/ferramentas sem expor chaves nem fazer chamadas pagas. Presença de configuração não comprova acesso ou quota: disponibilidade operacional fica `not_tested`. Para métricas offline com resultados inconclusivos incluídos, use `backend/scripts/evaluate_predictions.py`, seguindo o [formato e plano de avaliação](docs/VERIFICACOES-2026-10-03.md#como-medir-precisão-de-verdade-sem-esconder-inconclusivos).
 

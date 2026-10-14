@@ -14,6 +14,11 @@ from app.services.claim_policy import text_report, input_claims
 from app.services.news_relevance import filter_context_news
 from app.services.factual_queries import build_fact_check_queries
 from app.services.source_attribution import collect_source_attribution
+from app.services.source_corroboration import corroborate_sources
+from app.services.source_corroboration import source_family
+from app.services.source_decision import apply_source_decision
+
+SOURCE_SITE_FILTER = "(site:g1.globo.com OR site:agenciabrasil.ebc.com.br OR site:bbc.com OR site:royal.uk OR site:reuters.com OR site:apnews.com)"
 
 
 def _verdicts_agree(v1: str, v2: str) -> bool:
@@ -76,18 +81,38 @@ async def _run_gemini_check(text: str, context: dict) -> dict:
     return await generate_final_report(text, context)
 
 
-async def _retrieve_source_attribution(text: str, queries: list[str], source_url: str | None) -> dict:
-    """A single additional search, with bounded safe page retrieval.
+async def _retrieve_source_attribution(text: str, queries: list[str], source_url: str | None,
+                                      *, use_source_crosscheck: bool = True) -> dict:
+    """One base search, optionally one qualified search, and bounded retrieval.
 
     Source attribution cannot vote on the factual decision. Search snippets
     remain leads; only a complete sentence in a retrieved document can match.
     """
+    crosscheck_enabled = use_source_crosscheck and os.getenv("SOURCE_CROSSCHECK_ENABLED", "true").strip().lower() == "true"
+    deadline = 30 if crosscheck_enabled else 20
     try:
-        async with asyncio.timeout(20):
+        async with asyncio.timeout(deadline):
             query = next((query for query in queries if 20 <= len(query.strip()) <= 500), None)
             leads = (await search_web(query) if query else NewsSearch(
                 status="no_results", reason="Nenhuma frase completa cabe no limite da busca; nenhum texto foi cortado."))
-            return await collect_source_attribution(text, queries, source_url, search_results=leads)
+            plan = [{"method": "whole_literal_claim", "status": getattr(leads, "status", "success" if leads else "no_results")}] if query else []
+            families = {source_family(item.get("link")) for item in leads if isinstance(item, dict)} - {None, source_family(source_url)}
+            configured = os.getenv("SOURCE_CROSSCHECK_SEARCH_LIMIT", "2").strip()
+            limit = (int(configured) if configured in {"1", "2"} else 2) if crosscheck_enabled else 1
+            qualified = f"{query} {SOURCE_SITE_FILTER}" if query else ""
+            if (crosscheck_enabled and limit == 2
+                    and len(families) < 2 and 20 <= len(qualified) <= 500
+                    and getattr(leads, "status", "success" if leads else "no_results") in {"success", "no_results"}):
+                extra = await search_web(qualified)
+                plan.append({"method": "whole_literal_claim_curated_sites", "status": getattr(extra, "status", "success" if extra else "no_results")})
+                combined = NewsSearch([*leads, *extra], status="success" if leads or extra else getattr(extra, "status", "no_results"))
+                leads = combined
+            attribution = await collect_source_attribution(text, queries, source_url, search_results=leads,
+                include_documents=crosscheck_enabled)
+            attribution.setdefault("coverage", {})["search_queries"] = plan
+            attribution["coverage"]["max_search_queries"] = limit
+            attribution["coverage"]["retrieval_deadline_seconds"] = deadline
+            return attribution
     except Exception:
         return {"status": "error", "decision_role": "source_attribution_only", "matches": [],
                 "reason": "A leitura das referências não foi concluída no prazo ou com segurança.",
@@ -171,7 +196,8 @@ def analyze_temporal_context(serper_news: list, scrape_date: str = None) -> dict
     }
 
 
-async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: bool = True) -> dict:
+async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: bool = True,
+                       use_source_crosscheck: bool = True) -> dict:
     source_url = url
     analysis_text = text
 
@@ -217,7 +243,8 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
         asyncio.create_task(search_news(query))
         for query in serper_news_queries
     ]
-    attribution_task = asyncio.create_task(_retrieve_source_attribution(analysis_text, fact_check_queries, source_url))
+    attribution_task = asyncio.create_task(_retrieve_source_attribution(
+        analysis_text, fact_check_queries, source_url, use_source_crosscheck=use_source_crosscheck))
     tasks = [*fact_tasks, *serper_news_tasks, ai_task, attribution_task]
     if domain_task:
         tasks.append(domain_task)
@@ -281,7 +308,21 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
     ai["search_claims_decision_role"] = "search_hints_only"
     ai["scam_analysis"] = scam_info
     ai["serper_news"] = serper_news_results
-    source_attribution = attribution_task.result()
+    source_attribution = dict(attribution_task.result())
+    source_documents = source_attribution.pop("_documents", [])
+    source_comparison = None
+    if use_source_crosscheck and ai.get("veracity_status") == "unverified" and not scam_info["is_scam"]:
+        try:
+            source_comparison = await corroborate_sources(analysis_text, source_documents, source_url)
+            if not isinstance(source_comparison, dict):
+                raise ValueError("Invalid comparison envelope")
+        except Exception:
+            source_comparison = {"version": "source_corroboration_v1", "status": "error", "state": "insufficient",
+                "decision_role": "grounded_source_comparison", "claims": [], "coverage": {},
+                "reason": "Não foi possível concluir a comparação das fontes; nenhuma conclusão foi acrescentada.",
+                "limitations": ["Falha de comparação não comprova verdade ou falsidade."]}
+        ai = apply_source_decision(analysis_text, ai, source_comparison)
+        ai["source_corroboration"] = source_comparison
     ai["source_attribution"] = source_attribution
     queries = [{"status": "error" if task.exception() else getattr(task.result(), "status", "success" if task.result() else "no_results"),
                 "reason": "Falha na consulta." if task.exception() else getattr(task.result(), "reason", None)} for task in fact_tasks]
@@ -297,6 +338,13 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
         "decision_role": "source_attribution_only", "matches_returned": len(source_attribution.get("matches", [])),
         "reason": source_attribution.get("reason"),
     }
+    if source_comparison is not None:
+        ai["provider_coverage"]["source_crosscheck"] = {
+            "status": source_comparison.get("status", "error"),
+            "decision_role": "grounded_source_comparison",
+            "reason": source_comparison.get("reason"),
+            "coverage": source_comparison.get("coverage", {}),
+        }
     if use_ai_extraction:
         ai["provider_coverage"]["openrouter"] = {key: value for key, value in openrouter_result.items()
             if key in {"available", "status", "reason", "model_used", "decision_role", "free_only", "response_issue"}}

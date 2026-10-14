@@ -6,7 +6,7 @@ import { useAuth } from "../hooks/authContext";
 import Footer from "../components/Footer";
 import AnimatedScore from "../components/report/AnimatedScore";
 import EvidenceExplanation from "../components/report/EvidenceExplanation";
-import { visibleDetectorScore, reportMediaHeadline, reportSourceHeadline, publicMediaRiskNotice, providerCoveragePresentation, publicCoveragePresentation, transcriptionPresentation, isTechnicalReportText } from "../utils/reportEvidence";
+import { visibleDetectorScore, reportMediaHeadline, reportSourceHeadline, reportFactualHeadline, publicMediaRiskNotice, providerCoveragePresentation, publicCoveragePresentation, transcriptionPresentation, isTechnicalReportText } from "../utils/reportEvidence";
 import { pdfExportError, pdfExportState, publicReportDetails } from "../utils/reportExport";
 import { Shield, AlertTriangle, ArrowRight, Volume2, Phone, ChevronDown, ChevronUp, FileJson, Download } from "lucide-react";
 
@@ -155,12 +155,12 @@ export default function ReportPage() {
   const transcriptionState = transcriptionPresentation(result);
   const publicLimitations = [...new Set([...publicCoverage.limitations,
     ...(Array.isArray(result.limitations) ? result.limitations.filter((item) => typeof item === "string" && !isTechnicalReportText(item)) : [])])];
-  const defaultBadge = inconclusive ? {
+  const defaultBadge = inconclusive && verdict !== "Scam" ? {
     title: "ANÁLISE INCONCLUSIVA", color: "#FFCB55", bg: "rgba(255,203,85,.06)",
     border: "rgba(255,203,85,.3)", headline: "Não há evidência suficiente para concluir. Isso não significa que o conteúdo seja falso ou autêntico."
   } : BADGE_STYLES[verdict] || BADGE_STYLES.Suspicious;
   const mediaHeadline = reportMediaHeadline(result);
-  const diagnosisHeadline = mediaHeadline || reportSourceHeadline(result);
+  const diagnosisHeadline = mediaHeadline || reportFactualHeadline(result) || reportSourceHeadline(result);
   const badge = diagnosisHeadline ? {...defaultBadge, ...diagnosisHeadline} : defaultBadge;
   const publicSummary = diagnosisHeadline?.diagnostic ? [badge.headline, publicMediaRiskNotice(result)].filter(Boolean).join(" ")
     : typeof result.summary === "string" && !isTechnicalReportText(result.summary) ? result.summary : publicCoverage.detail;
@@ -340,7 +340,7 @@ export default function ReportPage() {
 
         {/* Actionable Steps for Seniors */}
         <div className="mb-8">
-          {inconclusive ? (
+          {inconclusive && verdict !== "Scam" ? (
             <div className="p-6 rounded-2xl bg-[#FFCB55]/10 border border-[#FFCB55]/30 text-[#CDE8F0]">
               <h4 className="font-bold mb-2">Próximo passo: confirme a fonte</h4>
               <p className="text-sm leading-6">Não use este resultado como prova de falsidade ou autenticidade. Procure o arquivo original e confirme a informação por um canal independente.</p>

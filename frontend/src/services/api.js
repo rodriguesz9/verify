@@ -6,8 +6,9 @@ const apiOrigin = import.meta.env?.VITE_API_URL;
 const baseURL = apiOrigin ? `${apiOrigin.replace(/\/$/, '')}/api` : "/api";
 export const api = axios.create({ baseURL, timeout: 60000, withCredentials: true });
 // These budgets cover the server's bounded provider deadlines, including
-// extraction + retrieval. Authentication and PDF keep their shorter limits.
-const ANALYSIS_TIMEOUT = 150000;
+// extraction + retrieval + grounded document comparison. This is a bounded
+// wait, not a retry; authentication, media uploads and PDF keep shorter limits.
+const ANALYSIS_TIMEOUT = 240000;
 const MEDIA_TIMEOUT = 180000;
 
 // Compare epochs even before getMe initializes the account. The report storage
@@ -83,8 +84,8 @@ export const getMe      = ()  => api.get ("/auth/me", { _skipLogoutRedirect: tru
 
 // ── Analysis ──────────────────────────────────────────────────────────────────
 export const analyzeText   = (text) => api.post("/check-text", { text }, { timeout: ANALYSIS_TIMEOUT }).then(r => r.data);
-export const analyzeTextBatch = (texts) => api.post("/check-text-batch", { texts }, { timeout: 180000 }).then(r => r.data);
-export const analyzeUrl    = (url)  => api.post("/check-url", { url }, { timeout: MEDIA_TIMEOUT }).then(r => r.data);
+export const analyzeTextBatch = (texts) => api.post("/check-text-batch", { texts }, { timeout: ANALYSIS_TIMEOUT }).then(r => r.data);
+export const analyzeUrl    = (url)  => api.post("/check-url", { url }, { timeout: ANALYSIS_TIMEOUT }).then(r => r.data);
 export const analyzeUpload = (file, { reviewText = false } = {}) => {
   const form = new FormData();
   form.append("file", file);

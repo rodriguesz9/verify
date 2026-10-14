@@ -105,6 +105,83 @@ export function sourceAttributionPresentation(result = {}) {
   return {status, title, explanation, matches: status === "found" ? matches : [], scope, limitations: [...new Set(limitations)]};
 }
 
+const corroborationLabels = {
+  corroborated: "Corroborada nas fontes consultadas", refuted: "Refutada nas fontes consultadas",
+  conflicting: "Fontes discordam", mixed: "Conteúdo misto", insufficient: "Evidência insuficiente",
+};
+
+// Source documents are not ClaimReview ratings. Only the versioned, grounded
+// record is displayed here; arbitrary LLM citations and confidence stay unused.
+export function sourceCorroborationPresentation(result = {}) {
+  const content = result.content_analysis && typeof result.content_analysis === "object" ? result.content_analysis : result;
+  const record = content.source_corroboration;
+  if (!record || record.version !== "source_corroboration_v1" || record.decision_role !== "grounded_source_comparison"
+      || !Object.hasOwn(corroborationLabels, record.state)) return null;
+  const claims = (Array.isArray(record.claims) ? record.claims : []).filter((item) => item
+    && typeof item.claim === "string" && item.claim.trim()
+    && ["corroborated", "refuted", "conflicting", "insufficient"].includes(item.state))
+    .slice(0, 8).map((item, claimIndex) => {
+      const evidence = (Array.isArray(item.evidence) ? item.evidence : []).filter((source) => source
+        && safeSourceUrl(source.url) && ["supports", "refutes"].includes(source.relation)
+        && typeof source.excerpt === "string" && source.excerpt.trim()
+        && typeof source.publisher_family === "string" && source.publisher_family.trim())
+        .slice(0, 20).map((source, sourceIndex) => ({
+          id: `cross-source-${claimIndex}-${sourceIndex}`, url: safeSourceUrl(source.url),
+          title: typeof source.title === "string" && source.title.trim() ? source.title : "Documento consultado",
+          excerpt: source.excerpt, context: typeof source.context === "string" ? source.context : "", relation: source.relation,
+          relationLabel: source.relation === "supports" ? "Sustenta esta afirmação" : "Contradiz esta afirmação",
+          reason: typeof source.reason === "string" && !isTechnicalReportText(source.reason) ? source.reason : "",
+          family: source.publisher_family, sourceRole: source.source_role,
+          retrievedAt: typeof source.retrieved_at === "string" && Number.isFinite(Date.parse(source.retrieved_at))
+            ? source.retrieved_at : "",
+        }));
+      return {id: `cross-claim-${claimIndex}`, claim: item.claim, state: item.state, title: corroborationLabels[item.state],
+        explanation: typeof item.explanation === "string" && !isTechnicalReportText(item.explanation)
+          ? item.explanation : "Compare os trechos, a data e o contexto das fontes consultadas.", evidence};
+    });
+  const coverage = record.coverage && typeof record.coverage === "object" ? record.coverage : {};
+  const count = (field) => Number.isInteger(coverage[field]) && coverage[field] >= 0 ? coverage[field] : null;
+  const selectedClaims = count("selected_claim_count"), totalClaims = count("literal_claim_count");
+  const selectedSources = count("selected_source_count");
+  const scope = selectedClaims !== null && totalClaims !== null && selectedSources !== null
+    ? `Alcance do cruzamento: ${selectedClaims} de ${totalClaims} afirmações selecionadas e ${selectedSources} documentos selecionados para consulta.` : "";
+  const explanations = {
+    corroborated: "Os trechos recuperados sustentam as afirmações analisadas em fontes independentes, com comparação de contexto. Isso não é garantia de verdade nem certifica a autenticidade de uma mídia.",
+    refuted: "Os trechos recuperados contradizem as afirmações analisadas em fontes independentes. Confira abaixo o que difere, principalmente pessoas, datas, valores e negações.",
+    conflicting: "As fontes recuperadas apresentam informações incompatíveis. Não foi escolhida uma versão como verdadeira; confira as diferenças e a data de cada publicação.",
+    mixed: "O conteúdo reúne afirmações com resultados diferentes. Confira cada uma abaixo; nenhum resultado isolado se aplica automaticamente ao texto inteiro.",
+    insufficient: "O cruzamento não reuniu evidência suficiente para confirmar ou refutar todo o conteúdo. Ausência de fonte ou falha de leitura não significa falsidade.",
+  };
+  const limitations = strings(record.limitations).filter((item) => !isTechnicalReportText(item)).slice(0, 10);
+  if (coverage.complete_claim_coverage === false) limitations.push("O cruzamento não cobre todas as afirmações enviadas. Não é uma aprovação do conteúdo inteiro.");
+  if (result.source_extraction?.truncated === true) limitations.push("A página enviada foi lida parcialmente; o restante não foi checado.");
+  return {state: record.state, status: record.status, title: corroborationLabels[record.state],
+    explanation: explanations[record.state], claims, scope, complete: coverage.complete_claim_coverage === true,
+    limitations: [...new Set(limitations)]};
+}
+
+export function reportFactualHeadline(result = {}) {
+  if (!["text", "url"].includes(result.content_type) || result.verdict === "Scam"
+      || !["retrieved_sources", "mixed_evidence"].includes(result.veracity_decision_basis)) return null;
+  const cross = sourceCorroborationPresentation(result);
+  if (!cross) return null;
+  const globalStates = {supported: "corroborated", refuted: "refuted", conflicting: "conflicting", mixed: "mixed"};
+  let state = globalStates[result.veracity_status] || "insufficient";
+  if (["corroborated", "refuted"].includes(state) && (result.veracity_decision_coverage_complete !== true
+      || (result.veracity_decision_basis === "retrieved_sources" && !cross.complete))) state = "insufficient";
+  const scopedPage = result.source_extraction?.truncated === true && ["corroborated", "refuted"].includes(state);
+  const headline = state === "insufficient"
+    ? "Há observações por afirmação, mas a evidência não permite confirmar nem refutar o conteúdo inteiro. Confira as fontes e o que ficou sem confirmação."
+    : state === "mixed"
+      ? "Há afirmações com resultados diferentes no mesmo conteúdo. Abra os trechos que sustentam ou contradizem cada uma; não interprete isso como uma aprovação do texto inteiro."
+      : state === "conflicting"
+        ? "As fontes consultadas discordam sobre a informação. Os trechos e as diferenças estão registrados abaixo; é necessária uma conferência humana."
+        : "A conclusão se baseia no cruzamento de documentos recuperados e trechos citados, não apenas em checagens já publicadas. Confira datas e contexto; isso não garante verdade nem autenticidade de mídia.";
+  return {title: scopedPage ? state === "corroborated" ? "Trecho corroborado nas fontes consultadas" : "Trecho refutado nas fontes consultadas"
+    : corroborationLabels[state], headline: scopedPage ? `A conclusão vale somente para o trecho analisado. O restante da página não foi checado. ${headline}` : headline,
+  diagnostic: true, state};
+}
+
 export function factCheckQueryPresentation(layer = {}) {
   const plan = layer.query_plan;
   if (!plan || plan.version !== "literal_sentence_queries_v1" || plan.decision_role !== "retrieval_only") return null;
@@ -223,11 +300,13 @@ export function publicCoveragePresentation(result = {}) {
   const voiceSignal = result.content_type === "video" && result.media_details?.has_audio !== false
     ? mediaSignalPresentation(result.audio_analysis?.media_signal, "audio") : null;
   const attribution = sourceAttributionPresentation(result);
-  const diagnosisAvailable = Boolean(signal || voiceSignal || attribution);
+  const cross = sourceCorroborationPresentation(result);
+  const factualHeadline = reportFactualHeadline(result);
+  const diagnosisAvailable = Boolean(signal || voiceSignal || attribution || cross);
   const title = diagnosisAvailable ? "O alcance deste resultado" : inconclusive ? "Não foi possível chegar a uma conclusão"
     : failed ? "Algumas etapas não foram concluídas"
     : partial || skipped ? "Análise com alcance limitado" : "Como usar este resultado";
-  const detail = diagnosisAvailable
+  const detail = factualHeadline ? factualHeadline.headline : cross && !media ? cross.explanation : diagnosisAvailable
     ? media ? "As observações sobre a origem aparecem separadas da leitura e da checagem da informação. Cada resultado vale apenas para as consultas e partes do arquivo descritas; não é uma certificação de autenticidade ou verdade."
       : "A pesquisa de fontes indica onde um trecho aparece. Checagens publicadas avaliam afirmações; encontrar o mesmo texto em uma publicação não confirma sua verdade. Confira as correspondências e o alcance da pesquisa abaixo."
     : inconclusive
@@ -442,6 +521,7 @@ export function buildReportEvidence(result = {}, query = "") {
   const missing = [];
   const content = result.content_analysis && typeof result.content_analysis === "object" ? result.content_analysis : result;
   const sourceAttribution = sourceAttributionPresentation(result);
+  const sourceCorroboration = sourceCorroborationPresentation(result);
   if (content !== result && content.provider_coverage && typeof content.provider_coverage === "object") {
     for (const [name, layer] of Object.entries(content.provider_coverage)) coverage[`conteúdo/${name}`] = layer;
   }
@@ -449,6 +529,9 @@ export function buildReportEvidence(result = {}, query = "") {
     item && typeof item.claim === "string" && typeof item.status === "string") : [];
   const claimLabels = {supported: "Corroborada nas checagens", refuted: "Refutada nas checagens", conflicting: "Fontes em desacordo", unverified: "Não verificada"};
   for (const [index, item] of claimAssessments.entries()) {
+    // Grounded documents have separate cards with actual body excerpts. They
+    // must not be presented as editorial ClaimReview ratings.
+    if (item.evidence_mode === "retrieved_sources" && sourceCorroboration) continue;
     const accepted = Array.isArray(item.evidence) ? item.evidence : [];
     findings.push({id: `claim-${index}`, title: claimLabels[item.status] || "Revisão necessária",
       quote: item.claim, detail: typeof item.explanation === "string" ? item.explanation : "Confira as checagens correspondentes.",
@@ -612,9 +695,11 @@ export function buildReportEvidence(result = {}, query = "") {
   const {publicFindings, technicalFindings} = publicEvidenceFindings(findings, coverage, result);
   return {
     media, video, inconclusive, findings, sources, guidance, missing, checkedContent, claimAssessments,
-    publicFindings, technicalFindings, publicMissing: publicPresentation.limitations, publicPresentation, sourceAttribution,
+    publicFindings, technicalFindings, publicMissing: publicPresentation.limitations, publicPresentation, sourceAttribution, sourceCorroboration,
     mediaDiagnosis: mediaSignalPresentation(result.media_signal, result.content_type),
     veracityStatus: typeof content.veracity_status === "string" ? content.veracity_status : "unverified",
+    veracityLabel: sourceCorroboration && ["retrieved_sources", "mixed_evidence"].includes(content.veracity_decision_basis)
+      ? corroborationLabels[({supported: "corroborated", refuted: "refuted", conflicting: "conflicting", mixed: "mixed"})[content.veracity_status] || "insufficient"] : null,
     contentSummary: typeof content.summary === "string" ? content.summary : "",
     contentOrigin: content.origin || "text",
     extractionMethod,
@@ -628,6 +713,8 @@ export function buildReportEvidence(result = {}, query = "") {
     transcription: speechText,
     transcriptionState,
     interpretation: video ? videoOrigins.interpretation : mediaSignalPresentation(result.media_signal, result.content_type)?.explanation
+      || (!media && result.verdict === "Scam" ? "A mensagem apresenta sinais associados a golpes. Eles justificam cautela, mas não comprovam quem enviou a mensagem nem tornam toda afirmação dela falsa." : null)
+      || (result.verdict !== "Scam" && sourceCorroboration ? reportFactualHeadline(result)?.headline || sourceCorroboration.explanation : null)
       || (!media && reportSourceHeadline(result) ? sourceAttribution.explanation : null) || (inconclusive
       ? "Não foi possível determinar a origem ou confirmar a informação com as evidências disponíveis. Ausência de resposta não é prova de conteúdo falso."
       : result.verdict === "Scam"

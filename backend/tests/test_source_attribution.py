@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, patch
 from fastapi import HTTPException
 
 from app.services.public_fetch import FetchedResource
-from app.services.source_attribution import collect_source_attribution
+from app.services.source_attribution import _article_sentences, collect_source_attribution
 
 CLAIM = "A Dra. Ávila não recebeu R$ 1.500,00 em 14/10/2026."
 
@@ -25,6 +25,49 @@ def page(text=CLAIM, *, url="https://example.test/final", content_type="text/htm
 
 
 class SourceAttributionTests(unittest.IsolatedAsyncioTestCase):
+    def test_publication_metadata_cannot_supply_event_date(self):
+        body = "A rainha Elizabeth II morreu no Castelo de Balmoral, na Escócia."
+        for metadata in (
+            '<time datetime="2022-09-09">Atualizado em 09/09/2022</time>',
+            '<span itemprop="datePublished">09/09/2022</span>',
+            '<p itemprop="dateModified">Atualizado em 09/09/2022</p>',
+            '<p>Publicação: <time itemprop="datePublished">09/09/2022</time></p>',
+        ):
+            with self.subTest(metadata=metadata):
+                resource = FetchedResource(f"<article>{metadata}<p>{body}</p></article>".encode(),
+                                           "text/html", "https://example.test/final", "utf-8")
+                sentences, _, _ = _article_sentences(resource)
+                self.assertNotIn("09/09/2022", " ".join(sentences))
+                self.assertIn(body, " ".join(sentences))
+
+    def test_inline_time_is_preserved_when_it_is_the_narrated_event_date(self):
+        resource = FetchedResource(
+            b'<article><p>Elizabeth II morreu em <time datetime="2022-09-08">8 de setembro de 2022</time>.</p></article>',
+            "text/html", "https://example.test/final", "utf-8")
+        sentences, _, _ = _article_sentences(resource)
+        self.assertEqual(len(sentences), 1)
+        self.assertIn("Elizabeth II morreu em 8 de setembro de 2022", sentences[0])
+
+    async def test_internal_documents_are_opt_in_and_not_search_snippets(self):
+        with patch("app.services.source_attribution.fetch_public_resource", new=AsyncMock(return_value=page())):
+            regular = await collect_source_attribution(CLAIM, [CLAIM], "https://example.test/final")
+            internal = await collect_source_attribution(CLAIM, [CLAIM], "https://example.test/final", include_documents=True)
+        self.assertNotIn("_documents", regular)
+        self.assertEqual(internal["_documents"][0]["sentences"], [CLAIM])
+        self.assertEqual(internal["_documents"][0]["source_role"], "submitted_source")
+
+    async def test_crosscheck_prioritizes_distinct_eligible_families_with_same_fetch_budget(self):
+        urls = ["https://www.uol.com.br/a", "https://www.uol.com.br/b", "https://folha.uol.com.br/c",
+                "https://www.bbc.com/article", "https://www.royal.uk/article"]
+        async def fetch(url, **kwargs):
+            return page(url=url)
+        with patch("app.services.source_attribution.fetch_public_resource", new=AsyncMock(side_effect=fetch)) as request:
+            result = await collect_source_attribution(CLAIM, [CLAIM], search_results=SearchResults([
+                {"link": url} for url in urls]), include_documents=True)
+        self.assertEqual([call.args[0] for call in request.await_args_list], [urls[0], urls[3], urls[4]])
+        self.assertEqual(result["coverage"]["selected_url_count"], 3)
+        self.assertEqual(len(result["_documents"]), 3)
+
     async def collect(self, resource, *, text=CLAIM, queries=None, source_url="https://example.test/final", search_results=None):
         with patch("app.services.source_attribution.fetch_public_resource", new=AsyncMock(return_value=resource)) as fetch:
             result = await collect_source_attribution(text, [text] if queries is None else queries,

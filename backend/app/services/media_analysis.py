@@ -36,7 +36,11 @@ async def check_content(text: str, origin: str, timeout: float = 30) -> dict:
                 "origin": origin, "summary": reason}
     from app.core.pipeline import run_pipeline
     try:
-        result = await asyncio.wait_for(run_pipeline(text.strip(), use_ai_extraction=False), timeout)
+        # Automatic OCR/ASR is not a human-confirmed statement, and legacy
+        # clients have a short content budget. The new grounded comparison is
+        # enabled in /check-extracted-text after explicit text review instead.
+        result = await asyncio.wait_for(run_pipeline(text.strip(), use_ai_extraction=False,
+            use_source_crosscheck=False), timeout)
         return {**result["report"], "origin": origin,
                 "limitations": [*result["report"].get("limitations", []), "OCR/transcrição podem conter erros: compare com o arquivo original."]}
     except Exception:

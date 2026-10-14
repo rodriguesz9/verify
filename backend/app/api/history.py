@@ -19,6 +19,12 @@ def _report_data(row: Verification) -> dict:
     return row.raw_result if isinstance(row.raw_result, dict) else {}
 
 
+def _display_score(row: Verification):
+    report = _report_data(row)
+    return None if (report.get("analysis_status") == "inconclusive"
+                    or report.get("score_semantics") == "not_calibrated_source_corroboration") else row.verdict_score
+
+
 def _query_input(row: Verification) -> str:
     """Return the user's original input where it is available.
 
@@ -91,7 +97,7 @@ async def get_history(
                 "id":            str(r.id),
                 "content_type":  "Url" if r.content_type == ContentType.TEXT and r.source_url else r.content_type.value,
                 "query_input":   _query_input(r)[:100],
-                "verdict_score": None if _report_data(r).get("analysis_status") == "inconclusive" else r.verdict_score,
+                "verdict_score": _display_score(r),
                 "analysis_status": _report_data(r).get("analysis_status"),
                 "veracity_status": _report_data(r).get("veracity_status"),
                 "verdict_label": r.verdict_label.value,
@@ -170,7 +176,7 @@ async def get_verification(
         "id":            str(row.id),
         "content_type":  row.content_type.value,
         "query_input":   _query_input(row),
-        "verdict_score": row.verdict_score,
+        "verdict_score": _display_score(row),
         "verdict_label": row.verdict_label.value,
         "ai_summary":    row.ai_summary,
         "raw_result":    attach_pdf_snapshot(row.raw_result, user),

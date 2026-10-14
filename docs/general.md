@@ -1,5 +1,7 @@
 # Verify — estrutura e arquitetura
 
+Atualização de 13/10: [novo cruzamento de fontes](CRUZAMENTO-FONTES-2026-10-13.md) e [retomada do Railway](REATIVAR-RAILWAY-2026-10-13.md). Fluxo/serviços abaixo incorporam a nova camada; checkpoints de publicação anteriores continuam históricos.
+
 Guia da revisão local, atualizado em 7 de outubro de 2026. Não é prova de implantação. Documentação canônica: [manual completo](DOCUMENTACAO-COMPLETA.md), [fechamento até 11/10](ENTREGA-ATE-11-OUTUBRO.md), [plano original de 14 dias](PLANO-ENTREGA-14-DIAS.md) e [índice de evidências](README.md). Para achados históricos, veja [auditoria](AUDITORIA-2026-10-02.md) e [continuação](CONTINUACAO-2026-10-02.md). Novas regras, configuração e avaliação estão em [verificações](VERIFICACOES-2026-10-03.md).
 
 ## Componentes
@@ -11,7 +13,7 @@ Guia da revisão local, atualizado em 7 de outubro de 2026. Não é prova de imp
 
 ## Fluxos
 
-Texto/link: entrada limitada → admissão/quota → consulta pública segura (link) → afirmações literais + checagens recuperadas → `claim_policy.py` → relatório → histórico se autenticado. LLM só auxilia extração/busca; não decide verdade/falsidade.
+Texto/link: entrada limitada → admissão/quota → consulta pública segura (link) → afirmações literais + checagens recuperadas → `claim_policy.py` → quando faltar evidência, corpos recuperados + `source_corroboration.py` → `source_decision.py` → relatório → histórico se autenticado. Modelo auxilia extração/comparação de citações, não decide por conhecimento próprio ou concordância com outra IA.
 
 Links preservam cabeçalhos de artigos, removem scripts/menu/template e atributos explícitos de ocultação antes de selecionar o texto principal. `text/plain` não é interpretado como HTML. `source_extraction` informa método/truncamento; interface explica leitura estática e limite de 5.000 caracteres. Não resolve toda a visibilidade CSS/JavaScript nem certifica o site inteiro. Testes e limites em [controles de extração](CONTROLES-EXTRACAO-2026-10-04.md).
 
@@ -45,9 +47,11 @@ Todos os routers ficam sob `/api`.
 
 - `core/pipeline.py`: recupera checagens/notícias, registra falhas e passa afirmações literais à política de veracidade. Padrões de golpe não são prova de identidade nem investigação concluída.
 - `services/claim_policy.py`: duas famílias editoriais distintas com avaliação explícita, data válida e correspondência exata conservadora; negação/valores/datas preservados. Discordância, contexto relativo e cobertura incompleta impedem aprovação global. Classificação é atribuída às fontes, não garantia de verdade.
+- `services/source_corroboration.py`: comparação assistida dos corpos reutilizados, até três documentos/cinco segmentos, citações literais com IDs do servidor, guardas de identidade/negação/datas/valores e dependência editorial. JSON inválido/falha/ambiguidade não vira conclusão. OpenRouter gratuito e Gemini alternativo compartilham prazo único de 60 segundos.
+- `services/source_decision.py`: combina evidência documental validada e avaliações editoriais por afirmação; preserva golpe/decisão editorial e não aprova conteúdo sem cobertura. Novo score de compatibilidade não é exibido/calibrado.
 - `core/scam_detector.py`: regras de triagem com trechos encontrados. Extensão de domínio isolada não produz veredito de golpe. Referências de orientação são cadastradas, não consultas automáticas.
 - `core/gemini_client.py`: cliente assíncrono com modelo explícito e erros; deadline total 60 s, configurável 10–90 via `GEMINI_REQUEST_TIMEOUT_SECONDS`, compartilhado com fallback explícito. Default 3.8 respondeu ao controle de texto, não homologa OCR/fala. Camadas de leitura e interface têm margens coerentes; falha não vira sucesso.
-- `core/openrouter_service.py`: somente `openrouter/free`/variantes específicas `:free`, preço máximo zero, limite por processo e pausa após quota. Extrai trechos literais para pesquisa e faz fallback de OCR; não vota sobre verdade nem origem.
+- `core/openrouter_service.py`: somente `openrouter/free`/variantes específicas `:free`, preço máximo zero, limite por processo e pausa após quota. Extrai trechos para pesquisa, faz fallback de OCR e comparação assistida de trechos no novo caminho; não vota por conhecimento próprio sobre verdade/origem.
 - `services/local_ocr.py`: Tesseract português/inglês primeiro, com limites de bytes/qualidade/prazo; Gemini/OpenRouter somente quando faltar leitura utilizável. Não certifica origem ou verdade.
 - `services/speech_input.py`: normaliza mono 16 kHz e bloqueia quase silêncio antes de transcrição remota; não autentica voz nem identifica toda gravação sem fala.
 - `services/audio_service.py`: ordem configurável via `AUDIO_TRANSCRIPTION_PROVIDER`, AssemblyAI `universal-2` preferido nos controles recentes; worker/pedido limitados a 25 s. Gemini usa modelo multimodal separado. Pendência AssemblyAI não dispara fallback naquela passagem; não é detector de clonagem.
@@ -101,6 +105,8 @@ Relatório usa `components/report/EvidenceExplanation.jsx` e `AnimatedScore.jsx`
 Landing mantém os destaques azul/ciano em variáveis `--brand-*`, sem mudar cores semânticas dos resultados. Testes de paleta e contraste estão em `landingTheme.test.js`; a configuração de fornecedores sem novas contratações está em [APIS-SEM-CUSTO.md](APIS-SEM-CUSTO.md).
 
 Contrato atual separa `veracity_status` de `authenticity_status`, inclui `claim_assessments` e `content_analysis`. `False` é refutação atribuída, não mídia gerada por IA. O índice legado usa `score_semantics=legacy_decision_index_not_probability`; listas mostram índice/100 e deixam inconclusivos sem índice, não como precisão.
+
+Decisões documentais acrescentam `source_corroboration`, `veracity_decision_basis`, cobertura completa explícita e `score_semantics=not_calibrated_source_corroboration`: pontuação não aparece no relatório/histórico/estatísticas. PDF preserva a camada, inclusive trechos insuficientes e exclusões, sem nova consulta. Corpos internos `_documents` nunca entram no relatório/snapshot. Checagem automática de OCR/ASR sem conferência desliga comparação e busca adicional; texto conferido usa o novo pipeline.
 
 `utils/reportEvidence.js` normaliza dados, limita índices e bloqueia protocolos perigosos em links de referência. Testes do utilitário ficam em `frontend/tests/`. `score-preview.html` é controle visual do Vite, não resultado/rota publicada.
 

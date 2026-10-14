@@ -1,5 +1,7 @@
 # Verify — documentação completa e manual de entrega
 
+**Adendo de 13/10:** [cruzamento fundamentado de fontes](CRUZAMENTO-FONTES-2026-10-13.md) complementa a decisão histórica exclusivamente por ClaimReview: documentos podem acrescentar apoio/refutação com citações validadas e cobertura suficiente, sem voto de IAs. [Retomada Railway](REATIVAR-RAILWAY-2026-10-13.md) documenta a hospedagem expirada e a configuração atual. Controles públicos locais ainda abstiveram; não há homologação universal de vereditos/APIs.
+
 **Adendo atual de 10/10:** [correções das verificações inconclusivas](INCONCLUSIVOS-2026-10-10.md) documenta os campos `media_signal`, `source_attribution`, `provider_coverage.google_fact_check.query_plan`, limites e testes. [Publicação de 08/10](PUBLICACAO-2026-10-08.md) comprova a revisão anterior. A base/configurações e números datados no corpo abaixo são histórico de 07/10; não usar o antigo Hive “pausado” como estado atual: o responsável autorizou saldo existente e configurou imagem/áudio com limites, sem contratação ou recarga pelo agente.
 
 **Atualização:** 07/10/2026. **Novo prazo solicitado:** esta semana, até 11/10/2026. O calendário anterior de 04–17/10 permanece como histórico; consulte o [fechamento acelerado](ENTREGA-ATE-11-OUTUBRO.md).
