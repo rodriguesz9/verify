@@ -150,7 +150,8 @@ def analyze_temporal_context(serper_news: list, scrape_date: str = None) -> dict
     }
 
 
-async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: bool = True) -> dict:
+async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: bool = True,
+                       use_gemini_report: bool = False) -> dict:
     source_url = url
     analysis_text = text
 
@@ -252,8 +253,10 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
         "source_info": source_info,
     }
 
-    # Model extraction assists search, but NEVER votes on the final verdict.
-    ai = text_report(analysis_text, context["fact_checks"], scam_info)
+    # Text/link checks use the historical Gemini report flow. Extracted media
+    # text keeps evidence_policy's deterministic, non-media decision contract.
+    ai = (await generate_final_report(analysis_text, context) if use_gemini_report
+          else text_report(analysis_text, context["fact_checks"], scam_info))
     ai["search_claims"] = claims
     ai["scam_analysis"] = scam_info
     ai["serper_news"] = serper_news_results
@@ -275,7 +278,8 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
                     for task in serper_news_tasks]
     news_status = ("success" if serper_news_results else "no_results" if any(q["status"] in {"success", "no_results"} for q in news_queries)
                    else "not_configured" if all(q["status"] == "not_configured" for q in news_queries) else "error")
-    ai["provider_coverage"]["serper"] = {"status": news_status, "queries": news_queries, "decision_role": "context_only",
+    serper_role = "report_evidence" if use_gemini_report else "context_only"
+    ai["provider_coverage"]["serper"] = {"status": news_status, "queries": news_queries, "decision_role": serper_role,
                                           "matches_returned": len(serper_news_results),
                                           "raw_matches_returned": raw_news_count, "unique_matches_returned": unique_news_count,
                                           "relevance_filter": news_relevance,

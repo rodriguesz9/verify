@@ -103,7 +103,7 @@ async def check_url(
         raise HTTPException(status_code=422, detail="Conteúdo insuficiente para auditoria.")
 
     source_url = validate_final_analysis_url(scraped.get("final_url", url))
-    result = await run_pipeline(text=page_text, url=source_url)
+    result = await run_pipeline(text=page_text, url=source_url, use_gemini_report=True)
     ai = {**result["report"], "content_type": "url", "source_text": page_text,
           "analyzed_at": datetime.now(timezone.utc).isoformat()}
     ai["query_input"] = url

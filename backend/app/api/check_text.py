@@ -77,7 +77,7 @@ async def check_extracted_text(body: ReviewedTextRequest, user: User | None = De
 async def _process_one(text: str, user: User | None, db: AsyncSession) -> dict:
     clean_text = sanitize(text)
     try:
-        result = await run_pipeline(text=clean_text)
+        result = await run_pipeline(text=clean_text, use_gemini_report=True)
         ai = {**result["report"], "content_type": "text", "query_input": clean_text,
               "analyzed_at": datetime.now(timezone.utc).isoformat()}
         ai["fact_checks"] = [fc.model_dump() for fc in result.get("fact_checks", [])]
@@ -106,7 +106,7 @@ async def check_text(
     await verify_limit(user, db, "TEXTUAL")
     clean_text = sanitize(body.text)
 
-    result = await run_pipeline(text=clean_text)
+    result = await run_pipeline(text=clean_text, use_gemini_report=True)
     ai = {**result["report"], "content_type": "text", "query_input": clean_text,
           "analyzed_at": datetime.now(timezone.utc).isoformat()}
     ai["fact_checks"] = [fc.model_dump() for fc in result.get("fact_checks", [])]
