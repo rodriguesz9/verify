@@ -18,6 +18,7 @@ from app.services.source_corroboration import corroborate_sources
 from app.services.source_corroboration import select_comparison_documents, usable_source_families
 from app.services.source_corroboration import document_selection_audit
 from app.services.source_decision import apply_source_decision
+from app.services.report_explanation import enrich_grounded_report
 
 SOURCE_SITE_FILTER = "(site:royal.uk OR site:brasilescola.uol.com.br OR site:mundoeducacao.uol.com.br OR site:science.nasa.gov OR site:cnnbrasil.com.br OR site:aosfatos.org OR site:bbc.com)"
 PRIMARY_SITE_FILTER = "(site:royal.uk OR site:science.nasa.gov OR site:ibge.gov.br OR site:bcb.gov.br OR site:who.int)"
@@ -260,7 +261,7 @@ def analyze_temporal_context(serper_news: list, scrape_date: str = None) -> dict
 
 
 async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: bool = True,
-                       use_source_crosscheck: bool = True) -> dict:
+                       use_source_crosscheck: bool = True, use_detailed_report: bool = False) -> dict:
     source_url = url
     analysis_text = text
 
@@ -365,7 +366,8 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
         "source_info": source_info,
     }
 
-    # Model extraction assists search, but NEVER votes on the final verdict.
+    # Preserve Juan's explicit text/link report opt-in, not the historical
+    # model-only classifier. The final decision still requires valid evidence.
     ai = text_report(analysis_text, context["fact_checks"], scam_info)
     ai["search_claims"] = claims
     ai["search_claims_decision_role"] = "search_hints_only"
@@ -439,6 +441,11 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
                 ai["red_flags"].append(red_flag)
         if scam_info.get("suspicious_url") and scam_info.get("suspicious_url_reason"):
             ai.setdefault("red_flags", []).append(f"Link Suspeito: {scam_info['suspicious_url_reason']}")
+
+    # Explanations are rendered after every decision/coverage layer. No extra
+    # model call, new evidence, classification, probability or quota is added.
+    if use_detailed_report:
+        ai = enrich_grounded_report(ai)
 
     return {
         "report": ai,

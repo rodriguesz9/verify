@@ -31,6 +31,7 @@ Atualizada em 08/10/2026. Código publicado e ensaiado no SHA `cba8d3f77cb60ae19
 
 | Preciso… | Ler primeiro |
 | --- | --- |
+| [Integração revisada do Juan — 16/10](INTEGRACAO-JUAN-2026-10-16.md) | Relatório textual detalhado sem opinião de modelo como veredito; contrato/PDF preservados, testes offline e bloqueio do backend Railway documentados |
 | Entender o que o produto promete e não promete | [Produto](DOCUMENTACAO-COMPLETA.md#produto), [situação comprovada](DOCUMENTACAO-COMPLETA.md#situacao) |
 | Instalar, rodar em Docker e configurar env | [Instalação](DOCUMENTACAO-COMPLETA.md#instalacao), [inventário de variáveis](DOCUMENTACAO-COMPLETA.md#ambiente) |
 | Obter e ativar APIs sem novas contratações | [Provedores](DOCUMENTACAO-COMPLETA.md#provedores) |

@@ -30,6 +30,40 @@ export function safeSourceUrl(value) {
   }
 }
 
+// The opt-in explanation cannot override a badge or introduce model citations.
+// Rebuild its public prose from the canonical assessments, not arbitrary text.
+export function groundedReportExplanation(result = {}) {
+  const record = result.report_explanation;
+  if (!["text", "url"].includes(result.content_type)
+      || record?.version !== "grounded_text_explanation_v1"
+      || record.decision_role !== "explanation_only" || record.new_provider_calls !== 0
+      || !Array.isArray(record.claims) || record.claims.length > 5
+      || !Array.isArray(result.claim_assessments)) return null;
+  const labels = {supported: "corroborado nas evidências utilizadas", refuted: "refutado nas evidências utilizadas",
+    conflicting: "evidências em desacordo; exige conferência humana", unverified: "sem evidência correspondente suficiente para concluir"};
+  const paragraphs = [];
+  for (const entry of record.claims) {
+    if (!entry || typeof entry.claim !== "string" || !entry.claim.trim() || entry.claim.length > 5000
+        || !Object.hasOwn(labels, entry.status)) return null;
+    const canonical = result.claim_assessments.find((item) => item?.claim === entry.claim && item.status === entry.status);
+    if (!canonical) return null;
+    paragraphs.push(`Trecho enviado: “${entry.claim}”\nResultado para este trecho: ${labels[entry.status]}.`);
+    for (const reference of (Array.isArray(entry.references) ? entry.references : []).slice(0, 2)) {
+      const url = safeSourceUrl(reference?.url);
+      if (!url?.startsWith("https://")) continue;
+      const accepted = (Array.isArray(canonical.evidence) ? canonical.evidence : []).find((source) =>
+        safeSourceUrl(source?.url) === url && !source.exclusion_reason && source.source_role !== "submitted_source"
+        && ["supports", "supported", "refutes", "refuted"].includes(source.relation));
+      if (!accepted) continue;
+      const quote = canonical.evidence_mode === "retrieved_sources" && typeof reference.excerpt === "string"
+        && reference.excerpt.trim() && reference.excerpt.length <= 600 && reference.excerpt === accepted.excerpt
+        ? `Trecho citado pela análise: “${reference.excerpt}”\n` : "";
+      paragraphs.push(`${quote}Fonte consultada: ${url}`);
+    }
+  }
+  return paragraphs.length ? {text: paragraphs.join("\n\n")} : null;
+}
+
 const mediaSignalStates = ["consensus_ai", "consensus_manipulation", "isolated_ai", "isolated_manipulation",
   "disagreement", "no_high_signal", "unavailable"];
 const highMediaSignal = (state) => ["consensus_ai", "consensus_manipulation", "isolated_ai", "isolated_manipulation"].includes(state);

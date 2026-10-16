@@ -6,7 +6,7 @@ import { useAuth } from "../hooks/authContext";
 import Footer from "../components/Footer";
 import AnimatedScore from "../components/report/AnimatedScore";
 import EvidenceExplanation from "../components/report/EvidenceExplanation";
-import { visibleDetectorScore, reportMediaHeadline, reportSourceHeadline, reportFactualHeadline, publicMediaRiskNotice, providerCoveragePresentation, publicCoveragePresentation, transcriptionPresentation, isTechnicalReportText } from "../utils/reportEvidence";
+import { visibleDetectorScore, reportMediaHeadline, reportSourceHeadline, reportFactualHeadline, publicMediaRiskNotice, providerCoveragePresentation, publicCoveragePresentation, transcriptionPresentation, isTechnicalReportText, groundedReportExplanation } from "../utils/reportEvidence";
 import { pdfExportError, pdfExportState, publicReportDetails } from "../utils/reportExport";
 import { Shield, AlertTriangle, ArrowRight, Volume2, Phone, ChevronDown, ChevronUp, FileJson, Download } from "lucide-react";
 
@@ -164,8 +164,9 @@ export default function ReportPage() {
   const badge = diagnosisHeadline ? {...defaultBadge, ...diagnosisHeadline} : defaultBadge;
   const publicSummary = diagnosisHeadline?.diagnostic ? [badge.headline, publicMediaRiskNotice(result)].filter(Boolean).join(" ")
     : typeof result.summary === "string" && !isTechnicalReportText(result.summary) ? result.summary : publicCoverage.detail;
-  const publicExplanation = !diagnosisHeadline?.diagnostic && typeof result.plain_explanation === "string"
-    && !isTechnicalReportText(result.plain_explanation) ? result.plain_explanation : "";
+  const publicExplanation = groundedReportExplanation(result)?.text || (
+    !diagnosisHeadline?.diagnostic && typeof result.plain_explanation === "string"
+      && !isTechnicalReportText(result.plain_explanation) ? result.plain_explanation : "");
   const publicRedFlags = Array.isArray(result.red_flags)
     ? result.red_flags.filter((flag) => typeof flag === "string" && !isTechnicalReportText(flag)) : [];
 
@@ -402,7 +403,7 @@ export default function ReportPage() {
                 "{publicSummary}"
               </p>
               {publicExplanation && (
-                <p className="text-sm text-[#8AA2B4] leading-relaxed pt-3 border-t border-[#132435]">
+                <p className="text-sm text-[#8AA2B4] leading-relaxed whitespace-pre-wrap break-words pt-3 border-t border-[#132435]">
                   {publicExplanation}
                 </p>
               )}

@@ -59,6 +59,21 @@ function renderAudio(result) {
 // deleted or replace a browser accessibility/layout check.
 const visibleDefault = (html) => html.replace(/<details\b[^>]*>[\s\S]*?<\/details>/g, "");
 
+test("grounded text report displays accepted explanation even when a diagnostic headline is present", () => {
+  const claim = "Elizabeth II não morreu em 9 de setembro de 2022.";
+  const source = {url: "https://example.test/body", excerpt: claim, relation: "supports", source_role: "retrieved_reference"};
+  const result = {content_type: "text", verdict: "Authentic", veracity_status: "supported", analysis_status: "partial",
+    veracity_decision_basis: "retrieved_sources", plain_explanation: "PRIVATE-ERROR-MUST-NOT-RENDER",
+    claim_assessments: [{claim, status: "supported", evidence_mode: "retrieved_sources", evidence: [source]}],
+    report_explanation: {version: "grounded_text_explanation_v1", decision_role: "explanation_only", new_provider_calls: 0,
+      claims: [{claim, status: "supported", references: [source]}]}};
+  const visible = visibleDefault(renderPage(result));
+  assert.ok(visible.includes("Trecho enviado:"));
+  assert.ok(visible.includes(claim));
+  assert.ok(visible.includes("Trecho citado pela análise:"));
+  assert.ok(!visible.includes("PRIVATE-ERROR-MUST-NOT-RENDER"));
+});
+
 function screenshotControl() {
   return {content_type: "image", verdict: "Suspicious", analysis_status: "inconclusive", score: null,
     authenticity_status: "undetermined", veracity_status: "unverified", summary: "Confira a publicação original.",
