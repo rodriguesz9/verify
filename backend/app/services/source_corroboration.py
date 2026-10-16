@@ -75,8 +75,10 @@ _WIRE = ((re.compile(r"\b(?:segundo|conforme|via|fonte|agência|agencia|por|acco
          (re.compile(r"\b(?:segundo|conforme|via|fonte|agência|agencia|por|according to|reported by)[\s:/-]+(?:a |the )?(?:AFP|Agence France.Presse)\b|\bAFP\s*[:/]", re.I), "afp"),
          (re.compile(r"\b(?:segundo|conforme|via|fonte|agência|agencia|por|according to|reported by)[\s:/-]+(?:a |the )?(?:AP|Associated Press)\b|\bAssociated Press\s*[:/]", re.I), "ap"))
 _MONTHS = {name: index for index, names in enumerate(("janeiro january", "fevereiro february", "março march", "abril april", "maio may", "junho june", "julho july", "agosto august", "setembro september", "outubro october", "novembro november", "dezembro december"), 1) for name in names.split()}
-_LONG_DATE = re.compile(r"\b(\d{1,2})\s+(?:de\s+)?(" + "|".join(_MONTHS) + r")\s+(?:de\s+)?(\d{4})\b", re.I)
-_EN_DATE = re.compile(r"\b(" + "|".join(_MONTHS) + r")\s+(\d{1,2}),?\s+(\d{4})\b", re.I)
+_MONTHS.update({"jan": 1, "feb": 2, "mar": 3, "apr": 4, "jun": 6, "jul": 7,
+                "aug": 8, "sep": 9, "sept": 9, "oct": 10, "nov": 11, "dec": 12})
+_LONG_DATE = re.compile(r"\b(\d{1,2})\s+(?:de\s+)?(" + "|".join(_MONTHS) + r")\.?\s+(?:de\s+)?(\d{4})\b", re.I)
+_EN_DATE = re.compile(r"\b(" + "|".join(_MONTHS) + r")\.?\s+(\d{1,2}),?\s+(\d{4})\b", re.I)
 _NUM_DATE = re.compile(r"\b(\d{1,2})[/-](\d{1,2})[/-](\d{4})\b")
 _ISO_DATE = re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b")
 _NAME_ORDINAL = re.compile(r"\b([A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][a-záàâãéêíóôõúç]{2,})[ \t]+([1-9]\d?)([ºªoa])(?=$|[\s.,;:!?])")

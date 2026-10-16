@@ -24,6 +24,16 @@ class LiteralSentenceTests(unittest.TestCase):
         self.assertEqual(input_claims("Valor 1.000,00. Data 2026-10-10. Razão 1.5."),
                          ["Valor 1.000,00.", "Data 2026-10-10.", "Razão 1.5."])
 
+    def test_abbreviated_english_months_keep_day_year_and_negation_in_one_literal_claim(self):
+        for month in ("Jan.", "Feb.", "Mar.", "Apr.", "Jun.", "Jul.", "Aug.", "Sep.", "Sept.", "Oct.", "Nov.", "Dec."):
+            claim = f"The vehicle did not arrive on {month} 26, 2022."
+            self.assertEqual(input_claims(claim + " Another assertion."), [claim, "Another assertion."])
+            queries, _ = build_fact_check_queries(claim, [])
+            self.assertEqual(queries, [claim])
+        claim = "The vehicle did not arrive on Sept.\n26, 2022."
+        self.assertEqual(input_claims(claim + "\nAnother assertion."), [claim, "Another assertion."])
+        self.assertEqual(input_claims("It ended in Sept. Another assertion."), ["It ended in Sept.", "Another assertion."])
+
     def test_title_fix_does_not_weaken_exact_evidence_or_negation(self):
         claim = "A Dra. Ávila recebeu R$ 1.500,00 em 08.09.2022."
         reviews = [{"claim_text": claim, "rating": "Verdadeiro", "url": f"https://{domain}/synthetic",

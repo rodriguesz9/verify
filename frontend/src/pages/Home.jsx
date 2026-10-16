@@ -12,6 +12,7 @@ import ExtractedTextReview from "../components/report/ExtractedTextReview.jsx";
 import { textReviewState, textReviewError, withoutReviewCredential } from "../utils/textReview.js";
 import { analysisUrlInput, MAX_ANALYSIS_URL_LENGTH } from "../utils/urlInput.js";
 import { textInputState, analysisErrorMessage } from "../utils/analysisInput.js";
+import { batchResultLabel } from "../utils/reportEvidence.js";
 import { captureAnalysisScope, isAnalysisScopeCurrent, storeSessionReport, subscribeAnalysisReset } from "../services/privacyStorage.js";
 
 const TABS = [
@@ -424,30 +425,31 @@ export default function Home() {
             {batchResults.map((r, i) => {
               const color = VERDICT_COLORS[r.verdict] || "#8AA2B4";
               return (
-                <div
+                <button
+                  type="button"
                   key={i}
-                  className="rounded-lg border border-[#132435] bg-[#0A1520] p-4 hover:border-[#00D4FF]/50 transition-colors cursor-pointer"
+                  className="w-full text-left rounded-lg border border-[#132435] bg-[#0A1520] p-4 hover:border-[#00D4FF]/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00D4FF] transition-colors cursor-pointer"
                   onClick={() => {
                     if (storeSessionReport(r, r.query_input || "")) navigate("/report");
                     else setError("Não foi possível abrir este relatório. Por favor, repita a checagem.");
                   }}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-mono text-xs text-[#CDE8F0] truncate">{r.query_input || `Mensagem ${i + 1}`}</p>
-                      <p className="font-mono text-[11px] text-[#8AA2B4] mt-1 line-clamp-2">{r.summary || r.plain_explanation || "—"}</p>
-                    </div>
-                    <div className="text-right shrink-0">
+                  <span className="flex items-start justify-between gap-3">
+                    <span className="flex-1 min-w-0">
+                      <span className="block font-mono text-xs text-[#CDE8F0] truncate">{r.query_input || `Mensagem ${i + 1}`}</span>
+                      <span className="block font-mono text-[11px] text-[#8AA2B4] mt-1 line-clamp-2">{r.summary || r.plain_explanation || "—"}</span>
+                    </span>
+                    <span className="text-right max-w-[45%] break-words">
                       <span
                         className="font-mono text-[10px] font-bold uppercase tracking-wider"
                         style={{ color }}
                       >
-                        {r.verdict || "—"}
+                        {batchResultLabel(r)}
                       </span>
-                      <div className="font-mono text-xs mt-1" style={{ color }}>{r.analysis_status === "inconclusive" || r.score == null ? "Não determinado" : `${r.score}/100 · índice não calibrado`}</div>
-                    </div>
-                  </div>
-                </div>
+                      <span className="block font-mono text-xs mt-1" style={{ color }}>{r.analysis_status === "inconclusive" || r.score == null ? "Não determinado" : `${r.score}/100 · índice não calibrado`}</span>
+                    </span>
+                  </span>
+                </button>
               );
             })}
           </div>

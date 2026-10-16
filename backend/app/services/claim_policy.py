@@ -23,6 +23,7 @@ RELATIVE_TIME = re.compile(r"\b(hoje|ontem|amanh[ãa]|agora|nesta semana|neste m
                            r"today|yesterday|tomorrow|now|currently|this week|last week|this year)\b", re.I)
 _LITERAL_SEPARATOR = re.compile(r"(?<=[.!?])\s+|\n+")
 _TITLE_ABBREVIATION = re.compile(r"\b(?:dr|dra|sr|sra|prof|profa)\.$", re.I)
+_MONTH_ABBREVIATION = re.compile(r"\b(?:jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\.$", re.I)
 
 
 def normalize_claim(text: str) -> str:
@@ -48,6 +49,13 @@ def input_claims(text: str) -> list[str]:
     parts, start = [], 0
     for separator in _LITERAL_SEPARATOR.finditer(text):
         if _TITLE_ABBREVIATION.search(text[:separator.start()]):
+            continue
+        # Keep abbreviated calendar dates literal. Splitting "Sept. 26" into
+        # separate claims produces a meaningless numeric search and discards
+        # the relation between the event and its date. A following number is
+        # required; a month abbreviation cannot swallow an unrelated sentence.
+        if (_MONTH_ABBREVIATION.search(text[:separator.start()])
+                and re.match(r"\d{1,4}\b", text[separator.end():])):
             continue
         part = text[start:separator.start()].strip()
         if part:

@@ -1,6 +1,16 @@
 const strings = (value) => Array.isArray(value)
   ? value.filter((item) => typeof item === "string" && item.trim()) : [];
 
+export function batchResultLabel(result = {}) {
+  if (result.verdict === "Scam") return "Sinais de possível golpe";
+  if (result.analysis_status === "inconclusive") return "Análise inconclusiva";
+  if (result.veracity_status === "supported") return "Corroborado nas fontes consultadas";
+  if (result.veracity_status === "refuted") return "Refutado nas fontes consultadas";
+  if (result.veracity_status === "conflicting") return "Fontes em desacordo";
+  if (result.veracity_status === "mixed") return "Resultados diferentes por afirmação";
+  return "Sem conclusão suficiente";
+}
+
 export function normalizeScore(value) {
   return typeof value === "number" && Number.isFinite(value)
     ? Math.min(100, Math.max(0, value)) : null;
@@ -97,9 +107,25 @@ export function mediaSignalPresentation(signal, scope) {
   if (voice) explanation += " A observação trata da faixa de áudio: não comprova clonagem, identidade da pessoa nem a verdade da fala; não determina que toda a gravação seja sintética.";
   else if (video) {
     explanation += " A observação se limita aos quadros amostrados; não verifica o vídeo inteiro, a identidade da pessoa ou a sincronização entre boca e voz.";
+    const validTime = (value) => typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 120;
+    const observations = Array.isArray(signal.observations) ? signal.observations.slice(0, 12)
+      .filter((item) => item && validTime(item.timestamp_seconds) && mediaSignalStates.includes(item.state)) : [];
+    const descriptions = {
+      consensus_ai: "Concordância de detectores sobre IA",
+      consensus_manipulation: "Concordância de detectores sobre possível manipulação",
+      isolated_ai: "Sinal de IA sem confirmação independente",
+      isolated_manipulation: "Sinal de alteração sem confirmação independente",
+      disagreement: "Detectores em desacordo",
+    };
+    for (const [state, description] of Object.entries(descriptions)) {
+      const times = [...new Set(observations.filter((item) => item.state === state).map((item) => item.timestamp_seconds))];
+      if (times.length) explanation += ` ${description} nos tempos ${times.map((time) => `${time.toFixed(1)} s`).join(", ")}.`;
+    }
     const times = Array.isArray(signal.observed_timestamps_seconds) ? signal.observed_timestamps_seconds
       .filter((value) => typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 120).slice(0, 12) : [];
-    if (times.length && !["no_high_signal", "unavailable"].includes(signal.state)) explanation += ` Sinais observados nos tempos ${times.map((time) => `${time.toFixed(1)} s`).join(", ")}.`;
+    // Older reports may lack per-frame observations. Never infer agreement at
+    // every timestamp merely from the strongest aggregate state.
+    if (!observations.length && times.length && !["no_high_signal", "unavailable"].includes(signal.state)) explanation += ` Sinais observados nos tempos ${times.map((time) => `${time.toFixed(1)} s`).join(", ")}; sem detalhamento de concordância por tempo.`;
   }
   else explanation += " A produção da imagem é separada da verdade da informação retratada.";
   return {state: signal.state, title: labels[signal.state], label: labels[signal.state], explanation,

@@ -3,7 +3,20 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {animatedScoreAt, normalizeScore, safeSourceUrl, buildReportEvidence, visibleDetectorScore, reportMediaHeadline,
   mediaSignalPresentation, sourceAttributionPresentation, reportSourceHeadline, factCheckQueryPresentation,
-  providerCoveragePresentation} from "../src/utils/reportEvidence.js";
+  providerCoveragePresentation, batchResultLabel} from "../src/utils/reportEvidence.js";
+
+test("batch labels never turn an inconclusive or legacy code into a public accusation", () => {
+  assert.equal(batchResultLabel({verdict: "Suspicious", analysis_status: "inconclusive"}), "Análise inconclusiva");
+  assert.equal(batchResultLabel({verdict: "Authentic", analysis_status: "inconclusive", veracity_status: "supported"}), "Análise inconclusiva");
+  assert.equal(batchResultLabel({verdict: "Authentic", veracity_status: "unverified"}), "Sem conclusão suficiente");
+  assert.equal(batchResultLabel({verdict: "Scam", analysis_status: "inconclusive"}), "Sinais de possível golpe");
+  assert.equal(batchResultLabel({veracity_status: "refuted", analysis_status: "partial"}), "Refutado nas fontes consultadas");
+  assert.equal(batchResultLabel({veracity_status: "supported", analysis_status: "partial"}), "Corroborado nas fontes consultadas");
+  const page = readFileSync(new URL("../src/pages/Home.jsx", import.meta.url), "utf8");
+  assert.match(page, /\{batchResultLabel\(r\)\}/);
+  assert.doesNotMatch(page, /\{r\.verdict \|\|/);
+  assert.match(page, /<button\s+type="button"\s+key=\{i\}/);
+});
 
 test("an omitted complete news query is not presented as an unavailable provider", () => {
   const reason = "Busca omitida: nenhuma frase completa cabe no limite de 500 caracteres; nenhum texto foi cortado.";
@@ -449,6 +462,25 @@ test("audio headline refers to voice and does not certify cloning or change imag
 const diagnosis = (state, scope = "image", extra = {}) => ({version: "1", state, scope,
   independent_provider_count: 1, ai_provider_count: 1, manipulation_provider_count: 0,
   strong_providers: {ai: ["PRIVATE-PROVIDER"], manipulation: []}, ...extra});
+
+test("video explanation separates same-frame agreement from isolated signals at other times", () => {
+  const signal = diagnosis("consensus_ai", "sampled_video_frames", {
+    observed_timestamps_seconds: [.5, 2.5, 4.5],
+    observations: [{state: "consensus_ai", timestamp_seconds: .5},
+      {state: "isolated_ai", timestamp_seconds: 2.5}, {state: "isolated_ai", timestamp_seconds: 4.5},
+      {state: "consensus_ai", timestamp_seconds: true}, {state: "consensus_ai", timestamp_seconds: 121}],
+  });
+  const original = structuredClone(signal);
+  const text = mediaSignalPresentation(signal, "sampled_video_frames").explanation;
+  assert.match(text, /Concordância de detectores sobre IA nos tempos 0\.5 s\./);
+  assert.match(text, /Sinal de IA sem confirmação independente nos tempos 2\.5 s, 4\.5 s\./);
+  assert.doesNotMatch(text, /Concordância[^.]+2\.5|121\.0|PRIVATE-PROVIDER/);
+  assert.deepEqual(signal, original);
+  const legacy = mediaSignalPresentation(diagnosis("consensus_ai", "sampled_video_frames", {
+    observed_timestamps_seconds: [.5, 2.5],
+  }), "sampled_video_frames");
+  assert.match(legacy.explanation, /sem detalhamento de concordância por tempo/);
+});
 
 test("versioned media observations expose uncertainty without changing canonical verdict or scores", () => {
   for (const [state, title] of [["isolated_ai", "Sinal de possível IA — confirmação pendente"],

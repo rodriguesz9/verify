@@ -136,6 +136,29 @@ class CuratedSourceSearchTests(unittest.IsolatedAsyncioTestCase):
         text = "Elizabeth II nasceu em 1926 e morreu em 2022."
         self.assertEqual(_source_recovery_query(text)[0], text + " " + SOURCE_SITE_FILTER)
 
+    def test_general_subject_uses_primary_and_editorial_search_without_rewriting(self):
+        text = "O Instituto Alfa não registrou 42 ocorrências em 12/08/2021."
+        plan = _source_recovery_queries(text, 3)
+        self.assertEqual(len(plan), 2)
+        self.assertTrue(all(query.startswith(text + " ") for query, _ in plan))
+        self.assertIn("site:nasa.gov", plan[0][0])
+        self.assertNotIn("site:science.nasa.gov", plan[0][0])
+        self.assertIn("site:who.int", plan[0][0])
+        self.assertIn("site:planalto.gov.br", plan[0][0])
+        self.assertEqual(plan[0][1], "whole_literal_claim_primary_sources")
+        self.assertEqual(_source_recovery_queries(text, 2), [_source_recovery_query(text)])
+
+    async def test_general_subject_third_search_respects_quota_and_page_ceiling(self):
+        text = "O Instituto Alfa não registrou 42 ocorrências em 12/08/2021."
+        with (patch.dict(os.environ, {"SOURCE_CROSSCHECK_ENABLED": "true", "SOURCE_CROSSCHECK_SEARCH_LIMIT": "3"}),
+              patch("app.core.pipeline.search_web", new=AsyncMock(side_effect=[NewsSearch(), NewsSearch(status="rate_limited")])) as search,
+              patch("app.core.pipeline.collect_source_attribution", new=AsyncMock(return_value={"status": "no_results", "coverage": {}, "_documents": []})) as collect):
+            result = await _retrieve_source_attribution(text, [text], None)
+        self.assertEqual(search.await_count, 2)
+        self.assertEqual(search.await_args.args[0], _source_recovery_queries(text, 3)[0][0])
+        self.assertEqual(result["coverage"]["search_queries"][-1]["status"], "rate_limited")
+        self.assertEqual(collect.await_args.kwargs["max_sources"], 6)
+
     async def test_failure_or_explicit_one_search_does_not_retry(self):
         text = "Elizabeth II morreu em 8 de setembro de 2022."
         for leads, limit in ((NewsSearch(status="rate_limited"), "2"), (NewsSearch(status="not_configured"), "2"),

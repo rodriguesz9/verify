@@ -20,8 +20,8 @@ from app.services.source_corroboration import document_selection_audit
 from app.services.source_decision import apply_source_decision
 from app.services.report_explanation import enrich_grounded_report
 
-SOURCE_SITE_FILTER = "(site:royal.uk OR site:brasilescola.uol.com.br OR site:mundoeducacao.uol.com.br OR site:science.nasa.gov OR site:cnnbrasil.com.br OR site:aosfatos.org OR site:bbc.com)"
-PRIMARY_SITE_FILTER = "(site:royal.uk OR site:science.nasa.gov OR site:ibge.gov.br OR site:bcb.gov.br OR site:who.int)"
+SOURCE_SITE_FILTER = "(site:royal.uk OR site:brasilescola.uol.com.br OR site:mundoeducacao.uol.com.br OR site:nasa.gov OR site:cnnbrasil.com.br OR site:aosfatos.org OR site:bbc.com)"
+PRIMARY_SITE_FILTER = "(site:royal.uk OR site:nasa.gov OR site:ibge.gov.br OR site:bcb.gov.br OR site:who.int OR site:planalto.gov.br)"
 EXPLAINER_SITE_FILTER = "(site:brasilescola.uol.com.br OR site:mundoeducacao.uol.com.br OR site:cnnbrasil.com.br OR site:aosfatos.org)"
 
 
@@ -45,8 +45,17 @@ def _source_recovery_query(query):
 
 def _source_recovery_queries(query, limit):
     combined, method = _source_recovery_query(query)
-    if limit < 3 or method != "literal_identity_event_anchors":
+    if limit < 3:
         return [(combined, method)]
+    if method != "literal_identity_event_anchors":
+        # Previously only named birth/death/launch events could use the third
+        # configured search. Other subjects got one narrow, predominantly
+        # editorial filter, excluding primary bodies already in our curated
+        # source policy. Partition the ORIGINAL assertion, not an LLM rewrite.
+        # Dates, quantities and negation remain intact; results are still only
+        # retrieval leads and must pass the unchanged evidence guards.
+        return [(f"{query} {PRIMARY_SITE_FILTER}", "whole_literal_claim_primary_sources"),
+                (f"{query} {SOURCE_SITE_FILTER}", method)]
     identity = re.search(r'"[^"\n]+"', combined)[0]
     if re.search(r"\b(?:morreu|faleceu|falecimento|morte|death|died)\b", query, re.I):
         primary, editorial, genre = "death OR died", "morte OR falecimento OR morreu", "biography"

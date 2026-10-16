@@ -1,0 +1,329 @@
+{
+  "scope": "Actual UI submissions; no mocked provider responses. Persistent outbound budget; two input-rejection cases call no provider.",
+  "revision_note": "Initial two text cases before search fix; four batch cases after search fix. Month/date fixes verified offline, not a fresh real-API post-fix benchmark.",
+  "definition": "Correct AND conclusive / all submitted reference-labelled controls. Abstention is not a false verdict, but is not counted as a classification success.",
+  "groups": [
+    {
+      "modality": "text",
+      "n": 6,
+      "correct_and_conclusive": 0,
+      "inconclusive": 6,
+      "correct_over_all_percent": 0,
+      "coverage_percent": 0,
+      "selective_accuracy_percent": null,
+      "warning": "Small nonrandom exploratory sample, revisions mixed; not an estimate of population accuracy."
+    },
+    {
+      "modality": "image",
+      "n": 2,
+      "correct_and_conclusive": 1,
+      "inconclusive": 1,
+      "correct_over_all_percent": 50,
+      "coverage_percent": 50,
+      "selective_accuracy_percent": 100,
+      "warning": "Small nonrandom exploratory sample, revisions mixed; not an estimate of population accuracy."
+    },
+    {
+      "modality": "audio",
+      "n": 2,
+      "correct_and_conclusive": 0,
+      "inconclusive": 2,
+      "correct_over_all_percent": 0,
+      "coverage_percent": 0,
+      "selective_accuracy_percent": null,
+      "warning": "Small nonrandom exploratory sample, revisions mixed; not an estimate of population accuracy."
+    },
+    {
+      "modality": "video",
+      "n": 2,
+      "correct_and_conclusive": 1,
+      "inconclusive": 1,
+      "correct_over_all_percent": 50,
+      "coverage_percent": 50,
+      "selective_accuracy_percent": 100,
+      "warning": "Small nonrandom exploratory sample, revisions mixed; not an estimate of population accuracy."
+    }
+  ],
+  "cases": [
+    {
+      "id": "C01",
+      "modality": "text",
+      "dimension": "veracity",
+      "expected": "negative",
+      "predicted": "inconclusive",
+      "correct_and_conclusive": false,
+      "verdict": "Suspicious",
+      "analysis_status": "inconclusive",
+      "veracity_status": "unverified",
+      "authenticity_status": "not_applicable",
+      "media_signal_state": null,
+      "reference": "corpus-reference-notes.md from 2026-10-14; sources in provenance.md",
+      "limitation": "Before retrieval fix."
+    },
+    {
+      "id": "C05",
+      "modality": "text",
+      "dimension": "veracity",
+      "expected": "negative",
+      "predicted": "inconclusive",
+      "correct_and_conclusive": false,
+      "verdict": "Suspicious",
+      "analysis_status": "inconclusive",
+      "veracity_status": "unverified",
+      "authenticity_status": "not_applicable",
+      "media_signal_state": null,
+      "reference": "corpus-reference-notes.md from 2026-10-14; sources in provenance.md",
+      "limitation": "Before retrieval fix."
+    },
+    {
+      "id": "C02",
+      "modality": "text",
+      "dimension": "veracity",
+      "expected": "positive",
+      "predicted": "inconclusive",
+      "correct_and_conclusive": false,
+      "verdict": "Suspicious",
+      "analysis_status": "inconclusive",
+      "veracity_status": "unverified",
+      "authenticity_status": "not_applicable",
+      "media_signal_state": null,
+      "reference": "corpus-reference-notes.md from 2026-10-14; sources in provenance.md",
+      "limitation": "After retrieval fix, before month-abbreviation fix."
+    },
+    {
+      "id": "C03",
+      "modality": "text",
+      "dimension": "veracity",
+      "expected": "negative",
+      "predicted": "inconclusive",
+      "correct_and_conclusive": false,
+      "verdict": "Suspicious",
+      "analysis_status": "inconclusive",
+      "veracity_status": "unverified",
+      "authenticity_status": "not_applicable",
+      "media_signal_state": null,
+      "reference": "corpus-reference-notes.md from 2026-10-14; sources in provenance.md",
+      "limitation": "After retrieval fix, before month-abbreviation fix."
+    },
+    {
+      "id": "C04",
+      "modality": "text",
+      "dimension": "veracity",
+      "expected": "positive",
+      "predicted": "inconclusive",
+      "correct_and_conclusive": false,
+      "verdict": "Suspicious",
+      "analysis_status": "inconclusive",
+      "veracity_status": "unverified",
+      "authenticity_status": "not_applicable",
+      "media_signal_state": null,
+      "reference": "corpus-reference-notes.md from 2026-10-14; sources in provenance.md",
+      "limitation": "After retrieval fix, before month-abbreviation fix."
+    },
+    {
+      "id": "C06",
+      "modality": "text",
+      "dimension": "veracity",
+      "expected": "positive",
+      "predicted": "inconclusive",
+      "correct_and_conclusive": false,
+      "verdict": "Suspicious",
+      "analysis_status": "inconclusive",
+      "veracity_status": "unverified",
+      "authenticity_status": "not_applicable",
+      "media_signal_state": null,
+      "reference": "corpus-reference-notes.md from 2026-10-14; sources in provenance.md",
+      "limitation": "After retrieval fix, before month-abbreviation fix."
+    },
+    {
+      "id": "I01",
+      "modality": "image",
+      "dimension": "authenticity",
+      "expected": "negative",
+      "predicted": "inconclusive",
+      "correct_and_conclusive": false,
+      "verdict": "Suspicious",
+      "analysis_status": "inconclusive",
+      "veracity_status": "unverified",
+      "authenticity_status": "undetermined",
+      "media_signal_state": "no_high_signal",
+      "reference": "provenance.md",
+      "limitation": "Exploratory reused development control except new human audio/NASA video."
+    },
+    {
+      "id": "I02",
+      "modality": "image",
+      "dimension": "authenticity",
+      "expected": "positive",
+      "predicted": "positive",
+      "correct_and_conclusive": true,
+      "verdict": "AI_Generated",
+      "analysis_status": "partial",
+      "veracity_status": "unverified",
+      "authenticity_status": "ai_indications",
+      "media_signal_state": "consensus_ai",
+      "reference": "provenance.md",
+      "limitation": "Exploratory reused development control except new human audio/NASA video."
+    },
+    {
+      "id": "A01",
+      "modality": "audio",
+      "dimension": "authenticity",
+      "expected": "positive",
+      "predicted": "inconclusive",
+      "correct_and_conclusive": false,
+      "verdict": "Suspicious",
+      "analysis_status": "inconclusive",
+      "veracity_status": "unverified",
+      "authenticity_status": "undetermined",
+      "media_signal_state": "isolated_ai",
+      "reference": "provenance.md",
+      "limitation": "Exploratory reused development control except new human audio/NASA video."
+    },
+    {
+      "id": "A02",
+      "modality": "audio",
+      "dimension": "authenticity",
+      "expected": "negative",
+      "predicted": "inconclusive",
+      "correct_and_conclusive": false,
+      "verdict": "Suspicious",
+      "analysis_status": "inconclusive",
+      "veracity_status": "unverified",
+      "authenticity_status": "undetermined",
+      "media_signal_state": "unavailable",
+      "reference": "provenance.md",
+      "limitation": "Origin detector not run: fixed five-second Hive audio budget already consumed; ASR only."
+    },
+    {
+      "id": "V01",
+      "modality": "video",
+      "dimension": "authenticity",
+      "expected": "negative",
+      "predicted": "inconclusive",
+      "correct_and_conclusive": false,
+      "verdict": "Suspicious",
+      "analysis_status": "inconclusive",
+      "veracity_status": "unverified",
+      "authenticity_status": "undetermined",
+      "media_signal_state": "no_high_signal",
+      "reference": "provenance.md",
+      "limitation": "Exploratory reused development control except new human audio/NASA video."
+    },
+    {
+      "id": "V02",
+      "modality": "video",
+      "dimension": "authenticity",
+      "expected": "positive",
+      "predicted": "positive",
+      "correct_and_conclusive": true,
+      "verdict": "AI_Generated",
+      "analysis_status": "partial",
+      "veracity_status": "unverified",
+      "authenticity_status": "ai_indications",
+      "media_signal_state": "consensus_ai",
+      "reference": "provenance.md",
+      "limitation": "AI still encoded as video, not generated motion. One frame had two detectors; two frames Sightengine only."
+    }
+  ],
+  "ocr": {
+    "reference": "CONTROLE DE TESTE\nNao pague taxa para liberar seu Pix.\nValor: R$ 123,45\nData: 03/10/2026",
+    "observed": "CONTROLE DE TESTE\nNao pague taxa para liberar seu Pix.\nValor: R$ 123,45\nData: 03/10/2026",
+    "exact_match": true,
+    "n": 1,
+    "warning": "Printed development control only; not handwriting, degraded phone photos or general OCR accuracy."
+  },
+  "providers": [
+    {
+      "provider": "openrouter",
+      "requests": 9,
+      "http200": 8,
+      "http503": 0,
+      "warning": "Transport availability, NOT verdict accuracy."
+    },
+    {
+      "provider": "facts",
+      "requests": 16,
+      "http200": 16,
+      "http503": 0,
+      "warning": "Transport availability, NOT verdict accuracy."
+    },
+    {
+      "provider": "news",
+      "requests": 30,
+      "http200": 30,
+      "http503": 0,
+      "warning": "Transport availability, NOT verdict accuracy."
+    },
+    {
+      "provider": "public_fetch",
+      "requests": 30,
+      "http200": 23,
+      "http503": 0,
+      "warning": "Transport availability, NOT verdict accuracy."
+    },
+    {
+      "provider": "sightengine",
+      "requests": 8,
+      "http200": 8,
+      "http503": 0,
+      "warning": "Transport availability, NOT verdict accuracy."
+    },
+    {
+      "provider": "hive",
+      "requests": 7,
+      "http200": 7,
+      "http503": 0,
+      "warning": "Transport availability, NOT verdict accuracy."
+    },
+    {
+      "provider": "gemini",
+      "requests": 6,
+      "http200": 1,
+      "http503": 5,
+      "warning": "Transport availability, NOT verdict accuracy."
+    },
+    {
+      "provider": "assemblyai",
+      "requests": 9,
+      "http200": 9,
+      "http503": 0,
+      "warning": "Transport availability, NOT verdict accuracy."
+    }
+  ],
+  "hive": {
+    "reservations": {
+      "image_requests": 6,
+      "audio_seconds": 5,
+      "audio_jobs": 1
+    },
+    "nominal_cost_ceiling_usd": 0.049888889,
+    "billing_verified": false,
+    "approval_usd": 0.05,
+    "no_refill": true
+  },
+  "flows": 19,
+  "http_requests": 16,
+  "pdf": [
+    {
+      "http_status": 200,
+      "valid_header": true,
+      "provider_calls": {
+        "openrouter": 0,
+        "facts": 0,
+        "news": 0,
+        "public_fetch": 0,
+        "sightengine": 0,
+        "hive": 0,
+        "gemini": 0
+      }
+    }
+  ],
+  "exclusions": [
+    "URLs: whole article not independently annotated; one public URL failed safely.",
+    "OCR reviewed text: instruction, heading and isolated values, not a boolean factual control; news budget reached.",
+    "Deepfake faces, voice cloning, lip sync, generated motion and adversarial datasets not validated.",
+    "Human audio no paid origin check due approved budget; do not infer detector specificity.",
+    "No WER score: the exact five-second synthetic excerpt and human recording need independent listening/transcription."
+  ]
+}

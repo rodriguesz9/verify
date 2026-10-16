@@ -79,9 +79,15 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("url", json.loads(router.await_args.args[0])["sources"][0])
 
     async def test_equivalent_pt_en_and_numeric_dates_are_not_changed(self):
-        for date in ("8 September 2022", "08/09/2022", "2022-09-08"):
+        for date in ("8 September 2022", "08/09/2022", "2022-09-08", "Sept. 8, 2022", "8 Sep. 2022"):
             result, _, _ = await self.run_comparison(docs=documents(FIRST.replace("8 de setembro de 2022", date), SECOND))
             self.assertEqual(result["state"], "corroborated", date)
+
+    async def test_abbreviated_months_do_not_erase_wrong_dates_or_borrow_publication_dates(self):
+        for prefix, date in (("", "Sept. 9, 2022"), ("Updated ", "Sept. 8, 2022")):
+            second = prefix + "Queen Elizabeth II died on " + date + " at Balmoral Castle."
+            result, _, _ = await self.run_comparison(docs=documents(FIRST, second))
+            self.assertNotEqual(result["state"], "corroborated")
 
     async def test_actual_english_primary_body_and_portuguese_article_compare_same_event(self):
         claim = CLAIM[:-1] + " na Escócia."

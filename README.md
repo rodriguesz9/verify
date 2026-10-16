@@ -1,5 +1,7 @@
 # Verify
 
+**Teste real pela interface em 16/10:** [resultados, números e correções](docs/VALIDACAO-INTERFACE-2026-10-16.md). Seis controles factuais ficaram inconclusivos: checagem textual ainda não homologada. Imagem/quadro IA conhecidos sinalizados; voz com cobertura parcial. **739 testes backend, 20 arquivos de teste frontend e build passaram localmente.** Testes funcionais não certificam precisão de vereditos nem produção.
+
 Aplicação de apoio à checagem de mensagens, links, imagens, áudio e vídeos. Feita para ajudar pessoas a reconhecer sinais de risco e consultar evidências antes de compartilhar ou agir.
 
 Não é uma perícia, um certificado de autenticidade ou uma garantia de detecção de deepfake.
