@@ -19,9 +19,11 @@ from app.services.source_corroboration import select_comparison_documents, usabl
 from app.services.source_corroboration import document_selection_audit
 from app.services.source_decision import apply_source_decision
 from app.services.report_explanation import enrich_grounded_report
+from app.services.source_queries import neutral_source_query, primary_source_query, primary_source_filter
 
-SOURCE_SITE_FILTER = "(site:royal.uk OR site:brasilescola.uol.com.br OR site:mundoeducacao.uol.com.br OR site:nasa.gov OR site:cnnbrasil.com.br OR site:aosfatos.org OR site:bbc.com)"
-PRIMARY_SITE_FILTER = "(site:royal.uk OR site:nasa.gov OR site:ibge.gov.br OR site:bcb.gov.br OR site:who.int OR site:planalto.gov.br)"
+SOURCE_SITE_FILTER = "(site:royal.uk OR site:brasilescola.uol.com.br OR site:mundoeducacao.uol.com.br OR site:nasa.gov OR site:cnnbrasil.com.br OR site:aosfatos.org OR site:bbc.com OR site:theguardian.com OR site:time.com OR site:axios.com)"
+PRIMARY_SITE_FILTER = "(site:royal.uk OR site:nasa.gov OR site:ibge.gov.br OR site:bcb.gov.br OR site:who.int OR site:planalto.gov.br OR site:copernicus.eu)"
+EDITORIAL_SITE_FILTER = "(site:bbc.com OR site:reuters.com OR site:apnews.com OR site:ebc.com.br OR site:cnnbrasil.com.br OR site:theguardian.com OR site:brasilescola.uol.com.br OR site:aosfatos.org)"
 EXPLAINER_SITE_FILTER = "(site:brasilescola.uol.com.br OR site:mundoeducacao.uol.com.br OR site:cnnbrasil.com.br OR site:aosfatos.org)"
 
 
@@ -54,6 +56,11 @@ def _source_recovery_queries(query, limit):
         # source policy. Partition the ORIGINAL assertion, not an LLM rewrite.
         # Dates, quantities and negation remain intact; results are still only
         # retrieval leads and must pass the unchanged evidence guards.
+        neutral = neutral_source_query(query)
+        if neutral:
+            primary = primary_source_query(query) or neutral
+            return [(f"{primary} {primary_source_filter(query, PRIMARY_SITE_FILTER)}", "literal_topic_anchors_primary_sources"),
+                    (f"{primary} {EDITORIAL_SITE_FILTER}", "literal_topic_anchors_editorial_sources")]
         return [(f"{query} {PRIMARY_SITE_FILTER}", "whole_literal_claim_primary_sources"),
                 (f"{query} {SOURCE_SITE_FILTER}", method)]
     identity = re.search(r'"[^"\n]+"', combined)[0]
@@ -159,7 +166,10 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
                     extra_status = getattr(extra, "status", "success" if extra else "no_results")
                     plan.append({"method": recovery_method, "status": extra_status,
                                  "decision_role": "retrieval_only_original_claim_unchanged"})
-                    leads = NewsSearch([*leads, *extra], status="success" if leads or extra else extra_status)
+                    # Qualified recovery leads get their own reading chance.
+                    # Already attempted URLs remain in the cumulative budget;
+                    # this order never retries or refunds a failed request.
+                    leads = NewsSearch([*extra, *leads], status="success" if leads or extra else extra_status)
                     if extra_status not in {"success", "no_results"}:
                         break  # Never work around a quota/credential failure.
                 attribution = await collect_source_attribution(text, queries, source_url, search_results=leads,

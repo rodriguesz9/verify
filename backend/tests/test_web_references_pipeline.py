@@ -32,7 +32,7 @@ class WebSearchTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result, [{"title": "Fonte", "link": "https://example.com/article"}])
         self.assertEqual(post.call_args.args[0], WEB_ENDPOINT)
         self.assertEqual(post.call_args.kwargs["json"]["q"], sentence)
-        self.assertEqual(post.call_args.kwargs["json"]["num"], 5)
+        self.assertEqual(post.call_args.kwargs["json"]["num"], 10)
 
     async def test_errors_and_empty_results_are_distinct(self):
         for code, payload, state in ((429, {}, "rate_limited"), (402, {}, "rate_limited"),
@@ -140,12 +140,15 @@ class CuratedSourceSearchTests(unittest.IsolatedAsyncioTestCase):
         text = "O Instituto Alfa não registrou 42 ocorrências em 12/08/2021."
         plan = _source_recovery_queries(text, 3)
         self.assertEqual(len(plan), 2)
-        self.assertTrue(all(query.startswith(text + " ") for query, _ in plan))
+        self.assertTrue(all("Instituto Alfa" in query for query, _ in plan))
+        self.assertTrue(all("42" not in query for query, _ in plan))
         self.assertIn("site:nasa.gov", plan[0][0])
         self.assertNotIn("site:science.nasa.gov", plan[0][0])
         self.assertIn("site:who.int", plan[0][0])
         self.assertIn("site:planalto.gov.br", plan[0][0])
-        self.assertEqual(plan[0][1], "whole_literal_claim_primary_sources")
+        self.assertNotIn("site:nasa.gov", plan[1][0])
+        self.assertNotIn("site:royal.uk", plan[1][0])
+        self.assertEqual(plan[0][1], "literal_topic_anchors_primary_sources")
         self.assertEqual(_source_recovery_queries(text, 2), [_source_recovery_query(text)])
 
     async def test_general_subject_third_search_respects_quota_and_page_ceiling(self):

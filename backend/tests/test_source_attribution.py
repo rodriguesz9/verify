@@ -59,6 +59,22 @@ class SourceAttributionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(recovered["coverage"]["new_fetch_count"], 3)
         self.assertEqual(recovered["coverage"]["cumulative_fetch_attempt_count"], 6)
 
+    async def test_unusable_cached_page_does_not_block_new_page_of_same_family(self):
+        text = "A missão Zeta foi lançada em 12 de agosto de 2021."
+        old = ["https://www.nasa.gov/old", "https://www.bbc.com/old", "https://www.cnnbrasil.com.br/old"]
+        new = ["https://www.nasa.gov/new", "https://www.bbc.com/new", "https://www.cnnbrasil.com.br/new"]
+        cache = {}
+        async def fetch(url, **kwargs):
+            return page(text if url in new else "Outra página, sobre um evento sem relação.", url=url)
+        with patch("app.services.source_attribution.fetch_public_resource", new=AsyncMock(side_effect=fetch)) as request:
+            await collect_source_attribution(text, [text], search_results=SearchResults([{"link": url} for url in old]),
+                                             include_documents=True, fetched_cache=cache)
+            result = await collect_source_attribution(text, [text], search_results=SearchResults([{"link": url} for url in new + old]),
+                                             include_documents=True, fetched_cache=cache, max_sources=6)
+        self.assertEqual([call.args[0] for call in request.await_args_list], old + new)
+        self.assertEqual(result["coverage"]["cumulative_fetch_attempt_count"], 6)
+        self.assertEqual(result["coverage"]["new_fetch_count"], 3)
+
     def test_article_body_paragraphs_do_not_merge_headline_byline_or_publication_date(self):
         body = "Elizabeth II morreu em 8 de setembro de 2022."
         html = f'''<main><article><h1>Elizabeth II morreu em 9 de setembro de 2022.</h1>
@@ -74,6 +90,31 @@ class SourceAttributionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(sentences[1], "Por Reuters")
         self.assertNotIn("Publicado", " ".join(sentences))
         self.assertNotIn("09/09/2022", " ".join(sentences))
+
+    def test_unlabelled_standalone_date_cannot_merge_with_next_event_sentence(self):
+        body = "The Zeta spacecraft impacted asteroid Delta on Sept. 26, 2022."
+        for date in ("Sep 27, 2022", "27 de setembro de 2022", "2022-09-27", "Sep 27, 2022 RELEASE22-100"):
+            html = f"<article><h1>Impact report</h1><div>{date}</div><p>{body}</p></article>"
+            sentences, _, _, roles = _article_parts(FetchedResource(html.encode(), "text/html", "https://example.test/a", "utf-8"))
+            self.assertIn(body, sentences)
+            self.assertEqual(roles[sentences.index(date)], "context")
+            self.assertEqual(roles[sentences.index(body)], "body")
+
+    def test_aria_main_avoids_site_navigation_without_losing_article_headline(self):
+        html = """<header><nav>Menu</nav><h2>Todos os países</h2></header>
+            <div role="main"><h1>Não é verdade que o evento ocorreu</h1>
+            <p>A fonte explica o evento Zeta e a sua data.</p></div><div>Rodapé da aplicação</div>"""
+        sentences, _, _, roles = _article_parts(FetchedResource(html.encode(), "text/html", "https://example.test/a", "utf-8"))
+        self.assertNotIn("Todos os países", " ".join(sentences))
+        self.assertNotIn("Rodapé", " ".join(sentences))
+        self.assertIn("Não é verdade", sentences[0])
+        self.assertEqual(roles[0], "context")
+
+    def test_navigation_header_with_denial_is_preserved_as_qualifier(self):
+        html = "<header><nav>Menu</nav><h2>É falso que:</h2></header><article><p>O evento Zeta ocorreu em 2021.</p></article>"
+        sentences, _, _, roles = _article_parts(FetchedResource(html.encode(), "text/html", "https://example.test/a", "utf-8"))
+        self.assertIn("É falso que:", sentences)
+        self.assertEqual(roles[sentences.index("É falso que:")], "context")
 
     def test_video_fallback_and_metadata_table_do_not_merge_with_body_event_date(self):
         body = "On July 16, 1969, the Saturn V rocket launches on the Apollo 11 mission."

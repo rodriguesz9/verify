@@ -86,6 +86,24 @@ class SourceDecisionTests(unittest.TestCase):
         repeated["claims"] *= 2
         self.assertEqual(apply_source_decision(CLAIM, text_report(CLAIM, []), repeated), text_report(CLAIM, []))
 
+    def test_long_article_keeps_partial_evidence_without_approving_unread_remainder(self):
+        text = CLAIM + " " + " ".join(f"Informação adicional {i} sem confirmação." for i in range(1, 6))
+        result = apply_source_decision(text, text_report(text, []), layer())
+        self.assertEqual(result["claim_assessments"][0]["status"], "supported")
+        self.assertEqual(len(result["claim_assessments"]), 5)
+        self.assertEqual(result["veracity_status"], "unverified")
+        self.assertFalse(result["veracity_decision_coverage_complete"])
+
+    def test_five_supported_parts_cannot_approve_sixth_unread_part(self):
+        parts = [f"O documento Alfa registrou o evento {i}." for i in range(6)]
+        text = " ".join(parts)
+        comparison = layer(parts[0])
+        comparison["claims"] = [layer(part)["claims"][0] for part in parts[:5]]
+        result = apply_source_decision(text, text_report(text, []), comparison)
+        self.assertTrue(all(item["status"] == "supported" for item in result["claim_assessments"]))
+        self.assertEqual(result["veracity_status"], "unverified")
+        self.assertFalse(result["veracity_decision_coverage_complete"])
+
 
 class SourcePipelineTests(unittest.IsolatedAsyncioTestCase):
     async def run_control(self, comparison):

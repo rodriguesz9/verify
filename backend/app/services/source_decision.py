@@ -26,9 +26,11 @@ def apply_source_decision(text, report, comparison):
     parts = input_claims(text)
     originals = report.get("claim_assessments")
     comparisons = comparison.get("claims")
-    if (not parts or len(parts) > 5 or not isinstance(originals, list)
-            or len(originals) != len(parts) or not isinstance(comparisons, list)):
+    if (not parts or not isinstance(originals, list)
+            or len(originals) != min(len(parts), 5) or not isinstance(comparisons, list)
+            or len({normalize_claim(part) for part in parts}) != len(parts)):
         return result
+    complete_input = len(parts) <= len(originals)
     by_claim = {}
     for item in comparisons:
         if isinstance(item, dict) and isinstance(item.get("claim"), str):
@@ -65,7 +67,7 @@ def apply_source_decision(text, report, comparison):
     if not used_sources:
         return result
     states = {d["status"] for d in merged}
-    truth = ("supported" if states == {"supported"} else "refuted" if states == {"refuted"}
+    truth = ("supported" if complete_input and states == {"supported"} else "refuted" if complete_input and states == {"refuted"}
              else "conflicting" if "conflicting" in states else "mixed" if {"supported", "refuted"} <= states else "unverified")
     descriptions = {
         "supported": "A afirmação foi corroborada nos trechos de fontes independentes consultadas. Confira as fontes, datas e contexto; isso não é garantia de verdade nem de autenticidade de uma mídia.",
@@ -80,7 +82,7 @@ def apply_source_decision(text, report, comparison):
         summary=descriptions[truth], plain_explanation=descriptions[truth],
         whatsapp_share_text="🔎 Verify: " + descriptions[truth], confidence=None, authenticity_percentage=None,
         veracity_decision_basis="mixed_evidence" if used_reviews else "retrieved_sources",
-        veracity_decision_coverage_complete=all(d["status"] in {"supported", "refuted", "conflicting"} for d in merged),
+        veracity_decision_coverage_complete=complete_input and all(d["status"] in {"supported", "refuted", "conflicting"} for d in merged),
         policy_version=POLICY_VERSION, score=0, score_semantics=SOURCE_SCORE_SEMANTICS)
     # The non-null integer is retained only for the legacy DB column. All
     # presenters/history/stats must omit it under this explicit semantics.

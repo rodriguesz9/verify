@@ -16,6 +16,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 from app.core import gemini_client, openrouter_service
 from app.services.claim_policy import input_claims, normalize_claim, RELATIVE_TIME
+from app.services.source_relations import lexical_text, WORD_GROUPS, opposing_directions, percentage_transition, opposing_measurements
 
 VERSION = "source_corroboration_v1"
 MAX_INPUT = 5000
@@ -38,6 +39,8 @@ SOURCE_FAMILIES = {
     "cnnbrasil.com.br": ("cnn", "editorial"), "cnn.com": ("cnn", "editorial"),
     "aosfatos.org": ("aosfatos", "editorial"), "boatos.org": ("boatos", "editorial"),
     "agencialupa.org": ("uol", "editorial"), "fullfact.org": ("fullfact", "editorial"),
+    "theguardian.com": ("guardian", "editorial"), "time.com": ("time", "editorial"),
+    "axios.com": ("axios", "editorial"), "copernicus.eu": ("copernicus", "primary"),
     "royal.uk": ("royal", "primary"), "bcb.gov.br": ("bcb", "primary"),
     "ibge.gov.br": ("ibge", "primary"), "inpe.br": ("inpe", "primary"),
     "who.int": ("who", "primary"), "nasa.gov": ("nasa", "primary"),
@@ -55,11 +58,12 @@ _ALIASES = {**{word: "event-death" for word in _DEATH_WORDS},
             **{word: "event-walk" for word in ("walked", "pisou", "pisaram")},
             "castle": "castelo", "scotland": "escócia", "brazil": "brasil", "england": "inglaterra",
             "portugal": "portugal", "apolo": "apollo"}
+_ALIASES.update({word: group[0] for group in WORD_GROUPS for word in group[1:]})
 _NEGATION = re.compile(r"\b(não|nao|nunca|jamais|nem|not|never|didn't|wasn't|no\s+(?:humans?|man|men|astronauts?|persons?|people))\b", re.I)
 _UNASSERTED = re.compile(r"\b(boato|rumor|alegou|alega|supostamente|mensagem não confirmada|postagem|satírico|sátira|fictional|allegedly)\b", re.I)
 _UNCERTAIN = re.compile(r"\b(?:pode|poderia|teria|talvez|provável|possível|may|might|could|possibly|alleged)\b", re.I)
 _PLANNED = re.compile(r"\b(?:será|serão|vai|vão|irá|irão|planeja|previsto|prevista|agendado|agendada|will|scheduled|planned|plans)\b", re.I)
-_PAST_EVENT = re.compile(r"\b(?:recebeu|morreu|faleceu|nasceu|lançou|lançada|lançado|pisou|pisaram|pagou|enviou|inaugurou|cancelou|died|received|launched|walked|paid|sent|born)\b", re.I)
+_PAST_EVENT = re.compile(r"\b(?:recebeu|morreu|faleceu|nasceu|lançou|lançada|lançado|pisou|pisaram|pagou|enviou|inaugurou|cancelou|colidiu|declarou|classificou|caracterizou|decretou|died|received|launched|walked|paid|sent|born|impacted|crashed|smashed|declared|classified|characterized|characterised)\b", re.I)
 _DATE_METADATA = re.compile(r"\b(?:publicad[oa]|publicação|atualizad[oa]|atualização|published|publication|updated|last update|posted)\b", re.I)
 _DATE_BYLINE = re.compile(r"^\s*(?:por|by)\s+.{1,100}\b\d{1,2}[/-]\d{1,2}[/-]\d{4}\b", re.I)
 _OTHER_DATED_EVENT = re.compile(r"\b(?:anunciou|anunciad[oa]|anúncio|divulgou|divulgad[oa]|comunicado|announced|announcement|"
@@ -81,6 +85,7 @@ _LONG_DATE = re.compile(r"\b(\d{1,2})\s+(?:de\s+)?(" + "|".join(_MONTHS) + r")\.
 _EN_DATE = re.compile(r"\b(" + "|".join(_MONTHS) + r")\.?\s+(\d{1,2}),?\s+(\d{4})\b", re.I)
 _NUM_DATE = re.compile(r"\b(\d{1,2})[/-](\d{1,2})[/-](\d{4})\b")
 _ISO_DATE = re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b")
+_YEAR_DATE = re.compile(r"\b(?:em|in)\s+((?:18|19|20)\d{2})\b(?![-/\d]|[.,]\d)", re.I)
 _NAME_ORDINAL = re.compile(r"\b([A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][a-záàâãéêíóôõúç]{2,})[ \t]+([1-9]\d?)([ºªoa])(?=$|[\s.,;:!?])")
 _NAME_ROMAN = re.compile(r"\b([A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][a-záàâãéêíóôõúç]{2,})[ \t]+([IVXLCDM]{1,6})\b")
 _SINGLE_EVENT = (("death", re.compile(r"\b(?:" + "|".join(_DEATH_WORDS) + r")\b", re.I)),
@@ -189,6 +194,7 @@ def _name_identity_tokens(text):
 
 
 def _tokens(text):
+    text = lexical_text(text)
     return ({_ALIASES.get(word.casefold(), word.casefold()) for word in re.findall(r"[^\W\d_]{3,}", text, re.UNICODE)
              if word.casefold() not in _STOP | set(_MONTHS)}
             | {word.casefold() for word in re.findall(r"\b[IVXLCDM]{1,6}\b", text)}
@@ -197,9 +203,11 @@ def _tokens(text):
 
 def _names(text):
     # Conservative lexical anchor, not person recognition or an entity model.
+    text = lexical_text(text)
     return ({_ALIASES.get(word.casefold(), word.casefold()) for word in re.findall(r"\b[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][a-záàâãéêíóôõúç]{2,}\b", text)
              if word.casefold() not in _STOP | set(_MONTHS) | {"castelo", "castle", "banco", "governo"}}
             | {word.casefold() for word in re.findall(r"\b[IVXLCDM]{1,6}\b", text)}
+            | {_ALIASES.get(word.casefold(), word.casefold()) for word in re.findall(r"\b[A-Z][A-Z0-9]{1,9}\b", text)}
             | {roman for _, _, roman in _name_ordinal_spans(text)} | _name_identity_tokens(text))
 
 
@@ -218,10 +226,12 @@ def _quantities(text):
         dates.add(date_value(match[3], match[2], match[1]))
     for match in _ISO_DATE.finditer(text):
         dates.add(date_value(match[1], match[2], match[3]))
+    for match in _YEAR_DATE.finditer(text):
+        dates.add(match[1])
     rest = text
     for start, end, _ in reversed(list(_name_ordinal_spans(text))):
         rest = rest[:start] + " " + rest[end:]
-    rest = _ISO_DATE.sub(" ", _NUM_DATE.sub(" ", _LONG_DATE.sub(" ", _EN_DATE.sub(" ", rest))))
+    rest = _YEAR_DATE.sub(" ", _ISO_DATE.sub(" ", _NUM_DATE.sub(" ", _LONG_DATE.sub(" ", _EN_DATE.sub(" ", rest)))))
     numbers = set()
     for match in re.findall(r"\b\d+(?:[.,]\d+)*\b", rest):
         if "," in match and "." in match:
@@ -235,6 +245,14 @@ def _quantities(text):
         except InvalidOperation:
             numbers.add("invalid-number")
     return dates, numbers
+
+
+def _date_covered(claimed, observed):
+    return claimed == observed or len(claimed) == 4 and observed.startswith(claimed + "-")
+
+
+def _dates_covered(claimed, observed):
+    return all(any(_date_covered(date, actual) for actual in observed) for date in claimed)
 
 
 def _same_event(claim, quote):
@@ -253,7 +271,16 @@ def _units(text):
     units = {unit.casefold() for unit in re.findall(r"\b\d+(?:[.,]\d+)?\s*(kg|km|mg|ml|cm|mm|g|m|doses?)\b", text, re.I)}
     if re.search(r"\d\s*%", text):
         units.add("percent")
+    for pattern, unit in ((r"°\s*C\b|\bgraus?\s+Celsius\b|\bdegrees?\s+Celsius\b", "celsius"),
+                          (r"°\s*F\b|\bgraus?\s+Fahrenheit\b|\bdegrees?\s+Fahrenheit\b", "fahrenheit")):
+        if re.search(pattern, text, re.I):
+            units.add(unit)
     return currencies, units
+
+
+def _uncertain_statement(text):
+    # May in a complete calendar date is not the English modal "may".
+    return bool(_UNCERTAIN.search(_EN_DATE.sub(" ", _LONG_DATE.sub(" ", text))))
 
 
 def _nominal_subject(before_date, event):
@@ -300,7 +327,7 @@ def _singleton_date_bound(quote, event, claim=None):
     pattern = r"\b(?:morreu|faleceu|died|die)\b" if event == "death" else r"\b(?:nasceu|born)\b"
     predicates = list(re.finditer(pattern, quote, re.I))
     spans = sorted({match.span() for date in (_LONG_DATE, _EN_DATE, _NUM_DATE, _ISO_DATE)
-                    for match in date.finditer(quote)})
+                    for match in date.finditer(quote)} | {match.span(1) for match in _YEAR_DATE.finditer(quote)})
     if len(spans) != 1 or len(predicates) > 1:
         return False
     start, end = spans[0]
@@ -330,7 +357,7 @@ def _singleton_date_bound(quote, event, claim=None):
 
 def _relation_guard(claim, quote, context, relation, retrieved_at):
     if (RELATIVE_TIME.search(claim) or any(c in claim for c in ('?', '"', '“', '”', '«', '»'))
-            or _UNASSERTED.search(context) or _INSTRUCTION.search(context)):
+            or (_UNASSERTED.search(context) and not (relation == "refutes" and _FALSE_PREFIX.match(quote))) or _INSTRUCTION.search(context)):
         return "Contexto relativo, citação, instrução ou alegação não endossada exige revisão humana."
     if _PRESCRIPTIVE.search(claim):
         return "Instrução financeira, médica ou jurídica não recebe aprovação automática; procure confirmação especializada."
@@ -348,9 +375,9 @@ def _relation_guard(claim, quote, context, relation, retrieved_at):
             scoped = {match.start() for match in _WALK_NEGATION.finditer(statement)}
             if any(match.start() not in scoped for match in _NEGATION.finditer(statement)):
                 return "Negação fora do predicado de caminhada; negar quantidade de provas não nega a ocorrência do evento."
-    if _COMPOUND.search(claim) and not _tokens(claim) <= _tokens(quote):
+    if _COMPOUND.search(lexical_text(claim)) and not _tokens(claim) <= _tokens(quote):
         return "Afirmação composta contém partes sem correspondência no trecho; confirmação parcial não cobre o conjunto."
-    if _UNCERTAIN.search(quote) and not _UNCERTAIN.search(claim):
+    if _uncertain_statement(quote) and not _uncertain_statement(claim):
         return "Fonte expressa possibilidade ou condição, não confirmação categórica da afirmação."
     if _PAST_EVENT.search(claim) and _PLANNED.search(quote) and not _PLANNED.search(claim):
         return "Fonte descreve evento previsto ou planejado, não ocorrência já concluída."
@@ -379,6 +406,10 @@ def _relation_guard(claim, quote, context, relation, retrieved_at):
                                       for date in claim_dates):
         return "Evento apresentado como concluído tem data posterior à recuperação; exige revisão humana."
     claim_neg, quote_neg = bool(_NEGATION.search(claim)), bool(_NEGATION.search(quote))
+    opposed_direction = opposing_directions(claim, quote)
+    claim_transition, quote_transition = percentage_transition(claim), percentage_transition(quote)
+    reversed_transition = (claim_transition is not None and quote_transition is not None
+                           and claim_transition != quote_transition and claim_transition == quote_transition[::-1])
     false_prefix = _FALSE_PREFIX.match(quote)
     if false_prefix:
         scope = quote[false_prefix.end():]
@@ -392,20 +423,27 @@ def _relation_guard(claim, quote, context, relation, retrieved_at):
     if relation == "supports":
         if _FALSE_CONTEXT.search(context) or _CORRECTION.search(context):
             return "Contexto contém desmentido ou correção; sentença isolada não confirma."
-        if claim_neg != quote_neg or (claim_dates and claim_dates != quote_dates) or not claim_numbers <= quote_numbers:
+        dates_match = (_dates_covered(claim_dates, quote_dates) and
+                       all(any(_date_covered(date, actual) for date in claim_dates) for actual in quote_dates))
+        if claim_neg != quote_neg or (claim_dates and not dates_match) or not claim_numbers <= quote_numbers:
             return "Negação, data ou valor diverge da afirmação; não convertido em apoio."
+        if opposed_direction or (claim_transition is not None and claim_transition != quote_transition):
+            return "Direção ou origem/destino da variação diverge; números iguais não bastam para apoiar."
         return None
     # Refutation is not mere absence. Require explicit opposing assertion with
     # preserved quantities, a correction, or different dates of a unique birth/
     # death event. Different dates of repeated payments cannot refute each other.
-    opposite = (claim_neg != quote_neg and claim_dates <= quote_dates and claim_numbers <= quote_numbers)
+    opposite = (claim_neg != quote_neg and _dates_covered(claim_dates, quote_dates) and claim_numbers <= quote_numbers)
     corrected = (bool(_CORRECTION.search(quote)) and not false_prefix
-                 and (claim_dates <= quote_dates or not claim_dates)
+                 and _dates_covered(claim_dates, quote_dates)
                  and bool(claim_numbers - quote_numbers))
     same_singleton = len(claim_events) == 1 and claim_events == quote_events
-    singleton_date = (same_singleton and len(claim_dates) == len(quote_dates) == 1 and claim_dates.isdisjoint(quote_dates)
+    singleton_date = (same_singleton and len(claim_dates) == len(quote_dates) == 1
+                      and not _dates_covered(claim_dates, quote_dates) and not _dates_covered(quote_dates, claim_dates)
                       and claim_numbers <= quote_numbers and not claim_neg and not quote_neg)
-    if not (opposite or corrected or singleton_date):
+    directional_refutation = ((opposing_measurements(claim, quote) or reversed_transition) and claim_dates == quote_dates
+                              and claim_numbers == quote_numbers and not claim_neg and not quote_neg)
+    if not (opposite or corrected or singleton_date or directional_refutation):
         return "Não há contradição explícita verificável do mesmo evento; ausência ou outro dado não refuta."
     return None
 
@@ -492,9 +530,9 @@ def _prepare_sources(documents, claims, source_url):
             context = " ".join(sentences[item] for item in context_indices)
             if len(context) > 3 * MAX_SENTENCE:
                 continue
-            # Pure lexical admissibility is evaluated BEFORE a model call.
-            # Neither titles/context nor a potentially unrelated date may make
-            # a source look usable merely through token overlap.
+            # A related title or a different dated event cannot earn a model
+            # call. Explicit aliases broaden reading without weakening the
+            # same subject/date/quantity safeguards used after comparison.
             if not any(_relation_guard(claim, quote, context, relation, stamp) is None
                        for claim in claims for relation in ("supports", "refutes")):
                 continue

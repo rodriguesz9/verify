@@ -51,6 +51,12 @@ _HEADING_UI = re.compile(
     r"(?:^|[-_\s])(?:headline|title|subtitle|subheading|standfirst|dek)(?:$|[-_\s])", re.I,
 )
 _AUTHOR_TEXT = re.compile(r"^(?:por|by)\s+[^.!?]{1,200}$", re.I)
+_CALENDAR_NAMES = r"janeiro|fevereiro|março|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec"
+_STANDALONE_DATE = re.compile(
+    r"^(?:\d{1,2}\s+(?:de\s+)?(?:" + _CALENDAR_NAMES + r")\.?\s+(?:de\s+)?\d{4}"
+    r"|(?:" + _CALENDAR_NAMES + r")\.?\s+\d{1,2},?\s+\d{4}|\d{1,2}/\d{1,2}/\d{4}|\d{4}-\d{2}-\d{2})"
+    r"(?:\s+RELEASE\s*\d{2,4}-\d{1,5})?[.\s]*$", re.I,
+)
 _BLOCK_TAGS = {"p", "li", "dd", "dt", "blockquote", "figcaption", "caption",
                "h1", "h2", "h3", "h4", "h5", "h6", "table"}
 _CONTEXT_TAGS = {"blockquote", "figcaption", "caption", "dt", "h1", "h2", "h3", "h4", "h5", "h6"}
@@ -127,7 +133,7 @@ def _body_root(soup):
     else:
         articles = [tag for tag in soup.find_all("article") if _visible_text(tag)]
         root = max(articles, key=lambda tag: (paragraph_size(tag), len(_visible_text(tag)))) if articles else (
-            soup.find("main") or soup.body or soup)
+            soup.find("main") or soup.find(attrs={"role": "main"}) or soup.body or soup)
     # Keep nearby headings and author/wire credits as context, not selectable
     # statements. Choosing articleBody must not erase a preceding denial.
     scope = root if root.name == "article" else root.find_parent("article")
@@ -191,7 +197,7 @@ def _external_context(scope):
     blocks = []
     branch = scope
     for parent in scope.parents:
-        if not isinstance(parent, Tag) or parent.name not in {"main", "section", "div", "body"}:
+        if not isinstance(parent, Tag) or parent.name not in {"main", "section", "div", "body", "[document]"}:
             break
         level = []
         for sibling in reversed(list(branch.previous_siblings)):
@@ -208,7 +214,7 @@ def _external_context(scope):
                 level.extend((value, "context") for value, _ in _article_blocks(sibling, sibling))
         blocks = level + blocks
         branch = parent
-        if parent.name in {"main", "body"}:
+        if parent.name in {"main", "body", "[document]"}:
             break
     return blocks
 
@@ -218,6 +224,11 @@ def _block_sentences(blocks):
     pending_body = ""
     unfinished_context = False
     for block, role in blocks:
+        # A standalone date is metadata/context, not an unfinished sentence
+        # to concatenate into the next paragraph's event. Keep it visible to
+        # the comparison without ever borrowing it as a body date.
+        if _STANDALONE_DATE.fullmatch(block):
+            role = "context"
         if role == "context":
             if pending_body:
                 sentences.append(pending_body)
@@ -277,6 +288,9 @@ def _article_parts(resource):
                 bool(_PUBLICATION_DATE_UI.search(identifiers))) or (
                 tag.name in {"p", "span", "div"} and not tag.find("p")
                 and _PUBLICATION_DATE_TEXT.search(tag.get_text(" ", strip=True)))
+            global_navigation = (tag.name == "header" and not tag.find_parent("article")
+                and not tag.find("h1") and not _UNFINISHED_CONTEXT.search(_visible_text(tag))
+                and (tag.find("nav") is not None or tag.find(attrs={"role": "navigation"}) is not None))
             if (tag.name in {"script", "style", "nav", "footer", "aside", "form", "template", "video", "audio",
                              "noscript", "head", "dialog", "button", "input", "select", "textarea"}
                     or tag.has_attr("hidden")
@@ -284,7 +298,7 @@ def _article_parts(resource):
                     or str(tag.get("role", "")).lower() == "dialog"
                     or _HIDDEN_STYLE.search(str(tag.get("style", "")))
                     or _CONSENT_UI.search(identifiers)
-                    or publication_date):
+                    or publication_date or global_navigation):
                 tag.decompose()
         for line_break in soup.find_all("br"):
             line_break.replace_with(" ")
@@ -379,14 +393,20 @@ async def collect_source_attribution(text, queries, source_url=None, *, search_r
     cache = fetched_cache if isinstance(fetched_cache, dict) else {}
     selected_urls = list(urls)[:source_limit] if candidates else []
     if include_documents and candidates:
-        from app.services.source_corroboration import source_family, source_identity
+        from app.services.source_corroboration import source_family, source_identity, usable_source_families
         # Prefer distinct eligible publishers over three pages of one group;
         # retain the submitted page for attribution, never independent proof.
-        preferred, families = ([submitted] if submitted else []), set()
+        preferred = [submitted] if submitted else []
+        # A failed/unrelated page must not reserve its publisher's place in
+        # recovery. Another page may contain the required body statement, but
+        # it will still be ONE family in the final comparison, never two votes.
+        families = usable_source_families(text, list(cache.values()), submitted)
         if submitted:
             families.add(source_family(submitted))
         ranked_urls = sorted(urls, key=lambda url: (source_identity(url) or {}).get("source_type") != "primary")
         for candidate in ranked_urls:
+            if candidate in cache:
+                continue
             family = source_family(candidate)
             if family and family not in families:
                 preferred.append(candidate)

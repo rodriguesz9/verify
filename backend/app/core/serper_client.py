@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 NEWS_ENDPOINT = "https://google.serper.dev/news"
 WEB_ENDPOINT = "https://google.serper.dev/search"
 MAX_NEWS_QUERY_CHARS = 500
+MAX_WEB_RESULTS = 10
 
 
 class NewsSearch(list):
@@ -30,7 +31,7 @@ async def search_web(query: str) -> list[dict]:
         async with httpx.AsyncClient(timeout=10, trust_env=False, follow_redirects=False) as client:
             response = await client.post(
                 WEB_ENDPOINT, headers={"X-API-KEY": key, "Content-Type": "application/json"},
-                json={"q": query.strip(), "gl": "br", "hl": "pt-br", "num": 5},
+                json={"q": query.strip(), "gl": "br", "hl": "pt-br", "num": MAX_WEB_RESULTS},
             )
         if response.status_code != 200:
             return NewsSearch(status="rate_limited" if response.status_code in {402, 429} else "error",
@@ -39,7 +40,7 @@ async def search_web(query: str) -> list[dict]:
         if not isinstance(data, dict) or not isinstance(data.get("organic", []), list):
             raise ValueError("Resposta inválida")
         results = []
-        for item in data.get("organic", [])[:5]:
+        for item in data.get("organic", [])[:MAX_WEB_RESULTS]:
             if not isinstance(item, dict) or not isinstance(item.get("link"), str):
                 continue
             try:

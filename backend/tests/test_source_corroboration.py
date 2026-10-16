@@ -78,6 +78,27 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(kwargs["response_format"]["json_schema"]["strict"])
         self.assertNotIn("url", json.loads(router.await_args.args[0])["sources"][0])
 
+    async def test_scientific_aliases_allow_grounded_comparison_but_not_another_agency(self):
+        claim = "A nave Zeta da NASA colidiu intencionalmente com o asteroide Delta em 12 de agosto de 2021."
+        first = "NASA spacecraft Zeta intentionally impacted asteroid Delta on August 12, 2021."
+        second = "Em 12 de agosto de 2021, a espaçonave Zeta da NASA colidiu intencionalmente com o asteroide Delta."
+        result, router, _ = await self.run_comparison(claim, documents(first, second))
+        self.assertEqual(result["state"], "corroborated")
+        router.assert_awaited_once()
+        wrong = claim.replace("NASA", "ESA")
+        result, router, _ = await self.run_comparison(wrong, documents(first, second))
+        self.assertEqual(result["state"], "insufficient")
+        router.assert_not_awaited()
+
+    async def test_reversed_percentage_is_refuted_with_two_literal_body_quotes(self):
+        claim = "O Conselho Alfa reduziu a taxa Beta de 7,25% para 6,50% em 12 de agosto de 2021."
+        first = "Em 12 de agosto de 2021, o Conselho Alfa elevou a taxa Beta de 6,50% para 7,25%."
+        second = "O Conselho Alfa aumentou a taxa Beta de 6,50% para 7,25% em 12 de agosto de 2021."
+        result, _, _ = await self.run_comparison(claim, documents(first, second), "refutes")
+        self.assertEqual(result["state"], "refuted")
+        result, _, _ = await self.run_comparison(claim, documents(first, second), "supports")
+        self.assertEqual(result["state"], "insufficient")
+
     async def test_equivalent_pt_en_and_numeric_dates_are_not_changed(self):
         for date in ("8 September 2022", "08/09/2022", "2022-09-08", "Sept. 8, 2022", "8 Sep. 2022"):
             result, _, _ = await self.run_comparison(docs=documents(FIRST.replace("8 de setembro de 2022", date), SECOND))
