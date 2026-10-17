@@ -501,7 +501,7 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(audit["eligible_family_count"], len(usable_source_families(CLAIM, docs)))
         self.assertEqual(audit["selected_source_urls"], [doc["url"] for doc in select_comparison_documents(CLAIM, docs)])
         self.assertLessEqual(len(audit["selected_source_urls"]), 3)
-        self.assertLessEqual(len(audit["excluded_sources"]), 6)
+        self.assertLessEqual(len(audit["excluded_sources"]), 10)
         self.assertNotIn(FIRST, json.dumps(audit, ensure_ascii=False))
         self.assertNotIn(CLAIM, json.dumps(audit, ensure_ascii=False))
         invalid = document_selection_audit(None, docs)

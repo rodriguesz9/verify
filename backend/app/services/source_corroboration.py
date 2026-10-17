@@ -22,7 +22,7 @@ VERSION = "source_corroboration_v1"
 MAX_INPUT = 5000
 MAX_CLAIMS = 5
 MAX_SOURCES = 3
-MAX_RECOVERY_DOCUMENTS = 6
+MAX_RECOVERY_DOCUMENTS = 10
 MAX_SENTENCE = 1200
 MAX_PASSAGES = 8
 MAX_PROMPT_BODY = 18000
@@ -46,6 +46,9 @@ SOURCE_FAMILIES = {
     "ibge.gov.br": ("ibge", "primary"), "inpe.br": ("inpe", "primary"),
     "who.int": ("who", "primary"), "nasa.gov": ("nasa", "primary"),
     "planalto.gov.br": ("executivo-br", "primary"),
+    "camara.leg.br": ("legislativo-br", "primary"),
+    "senado.leg.br": ("legislativo-br", "primary"),
+    "lexml.gov.br": ("legislativo-br", "primary"),
     "gov.br": ("executivo-br", "primary"),
 }
 _STOP = set("a o as os um uma uns umas de da do das dos em no na nos nas e ou que se ao aos com para por foi são era é ter tem teve ser não nem nunca jamais segundo informou disse sobre até após entre ainda já mais menos seu sua seus suas ele ela eles elas esta este isso isto senhor senhora dr dra rainha rei queen king the of in on at and was is were has had not never to by her his it its".split())
@@ -67,7 +70,7 @@ _PLANNED = re.compile(r"\b(?:será|serão|vai|vão|irá|irão|planeja|previsto|p
 _PAST_EVENT = re.compile(r"\b(?:recebeu|morreu|faleceu|nasceu|lançou|lançada|lançado|pisou|pisaram|pagou|enviou|inaugurou|cancelou|colidiu|declarou|classificou|caracterizou|decretou|died|received|launched|walked|paid|sent|born|impacted|crashed|smashed|declared|classified|characterized|characterised)\b", re.I)
 _DATE_METADATA = re.compile(r"\b(?:publicad[oa]|publicação|atualizad[oa]|atualização|published|publication|updated|last update|posted)\b", re.I)
 _DATE_BYLINE = re.compile(r"^\s*(?:por|by)\s+.{1,100}\b\d{1,2}[/-]\d{1,2}[/-]\d{4}\b", re.I)
-_OTHER_DATED_EVENT = re.compile(r"\b(?:anunciou|anunciad[oa]|anúncio|divulgou|divulgad[oa]|comunicado|announced|announcement|"
+_OTHER_DATED_EVENT = re.compile(r"\b(?:anunciou|anunciad[oa]|anúncio|informou|divulgou|divulgad[oa]|comunicado|announced|announcement|"
                                r"assinou|assinad[oa]|emitiu|emitid[oa]|signed|issued|homenagem|tributo|tribute|funeral|enterro|burial)\b", re.I)
 _COMPOUND = re.compile(r"\b(?:e|também|além disso|mas|porém|and|also|but)\b", re.I)
 _FALSE_CONTEXT = re.compile(r"\b(?:é falso|é falsa|afirmação falsa|afirmação é falsa|mensagem falsa|mensagem é falsa|desmentid[oa]|false claim|not true|não é verdade)\b", re.I)
@@ -88,6 +91,8 @@ _NUM_DATE = re.compile(r"\b(\d{1,2})[/-](\d{1,2})[/-](\d{4})\b")
 _ISO_DATE = re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b")
 _YEAR_DATE = re.compile(r"\b(?:em|in|de|of|for|durante)\s+((?:18|19|20)\d{2})\b(?![-/–—\d]|[.,]\d)", re.I)
 _YEAR_SUBJECT = re.compile(r"(?:^|:\s*)((?:18|19|20)\d{2})\s+(?=was\b|is\b|foi\b|é\b)", re.I)
+_YEAR_REFERENCE = re.compile(r"\b(?:em relação a|na comparação com|compared with|compared to)\s+((?:18|19|20)\d{2})\b", re.I)
+_ANNUAL_GDP = re.compile(r"\b(?:PIB|economia)\b[^.!?;]{0,70}?\bcresceu\s+(\d+(?:[.,]\d+)?)\s*%\s+em\s+((?:18|19|20)\d{2})\b", re.I)
 _NAME_ORDINAL = re.compile(r"\b([A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][a-záàâãéêíóôõúç]{2,})[ \t]+([1-9]\d?)([ºªoa])(?=$|[\s.,;:!?])")
 _NAME_ROMAN = re.compile(r"\b([A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][a-záàâãéêíóôõúç]{2,})[ \t]+([IVXLCDM]{1,6})\b")
 _SINGLE_EVENT = (("death", re.compile(r"\b(?:" + "|".join(_DEATH_WORDS) + r")\b", re.I)),
@@ -257,10 +262,12 @@ def _quantities(text):
         dates.add(match[1])
     for match in _YEAR_SUBJECT.finditer(calendar_free):
         dates.add(match[1])
+    for match in _YEAR_REFERENCE.finditer(calendar_free):
+        dates.add(match[1])
     rest = text
     for start, end, _ in reversed(list(_name_ordinal_spans(text))):
         rest = rest[:start] + " " + rest[end:]
-    rest = _YEAR_SUBJECT.sub(" ", _YEAR_DATE.sub(" ", _ISO_DATE.sub(" ", _NUM_DATE.sub(" ", _LONG_DATE.sub(" ", _EN_DATE.sub(" ", rest))))))
+    rest = _YEAR_REFERENCE.sub(" ", _YEAR_SUBJECT.sub(" ", _YEAR_DATE.sub(" ", _ISO_DATE.sub(" ", _NUM_DATE.sub(" ", _LONG_DATE.sub(" ", _EN_DATE.sub(" ", rest)))))))
     numbers = set()
     for match in re.findall(r"\b\d+(?:[.,]\d+)*\b", rest):
         if "," in match and "." in match:
@@ -535,7 +542,7 @@ def _window_subject_guard(claim, quote):
     return True
 
 
-def _body_temporal_anchor(quote, publication_date):
+def _body_temporal_anchor(quote, publication_date, *, reporting=False):
     """Resolve only named body death/birth + explicit today/weekday and day.
 
     A publication date alone NEVER dates an event. Require a literal relative
@@ -555,6 +562,11 @@ def _body_temporal_anchor(quote, publication_date):
                r"(?:(?:pacificamente|tranquilamente)\s+)?(?:(?:na tarde|na manhã|na noite) de\s+)?"
                r"(?:hoje|(?:nesta\s+)?(?P<weekday>segunda-feira|terça-feira|quarta-feira|quinta-feira|sexta-feira|sábado|domingo))"
                r"\s*\((?P<day>\d{1,2})(?:/(?P<month>\d{1,2}))?\))")
+    if reporting:
+        pattern = (r"\b(?:informou|divulgou|anunciou|divulgad[oa]s?|anunciad[oa]s?)\b"
+                   r"[^.!?;]{0,160}?(?P<expression>(?:hoje|(?:nesta\s+)?"
+                   r"(?P<weekday>segunda-feira|terça-feira|quarta-feira|quinta-feira|sexta-feira|sábado|domingo))"
+                   r"\s*\((?P<day>\d{1,2})(?:/(?P<month>\d{1,2}))?\))")
     matches = list(re.finditer(pattern, quote, re.I))
     if len(matches) != 1:
         return None
@@ -563,11 +575,56 @@ def _body_temporal_anchor(quote, publication_date):
     if (int(match["day"]) != published.day or (match["month"] and int(match["month"]) != published.month)
             or (match["weekday"] and match["weekday"].casefold() != weekdays[published.weekday()])):
         return None
-    return {"kind": "explicit_relative_body_date", "expression": match["expression"], "publication_date": publication_date}
+    return {"kind": "explicit_reporting_body_date" if reporting else "explicit_relative_body_date",
+            "expression": match["expression"], "publication_date": publication_date}
+
+
+def _annual_comparison_anchor(quote):
+    # Only an explicit annual comparison with one event year. Never infer a
+    # period from article publication, a URL, an unrelated date or a table.
+    expression = re.search(r"\b(?:em relação ao|na comparação com o) ano anterior\b", quote, re.I)
+    years = set(re.findall(r"\bem\s+((?:18|19|20)\d{2})\b", quote, re.I))
+    if len(years) != 1 or re.search(r"\b(?:trimestre|semestr\w*|mês|meses|mensal|quarter\w*|month\w*|acumulad[oa] em)\b", quote, re.I):
+        return None
+    # Annual GDP/economy growth is a year-on-year variation. Limit this
+    # convention to an explicit completed growth percentage in ONE calendar
+    # year, not forecasts, arbitrary numeric indicators or sub-year periods.
+    growths = list(_ANNUAL_GDP.finditer(quote))
+    annual_gdp = growths[0] if len(growths) == 1 else None
+    if not expression and not annual_gdp:
+        return None
+    year = int(next(iter(years)))
+    return {"kind": "explicit_previous_annual_period" if expression else "annual_gdp_growth_convention",
+            "expression": expression[0] if expression else annual_gdp[0],
+            "event_year": year, "reference_year": year - 1}
 
 
 def _passage_guard(claim, passage, relation, stamp):
     quote = passage["quote"]
+    reading_claim = claim
+    reporting = passage.get("reporting_anchor")
+    if reporting:
+        if reporting != _body_temporal_anchor(quote, reporting.get("publication_date"), reporting=True):
+            return "Ligação da divulgação ao corpo inválida."
+        prefix = re.match(r"^Na divulgação de\s+(.{8,40}?),\s*(.+)$", claim, re.I)
+        if prefix:
+            dates, numbers = _quantities(prefix[1])
+            if numbers or dates != {reporting["publication_date"]}:
+                return "Data alegada de divulgação diverge da divulgação explícita no corpo."
+            reading_claim = prefix[2]
+            # The release date has been verified separately. Removing only
+            # its explicit relative expression does NOT date the economy.
+            quote = quote.replace(reporting["expression"], "", 1)
+    annual = passage.get("annual_comparison_anchor")
+    if annual:
+        if annual != _annual_comparison_anchor(passage["quote"]):
+            return "Ligação do ano anterior inválida."
+        if str(annual["reference_year"]) in _quantities(reading_claim)[0]:
+            quote += " em " + str(annual["reference_year"])
+        if relation == "supports" and annual["kind"] == "annual_gdp_growth_convention":
+            left, right = _ANNUAL_GDP.search(reading_claim), _ANNUAL_GDP.search(passage["quote"])
+            if left and right and (Decimal(left[1].replace(",", ".")), left[2]) != (Decimal(right[1].replace(",", ".")), right[2]):
+                return "Valor e ano do crescimento do PIB não pertencem à mesma medição."
     anchor = passage.get("temporal_anchor")
     if anchor:
         # Recompute the complete link; a cached/model-supplied field cannot
@@ -576,13 +633,13 @@ def _passage_guard(claim, passage, relation, stamp):
             return "Ligação temporal inválida entre corpo e publicação."
         quote = quote.replace(anchor["expression"], "em " + anchor["publication_date"], 1)
     record = passage.get("original_record")
-    reading = _original_record_reading(claim, record, quote) if record else None
+    reading = _original_record_reading(reading_claim, record, quote) if record else None
     if reading and record["publisher_family"] == "who":
         # A formal first-person assessment CLASSIFIES a situation even when
         # its wording is 'we conclude it can be characterized as ...'. This
         # does not turn an ordinary medical possibility into a proven fact.
         quote = re.sub(r"\b(?:pode ser|can be)[\s\u200e\u200f]+(?=caracterizad[oa]|characteri[sz]ed)", "", quote, flags=re.I)
-    return _relation_guard(reading or claim, quote, passage["context"], relation, stamp)
+    return _relation_guard(reading or reading_claim, quote, passage["context"], relation, stamp)
 
 
 def _original_record_reading(claim, record, quote=None):
@@ -626,6 +683,12 @@ def _candidate_passage(quote, context, raw, record_source=None, **fields):
     anchor = _body_temporal_anchor(quote, raw.get("publication_date"))
     if anchor:
         candidate["temporal_anchor"] = anchor
+    reporting = _body_temporal_anchor(quote, raw.get("publication_date"), reporting=True)
+    if reporting:
+        candidate["reporting_anchor"] = reporting
+    annual = _annual_comparison_anchor(quote)
+    if annual:
+        candidate["annual_comparison_anchor"] = annual
     if record_source and record_source.get("source_type") == "primary":
         candidate["original_record"] = {**record_source, "publication_date": raw.get("publication_date")}
     return candidate
@@ -802,7 +865,7 @@ def _prepare_sources(documents, claims, source_url):
 
 
 def select_comparison_documents(text, documents, source_url=None):
-    """Pure bounded selection: <=3 original documents from first <=6 inputs.
+    """Pure bounded selection: <=3 original documents from first <=10 inputs.
 
     At least one complete BODY sentence must be potentially admissible for
     support/refutation. No fetch, model call, title/snippet vote or mutation.
@@ -821,6 +884,24 @@ def usable_source_families(text, documents, source_url=None):
     claims = input_claims(text)[:MAX_CLAIMS]
     sources = _prepare_sources(documents, claims, source_url)[0] if claims else []
     return {source["publisher_family"] for source in sources}
+
+
+def claims_needing_research(text, documents, source_url=None):
+    """Assess retrieval sufficiency per claim, not a global family total.
+
+    Two families covering two different claims are not two sources per claim.
+    A bounded original institutional record can be sufficient under its own
+    existing policy; this helper never labels any proposition true/false.
+    """
+    if not isinstance(text, str) or not 0 < len(text) <= MAX_INPUT or not isinstance(documents, list):
+        return []
+    missing = []
+    for claim in input_claims(text)[:MAX_CLAIMS]:
+        sources = _prepare_sources(documents, [claim], source_url)[0]
+        families = {source["publisher_family"] for source in sources}
+        if len(families) < 2 and not any(is_original_record_claim(claim, source) for source in sources):
+            missing.append(claim)
+    return missing
 
 
 def document_selection_audit(text, documents, source_url=None):
@@ -964,6 +1045,14 @@ def _assess(claim, candidates):
             record["reason"] += (" A expressão literal ‘" + passage["temporal_anchor"]["expression"]
                 + "’ foi vinculada à publicação em " + passage["temporal_anchor"]["publication_date"]
                 + ", com dia e dia da semana compatíveis; a citação não foi reescrita.")
+        if passage.get("reporting_anchor"):
+            record["reporting_anchor"] = dict(passage["reporting_anchor"])
+            record["reason"] += " A data de divulgação explicitada no corpo foi conferida contra a publicação; não foi atribuída ao período econômico."
+        if passage.get("annual_comparison_anchor"):
+            record["annual_comparison_anchor"] = dict(passage["annual_comparison_anchor"])
+            record["reason"] += (" A referência ao ano anterior usa a convenção de variação anual do PIB, a partir do único ano explícito do crescimento; não foi inferida da publicação."
+                if passage["annual_comparison_anchor"]["kind"] == "annual_gdp_growth_convention" else
+                " A expressão ano anterior foi ligada ao único ano anual explícito do trecho; a citação original foi preservada.")
         evidence.append(record)
         if passage.get("original_record") and _original_record_reading(claim["claim"], passage["original_record"], passage["quote"]):
             if re.match(r"^(?:Na divulgação de|Segundo o relatório do Copernicus de|Em)\s+", claim["claim"], re.I):

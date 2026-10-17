@@ -18,7 +18,7 @@ from app.services.public_fetch import fetch_public_resource
 
 ATTRIBUTION_VERSION = "literal_source_attribution_v1"
 MAX_SOURCES = 3
-MAX_RECOVERY_SOURCES = 6
+MAX_RECOVERY_SOURCES = 10  # AI-directed research can spend four further attempts.
 MAX_MATCHES = 3
 MAX_INPUT_SEGMENTS = 8
 MAX_CLAIM_CHARACTERS = 1000
@@ -599,7 +599,7 @@ async def collect_source_attribution(text, queries, source_url=None, *, search_r
             continue
         title = item.get("title")
         urls.setdefault(url, title[:300] if isinstance(title, str) else "")
-        if item.get("retrieval_method") == "inline_cited_primary_reference":
+        if item.get("retrieval_method") in {"inline_cited_primary_reference", "ai_selected_candidate_reference"}:
             cited_urls.add(url)
     source_limit = max_sources if (isinstance(max_sources, int) and not isinstance(max_sources, bool)
                                    and 1 <= max_sources <= MAX_RECOVERY_SOURCES) else MAX_SOURCES

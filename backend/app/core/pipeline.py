@@ -17,9 +17,11 @@ from app.services.source_attribution import collect_source_attribution, primary_
 from app.services.source_corroboration import corroborate_sources
 from app.services.source_corroboration import select_comparison_documents, usable_source_families
 from app.services.source_corroboration import document_selection_audit
+from app.services.source_corroboration import claims_needing_research
 from app.services.source_decision import apply_source_decision
 from app.services.report_explanation import enrich_grounded_report
 from app.services.source_queries import neutral_source_query, primary_source_query, primary_source_filter
+from app.services.source_research import plan_source_research, research_enabled
 
 SOURCE_SITE_FILTER = "(site:royal.uk OR site:brasilescola.uol.com.br OR site:mundoeducacao.uol.com.br OR site:nasa.gov OR site:cnnbrasil.com.br OR site:aosfatos.org OR site:bbc.com OR site:theguardian.com OR site:time.com OR site:axios.com)"
 PRIMARY_SITE_FILTER = "(site:royal.uk OR site:nasa.gov OR site:ibge.gov.br OR site:bcb.gov.br OR site:who.int OR site:planalto.gov.br OR site:copernicus.eu)"
@@ -142,8 +144,10 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
     remain leads; only a complete sentence in a retrieved document can match.
     """
     crosscheck_enabled = use_source_crosscheck and os.getenv("SOURCE_CROSSCHECK_ENABLED", "true").strip().lower() == "true"
-    deadline = 45 if crosscheck_enabled else 20
+    ai_research = crosscheck_enabled and research_enabled()
+    deadline = 105 if ai_research else 45 if crosscheck_enabled else 20
     attribution, plan, cited_leads = None, [], []
+    research = {"status": "not_requested", "decision_role": "online_research_planning_only"}
     try:
         async with asyncio.timeout(deadline):
             query = next((query for query in queries if 20 <= len(query.strip()) <= 500), None)
@@ -183,15 +187,49 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
                 attribution = await collect_source_attribution(text, queries, source_url, search_results=leads,
                     include_documents=True, max_sources=6, fetched_cache=fetched_cache)
                 families = usable_source_families(text, attribution.get("_documents", []), source_url)
+            missing_claims = claims_needing_research(text, attribution.get("_documents", []), source_url) if ai_research else []
+            if ai_research and missing_claims and all(item["status"] in {"success", "no_results"} for item in plan):
+                # Give the model a real bounded search tool. Returned queries
+                # and known lead IDs can guide retrieval, never the verdict.
+                # Failure/empty plans preserve the complete deterministic read.
+                audit = document_selection_audit(text, attribution.get("_documents", []), source_url)
+                audit["claims_needing_more_evidence"] = missing_claims
+                unread = [item for item in leads if isinstance(item, dict)
+                          and (item.get("link") or item.get("url")) not in fetched_cache]
+                requested = await plan_source_research(text, unread, attribution.get("_documents", []), audit, source_url)
+                research = requested["coverage"]
+                additions = [{**item, "retrieval_method": "ai_selected_candidate_reference"} for item in requested["leads"]]
+                searches = requested["queries"][:2]
+                executed = []
+                for search in searches:
+                    suffix = PRIMARY_SITE_FILTER if search["source_group"] == "primary" else EDITORIAL_SITE_FILTER if search["source_group"] == "editorial" else ""
+                    query_text = (search["query"] + " " + suffix).strip()
+                    if len(query_text) > 500:
+                        continue
+                    extra = await search_web(query_text)
+                    extra_status = getattr(extra, "status", "success" if extra else "no_results")
+                    plan.append({"method": "ai_directed_online_research", "status": extra_status,
+                                 "decision_role": "retrieval_only_original_claim_unchanged"})
+                    executed.append(extra_status)
+                    additions.extend(extra)
+                    if extra_status not in {"success", "no_results"}:
+                        break  # A real quota failure is not retried or bypassed.
+                research["executed_query_count"] = len(executed)
+                if additions:
+                    leads = NewsSearch([*additions, *leads], status="success")
+                    attribution = await collect_source_attribution(text, queries, source_url, search_results=leads,
+                        include_documents=True, max_sources=10, fetched_cache=fetched_cache)
+                    families = usable_source_families(text, attribution.get("_documents", []), source_url)
             if crosscheck_enabled:
                 attribution["selection_audit"] = document_selection_audit(text, attribution.get("_documents", []), source_url)
                 attribution["_documents"] = select_comparison_documents(text, attribution.get("_documents", []), source_url)
             attribution.setdefault("coverage", {})["search_queries"] = plan
-            attribution["coverage"]["max_search_queries"] = limit
+            attribution["coverage"]["max_search_queries"] = limit + (2 if ai_research else 0)
             attribution["coverage"]["retrieval_deadline_seconds"] = deadline
             attribution["coverage"]["usable_source_family_count"] = len(families)
             attribution["coverage"]["max_comparison_documents"] = 3
             attribution["coverage"]["cited_primary_reference_lead_count"] = len(cited_leads)
+            attribution["coverage"]["online_research"] = research
             return attribution
     except Exception:
         if isinstance(attribution, dict):
@@ -203,6 +241,7 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
                 attribution["_documents"] = select_comparison_documents(text, documents, source_url)
             attribution.setdefault("coverage", {}).update(
                 search_queries=plan, retrieval_deadline_seconds=deadline,
+                online_research={**research, "incomplete": True},
                 cited_primary_reference_lead_count=len(cited_leads),
                 recovery_status="timeout_or_error", usable_source_family_count=len(usable_source_families(text, documents, source_url)))
             attribution.setdefault("limitations", []).append("A recuperação adicional não terminou; somente a primeira leitura concluída foi preservada.")

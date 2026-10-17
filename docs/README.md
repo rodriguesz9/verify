@@ -1,5 +1,7 @@
 # Documentação do Verify
 
+Pesquisa online orientada por IA em 17/10: [implementação, segurança e resultados da rodada congelada](PESQUISA-ONLINE-2026-10-17.md). Usa a busca existente, sem novos plugins pagos. Inconclusivos e erros permanecem nos denominadores; teste funcional não comprova precisão geral.
+
 Revisão local de 17/10: [vereditos, inconclusivos e responsividade](AUDITORIA-VEREDITOS-2026-10-17.md). Correções de recuperação, comparação e interface; resultados medidos com inconclusivos no denominador. Não equivale a homologação de todas as modalidades ou implantação em produção.
 
 Revisão de 14/10: [validação atual das APIs e pendências](VALIDACAO-APIS-2026-10-14.md) e [guia de retomada atualizado](REATIVAR-RAILWAY-2026-10-13.md). Gemini é o padrão da comparação de corpos; OpenRouter mantém extração auxiliar e fallback gratuito. Recuperação limitada tenta até seis páginas, selecionando no máximo três corpos para comparar com a afirmação original intacta. Os resultados reais e controles de interface devem ser lidos no registro da rodada, não presumidos pelo número de APIs/chaves.

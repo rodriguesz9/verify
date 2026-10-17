@@ -1,5 +1,7 @@
 # Verify
 
+**Pesquisa online orientada por IA — 17/10:** [implementação, limites e avaliação](docs/PESQUISA-ONLINE-2026-10-17.md). As IAs podem solicitar consultas neutras na busca existente e escolher referências reais para leitura; o resultado continua exigindo trechos verificáveis. Pela interface, rodada fixa: **3/8 acertos (37,5%), 5/8 inconclusivos (62,5%), nenhum veredito conclusivo errado observado**. Checagem factual ainda não homologada. **810 testes backend, 22 arquivos de teste frontend e build passaram localmente.** Sem novo gasto Hive ou implantação nesta etapa.
+
 **Continuação de 16/10:** [correções da busca, datas, comparação e cobertura parcial](docs/CORRECAO-CHECAGEM-2026-10-16.md). **763 testes backend, 20 arquivos de teste frontend e build passaram localmente.** Seis pedidos reais de texto pela interface ainda ficaram inconclusivos; checagem factual continua não homologada. Sem novas chamadas Hive e sem deploy nesta rodada.
 
 **Teste real pela interface em 16/10:** [resultados, números e correções](docs/VALIDACAO-INTERFACE-2026-10-16.md). Seis controles factuais ficaram inconclusivos: checagem textual ainda não homologada. Imagem/quadro IA conhecidos sinalizados; voz com cobertura parcial. **739 testes backend, 20 arquivos de teste frontend e build passaram localmente.** Testes funcionais não certificam precisão de vereditos nem produção.

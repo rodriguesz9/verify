@@ -1,0 +1,128 @@
+{
+  "date": "2026-10-17",
+  "run_id": "online-v3",
+  "scope": "Eight fixed public text controls submitted through the local browser UI; not general accuracy or media validation",
+  "parent_commit": "bb931a7",
+  "source_fingerprint": "795e9bfe707e0f69284673126314141bb5fe12076870c11f32bbb7c588e437e3",
+  "fingerprint_scope": "backend/app .py and frontend/src .js/.jsx/.css relative paths and bytes; not dependencies, environment or changing public sources",
+  "all_eight_revision_unchanged_after": true,
+  "one_attempt_per_control_in_final_run": true,
+  "disposable_database": true,
+  "metrics": {
+    "denominator": 8,
+    "correct": 3,
+    "correct_percent_all_controls": 37.5,
+    "inconclusive": 5,
+    "inconclusive_percent_all_controls": 62.5,
+    "wrong_conclusive": 0,
+    "wrong_conclusive_percent_all_controls": 0.0,
+    "expected_supported": {"total": 4, "correct": 1, "inconclusive": 3, "wrong_conclusive": 0},
+    "expected_refuted": {"total": 4, "correct": 2, "inconclusive": 2, "wrong_conclusive": 0},
+    "http_200": 8,
+    "elapsed_seconds_min": 11.474,
+    "elapsed_seconds_max": 50.372,
+    "elapsed_seconds_mean": 34.294375
+  },
+  "tests": {"backend_offline": 810, "backend_skipped": 0, "frontend_test_files": 22, "frontend_skipped": 0, "frontend_build": "passed"},
+  "outbound_requests": {"openrouter": 9, "facts": 8, "news": 35, "public_fetch": 64, "gemini": 11, "hive": 0, "sightengine": 0, "assemblyai": 0},
+  "transport_events": {
+    "openrouter": {"200": 7, "incomplete": 2},
+    "facts": {"200": 8},
+    "news": {"200": 35},
+    "public_fetch": {"200": 48, "301": 2, "307": 6, "401": 1, "403": 5, "incomplete": 2},
+    "gemini": {"200": 10, "incomplete": 1}
+  },
+  "transport_note": "Counts include redirects and reserved/incomplete requests; HTTP success does not prove a useful document, fact-check match or correct verdict. Canceled/time-limited calls are not refunded or retried to obtain favorable answers.",
+  "controls": [
+    {
+      "id": "queen_true",
+      "input": "Elizabeth II morreu em 8 de setembro de 2022.",
+      "expected": "supported", "actual": "unverified", "outcome": "inconclusive", "elapsed_seconds": 33.761,
+      "ground_truth_reference": "https://www.royal.uk/the-king",
+      "selected_sources": ["https://mundoeducacao.uol.com.br/biografias/elizabeth-ii.htm"],
+      "grounded_evidence_count": 0,
+      "research": {"status": "success", "queries_executed": 0, "known_leads_selected": 0},
+      "reason": "Only one eligible family; planner returned a valid empty plan. Other fetched pages lacked an admissible complete matching passage."
+    },
+    {
+      "id": "queen_false",
+      "input": "Elizabeth II morreu em 9 de setembro de 2022.",
+      "expected": "refuted", "actual": "refuted", "outcome": "correct", "elapsed_seconds": 11.474,
+      "ground_truth_reference": "https://www.royal.uk/the-king",
+      "selected_sources": ["https://www.bbc.com/portuguese/internacional-62848564", "https://mundoeducacao.uol.com.br/biografias/elizabeth-ii.htm"],
+      "grounded_evidence_count": 2,
+      "research": {"status": "not_requested", "queries_executed": 0, "known_leads_selected": 0},
+      "reason": "Two accepted excerpts state 8 September 2022, contradicting the submitted 9 September."
+    },
+    {
+      "id": "dart_true",
+      "input": "Em 26 de setembro de 2022, a nave DART da NASA colidiu intencionalmente com o asteroide Dimorphos.",
+      "expected": "supported", "actual": "unverified", "outcome": "inconclusive", "elapsed_seconds": 36.667,
+      "ground_truth_reference": "https://www.nasa.gov/solar-system/darts-final-images-prior-to-impact/",
+      "selected_sources": ["https://www.cnnbrasil.com.br/economia/money/tecnologia/choque-de-nave-da-nasa-com-asteroide-gera-nuvem-de-37-detritos/"],
+      "grounded_evidence_count": 0,
+      "research": {"status": "success", "queries_executed": 0, "known_leads_selected": 2},
+      "reason": "AI selected two actual NASA leads and ten cumulative page attempts were used, but only one family provided an eligible complete passage under the current guards."
+    },
+    {
+      "id": "who_true",
+      "input": "Em 11 de março de 2020, a Organização Mundial da Saúde caracterizou a COVID-19 como uma pandemia.",
+      "expected": "supported", "actual": "supported", "outcome": "correct", "elapsed_seconds": 29.518,
+      "ground_truth_reference": "https://www.who.int/news-room/speeches/item/who-director-general-s-opening-remarks-at-the-media-briefing-on-covid-19---11-march-2020",
+      "selected_sources": ["https://www.cnnbrasil.com.br/saude/5-anos-da-covid-19-relembre-o-historico-desde-1o-caso-ate-fim-da-emergencia/", "https://brasilescola.uol.com.br/doencas/pandemia.htm"],
+      "grounded_evidence_count": 2,
+      "research": {"status": "success", "queries_executed": 1, "known_leads_selected": 1, "query": "WHO declaration of COVID-19 pandemic date March 11 2020"},
+      "reason": "Two accepted body excerpts corroborate the characterization and date; this run is not an ablation proving the AI query alone caused success."
+    },
+    {
+      "id": "ibge_true",
+      "input": "Na divulgação de 7 de março de 2025, o IBGE informou que o PIB brasileiro cresceu 3,4% em 2024 em relação a 2023.",
+      "expected": "supported", "actual": "unverified", "outcome": "inconclusive", "elapsed_seconds": 26.199,
+      "ground_truth_reference": "https://agenciadenoticias.ibge.gov.br/agencia-sala-de-imprensa/2013-agencia-de-noticias/releases/42774-pib-cresce-3-4-em-2024-e-fecha-o-ano-em-r-11-7-trilhoes",
+      "selected_sources": ["https://agenciabrasil.ebc.com.br/economia/noticia/2025-03/economia-brasileira-cresce-34-em-2024-maior-alta-desde-2021", "https://www.cnnbrasil.com.br/agro/economia-brasileira-cresce-34-em-2024-diz-ibge/"],
+      "grounded_evidence_count": 1,
+      "research": {"status": "success", "queries_executed": 1, "known_leads_selected": 2, "query": "IBGE divulgação PIB 2024 7 de março 2025 resultado"},
+      "reason": "Agência Brasil release-date and annual-period evidence accepted; comparison returned no second accepted supporting excerpt. IBGE public reads were blocked in this environment."
+    },
+    {
+      "id": "copom_false",
+      "input": "Em 18 de setembro de 2024, o Copom reduziu a Selic de 10,75% para 10,50% ao ano.",
+      "expected": "refuted", "actual": "unverified", "outcome": "inconclusive", "elapsed_seconds": 46.654,
+      "ground_truth_reference": "https://www.bcb.gov.br/en/monetarypolicy/copomstatements/2565",
+      "selected_sources": [], "grounded_evidence_count": 0,
+      "research": {"status": "timeout", "queries_executed": 0, "known_leads_selected": 0, "gemini": "timeout", "openrouter": "timeout"},
+      "reason": "Fetched candidates did not provide usable complete evidence; both planning attempts exceeded their shared 30-second budget. BCB candidates had no usable static body."
+    },
+    {
+      "id": "copernicus_false",
+      "input": "Segundo o relatório do Copernicus de 10 de janeiro de 2025, a temperatura média global de 2024 ficou 1,60°C abaixo da média de 1850–1900.",
+      "expected": "refuted", "actual": "refuted", "outcome": "correct", "elapsed_seconds": 50.372,
+      "ground_truth_reference": "https://climate.copernicus.eu/global-climate-highlights-2024",
+      "selected_sources": ["https://climate.copernicus.eu/copernicus-2024-first-year-exceed-15degc-above-pre-industrial-level"],
+      "grounded_evidence_count": 1,
+      "research": {"status": "not_requested", "queries_executed": 0, "known_leads_selected": 0},
+      "reason": "Claim about what the institute published contradicted by its own original record, which says above, not below; this is not two independent confirmations of the physical phenomenon."
+    },
+    {
+      "id": "lei_false",
+      "input": "O artigo 1º da Lei nº 3.353, de 13 de maio de 1888, não declarou legalmente extinta a escravidão no Brasil.",
+      "expected": "refuted", "actual": "unverified", "outcome": "inconclusive", "elapsed_seconds": 39.71,
+      "ground_truth_reference": "https://www.planalto.gov.br/ccivil_03/leis/lim/lim3353.htm",
+      "selected_sources": [], "grounded_evidence_count": 0,
+      "research": {"status": "success", "queries_executed": 1, "known_leads_selected": 2, "query": "texto integral Lei 3353 13 maio 1888 artigo 1"},
+      "reason": "Ten cumulative page attempts still supplied no complete admissible passage under current legal-claim guards; two unsupported-content and one blocked/unavailable read remained visible."
+    }
+  ],
+  "diagnostic_pilots_excluded_from_final_metrics": [
+    {"run_id": "online-v1", "control": "ibge_true", "actual": "unverified", "reason": "Period parsing issue found before final fingerprint; retained separately"},
+    {"run_id": "online-v2", "control": "queen_true", "actual": "unverified", "reason": "Research translation/independent-operation validation issue found before final fingerprint; retained separately"}
+  ],
+  "historical_development_not_frozen_comparison": {"first_attempt_per_control_correct": 1, "first_attempt_per_control_inconclusive": 7, "latest_mixed_revision_correct": 4, "latest_mixed_revision_inconclusive": 4, "denominator_each": 8},
+  "limitations": [
+    "Small development corpus already used for debugging, not an independent held-out benchmark.",
+    "No demonstrated overall improvement against a frozen paired baseline; public search/page/provider variation remains.",
+    "Five abstentions remain unresolved; no precision or 100-percent-readiness claim.",
+    "No new live image/audio/video revalidation and no new paid Hive use in this run.",
+    "PDF saving/visual verification and production deployment are not established by this run."
+  ]
+}
