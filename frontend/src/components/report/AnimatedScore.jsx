@@ -1,8 +1,10 @@
 import { useEffect, useId, useState } from "react";
 import { animatedScoreAt, normalizeScore } from "../../utils/reportEvidence";
+import { useAccessibility } from "../../hooks/useAccessibility";
 
-export default function AnimatedScore({value, color = "#00D4FF", label = "Índice heurístico · não é certeza", compact = false}) {
+export default function AnimatedScore({value, color = "#00D4FF", label = "Índice heurístico · não é certeza", unavailableText = "Não determinado", compact = false}) {
   const target = normalizeScore(value);
+  const { easyMode } = useAccessibility();
   const [display, setDisplay] = useState(0);
   const labelId = useId();
 
@@ -18,7 +20,7 @@ export default function AnimatedScore({value, color = "#00D4FF", label = "Índic
     };
     const onPreferenceChange = (event) => { if (event.matches) finish(); };
     preference.addEventListener("change", onPreferenceChange);
-    if (preference.matches) {
+    if (preference.matches || easyMode) {
       finish();
     } else {
       const tick = (timestamp) => {
@@ -33,10 +35,10 @@ export default function AnimatedScore({value, color = "#00D4FF", label = "Índic
       cancelAnimationFrame(frame);
       preference.removeEventListener("change", onPreferenceChange);
     };
-  }, [target]);
+  }, [target, easyMode]);
 
   return (
-    <div className={compact ? "w-full" : "w-full sm:w-64 rounded-xl bg-[#04080C88] p-4 border border-white/10"}>
+    <div className={compact ? "report-score min-w-0 w-full max-w-full" : "report-score min-w-0 w-full max-w-full rounded-xl bg-[#04080C88] p-4 border border-white/10"}>
       <div className="report-score-header flex items-start justify-between gap-3 mb-3">
         <span id={labelId} className="text-[11px] font-mono leading-5 text-[#8AA2B4]">{label}</span>
         {target !== null && <span className={compact ? "font-mono text-sm font-bold shrink-0" : "font-syne text-3xl font-black tabular-nums shrink-0"} style={{color}}>
@@ -44,7 +46,7 @@ export default function AnimatedScore({value, color = "#00D4FF", label = "Índic
           <span className="sr-only">{target} de 100</span>
         </span>}
       </div>
-      {target === null ? <p className="font-bold text-lg" style={{color}}>Não determinado</p> : (
+      {target === null ? <p className="report-score-empty font-bold text-base sm:text-lg leading-snug" style={{color}}>{unavailableText}</p> : (
         <div role="progressbar" aria-labelledby={labelId} aria-valuemin={0} aria-valuemax={100}
           aria-valuenow={target} aria-valuetext={`${target} de 100, índice não calibrado`}
           className="h-2.5 rounded-full overflow-hidden bg-[#132435]">

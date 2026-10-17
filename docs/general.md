@@ -1,5 +1,7 @@
 # Verify — estrutura e arquitetura
 
+Revisão local de 17/10: [auditoria de vereditos e responsividade](AUDITORIA-VEREDITOS-2026-10-17.md). Recuperação de referências realmente citadas, ranking por período, citações por ID, leitura de registros institucionais delimitados e guardas adicionais de contexto/medição. Resultados de desenvolvimento e limitações registrados, sem homologação de precisão geral ou publicação presumida.
+
 Continuação de 16/10: [busca neutra/bilíngue, comparação de datas e variações, leitura de contexto e cobertura parcial](CORRECAO-CHECAGEM-2026-10-16.md). Testes offline passaram; os controles reais ainda não homologam a checagem factual. Esta etapa não foi implantada.
 
 Atualização de 13/10: [novo cruzamento de fontes](CRUZAMENTO-FONTES-2026-10-13.md) e [retomada do Railway](REATIVAR-RAILWAY-2026-10-13.md). Fluxo/serviços abaixo incorporam a nova camada; checkpoints de publicação anteriores continuam históricos.

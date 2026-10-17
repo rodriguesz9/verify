@@ -9,6 +9,8 @@ export default function EvidenceExplanation({result, query}) {
   const evidence = buildReportEvidence(result, query);
   const findings = evidence.publicFindings;
   const readingLabel = evidence.extractionMethod === "OCR" ? "leitura do texto na imagem" : "transcrição da fala";
+  const hasLiteralMatches = evidence.sourceAttribution?.matches.length > 0;
+  const AttributionContainer = hasLiteralMatches ? "section" : "details";
   const excluded = evidence.claimAssessments.flatMap((item) =>
     Array.isArray(item.excluded_evidence) ? item.excluded_evidence.filter((source) => source && typeof source === "object") : []);
   return (
@@ -126,12 +128,15 @@ export default function EvidenceExplanation({result, query}) {
             </div>)}</div> : <p className="mt-3 text-sm leading-6 text-[#8AA2B4]">Não houve trecho de fonte aceito como evidência para esta afirmação.</p>}
           </article>)}</div>
         </section>}
-        {evidence.sourceAttribution && <section className="mb-6 min-w-0 rounded-xl border border-[#00D4FF]/30 bg-[#070F17] p-4" aria-labelledby="source-attribution-heading">
-          <h4 id="source-attribution-heading" className="font-bold mb-2">{evidence.sourceAttribution.title}</h4>
-          <p className="text-sm leading-6 text-[#A7BFCD]">{evidence.sourceAttribution.explanation}</p>
+        {evidence.sourceAttribution && <AttributionContainer className="mb-6 min-w-0 rounded-xl border border-[#1D3B4D] bg-[#070F17] p-4" aria-labelledby="source-attribution-heading">
+          {hasLiteralMatches ? <h4 id="source-attribution-heading" className="font-bold">Pesquisa de reprodução literal</h4>
+            : <summary id="source-attribution-heading" className="cursor-pointer font-bold">Pesquisa de reprodução literal</summary>}
+          <p className="mt-3 text-sm leading-6 text-[#A7BFCD]">Esta etapa procura frases iguais às enviadas. É diferente da checagem factual: não encontrar uma cópia literal não confirma nem refuta a informação. Documentos com outra redação podem sustentar uma conclusão no cruzamento de fontes.</p>
+          <h5 className="mt-3 font-bold text-sm">{evidence.sourceAttribution.status === "no_results" ? "Nenhuma reprodução literal localizada" : evidence.sourceAttribution.title}</h5>
+          <p className="mt-2 text-sm leading-6 text-[#A7BFCD]">{evidence.sourceAttribution.explanation}</p>
           {evidence.sourceAttribution.scope && <p className="mt-3 text-xs leading-5 text-[#8AA2B4]">{evidence.sourceAttribution.scope}</p>}
           {evidence.sourceAttribution.limitations.length > 0 && <details className="mt-3 text-sm leading-6 text-[#A7BFCD]">
-            <summary className="cursor-pointer font-bold">Limites da pesquisa de fontes</summary>
+            <summary className="cursor-pointer font-bold">Limites da pesquisa de reprodução literal</summary>
             <ul className="mt-3 list-disc pl-5 space-y-2">{evidence.sourceAttribution.limitations.map((item, index) => <li key={index}>{item}</li>)}</ul>
           </details>}
           {evidence.sourceAttribution.matches.length > 0 && <div className="mt-4 space-y-4">{evidence.sourceAttribution.matches.map((source) => <article key={source.id} className="border-t border-[#1D3B4D] pt-4">
@@ -141,8 +146,8 @@ export default function EvidenceExplanation({result, query}) {
             <p className="mt-3 text-xs leading-5 text-[#8AA2B4]">A presença deste trecho na fonte não é uma avaliação de verdade ou falsidade.</p>
             <a href={source.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 mt-3 text-sm text-[#00D4FF] underline underline-offset-4">Abrir publicação <ExternalLink size={13} aria-hidden="true" /></a>
           </article>)}</div>}
-        </section>}
-        <h4 className="flex items-center gap-2 font-bold mb-3"><FileText size={16} aria-hidden="true" /> Fontes e checagens encontradas</h4>
+        </AttributionContainer>}
+        <h4 className="flex items-center gap-2 font-bold mb-3"><FileText size={16} aria-hidden="true" /> Checagens já publicadas e notícias relacionadas</h4>
         {evidence.sources.length > 0 ? <>
           <p className="text-sm leading-6 text-[#A7BFCD] mb-4">Compare a afirmação, a data e o contexto. Uma notícia relacionada não confirma automaticamente o conteúdo enviado.</p>
           <div className="space-y-3">{evidence.sources.map((source) => <article key={source.id} className="p-4 rounded-xl bg-[#070F17] border border-[#1D3B4D]">
@@ -154,7 +159,7 @@ export default function EvidenceExplanation({result, query}) {
               Abrir fonte original <ExternalLink size={13} aria-hidden="true" />
             </a>}
           </article>)}</div>
-        </> : <p className="text-sm leading-6 text-[#A7BFCD]">Nenhuma referência externa de checagem foi retornada neste relatório. Isso não prova falsidade e não significa que todas as fontes existentes foram consultadas.</p>}
+        </> : <p className="text-sm leading-6 text-[#A7BFCD]">A busca não retornou checagens já publicadas nem notícias relacionadas para esta lista.{evidence.sourceCorroboration ? " Os documentos e trechos aceitos pelo cruzamento de fontes, quando disponíveis, estão na seção acima." : ""} A ausência nesta lista não determina o veredito nem significa que todas as fontes existentes foram consultadas.</p>}
       </div>
 
       {evidence.guidance.length > 0 && <div className="mt-5 p-4 rounded-xl border border-[#00D4FF]/25 bg-[#00D4FF]/5">

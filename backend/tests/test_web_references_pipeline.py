@@ -192,6 +192,41 @@ class CuratedSourceSearchTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["coverage"]["max_search_queries"], 3)
         self.assertEqual(collect.await_args.kwargs["max_sources"], 6)
 
+    async def test_inline_cited_primary_recovery_uses_same_six_attempts_without_extra_search_or_crawl(self):
+        from app.services.public_fetch import FetchedResource
+        text = "A missão DART colidiu com o asteroide Dimorphos em 26 de setembro de 2022."
+        initial = ["https://www.nasa.gov/initial/", "https://www.cnnbrasil.com.br/dart/", "https://www.bbc.com/initial/"]
+        cited = "https://science.nasa.gov/mission/dart/"
+        extra = ["https://www.nasa.gov/other/", "https://www.bbc.com/other/", "https://apnews.com/other/"]
+        async def fetch(url, **kwargs):
+            content = text if url in {initial[1], cited} else "Uma notícia sobre outro evento sem a data da alegação."
+            if url == initial[0]:
+                content += f' Veja a referência <a href="{cited}">DART spacecraft’s</a>.'
+            if url == cited:
+                content = 'Em 26 de setembro de 2022, a missão DART colidiu com o asteroide Dimorphos.'
+                content += ' <a href="https://science.nasa.gov/dart/deep/">DART details</a>.'
+            markup = f"<article><p>{content}</p></article>"
+            return FetchedResource(markup.encode(), "text/html", url, "utf-8")
+        with (patch.dict(os.environ, {"SOURCE_CROSSCHECK_ENABLED": "true", "SOURCE_CROSSCHECK_SEARCH_LIMIT": "3"}),
+              patch("app.core.pipeline.search_web", new=AsyncMock(side_effect=[
+                  NewsSearch([{"link": url} for url in initial]),
+                  NewsSearch([{"link": extra[0]}]),
+                  NewsSearch([{"link": url} for url in extra[1:]])])) as search,
+              patch("app.services.source_attribution.fetch_public_resource", new=AsyncMock(side_effect=fetch)) as request):
+            result = await _retrieve_source_attribution(text, [text], None)
+        urls = [call.args[0] for call in request.await_args_list]
+        self.assertEqual(search.await_count, 3)
+        self.assertEqual(len(result["coverage"]["search_queries"]), 3)
+        self.assertEqual(result["coverage"]["retrieval_deadline_seconds"], 45)
+        self.assertEqual(urls[:3], initial)
+        self.assertEqual(urls[3], cited)
+        self.assertEqual(len(urls), 6)
+        self.assertEqual(len(set(urls)), 6)
+        self.assertEqual(result["coverage"]["cumulative_fetch_attempt_count"], 6)
+        self.assertEqual(result["coverage"]["cited_primary_reference_lead_count"], 1)
+        self.assertNotIn("https://science.nasa.gov/dart/deep/", urls)
+        self.assertEqual(result["coverage"]["usable_source_family_count"], 2)
+
     async def test_partitioned_search_stops_before_third_request_after_quota(self):
         text = "Elizabeth II morreu em 8 de setembro de 2022."
         with (patch.dict(os.environ, {"SOURCE_CROSSCHECK_ENABLED": "true", "SOURCE_CROSSCHECK_SEARCH_LIMIT": "3"}),

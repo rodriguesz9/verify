@@ -13,7 +13,7 @@ WORD_GROUPS = (
     ("event-impact", "impact", "impacted", "collision", "collided", "crashed", "smashed", "colidiu", "colisão", "impacto", "atingiu"),
     ("intentional", "intentional", "intentionally", "intencional", "intencionalmente", "purposely", "deliberately"),
     ("pandemic", "pandemia", "pandemic"),
-    ("event-classification", "caracterizou", "caracterizada", "characterized", "characterised", "classificou", "classified", "declarou", "declared", "decretou"),
+    ("event-classification", "caracterizou", "caracterizada", "caracterizado", "characterized", "characterised", "classificou", "classified", "declarou", "declared", "decretou"),
     ("gdp", "pib", "gdp"),
     ("growth", "cresceu", "crescimento", "grew", "growth"),
     ("average", "média", "average"),
@@ -80,6 +80,36 @@ _MEASURED_POSITION = re.compile(
 )
 
 
+def _measured_comparisons(text):
+    result = []
+    for match in _MEASURED_POSITION.finditer(text):
+        number, unit, position = match.groups()
+        # A stated baseline belongs to THIS measured comparison, not a
+        # different amount elsewhere in a paragraph. Keep the whole local
+        # clause; a matching numeric range elsewhere cannot repair it.
+        tail = re.split(r"[.!?;]", text[match.end():match.end() + 180], maxsplit=1)[0]
+        ranges = set(re.findall(r"\b((?:18|19|20)\d{2})\s*[-–—]\s*((?:18|19|20)\d{2})\b", tail))
+        result.append((_decimal(number), "percent" if unit == "%" else "celsius",
+            "above" if position.casefold() in {"acima", "above"} else "below", ranges))
+    return result
+
+
+def supporting_measurements_bound(claim, quote):
+    """Extra support guard for an explicit amount/unit/direction + baseline.
+
+    No new inference when this narrow construction is absent. When present,
+    each claimed baseline must belong to the uniquely matching measured
+    value, not another metric elsewhere in the same body window.
+    """
+    bounded = [value for value in _measured_comparisons(claim) if value[3]]
+    observed = _measured_comparisons(quote)
+    for left in bounded:
+        matches = [right for right in observed if right[:2] == left[:2]]
+        if left[0] is None or len(left[3]) != 1 or len(matches) != 1 or matches[0] != left:
+            return False
+    return True
+
+
 def opposing_measurements(claim, quote):
     """One explicit same-unit/amount comparison, not arbitrary opposing verbs.
 
@@ -87,12 +117,13 @@ def opposing_measurements(claim, quote):
     literal evidence. Different amounts, Celsius/Fahrenheit or multiple
     measured comparisons cannot establish a deterministic contradiction here.
     """
-    def measure(text):
-        found = list(_MEASURED_POSITION.finditer(text))
-        if len(found) != 1:
-            return None
-        number, unit, position = found[0].groups()
-        return (_decimal(number), "percent" if unit == "%" else "celsius",
-                "above" if position.casefold() in {"acima", "above"} else "below")
-    left, right = measure(claim), measure(quote)
-    return bool(left and right and left[:2] == right[:2] and left[0] is not None and left[2] != right[2])
+    left = _measured_comparisons(claim)
+    if len(left) != 1 or left[0][0] is None:
+        return False
+    # Other metrics in the same body window no longer mask a unique matching
+    # amount/unit/baseline. Duplicate matching metrics remain ambiguous.
+    observed = _measured_comparisons(quote)
+    matches = [right for right in observed if right[:2] == left[0][:2]]
+    return (len(matches) == 1 and left[0][2] != matches[0][2]
+            and all(right[2] == matches[0][2] for right in observed)
+            and left[0][3] == matches[0][3])

@@ -7,8 +7,9 @@ uncovered part of a submitted text.
 from copy import deepcopy
 
 from app.services.claim_policy import input_claims, normalize_claim
+from app.services.source_corroboration import is_original_record_claim
 
-POLICY_VERSION = "2026-10-13.1"
+POLICY_VERSION = "2026-10-16.1"
 SOURCE_SCORE_SEMANTICS = "not_calibrated_source_corroboration"
 _STATES = {"corroborated": "supported", "refuted": "refuted", "conflicting": "conflicting"}
 
@@ -57,7 +58,8 @@ def apply_source_decision(text, report, comparison):
                     and e.get("excerpt") and e.get("source_role") != "submitted_source"]
                 families = {e["publisher_family"] for e in usable}
                 relations = {e["relation"] for e in usable}
-                required = len(families) >= 2 and (state != "conflicting" or relations == expected)
+                original_record = any(is_original_record_claim(part, item) for item in usable)
+                required = (len(families) >= 2 or original_record) and (state != "conflicting" or relations == expected)
                 if required:
                     decision.update(status=state, evidence=deepcopy(usable), evidence_mode="retrieved_sources",
                         explanation=source.get("explanation") or "Comparação fundamentada nos trechos das fontes consultadas.",
@@ -76,12 +78,19 @@ def apply_source_decision(text, report, comparison):
         "mixed": "A mensagem contém afirmações corroboradas e refutadas nas fontes consultadas. Não cabe um único rótulo para todo o conteúdo.",
         "unverified": "Parte da mensagem tem evidência nas fontes consultadas, mas outras afirmações ficaram sem confirmação. A mensagem inteira não foi confirmada nem refutada.",
     }
+    single_record = any(decision.get("evidence_mode") == "retrieved_sources"
+        and len({item.get("publisher_family") for item in decision.get("evidence", [])}) < 2
+        and any(is_original_record_claim(decision["claim"], item) for item in decision.get("evidence", [])) for decision in merged)
+    if single_record and truth in {"supported", "refuted"}:
+        descriptions[truth] = ("A afirmação sobre o que o instituto publicou foi " + ("confirmada" if truth == "supported" else "contradita")
+            + " no registro original consultado. Trata-se de uma fonte primária, não duas confirmações independentes; confira a citação e a data. Isso não certifica o fenômeno descrito.")
     result.update(claim_assessments=merged, veracity_status=truth,
         verdict="Authentic" if truth == "supported" else "False" if truth == "refuted" else "Suspicious",
         analysis_status="partial" if truth in {"supported", "refuted"} else "inconclusive",
         summary=descriptions[truth], plain_explanation=descriptions[truth],
         whatsapp_share_text="🔎 Verify: " + descriptions[truth], confidence=None, authenticity_percentage=None,
         veracity_decision_basis="mixed_evidence" if used_reviews else "retrieved_sources",
+        original_record_only=single_record,
         veracity_decision_coverage_complete=complete_input and all(d["status"] in {"supported", "refuted", "conflicting"} for d in merged),
         policy_version=POLICY_VERSION, score=0, score_semantics=SOURCE_SCORE_SEMANTICS)
     # The non-null integer is retained only for the legacy DB column. All

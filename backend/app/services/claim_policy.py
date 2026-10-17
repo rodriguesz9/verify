@@ -21,7 +21,7 @@ RATINGS = {"true": "supported", "verdadeiro": "supported", "verdadeira": "suppor
 RELATIVE_TIME = re.compile(r"\b(hoje|ontem|amanh[ãa]|agora|nesta semana|neste m[eê]s|neste ano|este ano|atualmente|recentemente|"
                            r"semana passada|m[eê]s passado|ano passado|semana que vem|neste momento|[uú]ltim[oa]s? (dias?|horas?)|"
                            r"today|yesterday|tomorrow|now|currently|this week|last week|this year)\b", re.I)
-_LITERAL_SEPARATOR = re.compile(r"(?<=[.!?])\s+|\n+")
+_LITERAL_SEPARATOR = re.compile(r"(?<=[.!?])[\s\u200e\u200f]+|\n+")
 _TITLE_ABBREVIATION = re.compile(r"\b(?:dr|dra|sr|sra|prof|profa)\.$", re.I)
 _MONTH_ABBREVIATION = re.compile(r"\b(?:jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\.$", re.I)
 

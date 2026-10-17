@@ -1,0 +1,212 @@
+{
+  "schema_version": "development_ui_audit_v1",
+  "audit_date": "2026-10-17",
+  "modality": "text",
+  "methodology": {
+    "corpus_size": 8,
+    "expected_supported": 4,
+    "expected_refuted": 4,
+    "corpus_type": "small_fixed_development_controls",
+    "independent_benchmark": false,
+    "code_frozen_during_all_attempts": false,
+    "per_attempt_revision_recorded": false,
+    "parent_commit": "70394f7",
+    "latest_per_case_is_complete_current_revision_revalidation": false,
+    "input_matching": "exact_report_query_input_to_registered_case",
+    "attempt_identifier": "physical_jsonl_line",
+    "selection_rule": "first_and_latest_never_best_result",
+    "inconclusives_count_as_noncorrect": true,
+    "operational_errors_count_as_noncorrect": true,
+    "paid_media_providers_selected": false,
+    "media_accuracy_not_revalidated": true,
+    "limitations": [
+      "This corpus was used during development; repeated attempts are dependent and revisions changed between requests.",
+      "Latest-per-case includes an older queen_true request at line 11, not a complete rerun of a frozen final revision.",
+      "Zero observed wrong conclusions in eight controls does not establish general correctness or calibrated accuracy.",
+      "Precision among conclusive results is separate from correct conclusions over all inputs; inconclusives remain in the latter denominator.",
+      "Historical DART success at line 3 must not replace inconclusive results at lines 16 and 20.",
+      "These text results do not measure image, audio, or video accuracy."
+    ]
+  },
+  "record_counts": {
+    "analysis_and_export_records": 25,
+    "corpus_attempts": 24,
+    "pdf_exports": 1,
+    "unknown_records": 0,
+    "corpus_http_200": 24
+  },
+  "metrics": {
+    "first_per_case": {
+      "denominator": 8,
+      "correct_conclusive": 1,
+      "wrong_conclusive": 0,
+      "inconclusive": 7,
+      "operational_error": 0,
+      "correct_including_abstentions_pct": 12.5,
+      "conclusiveness_pct": 12.5,
+      "inconclusive_pct": 87.5,
+      "precision_among_conclusive": {"correct": 1, "denominator": 1, "pct": 100}
+    },
+    "latest_per_case": {
+      "denominator": 8,
+      "correct_conclusive": 4,
+      "wrong_conclusive": 0,
+      "inconclusive": 4,
+      "operational_error": 0,
+      "correct_including_abstentions_pct": 50,
+      "conclusiveness_pct": 50,
+      "inconclusive_pct": 50,
+      "precision_among_conclusive": {
+        "correct": 4,
+        "denominator": 4,
+        "pct": 100,
+        "warning": "Not overall accuracy and not a general performance guarantee"
+      }
+    },
+    "all_corpus_attempts": {
+      "denominator": 24,
+      "correct_conclusive": 7,
+      "wrong_conclusive": 0,
+      "inconclusive": 17,
+      "operational_error": 0,
+      "correct_including_abstentions_pct": 29.1666666667,
+      "conclusiveness_pct": 29.1666666667,
+      "inconclusive_pct": 70.8333333333,
+      "warning": "Repeated dependent development attempts across changing revisions"
+    }
+  },
+  "cases": [
+    {
+      "id": "queen_true",
+      "input": "Elizabeth II morreu em 8 de setembro de 2022.",
+      "expected": "supported",
+      "ground_truth": "https://www.royal.uk/the-king",
+      "first": {"line": 1, "actual": "unverified", "comparison_status": "invalid_response", "outcome": "inconclusive"},
+      "latest": {"line": 11, "actual": "supported", "comparison_status": "success", "outcome": "correct", "eligible_families": 2},
+      "attempt_lines": [1, 11],
+      "current_final_round_retest": false
+    },
+    {
+      "id": "queen_false",
+      "input": "Elizabeth II morreu em 9 de setembro de 2022.",
+      "expected": "refuted",
+      "ground_truth": "https://www.royal.uk/the-king",
+      "first": {"line": 2, "actual": "unverified", "comparison_status": "not_requested", "outcome": "inconclusive"},
+      "latest": {"line": 25, "actual": "refuted", "comparison_status": "success", "outcome": "correct", "eligible_families": 2},
+      "attempt_lines": [2, 9, 10, 25],
+      "family_note": "Repeated Reuters attribution does not constitute a third independent family."
+    },
+    {
+      "id": "dart_true",
+      "input": "Em 26 de setembro de 2022, a nave DART da NASA colidiu intencionalmente com o asteroide Dimorphos.",
+      "expected": "supported",
+      "ground_truth": "https://www.nasa.gov/solar-system/darts-final-images-prior-to-impact/",
+      "first": {"line": 3, "actual": "supported", "comparison_status": "success", "outcome": "correct"},
+      "latest": {"line": 20, "actual": "unverified", "comparison_status": "partial", "outcome": "inconclusive", "eligible_families": 2, "accepted_evidence_count": 1},
+      "attempt_lines": [3, 16, 20],
+      "regression_observed": true,
+      "latest_reason": "Two families selected, but only one grounded citation accepted; comparison remained insufficient."
+    },
+    {
+      "id": "who_true",
+      "input": "Em 11 de março de 2020, a Organização Mundial da Saúde caracterizou a COVID-19 como uma pandemia.",
+      "expected": "supported",
+      "ground_truth": "https://www.who.int/news-room/speeches/item/who-director-general-s-opening-remarks-at-the-media-briefing-on-covid-19---11-march-2020",
+      "first": {"line": 4, "actual": "unverified", "comparison_status": "not_requested", "outcome": "inconclusive"},
+      "latest": {"line": 17, "actual": "supported", "comparison_status": "success", "outcome": "correct", "eligible_families": 2, "accepted_evidence_count": 2},
+      "attempt_lines": [4, 12, 17]
+    },
+    {
+      "id": "ibge_true",
+      "input": "Na divulgação de 7 de março de 2025, o IBGE informou que o PIB brasileiro cresceu 3,4% em 2024 em relação a 2023.",
+      "expected": "supported",
+      "ground_truth": "https://agenciadenoticias.ibge.gov.br/agencia-sala-de-imprensa/2013-agencia-de-noticias/releases/42774-pib-cresce-3-4-em-2024-e-fecha-o-ano-em-r-11-7-trilhoes",
+      "first": {"line": 5, "actual": "unverified", "comparison_status": "not_requested", "outcome": "inconclusive"},
+      "latest": {"line": 19, "actual": "unverified", "comparison_status": "not_requested", "outcome": "inconclusive", "eligible_families": 0},
+      "attempt_lines": [5, 13, 18, 19],
+      "latest_reason": "Four bodies retrieved and two fetch failures; both relevant 2024 GDP reports and unrelated 2025 GDP reports were read, but no complete eligible excerpt was selected.",
+      "latest_provider_note": "OpenRouter search-hint response invalid; Gemini search-hint fallback succeeded; grounded comparison was not requested."
+    },
+    {
+      "id": "copom_false",
+      "input": "Em 18 de setembro de 2024, o Copom reduziu a Selic de 10,75% para 10,50% ao ano.",
+      "expected": "refuted",
+      "ground_truth": "https://www.bcb.gov.br/en/monetarypolicy/copomstatements/2565",
+      "first": {"line": 6, "actual": "unverified", "comparison_status": "not_requested", "outcome": "inconclusive"},
+      "latest": {"line": 22, "actual": "unverified", "comparison_status": "not_requested", "outcome": "inconclusive", "eligible_families": 0},
+      "attempt_lines": [6, 15, 22],
+      "latest_reason": "BCB pages had invalid or empty bodies; retrieved editorial articles did not yield a complete eligible corresponding excerpt."
+    },
+    {
+      "id": "copernicus_false",
+      "input": "Segundo o relatório do Copernicus de 10 de janeiro de 2025, a temperatura média global de 2024 ficou 1,60°C abaixo da média de 1850–1900.",
+      "expected": "refuted",
+      "ground_truth": "https://climate.copernicus.eu/global-climate-highlights-2024",
+      "first": {"line": 7, "actual": "unverified", "comparison_status": "not_requested", "outcome": "inconclusive"},
+      "latest": {"line": 23, "actual": "refuted", "comparison_status": "success", "outcome": "correct", "eligible_families": 1, "accepted_evidence_count": 1, "original_record_only": true},
+      "attempt_lines": [7, 14, 23],
+      "scope": "Contradiction of claim about the institution's publication using its original record; not two independent confirmations."
+    },
+    {
+      "id": "lei_false",
+      "input": "O artigo 1º da Lei nº 3.353, de 13 de maio de 1888, não declarou legalmente extinta a escravidão no Brasil.",
+      "expected": "refuted",
+      "ground_truth": "https://www.planalto.gov.br/ccivil_03/leis/lim/lim3353.htm",
+      "first": {"line": 8, "actual": "unverified", "comparison_status": "not_requested", "outcome": "inconclusive"},
+      "latest": {"line": 21, "actual": "unverified", "comparison_status": "not_requested", "outcome": "inconclusive", "eligible_families": 1},
+      "attempt_lines": [8, 21],
+      "latest_reason": "Two bodies retrieved and four fetch failures; only LexML eligible; comparison not initiated."
+    }
+  ],
+  "all_corpus_attempts": [
+    {"line":1,"case_id":"queen_true","actual":"unverified","comparison_status":"invalid_response","outcome":"inconclusive"},
+    {"line":2,"case_id":"queen_false","actual":"unverified","comparison_status":"not_requested","outcome":"inconclusive"},
+    {"line":3,"case_id":"dart_true","actual":"supported","comparison_status":"success","outcome":"correct"},
+    {"line":4,"case_id":"who_true","actual":"unverified","comparison_status":"not_requested","outcome":"inconclusive"},
+    {"line":5,"case_id":"ibge_true","actual":"unverified","comparison_status":"not_requested","outcome":"inconclusive"},
+    {"line":6,"case_id":"copom_false","actual":"unverified","comparison_status":"not_requested","outcome":"inconclusive"},
+    {"line":7,"case_id":"copernicus_false","actual":"unverified","comparison_status":"not_requested","outcome":"inconclusive"},
+    {"line":8,"case_id":"lei_false","actual":"unverified","comparison_status":"not_requested","outcome":"inconclusive"},
+    {"line":9,"case_id":"queen_false","actual":"unverified","comparison_status":"not_requested","outcome":"inconclusive"},
+    {"line":10,"case_id":"queen_false","actual":"refuted","comparison_status":"success","outcome":"correct"},
+    {"line":11,"case_id":"queen_true","actual":"supported","comparison_status":"success","outcome":"correct"},
+    {"line":12,"case_id":"who_true","actual":"unverified","comparison_status":"not_requested","outcome":"inconclusive"},
+    {"line":13,"case_id":"ibge_true","actual":"unverified","comparison_status":"not_requested","outcome":"inconclusive"},
+    {"line":14,"case_id":"copernicus_false","actual":"refuted","comparison_status":"success","outcome":"correct"},
+    {"line":15,"case_id":"copom_false","actual":"unverified","comparison_status":"not_requested","outcome":"inconclusive"},
+    {"line":16,"case_id":"dart_true","actual":"unverified","comparison_status":"not_requested","outcome":"inconclusive"},
+    {"line":17,"case_id":"who_true","actual":"supported","comparison_status":"success","outcome":"correct"},
+    {"line":18,"case_id":"ibge_true","actual":"unverified","comparison_status":"not_requested","outcome":"inconclusive"},
+    {"line":19,"case_id":"ibge_true","actual":"unverified","comparison_status":"not_requested","outcome":"inconclusive"},
+    {"line":20,"case_id":"dart_true","actual":"unverified","comparison_status":"partial","outcome":"inconclusive"},
+    {"line":21,"case_id":"lei_false","actual":"unverified","comparison_status":"not_requested","outcome":"inconclusive"},
+    {"line":22,"case_id":"copom_false","actual":"unverified","comparison_status":"not_requested","outcome":"inconclusive"},
+    {"line":23,"case_id":"copernicus_false","actual":"refuted","comparison_status":"success","outcome":"correct"},
+    {"line":25,"case_id":"queen_false","actual":"refuted","comparison_status":"success","outcome":"correct"}
+  ],
+  "pdf_export": {
+    "line": 24,
+    "path": "/api/verificar/relatorio-pdf",
+    "http_status": 200,
+    "pdf_valid_header": true,
+    "elapsed_seconds": 0.029,
+    "provider_call_delta": 0,
+    "ui_reported_prepared": true,
+    "browser_download_emitted": false,
+    "saved_file_verified": false,
+    "included_in_accuracy_denominator": false
+  },
+  "provider_transport": {
+    "scope": "Transport, not accuracy; deltas exclude prior history",
+    "counts_crosschecked_against_sum_of_ui_provider_calls": true,
+    "openrouter": {"baseline":15,"final":40,"delta":25,"http_status_counts":{"200":25}},
+    "facts": {"baseline":22,"final":46,"delta":24,"http_status_counts":{"200":24}},
+    "news": {"baseline":54,"final":146,"delta":92,"http_status_counts":{"200":92}},
+    "gemini": {"baseline":6,"final":17,"delta":11,"http_status_counts":{"200":10,"503":1}},
+    "public_fetch": {"baseline":56,"final":182,"delta":126,"http_status_counts":{"200":102,"301":1,"307":9,"401":1,"403":10,"no_status":3}},
+    "sightengine": {"baseline":8,"final":8,"delta":0,"http_status_counts":{}},
+    "hive": {"baseline":7,"final":7,"delta":0,"http_status_counts":{}},
+    "assemblyai": {"baseline":9,"final":9,"delta":0,"http_status_counts":{}},
+    "huggingface": {"delta":0,"selected":false,"http_status_counts":{}}
+  }
+}

@@ -25,6 +25,20 @@ def layer(text=CLAIM, status="corroborated", families=("royal", "bbc")):
 
 
 class SourceDecisionTests(unittest.TestCase):
+    def test_original_institutional_record_is_labelled_as_one_primary_source(self):
+        text = "O IBGE informou que o PIB brasileiro cresceu 4,2% em 2020."
+        comparison = layer(text, families=("ibge",))
+        comparison["claims"][0]["evidence"][0].update(url="https://agenciadenoticias.ibge.gov.br/release", source_type="primary")
+        result = apply_source_decision(text, text_report(text, []), comparison)
+        self.assertEqual(result["veracity_status"], "supported")
+        self.assertTrue(result["original_record_only"])
+        self.assertIn("não duas confirmações", result["summary"])
+        self.assertIsNone(result["confidence"])
+        for change in ({"url":"https://www.bbc.com/story", "publisher_family":"bbc"},
+                       {"source_type":"editorial"}, {"source_role":"submitted_source"}):
+            comparison["claims"][0]["evidence"][0].update(change)
+            self.assertEqual(apply_source_decision(text, text_report(text, []), comparison)["veracity_status"], "unverified")
+
     def test_source_confirmation_changes_fact_decision_without_inventing_probability(self):
         original = text_report(CLAIM, [])
         result = apply_source_decision(CLAIM, original, layer())

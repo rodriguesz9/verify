@@ -13,7 +13,7 @@ from app.core.openrouter_service import analyze_with_openrouter
 from app.services.claim_policy import text_report, input_claims
 from app.services.news_relevance import filter_context_news
 from app.services.factual_queries import build_fact_check_queries
-from app.services.source_attribution import collect_source_attribution
+from app.services.source_attribution import collect_source_attribution, primary_reference_leads
 from app.services.source_corroboration import corroborate_sources
 from app.services.source_corroboration import select_comparison_documents, usable_source_families
 from app.services.source_corroboration import document_selection_audit
@@ -60,17 +60,17 @@ def _source_recovery_queries(query, limit):
         if neutral:
             primary = primary_source_query(query) or neutral
             return [(f"{primary} {primary_source_filter(query, PRIMARY_SITE_FILTER)}", "literal_topic_anchors_primary_sources"),
-                    (f"{primary} {EDITORIAL_SITE_FILTER}", "literal_topic_anchors_editorial_sources")]
+                    (f"{neutral_source_query(query, preserve_period=True) or neutral} {EDITORIAL_SITE_FILTER}", "literal_topic_anchors_editorial_sources")]
         return [(f"{query} {PRIMARY_SITE_FILTER}", "whole_literal_claim_primary_sources"),
                 (f"{query} {SOURCE_SITE_FILTER}", method)]
     identity = re.search(r'"[^"\n]+"', combined)[0]
     if re.search(r"\b(?:morreu|faleceu|falecimento|morte|death|died)\b", query, re.I):
-        primary, editorial, genre = "death OR died", "morte OR falecimento OR morreu", "biography"
+        primary, editorial, genre = "death OR died", "morte OR falecimento OR morreu", ""
     elif re.search(r"\b(?:nasceu|nascimento|birth|born)\b", query, re.I):
-        primary, editorial, genre = "birth OR born", "nascimento OR nasceu", "biography"
+        primary, editorial, genre = "birth OR born", "nascimento OR nasceu", ""
     else:
         primary, editorial, genre = "launched OR launch", "lançamento OR lançada", "mission"
-    return [(f"{identity} ({primary}) {genre} {PRIMARY_SITE_FILTER}", "literal_identity_event_primary_sources"),
+    return [(f"{identity} ({primary}) {genre} {PRIMARY_SITE_FILTER}".replace("  ", " "), "literal_identity_event_primary_sources"),
             (f"{identity} ({editorial}) {EXPLAINER_SITE_FILTER}", "literal_identity_event_editorial_explainers")]
 
 
@@ -143,7 +143,7 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
     """
     crosscheck_enabled = use_source_crosscheck and os.getenv("SOURCE_CROSSCHECK_ENABLED", "true").strip().lower() == "true"
     deadline = 45 if crosscheck_enabled else 20
-    attribution, plan = None, []
+    attribution, plan, cited_leads = None, [], []
     try:
         async with asyncio.timeout(deadline):
             query = next((query for query in queries if 20 <= len(query.strip()) <= 500), None)
@@ -172,6 +172,14 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
                     leads = NewsSearch([*extra, *leads], status="success" if leads or extra else extra_status)
                     if extra_status not in {"success", "no_results"}:
                         break  # Never work around a quota/credential failure.
+                # Follow only primary documents actually cited inline by a
+                # first-wave article, with a literal named-topic match. These
+                # are retrieval leads, not evidence, extra searches or votes.
+                # The shared cache still charges every attempt against six;
+                # no recursive crawling or failure refunds are introduced.
+                cited_leads = primary_reference_leads(text, attribution.get("_documents", []), source_url)
+                if cited_leads:
+                    leads = NewsSearch([*cited_leads, *leads], status=getattr(leads, "status", "success"))
                 attribution = await collect_source_attribution(text, queries, source_url, search_results=leads,
                     include_documents=True, max_sources=6, fetched_cache=fetched_cache)
                 families = usable_source_families(text, attribution.get("_documents", []), source_url)
@@ -183,6 +191,7 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
             attribution["coverage"]["retrieval_deadline_seconds"] = deadline
             attribution["coverage"]["usable_source_family_count"] = len(families)
             attribution["coverage"]["max_comparison_documents"] = 3
+            attribution["coverage"]["cited_primary_reference_lead_count"] = len(cited_leads)
             return attribution
     except Exception:
         if isinstance(attribution, dict):
@@ -194,6 +203,7 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
                 attribution["_documents"] = select_comparison_documents(text, documents, source_url)
             attribution.setdefault("coverage", {}).update(
                 search_queries=plan, retrieval_deadline_seconds=deadline,
+                cited_primary_reference_lead_count=len(cited_leads),
                 recovery_status="timeout_or_error", usable_source_family_count=len(usable_source_families(text, documents, source_url)))
             attribution.setdefault("limitations", []).append("A recuperação adicional não terminou; somente a primeira leitura concluída foi preservada.")
             return attribution

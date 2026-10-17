@@ -5,6 +5,17 @@ from app.services.source_queries import neutral_source_query, primary_source_que
 
 
 class SourceQueryTests(unittest.TestCase):
+    def test_local_institutions_keep_native_topic_and_reported_period_not_release_year(self):
+        text = "Na divulgação de 12 de agosto de 2021, o IBGE informou que o PIB brasileiro cresceu 4,2% em 2020."
+        query = primary_source_query(text)
+        for word in ("IBGE", "PIB", "2020"):
+            self.assertIn(word, query.split())
+        for word in ("GDP", "divulgação", "informou", "12", "4,2", "agosto", "2021"):
+            self.assertNotIn(word, query.split())
+        monetary = "Em 12 de agosto de 2021, o Copom alterou a taxa Selic."
+        self.assertIn("agosto", primary_source_query(monetary).split())
+        self.assertIn("2021", primary_source_query(monetary).split())
+
     def test_recovery_does_not_require_disputed_polarity_day_or_amount(self):
         text = "Em 12 de agosto de 2021, o Instituto Alfa não reduziu a taxa Beta de 7,25% para 6,50%."
         original = text

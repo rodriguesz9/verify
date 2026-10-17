@@ -8,7 +8,8 @@ from unittest.mock import AsyncMock, patch
 from fastapi import HTTPException
 
 from app.services.public_fetch import FetchedResource
-from app.services.source_attribution import _article_parts, _article_sentences, collect_source_attribution
+from app.services.source_attribution import (_article_parts, _article_sentences, _publication_date,
+    _article_reference_leads, primary_reference_leads, collect_source_attribution)
 
 CLAIM = "A Dra. Ávila não recebeu R$ 1.500,00 em 14/10/2026."
 
@@ -25,6 +26,141 @@ def page(text=CLAIM, *, url="https://example.test/final", content_type="text/htm
 
 
 class SourceAttributionTests(unittest.IsolatedAsyncioTestCase):
+    def test_inline_primary_references_use_actual_hrefs_not_hidden_navigation_or_metadata(self):
+        markup = '''<html><head><meta name="description" content="https://science.nasa.gov/metadata/"></head>
+          <body><nav><p><a href="https://science.nasa.gov/nav/">DART menu</a></p></nav>
+          <main><article><h1><a href="https://science.nasa.gov/heading/">DART heading</a></h1>
+          <p>A missão descreve <a href="https://science.nasa.gov/mission/dart/">DART spacecraft’s</a>.</p>
+          <p>A referência relativa é <a href="/missions/dart/result/">DART result</a>.</p>
+          <p hidden><a href="https://science.nasa.gov/hidden/">DART hidden</a></p>
+          <div aria-hidden="true"><p><a href="https://science.nasa.gov/aria/">DART aria</a></p></div>
+          <p style="display:none"><a href="https://science.nasa.gov/style/">DART style</a></p>
+          <aside><p><a href="https://science.nasa.gov/aside/">DART sidebar</a></p></aside>
+          <div class="related-card"><p><a href="https://science.nasa.gov/card/">DART card</a></p></div>
+          <blockquote><p><a href="https://science.nasa.gov/quote/">DART quote</a></p></blockquote>
+          <figcaption><a href="https://science.nasa.gov/caption/">DART caption</a></figcaption>
+          </article></main><footer><p><a href="https://science.nasa.gov/footer/">DART footer</a></p></footer></body></html>'''
+        resource = FetchedResource(markup.encode(), "text/html", "https://www.nasa.gov/missions/dart/old/", "utf-8")
+        self.assertEqual(_article_reference_leads(resource), [
+            {"link": "https://science.nasa.gov/mission/dart/", "title": "DART spacecraft’s"},
+            {"link": "https://www.nasa.gov/missions/dart/result/", "title": "DART result"}])
+
+    def test_primary_reference_discovery_rejects_unsafe_and_generic_targets(self):
+        unsafe = ["javascript:alert(1)", "http://www.nasa.gov/dart/", "https://127.0.0.1/dart/",
+                  "https://www.nasa.gov.evil.test/dart/", "https://user:secret@www.nasa.gov/dart/",
+                  "https://www.nasa.gov:8443/dart/", "https://www.nasa.gov/dart/?token=opaque",
+                  "https://www.nasa.gov/", "#fragment", "https://www.nasa.gov/story/#section",
+                  "https://www.bbc.com/dart/"]
+        markup = "<article>" + "".join(f'<p><a href="{url}">DART document</a></p>' for url in unsafe) + "</article>"
+        resource = FetchedResource(markup.encode(), "text/html", "https://www.nasa.gov/story/", "utf-8")
+        self.assertEqual(_article_reference_leads(resource), [])
+        self.assertEqual(_article_reference_leads(page('<a href="https://science.nasa.gov/mission/dart/">DART</a>', content_type="text/plain")), [])
+
+    def test_primary_reference_discovery_is_bounded_and_deduplicated(self):
+        def resource(markup):
+            return FetchedResource(("<article>" + markup + "</article>").encode(), "text/html", "https://www.nasa.gov/story/", "utf-8")
+        link = '<p><a href="https://science.nasa.gov/mission/dart/">DART</a></p>'
+        self.assertEqual(len(_article_reference_leads(resource(link * 20))), 1)
+        many = "".join(f'<p><a href="https://science.nasa.gov/dart/{i}/">DART {i}</a></p>' for i in range(30))
+        self.assertEqual(len(_article_reference_leads(resource(many))), 12)
+        filler = '<p><a href="https://unlisted.example.test/doc/">unlisted</a></p>' * 200
+        self.assertEqual(_article_reference_leads(resource(filler + link)), [])
+
+    def test_cited_primary_leads_require_literal_topic_and_non_submitted_curated_origin(self):
+        text = "Em 26 de setembro de 2022, a nave DART da NASA colidiu com Dimorphos."
+        references = [{"link": "https://science.nasa.gov/mission/dart/", "title": "DART spacecraft’s"},
+                      {"link": "https://science.nasa.gov/hubble/", "title": "NASA mission"},
+                      {"link": "https://science.nasa.gov/dimorphos/", "title": "Leia mais"},
+                      {"link": "https://science.nasa.gov/another-dart/", "title": "DART"}]
+        document = {"url": "https://www.cnnbrasil.com.br/science/dart/", "reference_leads": references}
+        selected = primary_reference_leads(text, [document])
+        self.assertEqual([lead["link"] for lead in selected], [references[0]["link"], references[2]["link"]])
+        self.assertEqual(primary_reference_leads(text, [{**document, "source_role": "submitted_source"}]), [])
+        self.assertEqual(primary_reference_leads(text, [document], document["url"]), [])
+        self.assertEqual(primary_reference_leads(text, [{**document, "url": "https://unlisted.example.test/article"}]), [])
+        self.assertEqual(primary_reference_leads("A NASA publicou um relatório novo.", [document]), [])
+
+    async def test_cited_leads_have_no_vote_without_fetch_and_stay_internal(self):
+        markup = '<article><p>Veja <a href="https://science.nasa.gov/mission/dart/">DART spacecraft’s</a> para mais informações.</p></article>'
+        resource = FetchedResource(markup.encode(), "text/html", "https://www.nasa.gov/story/", "utf-8")
+        with patch("app.services.source_attribution.fetch_public_resource", new=AsyncMock(return_value=resource)) as request:
+            result = await collect_source_attribution(CLAIM, [CLAIM], search_results=SearchResults(
+                [{"link": resource.final_url}]), include_documents=True)
+            public = await collect_source_attribution(CLAIM, [CLAIM], search_results=SearchResults(
+                [{"link": resource.final_url}]))
+        self.assertEqual(result["matches"], [])
+        self.assertEqual(request.await_count, 2)  # original article only, no implicit crawl
+        self.assertEqual(result["_documents"][0]["reference_leads"][0]["link"], "https://science.nasa.gov/mission/dart/")
+        self.assertNotIn("reference_leads", json.dumps(public))
+
+    async def test_recovery_ranks_reference_year_not_publication_year_or_unsought_quarter(self):
+        text = "Na divulgação de 7 de março de 2025, o Instituto Alfa informou que o produto cresceu 3,4% em 2024 em relação a 2023."
+        old = ["https://www.nasa.gov/old/", "https://www.bbc.com/old/", "https://www.cnnbrasil.com.br/old/"]
+        annual = "https://www.ibge.gov.br/annual-2024/"
+        later = "https://www.ibge.gov.br/annual-2025/"
+        quarter = "https://www.cnnbrasil.com.br/produto-trimestre-2024/"
+        cache = {}
+        async def fetch(url, **kwargs):
+            return page("Outro evento aparece nesta página sem comprovar a alegação.", url=url)
+        with patch("app.services.source_attribution.fetch_public_resource", new=AsyncMock(side_effect=fetch)) as request:
+            await collect_source_attribution(text, [text], search_results=SearchResults([{"link": url} for url in old]),
+                include_documents=True, fetched_cache=cache)
+            result = await collect_source_attribution(text, [text], search_results=SearchResults([
+                {"link": later, "title": "Produto cresce em 2025"},
+                {"link": quarter, "title": "Produto cresce no terceiro trimestre de 2024"},
+                {"link": annual, "title": "Produto cresce em 2024"},
+                *[{"link": url} for url in old]]), include_documents=True, fetched_cache=cache, max_sources=6)
+        called = [call.args[0] for call in request.await_args_list]
+        self.assertEqual(called[:3], old)
+        self.assertEqual(called[3], annual)
+        self.assertEqual(len(called), 6)
+        self.assertEqual(len(set(called)), 6)
+        self.assertEqual(result["matches"], [])  # ranking never supplies body evidence
+
+    async def test_cited_topic_lead_takes_reading_priority_but_failures_still_spend_budget(self):
+        text = "A missão DART colidiu com Dimorphos em 26 de setembro de 2022."
+        cited = "https://science.nasa.gov/mission/dart/"
+        cache = {f"https://www.bbc.com/old-{i}/": {"failure": "timeout"} for i in range(3)}
+        async def fetch(url, **kwargs):
+            if url == cited:
+                raise HTTPException(403, "Blocked control")
+            return page("Outra notícia não comprova a alegação original.", url=url)
+        leads = [{"link": "https://www.nasa.gov/2022/", "title": "DART 2022"},
+                 {"link": "https://apnews.com/dart/2022/", "title": "DART 2022"},
+                 {"link": cited, "title": "DART spacecraft", "retrieval_method": "inline_cited_primary_reference"},
+                 {"link": "https://www.cnnbrasil.com.br/dart/2022/", "title": "DART 2022"}]
+        with patch("app.services.source_attribution.fetch_public_resource", new=AsyncMock(side_effect=fetch)) as request:
+            result = await collect_source_attribution(text, [text], search_results=SearchResults(leads),
+                include_documents=True, fetched_cache=cache, max_sources=6)
+        self.assertEqual(request.await_args_list[0].args[0], cited)
+        self.assertEqual(request.await_count, 3)
+        self.assertEqual(result["coverage"]["cumulative_fetch_attempt_count"], 6)
+        self.assertEqual(cache[cited], {"failure": "blocked_or_unavailable"})
+
+    def test_publication_anchor_uses_explicit_publication_not_update_video_or_url(self):
+        def resource(head, body=""):
+            html = f'<html><head>{head}</head><body><article>{body}</article></body></html>'
+            return FetchedResource(html.encode(), "text/html", "https://www.bbc.com/2022/09/09/a", "utf-8")
+        self.assertEqual(_publication_date(resource('<meta property="article:published_time" content="2021-08-12T09:00:00Z"><meta itemprop="dateModified" content="2021-08-13T09:00:00Z">')), "2021-08-12")
+        self.assertIsNone(_publication_date(resource('<meta itemprop="dateModified" content="2021-08-13T09:00:00Z">')))
+        self.assertIsNone(_publication_date(resource('<meta property="article:published_time" content="2021-08-12T09:00:00Z"><meta itemprop="datePublished" content="2021-08-13T09:00:00Z">')))
+        self.assertIsNone(_publication_date(resource('', '<div itemscope itemtype="https://schema.org/VideoObject"><time itemprop="datePublished" datetime="2021-08-12T09:00:00Z">12/08/2021</time></div>')))
+        self.assertIsNone(_publication_date(resource('<meta property="article:published_time" content="2021-02-31T09:00:00Z">')))
+
+    def test_visible_publication_anchor_rejects_maintenance_and_unrelated_hidden_dates(self):
+        def resource(body):
+            html = f'<html><body><article><p>A pesquisadora Zeta morreu hoje (12).</p>{body}</article></body></html>'
+            return FetchedResource(html.encode(), "text/html", "https://www.bbc.com/story", "utf-8")
+        for class_name in ("updated-at", "date-modified", "date-created", "data-atualizacao"):
+            self.assertIsNone(_publication_date(resource(f'<div class="{class_name}">12 August 2021</div>')), class_name)
+            self.assertIsNone(_publication_date(resource(f'<div class="{class_name}"><span class="date">12 August 2021</span></div>')), class_name)
+        time = '<time itemprop="datePublished" datetime="2021-08-12">12 August 2021</time>'
+        for wrapper in ('<aside>{}</aside>', '<footer>{}</footer>', '<div hidden>{}</div>', '<div aria-hidden="true">{}</div>', '<div style="display:none">{}</div>', '<div itemprop="dateModified">{}</div>'):
+            self.assertIsNone(_publication_date(resource(wrapper.format(time))), wrapper)
+        self.assertEqual(_publication_date(resource(time)), "2021-08-12")
+        for class_name in ("date-published", "publication-date", "data-publicacao", "details--date"):
+            self.assertEqual(_publication_date(resource(f'<div class="{class_name}">12 August 2021</div>')), "2021-08-12", class_name)
+
     async def test_recovery_reuses_failures_and_bodies_with_six_total_fetch_attempts(self):
         urls = [f"https://example.test/article-{i}" for i in range(8)]
         cache = {}
@@ -163,6 +299,20 @@ class SourceAttributionTests(unittest.IsolatedAsyncioTestCase):
                 html = f"<article><{container}>{CLAIM}</{container}><p>Outra afirmação ocupa o corpo.</p></article>"
                 result, _ = await self.collect(FetchedResource(html.encode(), "text/html", "https://example.test/final", "utf-8"))
                 self.assertEqual(result["matches"], [])
+
+    async def test_image_caption_classes_remain_context_not_article_body(self):
+        for class_name in ("mc-image-caption", "media-caption", "wp-caption-text"):
+            for template in ('<p class="{}">{}</p>', '<div class="{}"><p>{}</p></div>',
+                             '<div class="{}">{}</div>', '<p><span class="{}">{}</span></p>'):
+                caption = template.format(class_name, CLAIM)
+                html = f'<article>{caption}<p>Outra afirmação ocupa o corpo.</p></article>'
+                resource = FetchedResource(html.encode(), "text/html", "https://example.test/final", "utf-8")
+                result, _ = await self.collect(resource)
+                self.assertEqual(result["matches"], [], (class_name, template))
+                sentences, _, _, roles = _article_parts(resource)
+                self.assertIn((CLAIM, "context"), list(zip(sentences, roles)))
+        body, _ = await self.collect(page(CLAIM))
+        self.assertEqual(len(body["matches"]), 1)
 
     async def test_unfinished_denial_heading_never_exposes_body_fragment_as_proof(self):
         positive = CLAIM.replace("não recebeu", "recebeu")

@@ -7,6 +7,7 @@ not establish accuracy, independence, authorship or agreement with the article.
 import asyncio
 from datetime import datetime, timezone
 import re
+from urllib.parse import unquote, urljoin, urlsplit
 
 from bs4 import BeautifulSoup, NavigableString, Tag
 from fastapi import HTTPException
@@ -23,6 +24,8 @@ MAX_INPUT_SEGMENTS = 8
 MAX_CLAIM_CHARACTERS = 1000
 MAX_SOURCE_CHARACTERS = 50000
 MAX_SOURCE_BYTES = 2 * 1024 * 1024
+MAX_REFERENCE_ANCHORS = 200
+MAX_REFERENCE_LEADS = 12
 FETCH_TIMEOUT_SECONDS = 8.0
 _ALLOWED_TYPES = {"text/html", "application/xhtml+xml", "text/plain"}
 _HIDDEN_STYLE = re.compile(
@@ -43,6 +46,10 @@ _PUBLICATION_DATE_UI = re.compile(
     r"publish[-_]date|updated[-_]at|data[-_](?:publica[çc][aã]o|atualiza[çc][aã]o))"
     r"(?:$|[-_\s])", re.I,
 )
+_PUBLISHED_DATE_UI = re.compile(
+    r"(?:^|[-_\s])(?:date[-_]?published|publication[-_]date|"
+    r"publish[-_]date|data[-_]publica[çc][aã]o)(?:$|[-_\s])", re.I,
+)
 _AUTHOR_UI = re.compile(
     r"(?:^|[-_\s])(?:byline|author|authors|autoria|autor|autores|credit|credits)"
     r"(?:$|[-_\s])", re.I,
@@ -50,6 +57,7 @@ _AUTHOR_UI = re.compile(
 _HEADING_UI = re.compile(
     r"(?:^|[-_\s])(?:headline|title|subtitle|subheading|standfirst|dek)(?:$|[-_\s])", re.I,
 )
+_CAPTION_UI = re.compile(r"(?:^|\s)(?:mc-image-caption|media-caption|wp-caption-text)(?:$|\s)", re.I)
 _AUTHOR_TEXT = re.compile(r"^(?:por|by)\s+[^.!?]{1,200}$", re.I)
 _CALENDAR_NAMES = r"janeiro|fevereiro|março|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec"
 _STANDALONE_DATE = re.compile(
@@ -149,6 +157,8 @@ def _article_blocks(root, scope):
         properties = {value.casefold() for value in str(tag.get("itemprop", "")).split()}
         contextual = (inherited_context or tag.name in _CONTEXT_TAGS or tag.name == "table"
                       or bool(_AUTHOR_UI.search(identifiers)) or bool(_HEADING_UI.search(identifiers))
+                      or bool(_CAPTION_UI.search(identifiers))
+                      or tag.name in _BLOCK_TAGS and tag.find(class_=_CAPTION_UI) is not None
                       or "author" in properties)
         if tag.name in _BLOCK_TAGS or contextual:
             text = _visible_text(tag)
@@ -179,6 +189,7 @@ def _article_blocks(root, scope):
                         and not _inside(root, child) and not (
                         _AUTHOR_UI.search(" ".join([str(child.get("id", "")), *child.get("class", [])]))
                         or _HEADING_UI.search(" ".join([str(child.get("id", "")), *child.get("class", [])]))
+                        or _CAPTION_UI.search(" ".join([str(child.get("id", "")), *child.get("class", [])]))
                         or "author" in str(child.get("itemprop", "")).casefold().split())):
                     text = child.get_text("", strip=False)
                     if text:
@@ -327,6 +338,203 @@ def _article_sentences(resource):
     return sentences, title, truncated
 
 
+def _article_reference_leads(resource):
+    """Actual visible inline citations, never evidence or generated URLs.
+
+    Restrict discovery to curated primary HTTPS documents. Every selected lead
+    still goes through the normal DNS-pinned bounded reader and body guards.
+    Neither an anchor's wording nor the cited institution supplies a truth vote.
+    """
+    if resource.content_type not in {"text/html", "application/xhtml+xml"}:
+        return []
+    from app.services.source_corroboration import source_identity
+    try:
+        soup = BeautifulSoup(resource.data.decode(resource.encoding, errors="replace"), "html.parser")
+    except LookupError:
+        return []
+    for tag in list(soup.find_all(True)):
+        if tag.attrs is None:
+            continue
+        identifiers = " ".join([str(tag.get("id", "")), *tag.get("class", [])])
+        if (tag.name in {"script", "style", "head", "nav", "header", "footer", "aside", "form", "template",
+                         "video", "audio", "noscript", "dialog", "button", "input", "select", "textarea",
+                         "blockquote", "figcaption", "caption"}
+                or tag.has_attr("hidden") or str(tag.get("aria-hidden", "")).casefold() == "true"
+                or str(tag.get("role", "")).casefold() in {"navigation", "dialog"}
+                or _HIDDEN_STYLE.search(str(tag.get("style", ""))) or _CONSENT_UI.search(identifiers)
+                or _AUTHOR_UI.search(identifiers) or _HEADING_UI.search(identifiers)
+                or _CAPTION_UI.search(identifiers)
+                or re.search(r"(?:^|[-_\s])(?:related|share|social|menu|breadcrumb|teaser|card)(?:$|[-_\s])", identifiers, re.I)):
+            tag.decompose()
+    root, _ = _body_root(soup)
+    own_url = _canonical_url(resource.final_url)
+    references = {}
+    for anchor in root.find_all("a", href=True, limit=MAX_REFERENCE_ANCHORS):
+        # Ordinary inline references only. A listing/sidebar/header is not an
+        # article citation, even when its text contains a matching topic name.
+        paragraph = anchor.find_parent("p")
+        if paragraph is None or not _inside(paragraph, root):
+            continue
+        title = _visible_text(anchor)
+        href = str(anchor.get("href", ""))
+        if not title or len(title) > 300 or not href or href.startswith("#"):
+            continue
+        url = _canonical_url(urljoin(resource.final_url, href))
+        identity = source_identity(url)
+        if not identity or identity["source_type"] != "primary":
+            continue
+        parsed = urlsplit(url)
+        if parsed.query or not parsed.path.strip("/") or url == own_url:
+            continue
+        references.setdefault(url, {"link": url, "title": title})
+        if len(references) >= MAX_REFERENCE_LEADS:
+            break
+    return list(references.values())
+
+
+def primary_reference_leads(text, documents, source_url=None):
+    """Prioritize at most two cited primary bodies with a literal named topic.
+
+    Institution names and generic link text alone cannot consume the reading
+    budget. No crawl/recursive traversal: only first-wave documents supply
+    these leads, and the caller retains the cumulative six-page ceiling.
+    """
+    from app.services.source_corroboration import source_identity
+    if not isinstance(text, str):
+        return []
+    generic = {"segundo", "the", "uma", "organização", "mundial", "saúde", "brasil",
+               "nasa", "oms", "who", "ibge", "copernicus", "copom", "em", "para", "sobre"}
+    names = {token.casefold() for token in re.findall(r"\b[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][\wÀ-ÿ-]{2,}\b", text)
+             if token.casefold() not in generic}
+    if not names:
+        return []
+    submitted = _canonical_url(source_url)
+    references = {}
+    for document in documents if isinstance(documents, (list, tuple)) else []:
+        if not isinstance(document, dict) or document.get("source_role") == "submitted_source":
+            continue
+        source = _canonical_url(document.get("url"))
+        if not source_identity(source) or source == submitted:
+            continue
+        for reference in document.get("reference_leads", [])[:MAX_REFERENCE_LEADS]:
+            if not isinstance(reference, dict):
+                continue
+            url = _canonical_url(reference.get("link"))
+            identity = source_identity(url)
+            if not identity or identity["source_type"] != "primary" or url == submitted:
+                continue
+            parsed = urlsplit(url)
+            if parsed.query or not parsed.path.strip("/"):
+                continue
+            title = reference.get("title")
+            if not isinstance(title, str):
+                continue
+            tokens = set(re.findall(r"[^\W\d_]+", title.casefold() + " " + parsed.path.casefold(), re.UNICODE))
+            if not names.intersection(tokens):
+                continue
+            references.setdefault(url, {"link": url, "title": title[:300],
+                                        "retrieval_method": "inline_cited_primary_reference"})
+            if len(references) >= 2:
+                return list(references.values())
+    return list(references.values())
+
+
+def _retrieval_priority(text, title, url):
+    """Rank unread leads by reference period/topic, not by alleged truth.
+
+    Publication-prefix dates are removed by the neutral discovery helper. A
+    release about 2024 should not lose the reading budget to a release about
+    2025 merely because both came from the same institution. Titles and URL
+    words remain untrusted hints; every factual/date/value guard runs on body.
+    """
+    from app.services.source_queries import neutral_source_query
+    from app.services.source_corroboration import source_identity
+    subject = neutral_source_query(text, preserve_period=True) or text
+    lead = title + " " + unquote(urlsplit(url).path)
+    year_pattern = r"(?<!\d)(?:18|19|20)\d{2}(?!\d)"
+    subject_years = set(re.findall(year_pattern, subject))
+    lead_years = set(re.findall(year_pattern, lead))
+    year_matches = len(subject_years & lead_years)
+    unrelated_period = bool(subject_years and lead_years and not year_matches)
+    subperiod = r"\b(?:trimestre|trimestral|quarter|quarterly|semestre|semestral|q[1-4])\b"
+    narrower_period = bool(re.search(subperiod, lead, re.I) and not re.search(subperiod, subject, re.I))
+    words = lambda value: {word.casefold() for word in re.findall(r"[^\W\d_]{3,}", value, re.UNICODE)}
+    shared_topics = len(words(subject) & words(lead))
+    primary = (source_identity(url) or {}).get("source_type") == "primary"
+    return (-year_matches, unrelated_period, narrower_period, not primary, -shared_topics)
+
+
+def _publication_date(resource):
+    """Explicit publication metadata only, never update/retrieval/URL dates.
+
+    Used solely to resolve an explicit relative expression in body text. Video
+    cards, JSON-LD articleBody and arbitrary hidden prose cannot supply facts.
+    Conflicting/invalid dates abstain rather than selecting a convenient one.
+    """
+    if resource.content_type not in {"text/html", "application/xhtml+xml"}:
+        return None
+    try:
+        soup = BeautifulSoup(resource.data.decode(resource.encoding, errors="replace"), "html.parser")
+    except LookupError:
+        return None
+    def eligible_visible_date(tag):
+        for node in [tag, *tag.parents]:
+            if not isinstance(node, Tag):
+                continue
+            identifiers = " ".join([str(node.get("id", "")), *node.get("class", [])])
+            properties = {value.casefold() for value in str(node.get("itemprop", "")).split()}
+            if (node.name in {"script", "style", "template", "noscript", "aside", "footer", "nav", "video", "audio"}
+                    or "videoobject" in str(node.get("itemtype", "")).casefold()
+                    or node.has_attr("hidden") or str(node.get("aria-hidden", "")).lower() == "true"
+                    or _HIDDEN_STYLE.search(str(node.get("style", "")))
+                    or properties & {"datemodified", "datecreated"}
+                    or (_PUBLICATION_DATE_UI.search(identifiers) and not _PUBLISHED_DATE_UI.search(identifiers))):
+                return False
+        return True
+    values = []
+    if soup.head:
+        for tag in soup.head.find_all("meta"):
+            key = str(tag.get("property") or tag.get("name") or tag.get("itemprop") or "").casefold()
+            if key in {"article:published_time", "datepublished"}:
+                values.append(str(tag.get("content", "")))
+    # Some pages expose a semantic article time without a global head value.
+    if not values:
+        for tag in soup.find_all("time", attrs={"itemprop": "datePublished"}):
+            if eligible_visible_date(tag):
+                values.append(str(tag.get("datetime", "")))
+    if not values:
+        # A short, explicitly labelled visible date beside the article header
+        # also occurs in institutional releases. Never use a date in a body
+        # paragraph, a video/card or a bare title/URL as publication evidence.
+        months = {name: index for index, group in enumerate(("janeiro january", "fevereiro february", "março march", "abril april", "maio may", "junho june", "julho july", "agosto august", "setembro september", "outubro october", "novembro november", "dezembro december"), 1) for name in group.split()}
+        calendar = re.compile(r"^(?:Date:\s*)?(\d{1,2})(?:st|nd|rd|th)?\s+(?:de\s+)?(" + "|".join(months) + r")\s+(?:de\s+)?(\d{4})$", re.I)
+        for tag in soup.find_all(["span", "div"]):
+            identifiers = " ".join(tag.get("class", []))
+            if not (re.search(r"(?:^|\s)(?:date|timestamp|details--date)(?:$|\s)", identifiers)
+                    or _PUBLISHED_DATE_UI.search(identifiers)) or tag.find_parent(["p", "figure", "figcaption", "blockquote", "aside"]):
+                continue
+            if not eligible_visible_date(tag):
+                continue
+            match = calendar.fullmatch(_visible_text(tag))
+            if match:
+                try:
+                    values.append(datetime(int(match[3]), months[match[2].casefold()], int(match[1])).date().isoformat())
+                except ValueError:
+                    return None
+    dates = set()
+    for value in values:
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?(?:Z|[+-]\d{2}:\d{2}))?", value):
+            return None
+        try:
+            date = datetime.fromisoformat(value.replace("Z", "+00:00")).date()
+        except ValueError:
+            return None
+        if date > datetime.now().date():
+            return None
+        dates.add(date.isoformat())
+    return next(iter(dates)) if len(dates) == 1 else None
+
+
 async def _fetch_article(url):
     try:
         resource = await asyncio.wait_for(fetch_public_resource(
@@ -343,6 +551,8 @@ async def _fetch_article(url):
         sentences, title, truncated, roles = _article_parts(resource)
         return {"url": final_url, "sentences": sentences, "title": title, "truncated": truncated,
                 "sentence_roles": roles,
+                "reference_leads": _article_reference_leads(resource),
+                "publication_date": _publication_date(resource),
                 "retrieved_at": datetime.now(timezone.utc).isoformat()}
     except HTTPException as exc:
         return {"failure": {413: "oversize", 415: "unsupported_content", 504: "timeout"}.get(
@@ -375,6 +585,7 @@ async def collect_source_attribution(text, queries, source_url=None, *, search_r
         search_status = "invalid_response"
 
     urls = {}
+    cited_urls = set()
     invalid_urls = int(bool(source_url) and submitted is None)
     if submitted:
         urls[submitted] = ""
@@ -388,6 +599,8 @@ async def collect_source_attribution(text, queries, source_url=None, *, search_r
             continue
         title = item.get("title")
         urls.setdefault(url, title[:300] if isinstance(title, str) else "")
+        if item.get("retrieval_method") == "inline_cited_primary_reference":
+            cited_urls.add(url)
     source_limit = max_sources if (isinstance(max_sources, int) and not isinstance(max_sources, bool)
                                    and 1 <= max_sources <= MAX_RECOVERY_SOURCES) else MAX_SOURCES
     cache = fetched_cache if isinstance(fetched_cache, dict) else {}
@@ -403,7 +616,7 @@ async def collect_source_attribution(text, queries, source_url=None, *, search_r
         families = usable_source_families(text, list(cache.values()), submitted)
         if submitted:
             families.add(source_family(submitted))
-        ranked_urls = sorted(urls, key=lambda url: (source_identity(url) or {}).get("source_type") != "primary")
+        ranked_urls = sorted(urls, key=lambda url: (url not in cited_urls, *_retrieval_priority(text, urls[url], url)))
         for candidate in ranked_urls:
             if candidate in cache:
                 continue

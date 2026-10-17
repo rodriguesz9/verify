@@ -1,5 +1,6 @@
 """Adversarial grounded-source controls, never a live accuracy benchmark."""
 import json
+import asyncio
 import os
 import unittest
 from unittest.mock import AsyncMock, patch
@@ -78,6 +79,171 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(kwargs["response_format"]["json_schema"]["strict"])
         self.assertNotIn("url", json.loads(router.await_args.args[0])["sources"][0])
 
+    async def test_explicit_relative_body_day_can_bind_publication_date_without_rewriting_quote(self):
+        claim = "A pesquisadora Zeta morreu em 12 de agosto de 2021."
+        first = "A pesquisadora Zeta morreu hoje (12), aos 80 anos."
+        second = "A pesquisadora Zeta faleceu nesta quinta-feira (12), aos 80 anos."
+        docs = [document(first, publication_date="2021-08-12"), document(second, "https://www.royal.uk/a", publication_date="2021-08-12")]
+        result, _, _ = await self.run_comparison(claim, docs)
+        self.assertEqual(result["state"], "corroborated")
+        self.assertEqual({item["excerpt"] for item in result["claims"][0]["evidence"]}, {first, second})
+        self.assertTrue(all(item["temporal_anchor"]["publication_date"] == "2021-08-12" for item in result["claims"][0]["evidence"]))
+        result, _, _ = await self.run_comparison(claim.replace("12 de agosto", "13 de agosto"), docs, "refutes")
+        self.assertEqual(result["state"], "refuted")
+
+    async def test_publication_date_alone_wrong_day_weekday_or_other_event_never_dates_death(self):
+        claim = "A pesquisadora Zeta morreu em 12 de agosto de 2021."
+        for body in ("A pesquisadora Zeta morreu.", "A pesquisadora Zeta morreu hoje (13).",
+                     "A pesquisadora Zeta morreu nesta quarta-feira (12).",
+                     "A pesquisadora Zeta morreu, e sua homenagem ocorreu hoje (12)."):
+            docs = [document(body, publication_date="2021-08-12"), document(body + " Nota biográfica.", "https://www.royal.uk/a", publication_date="2021-08-12")]
+            result, router, _ = await self.run_comparison(claim, docs)
+            self.assertEqual(result["state"], "insufficient", body)
+            router.assert_not_awaited()
+
+    async def test_attributed_statistical_release_uses_original_record_and_checks_release_date(self):
+        claim = "Na divulgação de 12 de agosto de 2021, o IBGE informou que o PIB brasileiro cresceu 4,2% em 2020 em relação a 2019."
+        body = "Em 2020, o PIB brasileiro cresceu 4,2% em relação a 2019."
+        docs = [document(body, "https://agenciadenoticias.ibge.gov.br/release", publication_date="2021-08-12")]
+        raw = json.dumps({"claims": [{"claim_id": "c1", "evidence": [{"source_id": "s1", "excerpt_id": "s1:e1", "relation": "supports"}]}]})
+        result, router, _ = await self.run_comparison(claim, docs, raw=raw)
+        self.assertEqual(result["state"], "corroborated")
+        self.assertEqual(result["claims"][0]["evidence_basis"], "original_institutional_record")
+        self.assertIn("única fonte", result["claims"][0]["explanation"])
+        router.assert_awaited_once()
+        for invalid in (claim.replace("12 de agosto", "13 de agosto"), claim.replace("IBGE", "Instituto Alfa")):
+            result, router, _ = await self.run_comparison(invalid, docs)
+            self.assertEqual(result["state"], "insufficient")
+            router.assert_not_awaited()
+        result, router, _ = await self.run_comparison(claim, [document(body, "https://www.bbc.com/noticia", publication_date="2021-08-12")])
+        self.assertEqual(result["state"], "insufficient")
+        router.assert_not_awaited()
+
+    async def test_pronoun_clarifies_repeated_death_with_partial_day_month_not_another_person(self):
+        claim = "A pesquisadora Zeta morreu em 13 de agosto de 2021."
+        first = "A pesquisadora Zeta, integrante da equipe, morreu em Castelo Alfa aos 80 anos."
+        second = "Ela morreu pacificamente na tarde de quinta-feira (12/8), em sua residência."
+        docs = [document([first, second], publication_date="2021-08-12"),
+                document("A pesquisadora Zeta faleceu em 12 de agosto de 2021.", "https://www.royal.uk/a")]
+        result, _, _ = await self.run_comparison(claim, docs, "refutes")
+        self.assertEqual(result["state"], "refuted")
+        for inserted in ("A pesquisadora Beta chegou ao local.", "A mãe da pesquisadora Zeta chegou ao local."):
+            docs[0]["sentences"] = [first, inserted, second]
+            result, _, _ = await self.run_comparison(claim, docs, "refutes")
+            self.assertEqual(result["state"], "insufficient")
+
+    async def test_original_climate_record_binds_release_year_metric_and_baseline(self):
+        claim = "Segundo o relatório do Copernicus de 12 de agosto de 2021, a temperatura média global de 2020 ficou 1,25°C abaixo da média de 1850–1900."
+        body = ["Global temperature highlights: 2020 was the warmest year in global temperature records.",
+                "The global average temperature was 0.4°C above the 1991-2020 average.",
+                "This is equivalent to 1.25°C above the 1850-1900 temperature average."]
+        docs = [document(body, "https://climate.copernicus.eu/report", publication_date="2021-08-12")]
+        raw = json.dumps({"claims": [{"claim_id":"c1", "evidence":[{"source_id":"s1", "excerpt_id":"s1:e1-3", "relation":"refutes"}]}]})
+        result, _, _ = await self.run_comparison(claim, docs, raw=raw)
+        self.assertEqual(result["state"], "refuted")
+        for wrong in (claim.replace("1,25", "0,4"), claim.replace("1850", "1860"), claim.replace("2020 ficou", "2019 ficou")):
+            result, _, _ = await self.run_comparison(wrong, docs, raw=raw)
+            self.assertEqual(result["state"], "insufficient")
+
+    async def test_formal_institutional_classification_is_not_ordinary_medical_speculation(self):
+        claim = "Em 12 de agosto de 2021, a Organização Mundial da Saúde caracterizou o surto Zeta como um alerta."
+        body = "Chegámos, por isso, à conclusão de que o surto Zeta pode ser ‎caracterizado como um alerta."
+        docs = [document(body, "https://www.who.int/news-room/speeches/item/statement", publication_date="2021-08-12")]
+        raw = json.dumps({"claims": [{"claim_id":"c1", "evidence":[{"source_id":"s1", "excerpt_id":"s1:e1", "relation":"supports"}]}]})
+        result, _, _ = await self.run_comparison(claim, docs, raw=raw)
+        self.assertEqual(result["state"], "corroborated")
+        self.assertEqual(result["claims"][0]["evidence"][0]["excerpt"], body)
+        for wrong in (claim.replace("12 de agosto", "13 de agosto"), claim.replace("um alerta", "uma pandemia"), claim.replace("Saúde", "Comércio")):
+            result, _, _ = await self.run_comparison(wrong, docs, raw=raw)
+            self.assertEqual(result["state"], "insufficient")
+        docs[0]["sentences"] = ["O surto Zeta pode ser caracterizado como um alerta."]
+        result, _, _ = await self.run_comparison(claim, docs, raw=raw)
+        self.assertEqual(result["state"], "insufficient")
+
+    async def test_original_climate_record_cannot_support_swapped_metric_baselines(self):
+        claim = "Segundo o relatório do Copernicus de 12 de agosto de 2021, a temperatura média global de 2020 ficou 1,25°C abaixo da média de 1850–1900."
+        body = ["Global temperature highlights: 2020 was the warmest year in global temperature records.",
+                "The global average temperature was 1.25°C below the 1991-2020 average.",
+                "This is equivalent to 0.4°C above the 1850-1900 temperature average."]
+        docs = [document(body, "https://climate.copernicus.eu/report", publication_date="2021-08-12")]
+        raw = json.dumps({"claims": [{"claim_id":"c1", "evidence":[{"source_id":"s1", "excerpt_id":"s1:e1-3", "relation":"supports"}]}]})
+        result, router, _ = await self.run_comparison(claim, docs, raw=raw)
+        self.assertEqual(result["state"], "insufficient")
+        router.assert_not_awaited()
+
+    async def test_adjacent_body_sentences_keep_named_subject_and_literal_date(self):
+        claim = "A pesquisadora Zeta morreu em 12 de agosto de 2021."
+        first = ["A pesquisadora Zeta participou do projeto.", "Ela morreu em 12 de agosto de 2021."]
+        second = ["A pesquisadora Zeta integrou a equipe.", "Ela faleceu em 12 de agosto de 2021."]
+        result, router, _ = await self.run_comparison(claim, documents(first, second))
+        self.assertEqual(result["state"], "corroborated")
+        router.assert_awaited_once()
+        for evidence in result["claims"][0]["evidence"]:
+            self.assertIn("Ela", evidence["excerpt"])
+            self.assertIn("Zeta", evidence["excerpt"])
+            self.assertIn("-", evidence["excerpt_id"])
+        wrong = claim.replace("12 de agosto", "13 de agosto")
+        result, _, _ = await self.run_comparison(wrong, documents(first, second), "refutes")
+        self.assertEqual(result["state"], "refuted")
+
+    async def test_model_selects_ids_while_server_keeps_original_quotes(self):
+        def ids_only(body):
+            for claim in body["claims"]:
+                for evidence in claim["evidence"]:
+                    evidence.pop("quote")
+        result, router, _ = await self.run_comparison(transform=ids_only)
+        self.assertEqual(result["state"], "corroborated")
+        self.assertEqual({item["excerpt"] for item in result["claims"][0]["evidence"]}, {FIRST, SECOND})
+        schema = router.await_args.kwargs["response_format"]["json_schema"]["schema"]
+        self.assertNotIn("quote", schema["properties"]["claims"]["items"]["properties"]["evidence"]["items"]["properties"])
+        def nonexistent(body):
+            ids_only(body)
+            body["claims"][0]["evidence"][0]["excerpt_id"] = "invented"
+        invalid, _, _ = await self.run_comparison(transform=nonexistent)
+        self.assertEqual(invalid["status"], "invalid_response")
+
+    async def test_body_window_cannot_borrow_identity_across_heading_or_other_person(self):
+        claim = "A pesquisadora Zeta morreu em 12 de agosto de 2021."
+        variants = (
+            ["A pesquisadora Zeta encontrou a pesquisadora Beta.", "Ela morreu em 12 de agosto de 2021."],
+            ["A pesquisadora Zeta encontrou sua mãe.", "Ela morreu em 12 de agosto de 2021."],
+            ["A pesquisadora Zeta, acompanhada da pesquisadora Beta, compareceu ao evento.", "Ela morreu em 12 de agosto de 2021."],
+            ["A pesquisadora Zeta, integrante da equipe, encontrou a pesquisadora Beta.", "Ela morreu em 12 de agosto de 2021."],
+        )
+        for sentences in variants:
+            result, router, _ = await self.run_comparison(claim, documents(sentences, sentences + ["Nota biográfica."]))
+            self.assertEqual(result["state"], "insufficient")
+            router.assert_not_awaited()
+        paragraphs = ["A pesquisadora Zeta participou do projeto.", "Outra pessoa", "Ela morreu em 12 de agosto de 2021."]
+        docs = [document(paragraphs, sentence_roles=["body", "context", "body"]),
+                document(paragraphs + ["Nota."], "https://www.royal.uk/story", sentence_roles=["body", "context", "body", "body"])]
+        result, router, _ = await self.run_comparison(claim, docs)
+        self.assertEqual(result["state"], "insufficient")
+        router.assert_not_awaited()
+
+    async def test_large_first_source_does_not_crowd_out_independent_family(self):
+        first = [FIRST + " Contexto biográfico detalhado " + str(index) + " — " + "informação " * 30 + "." for index in range(12)]
+        result, router, _ = await self.run_comparison(docs=documents(first, SECOND))
+        self.assertEqual(result["state"], "corroborated")
+        sources = json.loads(router.await_args.args[0])["sources"]
+        self.assertEqual(len(sources), 2)
+        self.assertTrue(all(sum(len(p["quote"]) + len(p["context"]) for p in s["passages"]) <= 6000 for s in sources))
+
+    async def test_primary_stall_leaves_time_for_real_alternate_without_extending_deadline(self):
+        async def stall(*args, **kwargs):
+            await asyncio.sleep(1)
+        async def answer(prompt, **kwargs):
+            return response(prompt)
+        with patch.dict(os.environ, {"SOURCE_CROSSCHECK_PRIMARY_PROVIDER": "gemini"}), \
+             patch("app.services.source_corroboration.crosscheck_timeout_seconds", return_value=.15), \
+             patch("app.services.source_corroboration.gemini_client.generate_text", new=AsyncMock(side_effect=stall)), \
+             patch("app.services.source_corroboration.openrouter_service.generate", new=AsyncMock(side_effect=answer)) as router:
+            result = await corroborate_sources(CLAIM, documents())
+        self.assertEqual(result["state"], "corroborated")
+        self.assertEqual(result["provider_coverage"]["gemini"]["status"], "timeout")
+        self.assertEqual(result["provider_coverage"]["openrouter"]["status"], "success")
+        router.assert_awaited_once()
+
     async def test_scientific_aliases_allow_grounded_comparison_but_not_another_agency(self):
         claim = "A nave Zeta da NASA colidiu intencionalmente com o asteroide Delta em 12 de agosto de 2021."
         first = "NASA spacecraft Zeta intentionally impacted asteroid Delta on August 12, 2021."
@@ -89,6 +255,20 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
         result, router, _ = await self.run_comparison(wrong, documents(first, second))
         self.assertEqual(result["state"], "insufficient")
         router.assert_not_awaited()
+
+    async def test_impact_without_intentional_cue_cannot_support_intentional_collision(self):
+        claim = "A nave Zeta da NASA colidiu intencionalmente com o asteroide Delta em 12 de agosto de 2021."
+        first = "NASA spacecraft Zeta impacted asteroid Delta on August 12, 2021."
+        second = "Em 12 de agosto de 2021, a espaçonave Zeta da NASA colidiu com o asteroide Delta."
+        docs = [document([first, "The impact was intentional."], sentence_roles=["body", "context"]),
+                document([second, "O impacto foi intencional."], "https://www.royal.uk/announcement", sentence_roles=["body", "context"])]
+        result, router, _ = await self.run_comparison(claim, docs)
+        self.assertEqual(result["state"], "insufficient")
+        router.assert_not_awaited()
+        result, router, _ = await self.run_comparison(claim, documents(
+            first.replace("impacted", "deliberately impacted"), second.replace("colidiu", "colidiu intencionalmente")))
+        self.assertEqual(result["state"], "corroborated")
+        router.assert_awaited_once()
 
     async def test_reversed_percentage_is_refuted_with_two_literal_body_quotes(self):
         claim = "O Conselho Alfa reduziu a taxa Beta de 7,25% para 6,50% em 12 de agosto de 2021."

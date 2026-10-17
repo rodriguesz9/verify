@@ -212,11 +212,15 @@ export function sourceCorroborationPresentation(result = {}) {
     mixed: "O conteúdo reúne afirmações com resultados diferentes. Confira cada uma abaixo; nenhum resultado isolado se aplica automaticamente ao texto inteiro.",
     insufficient: "O cruzamento não reuniu evidência suficiente para confirmar ou refutar todo o conteúdo. Ausência de fonte ou falha de leitura não significa falsidade.",
   };
+  const originalRecordOnly = content.original_record_only === true;
+  if (originalRecordOnly && ["corroborated", "refuted"].includes(record.state)) {
+    explanations[record.state] = "A afirmação sobre o que o instituto publicou foi comparada com o registro original. É uma fonte primária, não duas confirmações independentes nem uma certificação do fenômeno descrito.";
+  }
   const limitations = strings(record.limitations).filter((item) => !isTechnicalReportText(item)).slice(0, 10);
   if (coverage.complete_claim_coverage === false) limitations.push("O cruzamento não cobre todas as afirmações enviadas. Não é uma aprovação do conteúdo inteiro.");
   if (result.source_extraction?.truncated === true) limitations.push("A página enviada foi lida parcialmente; o restante não foi checado.");
   return {state: record.state, status: record.status, title: corroborationLabels[record.state],
-    explanation: explanations[record.state], claims, scope, complete: coverage.complete_claim_coverage === true,
+    explanation: explanations[record.state], claims, scope, complete: coverage.complete_claim_coverage === true, originalRecordOnly,
     limitations: [...new Set(limitations)]};
 }
 
@@ -230,7 +234,8 @@ export function reportFactualHeadline(result = {}) {
   if (["corroborated", "refuted"].includes(state) && (result.veracity_decision_coverage_complete !== true
       || (result.veracity_decision_basis === "retrieved_sources" && !cross.complete))) state = "insufficient";
   const scopedPage = result.source_extraction?.truncated === true && ["corroborated", "refuted"].includes(state);
-  const headline = state === "insufficient"
+  const headline = cross.originalRecordOnly && ["corroborated", "refuted"].includes(state)
+    ? cross.explanation : state === "insufficient"
     ? "Há observações por afirmação, mas a evidência não permite confirmar nem refutar o conteúdo inteiro. Confira as fontes e o que ficou sem confirmação."
     : state === "mixed"
       ? "Há afirmações com resultados diferentes no mesmo conteúdo. Abra os trechos que sustentam ou contradizem cada uma; não interprete isso como uma aprovação do texto inteiro."
@@ -238,7 +243,9 @@ export function reportFactualHeadline(result = {}) {
         ? "As fontes consultadas discordam sobre a informação. Os trechos e as diferenças estão registrados abaixo; é necessária uma conferência humana."
         : "A conclusão se baseia no cruzamento de documentos recuperados e trechos citados, não apenas em checagens já publicadas. Confira datas e contexto; isso não garante verdade nem autenticidade de mídia.";
   return {title: scopedPage ? state === "corroborated" ? "Trecho corroborado nas fontes consultadas" : "Trecho refutado nas fontes consultadas"
-    : corroborationLabels[state], headline: scopedPage ? `A conclusão vale somente para o trecho analisado. O restante da página não foi checado. ${headline}` : headline,
+    : cross.originalRecordOnly && ["corroborated", "refuted"].includes(state)
+      ? state === "corroborated" ? "Confirmada no registro original" : "Contradita no registro original"
+      : corroborationLabels[state], headline: scopedPage ? `A conclusão vale somente para o trecho analisado. O restante da página não foi checado. ${headline}` : headline,
   diagnostic: true, state};
 }
 
@@ -263,6 +270,9 @@ export function reportSourceHeadline(result = {}) {
   if (!["text", "url"].includes(result.content_type) || result.verdict !== "Suspicious"
       || (result.veracity_status != null && result.veracity_status !== "unverified")) return null;
   const attribution = sourceAttributionPresentation(result);
+  if (attribution && attribution.matches.length === 0) return {title: "Análise inconclusiva",
+    headline: "As evidências utilizáveis nesta consulta não bastam para confirmar nem refutar a informação. Veja abaixo o que foi consultado e o que ficou sem confirmação. Isso não significa que o conteúdo seja falso.",
+    diagnostic: true, state: "insufficient"};
   return attribution ? {title: attribution.title,
     headline: `${attribution.explanation} A veracidade da afirmação continua não determinada pelas checagens disponíveis.`, diagnostic: true} : null;
 }

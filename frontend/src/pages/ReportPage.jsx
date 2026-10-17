@@ -160,7 +160,10 @@ export default function ReportPage() {
     border: "rgba(255,203,85,.3)", headline: "Não há evidência suficiente para concluir. Isso não significa que o conteúdo seja falso ou autêntico."
   } : BADGE_STYLES[verdict] || BADGE_STYLES.Suspicious;
   const mediaHeadline = reportMediaHeadline(result);
-  const diagnosisHeadline = mediaHeadline || reportFactualHeadline(result) || reportSourceHeadline(result);
+  const factualHeadline = reportFactualHeadline(result);
+  const diagnosisHeadline = mediaHeadline || factualHeadline || reportSourceHeadline(result);
+  const groundedConclusion = ["corroborated", "refuted"].includes(factualHeadline?.state)
+    && ["supported", "refuted"].includes(result.veracity_status);
   const badge = diagnosisHeadline ? {...defaultBadge, ...diagnosisHeadline} : defaultBadge;
   const publicSummary = diagnosisHeadline?.diagnostic ? [badge.headline, publicMediaRiskNotice(result)].filter(Boolean).join(" ")
     : typeof result.summary === "string" && !isTechnicalReportText(result.summary) ? result.summary : publicCoverage.detail;
@@ -261,14 +264,17 @@ export default function ReportPage() {
         </div>
 
         <div className="report-result-card min-w-0 break-words p-6 sm:p-8 rounded-xl border mb-8" style={{ backgroundColor: badge.bg, borderColor: badge.border }}>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+          <div className="report-result-layout grid min-w-0 gap-4 mb-4 lg:grid-cols-[minmax(0,1fr)_15rem] lg:items-center">
             <div className="min-w-0">
               <span className="text-[10px] font-mono tracking-[8px] uppercase font-bold text-[#8AA2B4] block mb-2">Resultado da Checagem</span>
               <h2 className="report-result-title font-syne font-black text-2xl sm:text-3xl" style={{ color: badge.color }}>
                 {badge.title}
               </h2>
             </div>
-            <AnimatedScore value={inconclusive || diagnosisHeadline?.diagnostic ? null : result.score} color={badge.color} />
+            <AnimatedScore value={inconclusive || diagnosisHeadline?.diagnostic ? null : result.score} color={badge.color}
+              label={groundedConclusion ? "Resultado com fontes citadas"
+                : inconclusive || diagnosisHeadline?.diagnostic ? "Resultado da análise" : undefined}
+              unavailableText={groundedConclusion ? "Veja as evidências" : "Não determinado"} />
           </div>
           <p className="text-base text-[#CDE8F0] leading-relaxed mt-2">{badge.headline}</p>
 
@@ -435,7 +441,7 @@ export default function ReportPage() {
             )}
 
             <div className="p-6 rounded-xl bg-[#070F17] border border-[#132435]">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
                 <h4 className="text-[10px] font-mono uppercase tracking-[8px] text-[#00FF87] font-bold flex items-center gap-2">
                   <Phone size={14} /> Mensagem Pronta para o WhatsApp
                 </h4>

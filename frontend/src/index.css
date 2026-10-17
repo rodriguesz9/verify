@@ -103,12 +103,19 @@ html[data-font-size="elderly"]::-webkit-scrollbar { width: 16px; }
 .report-evidence a { overflow-wrap: anywhere; }
 .report-view-switch { display: flex; gap: .25rem; max-width: 100%; }
 .report-view-switch button { flex: 1; overflow-wrap: normal !important; word-break: normal; }
-html[data-elderly-mode="true"] .report-result-title { font-family: system-ui, sans-serif; overflow-wrap: normal; line-height: 1.3; }
+.report-result-title { overflow-wrap: anywhere; }
+.report-score-empty,
+html[data-elderly-mode="true"] .report-score-empty {
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
+}
+html[data-elderly-mode="true"] .report-result-title { font-family: system-ui, sans-serif; font-size: clamp(1.25rem, 5vw, 2rem); overflow-wrap: anywhere; line-height: 1.3; }
 @media (max-width: 479px) {
   .report-view-switch { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr); }
   .report-result-card { padding: 1rem; }
   .report-score-header { flex-direction: column; gap: .75rem; }
-  html[data-elderly-mode="true"] .report-result-title { font-size: 1.35rem; }
+  html[data-elderly-mode="true"] .report-result-title { font-size: 1.2rem; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

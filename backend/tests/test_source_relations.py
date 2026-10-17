@@ -1,7 +1,7 @@
 """Explicit relation safeguards, invented controls, no network or accuracy claim."""
 import unittest
 
-from app.services.source_relations import lexical_text, opposing_directions, percentage_transition, opposing_measurements
+from app.services.source_relations import lexical_text, opposing_directions, percentage_transition, opposing_measurements, supporting_measurements_bound
 from app.services.source_corroboration import _relation_guard, _same_event
 
 DATE = "2026-10-16T12:00:00+00:00"
@@ -56,6 +56,19 @@ class SourceRelationTests(unittest.TestCase):
         quote = "A empresa Alfa reduziu a taxa Beta em 2021."
         self.assertIsNotNone(_relation_guard(claim, quote, quote, "refutes", DATE))
 
+    def test_supporting_metric_cannot_borrow_baseline_from_another_value(self):
+        claim = "A medição Alfa ficou 1,25°C abaixo da média de 1850–1900 em 2020."
+        wrong = ("Em 2020, a medição Alfa ficou 1.25°C below the 1991-2020 average. "
+                 "Outro índice ficou 0.4°C above the 1850-1900 temperature average.")
+        self.assertFalse(supporting_measurements_bound(claim, wrong))
+        self.assertIsNotNone(_relation_guard(claim, wrong, wrong, "supports", DATE))
+        correct = wrong.replace("1991-2020", "1850-1900").replace("0.4°C above the 1850-1900", "0.4°C above the 1991-2020")
+        self.assertTrue(supporting_measurements_bound(claim, correct))
+        self.assertIsNone(_relation_guard(claim, correct, correct, "supports", DATE))
+        duplicate = correct + " Outra medição ficou 1.25°C below the 1850-1900 average."
+        self.assertFalse(supporting_measurements_bound(claim, duplicate))
+        self.assertTrue(supporting_measurements_bound("A taxa Alfa cresceu 4,2% em 2020.", "A taxa Alfa cresceu 4,2% em 2020."))
+
     def test_calendar_may_is_not_modal_but_real_uncertainty_is_preserved(self):
         claim = "A nave Zeta colidiu com o asteroide Delta em 12 de maio de 2021."
         quote = "A nave Zeta colidiu com o asteroide Delta on May 12, 2021."
@@ -82,3 +95,17 @@ class SourceRelationTests(unittest.TestCase):
     def test_new_impact_vocabulary_does_not_approve_a_future_completed_event(self):
         claim = "A nave Zeta colidiu com o asteroide Delta em 12 de agosto de 2027."
         self.assertIsNotNone(_relation_guard(claim, claim, claim, "supports", DATE))
+
+    def test_manner_and_named_location_do_not_detach_an_explicit_death_date(self):
+        claim = "A pesquisadora Zeta morreu em 12 de agosto de 2021."
+        for quote in ("A pesquisadora Zeta morreu tranquilamente no Castelo Alfa em 12 de agosto de 2021.",
+                      "A pesquisadora Zeta died peacefully at Castle Alfa on August 12, 2021."):
+            self.assertIsNone(_relation_guard(claim, quote, quote, "supports", DATE))
+        for quote in ("A pesquisadora Zeta morreu e recebeu uma homenagem em 12 de agosto de 2021.",
+                      "A pesquisadora Zeta morreu, o relatório foi publicado em 12 de agosto de 2021."):
+            self.assertIsNotNone(_relation_guard(claim, quote, quote, "supports", DATE))
+
+    def test_invisible_direction_marks_do_not_glue_full_sentences(self):
+        from app.services.claim_policy import input_claims
+        text = "A pesquisadora Zeta apresentou o projeto.\u200e Ela morreu em 12 de agosto de 2021.\u200f Fim."
+        self.assertEqual(input_claims(text), ["A pesquisadora Zeta apresentou o projeto.", "Ela morreu em 12 de agosto de 2021.", "Fim."])

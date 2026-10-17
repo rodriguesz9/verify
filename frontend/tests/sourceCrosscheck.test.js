@@ -81,6 +81,15 @@ test("grounded source presentation preserves literal negation, value, date, rela
   assert.deepEqual(result, before);
 });
 
+test("single original record is not presented as two independent confirmations", () => {
+  const result = fixture("corroborated", {original_record_only: true});
+  result.source_corroboration.claims[0].evidence.splice(1);
+  const headline = helpers.reportFactualHeadline(result);
+  assert.equal(headline.title, "Confirmada no registro original");
+  assert.match(headline.headline, /É uma fonte primária, não duas confirmações independentes/);
+  assert.equal(helpers.sourceCorroborationPresentation(result).originalRecordOnly, true);
+});
+
 test("source decisions show grounded headlines, never an invented certainty percentage or Google-only rating", () => {
   for (const [state, title] of [["corroborated", "Corroborada nas fontes consultadas"],
     ["refuted", "Refutada nas fontes consultadas"], ["conflicting", "Fontes discordam"], ["mixed", "Conteúdo misto"],

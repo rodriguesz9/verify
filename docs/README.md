@@ -1,5 +1,7 @@
 # Documentação do Verify
 
+Revisão local de 17/10: [vereditos, inconclusivos e responsividade](AUDITORIA-VEREDITOS-2026-10-17.md). Correções de recuperação, comparação e interface; resultados medidos com inconclusivos no denominador. Não equivale a homologação de todas as modalidades ou implantação em produção.
+
 Revisão de 14/10: [validação atual das APIs e pendências](VALIDACAO-APIS-2026-10-14.md) e [guia de retomada atualizado](REATIVAR-RAILWAY-2026-10-13.md). Gemini é o padrão da comparação de corpos; OpenRouter mantém extração auxiliar e fallback gratuito. Recuperação limitada tenta até seis páginas, selecionando no máximo três corpos para comparar com a afirmação original intacta. Os resultados reais e controles de interface devem ser lidos no registro da rodada, não presumidos pelo número de APIs/chaves.
 
 Checkpoint histórico de 13/10: [cruzamento fundamentado de fontes, controles e limites](CRUZAMENTO-FONTES-2026-10-13.md). Complementou Google Fact Check, sem confirmar o que não tinha duas evidências correspondentes. Naquela rodada, controles públicos locais foram inconclusivos; não substituir esse registro pelos resultados de revisões posteriores.
