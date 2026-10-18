@@ -58,6 +58,22 @@ _HEADING_UI = re.compile(
     r"(?:^|[-_\s])(?:headline|title|subtitle|subheading|standfirst|dek)(?:$|[-_\s])", re.I,
 )
 _CAPTION_UI = re.compile(r"(?:^|\s)(?:mc-image-caption|media-caption|wp-caption-text)(?:$|\s)", re.I)
+_EDITORIAL_CALLOUT_UI = re.compile(
+    r"(?:^|[-_\s])(?:featured[-_](?:story|article)|editorial[-_](?:callout|story)|"
+    r"story[-_](?:callout|feature)|article[-_]callout)(?:$|[-_\s])", re.I,
+)
+_EDITORIAL_READ_ACTION = re.compile(
+    r"^(?:read\s+(?:(?:the|full|this)\s+)?(?:story|article|report)|"
+    r"(?:leia|ler)\s+(?:(?:a|o)\s+)?(?:matéria|materia|reportagem|artigo|relatório|relatorio))$", re.I,
+)
+_ADVERTISING_UI = re.compile(
+    r"(?:^|[-_\s])(?:ad|ads|advert|advertisement|advertising|sponsored|sponsor|"
+    r"anuncio|anúncio|publicidade)(?:$|[-_\s])", re.I,
+)
+_EDITORIAL_GENERIC_TOPICS = set(
+    "mission missão missao flight voo telescope telescópio telescopio space espacial station estação "
+    "report relatório relatorio article artigo story matéria materia read leia launch lançamento".split()
+)
 _AUTHOR_TEXT = re.compile(r"^(?:por|by)\s+[^.!?]{1,200}$", re.I)
 _CALENDAR_NAMES = r"janeiro|fevereiro|março|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec"
 _STANDALONE_DATE = re.compile(
@@ -67,6 +83,10 @@ _STANDALONE_DATE = re.compile(
 )
 _BLOCK_TAGS = {"p", "li", "dd", "dt", "blockquote", "figcaption", "caption",
                "h1", "h2", "h3", "h4", "h5", "h6", "table"}
+# These containers establish DOM boundaries even without a paragraph below
+# them. Flattening a header/div can otherwise swallow a nested explicit
+# byline and join its publication date to the first body sentence.
+_FLOW_CONTAINERS = {"article", "main", "section", "div", "header", "address"}
 _CONTEXT_TAGS = {"blockquote", "figcaption", "caption", "dt", "h1", "h2", "h3", "h4", "h5", "h6"}
 _UNFINISHED_CONTEXT = re.compile(
     r"\b(?:falso|falsa|false|boato|rumou?r|alega|alegou|afirma|claim|claims|"
@@ -210,7 +230,8 @@ def _article_blocks(root, scope):
             elif isinstance(child, Tag):
                 # Inline elements remain part of the same text fragment. A
                 # child containing a block is traversed rather than duplicated.
-                if (child.name not in _BLOCK_TAGS and not child.find(list(_BLOCK_TAGS))
+                if (child.name not in _BLOCK_TAGS | _FLOW_CONTAINERS
+                        and not child.find(list(_BLOCK_TAGS | _FLOW_CONTAINERS))
                         and not _inside(root, child) and not (
                         _AUTHOR_UI.search(" ".join([str(child.get("id", "")), *child.get("class", [])]))
                         or _HEADING_UI.search(" ".join([str(child.get("id", "")), *child.get("class", [])]))
@@ -380,8 +401,36 @@ def _article_sentences(resource):
     return sentences, title, truncated
 
 
+def _editorial_reference_title(anchor, root):
+    """A bounded, explicit story callout can label a real retrieval link.
+
+    The nearby heading is only a search/ranking hint. It cannot enter article
+    sentences or create evidence, aliases or facts about the linked document.
+    """
+    if not _EDITORIAL_READ_ACTION.fullmatch(_visible_text(anchor)):
+        return None
+    for container in anchor.parents:
+        if not isinstance(container, Tag) or not _inside(container, root):
+            break
+        identifiers = " ".join([str(container.get("id", "")), *container.get("class", [])])
+        if not _EDITORIAL_CALLOUT_UI.search(identifiers):
+            continue
+        # One local heading and one action establish an association. A list
+        # of stories cannot borrow the page heading or a neighbouring title.
+        headings = container.find_all(["h2", "h3", "h4", "h5", "h6"], limit=2)
+        links = container.find_all("a", href=True, limit=2)
+        if len(headings) != 1 or len(links) != 1 or links[0] is not anchor:
+            return None
+        heading = headings[0]
+        if heading.find_next("a") is not anchor:
+            return None
+        title = _visible_text(heading)
+        return title if 8 <= len(title) <= 300 else None
+    return None
+
+
 def _article_reference_leads(resource):
-    """Actual visible inline citations, never evidence or generated URLs.
+    """Actual visible citations/callouts, never evidence or generated URLs.
 
     Restrict discovery to curated primary HTTPS documents. Every selected lead
     still goes through the normal DNS-pinned bounded reader and body guards.
@@ -404,20 +453,24 @@ def _article_reference_leads(resource):
                 or tag.has_attr("hidden") or str(tag.get("aria-hidden", "")).casefold() == "true"
                 or str(tag.get("role", "")).casefold() in {"navigation", "dialog"}
                 or _HIDDEN_STYLE.search(str(tag.get("style", ""))) or _CONSENT_UI.search(identifiers)
-                or _AUTHOR_UI.search(identifiers) or _HEADING_UI.search(identifiers)
+                or _AUTHOR_UI.search(identifiers)
+                or (_HEADING_UI.search(identifiers) and tag.name not in {"h1", "h2", "h3", "h4", "h5", "h6"})
                 or _CAPTION_UI.search(identifiers)
+                or _ADVERTISING_UI.search(identifiers)
+                or "sponsored" in {str(value).casefold() for value in tag.get("rel", [])}
                 or re.search(r"(?:^|[-_\s])(?:related|share|social|menu|breadcrumb|teaser|card)(?:$|[-_\s])", identifiers, re.I)):
             tag.decompose()
     root, _ = _body_root(soup)
     own_url = _canonical_url(resource.final_url)
     references = {}
     for anchor in root.find_all("a", href=True, limit=MAX_REFERENCE_ANCHORS):
-        # Ordinary inline references only. A listing/sidebar/header is not an
-        # article citation, even when its text contains a matching topic name.
         paragraph = anchor.find_parent("p")
-        if paragraph is None or not _inside(paragraph, root):
+        editorial_title = _editorial_reference_title(anchor, root)
+        if _EDITORIAL_READ_ACTION.fullmatch(_visible_text(anchor)) and editorial_title is None:
             continue
-        title = _visible_text(anchor)
+        if editorial_title is None and (paragraph is None or not _inside(paragraph, root)):
+            continue
+        title = editorial_title or _visible_text(anchor)
         href = str(anchor.get("href", ""))
         if not title or len(title) > 300 or not href or href.startswith("#"):
             continue
@@ -428,7 +481,10 @@ def _article_reference_leads(resource):
         parsed = urlsplit(url)
         if parsed.query or not parsed.path.strip("/") or url == own_url:
             continue
-        references.setdefault(url, {"link": url, "title": title})
+        reference = {"link": url, "title": title}
+        if editorial_title:
+            reference["reference_kind"] = "editorial_callout"
+        references.setdefault(url, reference)
         if len(references) >= MAX_REFERENCE_LEADS:
             break
     return list(references.values())
@@ -452,7 +508,8 @@ def primary_reference_leads(text, documents, source_url=None):
         return []
     submitted = _canonical_url(source_url)
     references = {}
-    for document in documents if isinstance(documents, (list, tuple)) else []:
+    kind_counts = {}
+    for document in documents[:MAX_RECOVERY_SOURCES] if isinstance(documents, (list, tuple)) else []:
         if not isinstance(document, dict) or document.get("source_role") == "submitted_source":
             continue
         source = _canonical_url(document.get("url"))
@@ -471,14 +528,29 @@ def primary_reference_leads(text, documents, source_url=None):
             title = reference.get("title")
             if not isinstance(title, str):
                 continue
-            tokens = set(re.findall(r"[^\W\d_]+", title.casefold() + " " + parsed.path.casefold(), re.UNICODE))
-            if not names.intersection(tokens):
+            editorial = reference.get("reference_kind") == "editorial_callout"
+            # An action such as "Read the Story" is generic. Only its local
+            # visible title can establish a named topic for a callout; a URL
+            # slug alone cannot repair an unrelated/missing heading.
+            topic_names = names - _EDITORIAL_GENERIC_TOPICS - set(_CALENDAR_NAMES.split("|")) if editorial else names
+            topic = title if editorial else title + " " + parsed.path
+            tokens = set(re.findall(r"[^\W\d_]+", topic.casefold(), re.UNICODE))
+            if not topic_names.intersection(tokens):
                 continue
-            references.setdefault(url, {"link": url, "title": title[:300],
-                                        "retrieval_method": "inline_cited_primary_reference"})
-            if len(references) >= 2:
-                return list(references.values())
-    return list(references.values())
+            method = "editorial_cited_primary_reference" if editorial else "inline_cited_primary_reference"
+            # Preserve the first two ordinary inline candidates, rather than
+            # silently changing their existing selection order. At most two
+            # callouts can compete for the SAME two returned reading leads.
+            if url in references or kind_counts.get(method, 0) >= 2:
+                continue
+            references[url] = {"link": url, "title": title[:300], "retrieval_method": method}
+            kind_counts[method] = kind_counts.get(method, 0) + 1
+    # A local title naming the topic is a stronger discovery hint than a
+    # generic anchor whose URL alone mentions it. This ranks real links only;
+    # neither title can establish the linked article's contents or a vote.
+    named_topics = names - _EDITORIAL_GENERIC_TOPICS - set(_CALENDAR_NAMES.split("|"))
+    return sorted(references.values(), key=lambda reference: -len(named_topics & set(
+        re.findall(r"[^\W\d_]+", reference["title"].casefold(), re.UNICODE))))[:2]
 
 
 def _retrieval_priority(text, title, url):
@@ -646,7 +718,8 @@ async def collect_source_attribution(text, queries, source_url=None, *, search_r
             continue
         title = item.get("title")
         urls.setdefault(url, title[:300] if isinstance(title, str) else "")
-        if item.get("retrieval_method") in {"inline_cited_primary_reference", "ai_selected_candidate_reference"}:
+        if item.get("retrieval_method") in {"inline_cited_primary_reference", "editorial_cited_primary_reference",
+                                           "ai_selected_candidate_reference"}:
             cited_urls.add(url)
     source_limit = max_sources if (isinstance(max_sources, int) and not isinstance(max_sources, bool)
                                    and 1 <= max_sources <= MAX_RECOVERY_SOURCES) else MAX_SOURCES

@@ -1,5 +1,7 @@
 # Recuperação, correspondência, prazos e mídias — 17/10/2026
 
+Continuação posterior: [revisão local de 18/10](RECUPERACAO-CONTEXTUAL-2026-10-18.md). Os resultados reais abaixo permanecem históricos; novos testes/replays offline não substituem sua porcentagem nem comprovam publicação.
+
 ## Meta e método
 
 Meta solicitada: pelo menos 80% de decisões factuais corretas. Critério: esperado `supported`/`refuted` contra resultado efetivo, com **inconclusivos e erros no denominador**, sem repetir cada caso até acertar e sem reduzir critérios de evidência para atingir um número.
@@ -155,6 +157,6 @@ Esse reparo é posterior ao fingerprint das rodadas acima. Índice final de cód
 
 Esta rodada é local, com banco descartável, sem alteração do `.env` privado, Railway, Vercel ou banco de produção. Os prazos Hive/interface são definidos no código; não existe nova chave nem variável paga a cadastrar para recebê-los.
 
-Ao reativar o Railway, publicar a revisão testada e conferir as variáveis já suportadas: `SOURCE_CROSSCHECK_ENABLED=true`, `SOURCE_CROSSCHECK_PRIMARY_PROVIDER=gemini`, `SOURCE_CROSSCHECK_TIMEOUT_SECONDS=60`, `SOURCE_CROSSCHECK_SEARCH_LIMIT=3`, `SOURCE_RESEARCH_ENABLED=true`, `GEMINI_MODEL_NAME`/`GEMINI_MEDIA_MODEL_NAME` válidos no projeto e `GEMINI_REQUEST_TIMEOUT_SECONDS=60`. OpenRouter continua exclusivamente gratuito; Serper precisa ter quota disponível. Chave existente não garante acesso ao modelo, créditos ou resposta em cada pedido.
+Roteiro operacional futuro, condicionado à revisão identificada, validação correspondente e autorização de publicação: ao reativar o Railway, conferir as variáveis já suportadas antes de publicar: `SOURCE_CROSSCHECK_ENABLED=true`, `SOURCE_CROSSCHECK_PRIMARY_PROVIDER=gemini`, `SOURCE_CROSSCHECK_TIMEOUT_SECONDS=60`, `SOURCE_CROSSCHECK_SEARCH_LIMIT=3`, `SOURCE_RESEARCH_ENABLED=true`, `GEMINI_MODEL_NAME`/`GEMINI_MEDIA_MODEL_NAME` válidos no projeto e `GEMINI_REQUEST_TIMEOUT_SECONDS=60`. OpenRouter continua exclusivamente gratuito; Serper precisa ter quota disponível. Chave existente não garante acesso ao modelo, créditos ou resposta em cada pedido. Esta documentação não comprova deploy nem autoriza novos gastos.
 
 Não copiar o harness QA para produção: contadores, rotas diagnósticas, usuário e SQLite são descartáveis. Não publicar os JSONL brutos, HTMLs locais nem tokens de relatório. Conferir segredos estáveis, origens, cookies, migrações e ferramentas conforme [retomada do Railway](REATIVAR-RAILWAY-2026-10-13.md), preservando banco e volume. Testes locais não confirmam o deploy nem a capacidade de carga de múltiplas réplicas.

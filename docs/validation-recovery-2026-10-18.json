@@ -1,0 +1,466 @@
+{
+  "date": "2026-10-18",
+  "scope": "Local offline functional validation and captured-source eligibility replay; NOT a new live API accuracy benchmark",
+  "base_commit": "c3e6865",
+  "policy_version": "2026-10-18.1",
+  "application_source_fingerprint": "d1e1632adc73fbb5f18b5193d8738f3bd52182b88153b9244ec5e794ba651af8",
+  "application_code_unchanged_during_replays": true,
+  "last_complete_live_text_run": {
+    "name": "quality-v2b",
+    "cases": 12,
+    "correct": 5,
+    "inconclusive": 7,
+    "wrong_conclusive_observed": 0,
+    "correct_percent": 41.666666666666664,
+    "not_updated_by_this_revision": true,
+    "target_80_percent_demonstrated": false
+  },
+  "automated": {
+    "backend": {
+      "tests": 957,
+      "skips": 0,
+      "failures": 0,
+      "seconds": 15.566,
+      "network": "Docker --network none; offline runner blocks HTTP; disposable SQLite",
+      "new_methods_since_base": 85
+    },
+    "frontend": {
+      "test_files": 22,
+      "failures": 0,
+      "skips": 0,
+      "build": "passed",
+      "source_changes": false
+    },
+    "grounded_api_flow": {
+      "methods_included_in_backend_total": 3,
+      "scope": "Real API and pipeline, source guards, explanation, simulated persistence and signed snapshot; source retrieval and provider ID-selection are stubs"
+    }
+  },
+  "source_eligibility_replay": {
+    "scope": "OFFLINE eligibility replay of the same captured source URL sets; not retrieval, a new model verdict, UI result, or accuracy measurement",
+    "source_fingerprint": "d1e1632adc73fbb5f18b5193d8738f3bd52182b88153b9244ec5e794ba651af8",
+    "code_unchanged_after": true,
+    "network_calls": 0,
+    "model_calls": 0,
+    "expected_labels_used_for_selection": false,
+    "cases": [
+      {
+        "id": "queen_true",
+        "capture": "source-documents-93.json",
+        "prior_live_selected_family_count": 3,
+        "current_code_original_parsed_documents": {
+          "family_count": 3,
+          "comparison_possible": true,
+          "source_urls": [
+            "https://mundoeducacao.uol.com.br/biografias/elizabeth-ii.htm",
+            "https://agenciabrasil.ebc.com.br/internacional/noticia/2022-09/rainha-elizabeth-ii-morre-aos-96-anos-na-escocia",
+            "https://www.cnnbrasil.com.br/internacional/morre-a-rainha-elizabeth-ii-aos-96-anos-na-escocia/"
+          ],
+          "passage_count": 3
+        },
+        "current_code_reparsed_same_url_documents": {
+          "family_count": 3,
+          "comparison_possible": true,
+          "source_urls": [
+            "https://mundoeducacao.uol.com.br/biografias/elizabeth-ii.htm",
+            "https://agenciabrasil.ebc.com.br/internacional/noticia/2022-09/rainha-elizabeth-ii-morre-aos-96-anos-na-escocia",
+            "https://www.cnnbrasil.com.br/internacional/morre-a-rainha-elizabeth-ii-aos-96-anos-na-escocia/"
+          ],
+          "passage_count": 3
+        },
+        "reparsed_documents": 9,
+        "retained_documents_without_captured_html": 0
+      },
+      {
+        "id": "queen_false",
+        "capture": "source-documents-95.json",
+        "prior_live_selected_family_count": 2,
+        "current_code_original_parsed_documents": {
+          "family_count": 2,
+          "comparison_possible": true,
+          "source_urls": [
+            "https://g1.globo.com/mundo/noticia/2022/09/08/rainha-elizabeth-ii-morre-aos-96-anos.ghtml",
+            "https://mundoeducacao.uol.com.br/biografias/elizabeth-ii.htm"
+          ],
+          "passage_count": 2
+        },
+        "current_code_reparsed_same_url_documents": {
+          "family_count": 2,
+          "comparison_possible": true,
+          "source_urls": [
+            "https://g1.globo.com/mundo/noticia/2022/09/08/rainha-elizabeth-ii-morre-aos-96-anos.ghtml",
+            "https://mundoeducacao.uol.com.br/biografias/elizabeth-ii.htm"
+          ],
+          "passage_count": 2
+        },
+        "reparsed_documents": 5,
+        "retained_documents_without_captured_html": 0
+      },
+      {
+        "id": "dart_true",
+        "capture": "source-documents-98.json",
+        "prior_live_selected_family_count": 1,
+        "current_code_original_parsed_documents": {
+          "family_count": 1,
+          "comparison_possible": false,
+          "source_urls": [
+            "https://www.cnnbrasil.com.br/economia/money/tecnologia/choque-de-nave-da-nasa-com-asteroide-gera-nuvem-de-37-detritos/"
+          ],
+          "passage_count": 1
+        },
+        "current_code_reparsed_same_url_documents": {
+          "family_count": 1,
+          "comparison_possible": false,
+          "source_urls": [
+            "https://www.cnnbrasil.com.br/economia/money/tecnologia/choque-de-nave-da-nasa-com-asteroide-gera-nuvem-de-37-detritos/"
+          ],
+          "passage_count": 1
+        },
+        "reparsed_documents": 6,
+        "retained_documents_without_captured_html": 0
+      },
+      {
+        "id": "who_true",
+        "capture": "source-documents-99.json",
+        "prior_live_selected_family_count": 2,
+        "current_code_original_parsed_documents": {
+          "family_count": 2,
+          "comparison_possible": true,
+          "source_urls": [
+            "https://www.who.int/pt/news-room/speeches/item/who-director-general-s-opening-remarks-at-the-media-briefing-on-covid-19---11-march-2020",
+            "https://www.cnnbrasil.com.br/saude/5-anos-da-covid-19-relembre-o-historico-desde-1o-caso-ate-fim-da-emergencia/"
+          ],
+          "passage_count": 3
+        },
+        "current_code_reparsed_same_url_documents": {
+          "family_count": 2,
+          "comparison_possible": true,
+          "source_urls": [
+            "https://www.who.int/pt/news-room/speeches/item/who-director-general-s-opening-remarks-at-the-media-briefing-on-covid-19---11-march-2020",
+            "https://www.cnnbrasil.com.br/saude/5-anos-da-covid-19-relembre-o-historico-desde-1o-caso-ate-fim-da-emergencia/"
+          ],
+          "passage_count": 3
+        },
+        "reparsed_documents": 3,
+        "retained_documents_without_captured_html": 0
+      },
+      {
+        "id": "ibge_true",
+        "capture": "source-documents-102.json",
+        "prior_live_selected_family_count": 1,
+        "current_code_original_parsed_documents": {
+          "family_count": 1,
+          "comparison_possible": false,
+          "source_urls": [
+            "https://www.cnnbrasil.com.br/agro/economia-brasileira-cresce-34-em-2024-diz-ibge/"
+          ],
+          "passage_count": 1
+        },
+        "current_code_reparsed_same_url_documents": {
+          "family_count": 1,
+          "comparison_possible": false,
+          "source_urls": [
+            "https://www.cnnbrasil.com.br/agro/economia-brasileira-cresce-34-em-2024-diz-ibge/"
+          ],
+          "passage_count": 1
+        },
+        "reparsed_documents": 7,
+        "retained_documents_without_captured_html": 0
+      },
+      {
+        "id": "copom_false",
+        "capture": "source-documents-105.json",
+        "prior_live_selected_family_count": 0,
+        "current_code_original_parsed_documents": {
+          "family_count": 0,
+          "comparison_possible": false,
+          "source_urls": [],
+          "passage_count": 0
+        },
+        "current_code_reparsed_same_url_documents": {
+          "family_count": 0,
+          "comparison_possible": false,
+          "source_urls": [],
+          "passage_count": 0
+        },
+        "reparsed_documents": 7,
+        "retained_documents_without_captured_html": 0
+      },
+      {
+        "id": "copernicus_false",
+        "capture": "source-documents-107.json",
+        "prior_live_selected_family_count": 1,
+        "current_code_original_parsed_documents": {
+          "family_count": 1,
+          "comparison_possible": true,
+          "source_urls": [
+            "https://climate.copernicus.eu/copernicus-2024-first-year-exceed-15degc-above-pre-industrial-level"
+          ],
+          "passage_count": 1
+        },
+        "current_code_reparsed_same_url_documents": {
+          "family_count": 1,
+          "comparison_possible": true,
+          "source_urls": [
+            "https://climate.copernicus.eu/copernicus-2024-first-year-exceed-15degc-above-pre-industrial-level"
+          ],
+          "passage_count": 1
+        },
+        "reparsed_documents": 3,
+        "retained_documents_without_captured_html": 0
+      },
+      {
+        "id": "lei_false",
+        "capture": "source-documents-109.json",
+        "prior_live_selected_family_count": 1,
+        "current_code_original_parsed_documents": {
+          "family_count": 1,
+          "comparison_possible": true,
+          "source_urls": [
+            "https://www2.camara.leg.br/legin/fed/leimp/1824-1899/lei-3353-13-maio-1888-533138-publicacaooriginal-16269-pl.html"
+          ],
+          "passage_count": 1
+        },
+        "current_code_reparsed_same_url_documents": {
+          "family_count": 1,
+          "comparison_possible": true,
+          "source_urls": [
+            "https://www2.camara.leg.br/legin/fed/leimp/1824-1899/lei-3353-13-maio-1888-533138-publicacaooriginal-16269-pl.html"
+          ],
+          "passage_count": 1
+        },
+        "reparsed_documents": 2,
+        "retained_documents_without_captured_html": 0
+      },
+      {
+        "id": "webb_true",
+        "capture": "source-documents-112.json",
+        "prior_live_selected_family_count": 1,
+        "current_code_original_parsed_documents": {
+          "family_count": 1,
+          "comparison_possible": false,
+          "source_urls": [
+            "https://brasilescola.uol.com.br/fisica/james-webb-sucessor-hubble.htm"
+          ],
+          "passage_count": 1
+        },
+        "current_code_reparsed_same_url_documents": {
+          "family_count": 1,
+          "comparison_possible": false,
+          "source_urls": [
+            "https://brasilescola.uol.com.br/fisica/james-webb-sucessor-hubble.htm"
+          ],
+          "passage_count": 1
+        },
+        "reparsed_documents": 7,
+        "retained_documents_without_captured_html": 0
+      },
+      {
+        "id": "constitution_true",
+        "capture": "source-documents-115.json",
+        "prior_live_selected_family_count": 1,
+        "current_code_original_parsed_documents": {
+          "family_count": 1,
+          "comparison_possible": false,
+          "source_urls": [
+            "https://brasilescola.uol.com.br/historiab/constituicao-1988.htm"
+          ],
+          "passage_count": 4
+        },
+        "current_code_reparsed_same_url_documents": {
+          "family_count": 2,
+          "comparison_possible": true,
+          "source_urls": [
+            "https://brasilescola.uol.com.br/historiab/constituicao-1988.htm",
+            "https://agenciabrasil.ebc.com.br/es/node/1336203"
+          ],
+          "passage_count": 5
+        },
+        "reparsed_documents": 5,
+        "retained_documents_without_captured_html": 0
+      },
+      {
+        "id": "worldcup_false",
+        "capture": "source-documents-118.json",
+        "prior_live_selected_family_count": 3,
+        "current_code_original_parsed_documents": {
+          "family_count": 1,
+          "comparison_possible": false,
+          "source_urls": [
+            "https://www.cnnbrasil.com.br/esportes/futebol/futebol-internacional/copa-2014-dez-acontecimentos-que-marcaram-o-mundial-no-brasil/"
+          ],
+          "passage_count": 1
+        },
+        "current_code_reparsed_same_url_documents": {
+          "family_count": 1,
+          "comparison_possible": false,
+          "source_urls": [
+            "https://www.cnnbrasil.com.br/esportes/futebol/futebol-internacional/copa-2014-dez-acontecimentos-que-marcaram-o-mundial-no-brasil/"
+          ],
+          "passage_count": 1
+        },
+        "reparsed_documents": 8,
+        "retained_documents_without_captured_html": 0
+      },
+      {
+        "id": "artemis_false",
+        "capture": "source-documents-121.json",
+        "prior_live_selected_family_count": 0,
+        "current_code_original_parsed_documents": {
+          "family_count": 1,
+          "comparison_possible": false,
+          "source_urls": [
+            "https://www.nasa.gov/mission/artemis-i/"
+          ],
+          "passage_count": 1
+        },
+        "current_code_reparsed_same_url_documents": {
+          "family_count": 1,
+          "comparison_possible": false,
+          "source_urls": [
+            "https://www.nasa.gov/mission/artemis-i/"
+          ],
+          "passage_count": 1
+        },
+        "reparsed_documents": 9,
+        "retained_documents_without_captured_html": 0
+      }
+    ]
+  },
+  "prior_conclusive_regression_replay": {
+    "scope": "Offline regression replay of all five conclusive frozen v2b text records; not a new factual, UI, model, source-retrieval or API validation",
+    "captured_run": "quality-v2b",
+    "captured_source_fingerprints": [
+      "4c6691f82d78ee7493ed88f6000af64f0a25d05254e7b51f66f52037c23ff921"
+    ],
+    "post_security_source_fingerprint": "d1e1632adc73fbb5f18b5193d8738f3bd52182b88153b9244ec5e794ba651af8",
+    "post_security_source_fingerprint_unchanged_after": true,
+    "records": 5,
+    "statuses_preserved": 5,
+    "real_api_calls": 0,
+    "searches": 0,
+    "public_fetches": 0,
+    "unexpected_transport_attempts": 0,
+    "rows": [
+      {
+        "input": "Elizabeth II morreu em 8 de setembro de 2022.",
+        "captured_public_documents": "source-documents-93.json",
+        "frozen_veracity_status": "supported",
+        "offline_replay_veracity_status": "supported",
+        "status_preserved": true,
+        "accepted_literal_evidence_count": 3,
+        "same_literal_evidence_remapped_count": 3,
+        "missing_previously_accepted_evidence_count": 0,
+        "replay_evidence_count": 3,
+        "simulated_provider_calls": 1,
+        "alternate_provider_calls": 0,
+        "original_record_only": false,
+        "policy_version": "2026-10-18.1"
+      },
+      {
+        "input": "Elizabeth II morreu em 9 de setembro de 2022.",
+        "captured_public_documents": "source-documents-95.json",
+        "frozen_veracity_status": "refuted",
+        "offline_replay_veracity_status": "refuted",
+        "status_preserved": true,
+        "accepted_literal_evidence_count": 2,
+        "same_literal_evidence_remapped_count": 2,
+        "missing_previously_accepted_evidence_count": 0,
+        "replay_evidence_count": 2,
+        "simulated_provider_calls": 1,
+        "alternate_provider_calls": 0,
+        "original_record_only": false,
+        "policy_version": "2026-10-18.1"
+      },
+      {
+        "input": "Em 11 de março de 2020, a Organização Mundial da Saúde caracterizou a COVID-19 como uma pandemia.",
+        "captured_public_documents": "source-documents-99.json",
+        "frozen_veracity_status": "supported",
+        "offline_replay_veracity_status": "supported",
+        "status_preserved": true,
+        "accepted_literal_evidence_count": 2,
+        "same_literal_evidence_remapped_count": 2,
+        "missing_previously_accepted_evidence_count": 0,
+        "replay_evidence_count": 2,
+        "simulated_provider_calls": 1,
+        "alternate_provider_calls": 0,
+        "original_record_only": false,
+        "policy_version": "2026-10-18.1"
+      },
+      {
+        "input": "Segundo o relatório do Copernicus de 10 de janeiro de 2025, a temperatura média global de 2024 ficou 1,60°C abaixo da média de 1850–1900.",
+        "captured_public_documents": "source-documents-107.json",
+        "frozen_veracity_status": "refuted",
+        "offline_replay_veracity_status": "refuted",
+        "status_preserved": true,
+        "accepted_literal_evidence_count": 1,
+        "same_literal_evidence_remapped_count": 1,
+        "missing_previously_accepted_evidence_count": 0,
+        "replay_evidence_count": 1,
+        "simulated_provider_calls": 1,
+        "alternate_provider_calls": 0,
+        "original_record_only": true,
+        "policy_version": "2026-10-18.1"
+      },
+      {
+        "input": "O artigo 1º da Lei nº 3.353, de 13 de maio de 1888, não declarou legalmente extinta a escravidão no Brasil.",
+        "captured_public_documents": "source-documents-109.json",
+        "frozen_veracity_status": "refuted",
+        "offline_replay_veracity_status": "refuted",
+        "status_preserved": true,
+        "accepted_literal_evidence_count": 1,
+        "same_literal_evidence_remapped_count": 1,
+        "missing_previously_accepted_evidence_count": 0,
+        "replay_evidence_count": 1,
+        "simulated_provider_calls": 1,
+        "alternate_provider_calls": 0,
+        "original_record_only": true,
+        "policy_version": "2026-10-18.1"
+      }
+    ]
+  },
+  "ui": {
+    "scope": "Functional simulation only, not provider availability, precision measurement, or final-code frozen benchmark",
+    "completed_controls": [
+      {
+        "input": "A missão Aurora IV foi lançada em 16 de novembro de 2001.",
+        "result": "supported"
+      },
+      {
+        "input": "O Brasil venceu a Copa do Mundo de futebol masculino de 2014.",
+        "result": "refuted"
+      }
+    ],
+    "literal_citations_and_relation_explanation_rendered": true,
+    "synthetic_source_urls_not_queried": true,
+    "simulation_notice_visible_in_expanded_limitations": true,
+    "harness_defects_fixed": [
+      "Anonymous profile dependency incorrectly returned None instead of 401",
+      "Simulation notice concatenated a nullable comparison reason"
+    ],
+    "failed_preparation_attempts_not_accuracy_samples": true,
+    "pdf_ui_message": "PDF preparado",
+    "pdf_download_event_confirmed": false,
+    "pdf_wait_seconds": 15,
+    "full_responsive_visual_validation": false
+  },
+  "external_activity": {
+    "new_model_calls": 0,
+    "new_search_calls": 0,
+    "new_public_page_fetches": 0,
+    "new_paid_calls": 0,
+    "media_revalidation": false,
+    "private_env_modified": false,
+    "production_database_accessed": false,
+    "push": false,
+    "deploy": false
+  },
+  "limits": [
+    "Source eligibility is not a model verdict or factual accuracy",
+    "The new editorial NASA link was extracted and prioritized, not fetched",
+    "Constitution gains two eligible families; Artemis gains only one",
+    "World Cup generic intro-only candidates are excluded; only one literal title-binding family remains",
+    "Webb, DART, PIB and Copom still lack sufficient usable captured evidence",
+    "New independent corpus and one frozen live round remain required"
+  ]
+}

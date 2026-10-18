@@ -1,5 +1,7 @@
 # Verify — estrutura e arquitetura
 
+Revisão local de 18/10: [autoria, referências editoriais e vínculos de lançamento/título esportivo](RECUPERACAO-CONTEXTUAL-2026-10-18.md). Testes e replay offline não atualizam a última precisão real de 41,7%. Política `2026-10-18.1`; sem nova variável, chamada paga ou implantação.
+
 Continuação local de 17–18/10: [recuperação, correspondência contextual, prazos e mídias](QUALIDADE-CHECAGEM-2026-10-17.md). Fonte editorial adicional, preâmbulo/artigo legal separados, registro original estritamente delimitado e proteção contra reprodução fictícia, Hive 45 s totais/50 s externo e mídia no cliente até 240 s. Última rodada de desenvolvimento: 5/12 corretos, 7/12 inconclusivos; não homologada nem implantada. Resultados de versões distintas ficam separados.
 
 Pesquisa orientada por IA em 17/10: [implementação, limites e avaliação congelada](PESQUISA-ONLINE-2026-10-17.md). A IA pode solicitar até duas consultas neutras e indicar referências reais já encontradas; busca, leitura e validação permanecem no servidor. Não habilita plugins pagos nem transforma a concordância dos modelos em prova.
@@ -56,7 +58,7 @@ Todos os routers ficam sob `/api`.
 ## Serviços importantes
 
 - `core/pipeline.py`: recupera checagens/notícias, registra falhas e passa afirmações literais à política de veracidade. Padrões de golpe não são prova de identidade nem investigação concluída.
-- `services/source_research.py`: pesquisa online orientada por IA quando faltam evidências por afirmação. Gemini primário/OpenRouter gratuito alternativo, prazo total de planejamento de 30 segundos; no máximo duas novas consultas e IDs de referências pertencentes ao servidor. Com configuração ativa, recuperação pode usar cinco buscas/dez tentativas de página em 105 segundos; comparação final continua limitada a três documentos. Desabilitado/sem configuração preserva três buscas/seis tentativas/45 segundos. Não decide o veredito.
+- `services/source_research.py`: pesquisa online orientada por IA quando faltam evidências por afirmação. Gemini primário/OpenRouter gratuito alternativo, prazo total de planejamento de 45 segundos e reserva de 20 segundos para busca/leitura; no máximo duas novas consultas e IDs de referências pertencentes ao servidor. Com configuração ativa, recuperação pode usar cinco buscas/dez tentativas de página em 105 segundos; comparação final continua limitada a três documentos. Desabilitado/sem configuração preserva três buscas/seis tentativas/45 segundos. Não decide o veredito.
 - `services/claim_policy.py`: duas famílias editoriais distintas com avaliação explícita, data válida e correspondência exata conservadora; negação/valores/datas preservados. Discordância, contexto relativo e cobertura incompleta impedem aprovação global. Classificação é atribuída às fontes, não garantia de verdade.
 - `services/source_corroboration.py`: comparação assistida dos corpos reutilizados, até três documentos/cinco segmentos, citações literais com IDs do servidor, guardas de identidade/negação/datas/valores e dependência editorial. JSON inválido/falha/ambiguidade não vira conclusão. Gemini primário e OpenRouter gratuito alternativo compartilham prazo único de 60 segundos; `SOURCE_CROSSCHECK_PRIMARY_PROVIDER` permite escolher o perfil. Recuperação determinística: primeira leitura de três páginas, até seis tentativas cumulativas/45 segundos, incluindo falhas; com pesquisa por IA ativa, até dez tentativas/105 segundos, sem alterar a alegação ou aumentar os três documentos da comparação final. [Validação mais recente](PESQUISA-ONLINE-2026-10-17.md); [checkpoint histórico de APIs](VALIDACAO-APIS-2026-10-14.md).
 - `services/source_decision.py`: combina evidência documental validada e avaliações editoriais por afirmação; preserva golpe/decisão editorial e não aprova conteúdo sem cobertura. Novo score de compatibilidade não é exibido/calibrado.
@@ -85,6 +87,8 @@ Todos os routers ficam sob `/api`.
 - `services/extracted_text_review.py`: procedência assinada da leitura original para nova checagem textual após revisão. Finalidade/chave derivada distintas de PDF/JWT, prazo de 15 minutos, limites de texto/corpo e controle de conta; token só em memória na UI, não no histórico. Confirmação do usuário não comprova fidelidade nem veracidade.
 
 Os clientes Hive, Sightengine e Hugging Face não são intercambiáveis. Hive v2 exige projetos apropriados; Hive v3 usa Secret Key Bearer e `classes[].value`, com cabeça de áudio distinta. Imagem/facial v3 compartilham uma chamada e um fornecedor; ativação de chamadas pagas exige `HIVE_V3_MEDIA_TYPES`. Token HF exige endpoint hospedado oficial explícito e classe positiva documentada. Erros diminuem cobertura, não viram evidência de falsidade.
+
+- `services/launch_relations.py` e `competition_relations.py`: vínculos literais delimitados de missão/data e competição/edição/categoria/vencedor. Escopo amplo impede perder qualificadores por fallback genérico; parser estrito abstém em ambiguidades. Não criam votos de fonte, não usam tabelas de datas/campeões e não substituem procedência, contexto ou validação de futuro.
 
 ## Persistência e privacidade
 
