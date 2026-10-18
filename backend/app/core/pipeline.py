@@ -204,6 +204,28 @@ def _research_scope_plan(text, planned_queries, previous_queries):
         "deterministic_gap_query_count": sum(item["query_origin"] == "deterministic_original_neutral" for item in selected)}
 
 
+def _unread_primary_reference_leads(text, documents, source_url, fetched_cache, selected_leads):
+    """Two direct links total, only from search-origin bodies; never crawl.
+
+    Cache keys are attempted URLs (including failures); final URLs also exclude
+    known redirect aliases. A followed reference cannot become a discovery
+    parent, even when a later wave happens to include it among search results.
+    """
+    remaining = max(0, 2 - len(selected_leads))
+    if not remaining:
+        return []
+    targets = {lead["link"] for lead in selected_leads}
+    attempted = set(fetched_cache)
+    for requested, result in fetched_cache.items():
+        if isinstance(result, dict) and isinstance(result.get("url"), str):
+            attempted.add(result["url"])
+            if requested in targets:
+                targets.add(result["url"])
+    origins = [document for document in documents if isinstance(document, dict)
+               and document.get("url") not in targets] if isinstance(documents, list) else []
+    return primary_reference_leads(text, origins, source_url, excluded_urls=attempted)[:remaining]
+
+
 async def _retrieve_source_attribution(text: str, queries: list[str], source_url: str | None,
                                       *, use_source_crosscheck: bool = True) -> dict:
     """One base search, optionally one qualified search, and bounded retrieval.
@@ -216,6 +238,7 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
     deadline = 105 if ai_research else 45 if crosscheck_enabled else 20
     started = asyncio.get_running_loop().time()
     attribution, plan, cited_leads = None, [], []
+    fetched_cache, reference_waves = {}, []
     research = {"status": "not_requested", "decision_role": "online_research_planning_only"}
     try:
         async with asyncio.timeout(deadline):
@@ -224,7 +247,6 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
             leads = (await search_web(query) if query else NewsSearch(
                 status="no_results", reason="Nenhuma frase completa cabe no limite da busca; nenhum texto foi cortado."))
             plan = [{"method": "whole_literal_claim", "status": getattr(leads, "status", "success" if leads else "no_results")}] if query else []
-            fetched_cache = {}
             attribution = await collect_source_attribution(text, queries, source_url, search_results=leads,
                 include_documents=crosscheck_enabled, fetched_cache=fetched_cache)
             families = usable_source_families(text, attribution.get("_documents", []), source_url) if crosscheck_enabled else set()
@@ -252,13 +274,35 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
                 # are retrieval leads, not evidence, extra searches or votes.
                 # The shared cache still charges every attempt against six;
                 # no recursive crawling or failure refunds are introduced.
-                cited_leads = primary_reference_leads(text, attribution.get("_documents", []), source_url)
+                cited_leads = _unread_primary_reference_leads(text, attribution.get("_documents", []), source_url,
+                                                            fetched_cache, cited_leads)
                 if cited_leads:
+                    reference_waves.append({"stage": "base_recovery", "selected_lead_count": len(cited_leads), "status": "reading"})
                     leads = NewsSearch([*cited_leads, *leads], status=getattr(leads, "status", "success"))
                 attribution = await collect_source_attribution(text, queries, source_url, search_results=leads,
                     include_documents=True, max_sources=6, fetched_cache=fetched_cache)
+                if reference_waves:
+                    reference_waves[-1]["status"] = "completed"
                 families = usable_source_families(text, attribution.get("_documents", []), source_url)
             missing_claims = claims_needing_research(text, attribution.get("_documents", []), source_url) if ai_research else []
+            if (ai_research and missing_claims and len(fetched_cache) < 10
+                    and all(item["status"] in {"success", "no_results"} for item in plan)):
+                fresh = _unread_primary_reference_leads(text, attribution.get("_documents", []), source_url,
+                                                      fetched_cache, cited_leads)
+                if fresh:
+                    # Spend only the already-authorized remaining read slots,
+                    # before asking a model for another plan. Keep all known
+                    # candidates for later research, but this wave follows
+                    # only the direct links and retains previous attempts.
+                    cited_leads.extend(fresh)
+                    reference_waves.append({"stage": "late_reference", "selected_lead_count": len(fresh), "status": "reading"})
+                    direct_reads = NewsSearch([*fresh, *[{"link": url} for url in fetched_cache]], status="success")
+                    leads = NewsSearch([*fresh, *leads], status=getattr(leads, "status", "success"))
+                    attribution = await collect_source_attribution(text, queries, source_url, search_results=direct_reads,
+                        include_documents=True, max_sources=min(10, len(fetched_cache) + len(fresh)), fetched_cache=fetched_cache)
+                    reference_waves[-1]["status"] = "completed"
+                    families = usable_source_families(text, attribution.get("_documents", []), source_url)
+                    missing_claims = claims_needing_research(text, attribution.get("_documents", []), source_url)
             if ai_research and missing_claims and all(item["status"] in {"success", "no_results"} for item in plan):
                 # Give the model a real bounded search tool. Returned queries
                 # and known lead IDs can guide retrieval, never the verdict.
@@ -320,6 +364,9 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
             attribution["coverage"]["usable_source_family_count"] = len(families)
             attribution["coverage"]["max_comparison_documents"] = 3
             attribution["coverage"]["cited_primary_reference_lead_count"] = len(cited_leads)
+            attribution["coverage"]["direct_reference_recovery"] = {
+                "max_leads": 2, "max_depth": 1, "selected_lead_count": len(cited_leads),
+                "waves": reference_waves, "decision_role": "retrieval_only_no_truth_vote"}
             attribution["coverage"]["online_research"] = research
             return attribution
     except Exception:
@@ -333,9 +380,13 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
             attribution.setdefault("coverage", {}).update(
                 search_queries=plan, retrieval_deadline_seconds=deadline,
                 online_research={**research, "incomplete": True},
+                cumulative_fetch_attempt_count=len(fetched_cache),
+                direct_reference_recovery={"max_leads": 2, "max_depth": 1, "selected_lead_count": len(cited_leads),
+                    "waves": [{**wave, "status": "incomplete" if wave["status"] == "reading" else wave["status"]}
+                              for wave in reference_waves], "decision_role": "retrieval_only_no_truth_vote"},
                 cited_primary_reference_lead_count=len(cited_leads),
                 recovery_status="timeout_or_error", usable_source_family_count=len(usable_source_families(text, documents, source_url)))
-            attribution.setdefault("limitations", []).append("A recuperação adicional não terminou; somente a primeira leitura concluída foi preservada.")
+            attribution.setdefault("limitations", []).append("A recuperação adicional não terminou; somente as coletas concluídas foram preservadas. Tentativas interrompidas não fornecem evidência adicional.")
             return attribution
         return {"status": "error", "decision_role": "source_attribution_only", "matches": [],
                 "reason": "A leitura das referências não foi concluída no prazo ou com segurança.",

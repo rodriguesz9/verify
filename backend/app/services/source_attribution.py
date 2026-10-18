@@ -490,12 +490,13 @@ def _article_reference_leads(resource):
     return list(references.values())
 
 
-def primary_reference_leads(text, documents, source_url=None):
+def primary_reference_leads(text, documents, source_url=None, *, excluded_urls=()):
     """Prioritize at most two cited primary bodies with a literal named topic.
 
     Institution names and generic link text alone cannot consume the reading
-    budget. No crawl/recursive traversal: only first-wave documents supply
-    these leads, and the caller retains the cumulative six-page ceiling.
+    budget. Exclude already attempted/final URLs BEFORE the two-lead cap.
+    The caller owns origin/depth and the cumulative page/deadline budget;
+    following a referenced document never authorizes recursive discovery.
     """
     from app.services.source_corroboration import source_identity
     if not isinstance(text, str):
@@ -507,6 +508,7 @@ def primary_reference_leads(text, documents, source_url=None):
     if not names:
         return []
     submitted = _canonical_url(source_url)
+    excluded = {_canonical_url(url) for url in excluded_urls} if isinstance(excluded_urls, (list, tuple, set, frozenset)) else set()
     references = {}
     kind_counts = {}
     for document in documents[:MAX_RECOVERY_SOURCES] if isinstance(documents, (list, tuple)) else []:
@@ -520,7 +522,7 @@ def primary_reference_leads(text, documents, source_url=None):
                 continue
             url = _canonical_url(reference.get("link"))
             identity = source_identity(url)
-            if not identity or identity["source_type"] != "primary" or url == submitted:
+            if not identity or identity["source_type"] != "primary" or url == submitted or url in excluded:
                 continue
             parsed = urlsplit(url)
             if parsed.query or not parsed.path.strip("/"):
@@ -609,7 +611,10 @@ def _publication_date(resource):
     if soup.head:
         for tag in soup.head.find_all("meta"):
             key = str(tag.get("property") or tag.get("name") or tag.get("itemprop") or "").casefold()
-            if key in {"article:published_time", "datepublished"}:
+            # Parse.ly explicitly defines this as publication metadata, not
+            # modification time. Treat it as another candidate, never as a
+            # preferred override of conflicting dates from other providers.
+            if key in {"article:published_time", "datepublished", "parsely-pub-date"}:
                 values.append(str(tag.get("content", "")))
     # Some pages expose a semantic article time without a global head value.
     if not values:
@@ -747,14 +752,34 @@ async def collect_source_attribution(text, queries, source_url=None, *, search_r
         # Recovery keeps every previous attempt (including failures) inside the
         # cumulative ceiling. No failed page is retried or silently refunded.
         attempted = [url for url in cache if url in urls]
-        selected_urls = list(dict.fromkeys([*attempted, *preferred, *urls]))[:source_limit]
+        # Remaining slots keep the same ranking after publisher diversity;
+        # raw search order must not displace another relevant-period page.
+        selected_urls = list(dict.fromkeys([*attempted, *preferred, *ranked_urls]))[:source_limit]
     missing = [url for url in selected_urls if url not in cache]
     # A caller can change the lead list between waves; prior attempts still
     # spend this request's ceiling even when those URLs disappeared.
     missing = missing[:max(0, source_limit - len(cache))]
     selected_urls = [url for url in selected_urls if url in cache or url in missing]
-    new_results = await asyncio.gather(*[_fetch_article(url) for url in missing])
-    cache.update(zip(missing, new_results))
+    # Charge the finite attempt budget before dispatch. An interrupted batch
+    # cannot refund URLs or erase a sibling's already completed response.
+    # Generic error means no usable response, not an invented HTTP timeout.
+    for url in missing:
+        cache[url] = {"failure": "error"}
+
+    async def fetch_and_record(url):
+        cache[url] = await _fetch_article(url)
+
+    fetch_tasks = [asyncio.create_task(fetch_and_record(url)) for url in missing]
+    try:
+        await asyncio.gather(*fetch_tasks)
+    except BaseException:
+        # Propagate cancellation/errors only after every sibling is stopped.
+        # No task may keep fetching after this collection has been abandoned.
+        for task in fetch_tasks:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*fetch_tasks, return_exceptions=True)
+        raise
     fetched = [cache[url] for url in selected_urls]
     failures = {"oversize": 0, "unsupported_content": 0, "timeout": 0,
                 "blocked_or_unavailable": 0, "error": 0}
