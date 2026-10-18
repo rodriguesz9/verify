@@ -1,0 +1,534 @@
+{
+  "date": "2026-10-18",
+  "scope": "Local recovery improvements, offline functional tests, and two real targeted UI diagnostics; NOT an independent accuracy benchmark",
+  "base_commit": "a76b691",
+  "live_diagnostic_code": {
+    "commit": "4b81a97",
+    "fingerprint": "131345dd6b6d360706332338383818b3eed1716f41e713d9f63d609c2003f326",
+    "source_unchanged_during_diagnostics": true,
+    "case_selection": "Two previously inconclusive known-true development inputs; not blinded or representative",
+    "automatic_retries": 0,
+    "cases": [
+      {
+        "id": "webb_true",
+        "input": "O Telescópio Espacial James Webb foi lançado em 25 de dezembro de 2021.",
+        "result": "unverified",
+        "source_coverage": {
+          "version": "literal_source_attribution_v1",
+          "search_status": "success",
+          "max_sources": 10,
+          "max_source_bytes": 2097152,
+          "candidate_url_count": 43,
+          "selected_url_count": 10,
+          "omitted_url_count": 33,
+          "new_fetch_count": 4,
+          "reused_fetch_count": 6,
+          "cumulative_fetch_attempt_count": 10,
+          "invalid_url_count": 0,
+          "fetched_count": 7,
+          "failed_fetch_count": 3,
+          "fetch_failure_counts": {
+            "oversize": 0,
+            "unsupported_content": 1,
+            "timeout": 0,
+            "blocked_or_unavailable": 2,
+            "error": 0
+          },
+          "oversize_fetch_count": 0,
+          "source_text_truncated_count": 0,
+          "literal_segment_count": 1,
+          "eligible_claim_count": 1,
+          "selected_claim_count": 1,
+          "omitted_claim_count": 0,
+          "matches_count": 0,
+          "omitted_match_count": 0,
+          "source_selection": "distinct_eligible_families_then_other_references",
+          "search_queries": [
+            {
+              "method": "whole_literal_claim",
+              "status": "success"
+            },
+            {
+              "method": "literal_topic_anchors_primary_sources",
+              "status": "success",
+              "decision_role": "retrieval_only_original_claim_unchanged"
+            },
+            {
+              "method": "literal_topic_anchors_editorial_sources",
+              "status": "success",
+              "decision_role": "retrieval_only_original_claim_unchanged"
+            },
+            {
+              "method": "ai_directed_online_research",
+              "status": "success",
+              "decision_role": "retrieval_only_original_claim_unchanged",
+              "query_origin": "ai_validated_query",
+              "requested_source_group": "primary",
+              "executed_source_group": "primary",
+              "scope_change_reason": null
+            },
+            {
+              "method": "ai_directed_online_research",
+              "status": "success",
+              "decision_role": "retrieval_only_original_claim_unchanged",
+              "query_origin": "ai_validated_query",
+              "requested_source_group": "editorial",
+              "executed_source_group": "editorial",
+              "scope_change_reason": null
+            }
+          ],
+          "max_search_queries": 5,
+          "retrieval_deadline_seconds": 105,
+          "usable_source_family_count": 1,
+          "max_comparison_documents": 3,
+          "cited_primary_reference_lead_count": 0,
+          "direct_reference_recovery": {
+            "max_leads": 2,
+            "max_depth": 1,
+            "selected_lead_count": 0,
+            "waves": [],
+            "decision_role": "retrieval_only_no_truth_vote"
+          },
+          "online_research": {
+            "version": "bounded_ai_research_v1",
+            "status": "success",
+            "decision_role": "online_research_planning_only",
+            "max_queries": 2,
+            "planned_query_count": 2,
+            "selected_lead_count": 2,
+            "provider_coverage": {
+              "gemini": {
+                "status": "success",
+                "model_used": "gemini-3.8-flash"
+              }
+            },
+            "rejected_operation_count": 0,
+            "planning_budget_seconds": 45,
+            "skipped_duplicate_query_count": 0,
+            "scope_diversified_query_planned_count": 0,
+            "deterministic_gap_query_count": 0,
+            "executed_query_count": 2,
+            "deterministic_gap_query_executed_count": 0,
+            "scope_diversified_query_executed_count": 0
+          }
+        },
+        "selection_audit": {
+          "excluded_sources": [
+            {
+              "url": "https://www.uol.com.br/tilt/noticias/afp/2021/12/18/lancamento-do-telescopio-espacial-james-webb-e-confirmado-para-24-de-dezembro.htm",
+              "exclusion_reason": "Nenhuma sentença completa elegível dentro dos limites de comparação."
+            },
+            {
+              "url": "https://g1.globo.com/ciencia/noticia/2022/01/24/telescopio-james-webb-da-nasa-chega-ao-destino-final-a-15-milhao-de-quilometros-da-terra.ghtml",
+              "exclusion_reason": "Nenhuma sentença completa elegível dentro dos limites de comparação."
+            },
+            {
+              "url": "https://agenciabrasil.ebc.com.br/internacional/noticia/2021-12/lancamento-do-telescopio-espacial-james-webb-e-adiado-mais-uma-vez",
+              "exclusion_reason": "Nenhuma sentença completa elegível dentro dos limites de comparação."
+            },
+            {
+              "url": "https://science.nasa.gov/mission/webb/launch/",
+              "exclusion_reason": "Nenhuma sentença completa elegível dentro dos limites de comparação."
+            },
+            {
+              "url": "https://www.bbc.com/portuguese/internacional-59790911",
+              "exclusion_reason": "Nenhuma sentença completa elegível dentro dos limites de comparação."
+            },
+            {
+              "url": "https://agenciabrasil.ebc.com.br/radioagencia-nacional/pesquisa-e-inovacao/audio/2021-12/nasa-lanca-com-sucesso-telescopio-james-webb",
+              "exclusion_reason": "Nenhuma sentença completa elegível dentro dos limites de comparação."
+            }
+          ],
+          "selected_source_urls": [
+            "https://brasilescola.uol.com.br/fisica/james-webb-sucessor-hubble.htm"
+          ],
+          "eligible_family_count": 1
+        },
+        "comparison_status": "not_requested",
+        "comparison_reason": "Faltam duas famílias de fontes elegíveis para iniciar a comparação.",
+        "google_fact_check": "no_results",
+        "auxiliary_extraction": {
+          "available": true,
+          "status": "success",
+          "model_used": "nvidia/nemotron-3-super-120b-a12b:free",
+          "decision_role": "search_hints_only",
+          "free_only": true
+        },
+        "research_provider": {
+          "gemini": {
+            "status": "success",
+            "model_used": "gemini-3.8-flash"
+          }
+        }
+      },
+      {
+        "id": "dart_true",
+        "input": "Em 26 de setembro de 2022, a nave DART da NASA colidiu intencionalmente com o asteroide Dimorphos.",
+        "result": "unverified",
+        "source_coverage": {
+          "version": "literal_source_attribution_v1",
+          "search_status": "success",
+          "max_sources": 10,
+          "max_source_bytes": 2097152,
+          "candidate_url_count": 38,
+          "selected_url_count": 10,
+          "omitted_url_count": 28,
+          "new_fetch_count": 2,
+          "reused_fetch_count": 8,
+          "cumulative_fetch_attempt_count": 10,
+          "invalid_url_count": 0,
+          "fetched_count": 8,
+          "failed_fetch_count": 2,
+          "fetch_failure_counts": {
+            "oversize": 0,
+            "unsupported_content": 0,
+            "timeout": 0,
+            "blocked_or_unavailable": 2,
+            "error": 0
+          },
+          "oversize_fetch_count": 0,
+          "source_text_truncated_count": 0,
+          "literal_segment_count": 1,
+          "eligible_claim_count": 1,
+          "selected_claim_count": 1,
+          "omitted_claim_count": 0,
+          "matches_count": 0,
+          "omitted_match_count": 0,
+          "source_selection": "distinct_eligible_families_then_other_references",
+          "search_queries": [
+            {
+              "method": "whole_literal_claim",
+              "status": "success"
+            },
+            {
+              "method": "literal_topic_anchors_primary_sources",
+              "status": "success",
+              "decision_role": "retrieval_only_original_claim_unchanged"
+            },
+            {
+              "method": "literal_topic_anchors_editorial_sources",
+              "status": "success",
+              "decision_role": "retrieval_only_original_claim_unchanged"
+            },
+            {
+              "method": "ai_directed_online_research",
+              "status": "success",
+              "decision_role": "retrieval_only_original_claim_unchanged",
+              "query_origin": "ai_validated_query",
+              "requested_source_group": "primary",
+              "executed_source_group": "primary",
+              "scope_change_reason": null
+            },
+            {
+              "method": "ai_directed_online_research",
+              "status": "success",
+              "decision_role": "retrieval_only_original_claim_unchanged",
+              "query_origin": "ai_validated_query",
+              "requested_source_group": "editorial",
+              "executed_source_group": "editorial",
+              "scope_change_reason": null
+            }
+          ],
+          "max_search_queries": 5,
+          "retrieval_deadline_seconds": 105,
+          "usable_source_family_count": 1,
+          "max_comparison_documents": 3,
+          "cited_primary_reference_lead_count": 2,
+          "direct_reference_recovery": {
+            "max_leads": 2,
+            "max_depth": 1,
+            "selected_lead_count": 2,
+            "waves": [
+              {
+                "stage": "late_reference",
+                "selected_lead_count": 2,
+                "status": "completed"
+              }
+            ],
+            "decision_role": "retrieval_only_no_truth_vote"
+          },
+          "online_research": {
+            "version": "bounded_ai_research_v1",
+            "status": "success",
+            "decision_role": "online_research_planning_only",
+            "max_queries": 2,
+            "planned_query_count": 2,
+            "selected_lead_count": 2,
+            "provider_coverage": {
+              "gemini": {
+                "status": "success",
+                "model_used": "gemini-3.8-flash"
+              }
+            },
+            "rejected_operation_count": 0,
+            "planning_budget_seconds": 45,
+            "skipped_duplicate_query_count": 0,
+            "scope_diversified_query_planned_count": 0,
+            "deterministic_gap_query_count": 0,
+            "executed_query_count": 2,
+            "deterministic_gap_query_executed_count": 0,
+            "scope_diversified_query_executed_count": 0
+          }
+        },
+        "selection_audit": {
+          "excluded_sources": [
+            {
+              "url": "https://www.cnnbrasil.com.br/economia/money/tecnologia/asteroide-atingido-por-nave-da-nasa-foi-remodelado-apos-impacto-diz-estudo/",
+              "exclusion_reason": "Nenhuma sentença completa elegível dentro dos limites de comparação."
+            },
+            {
+              "url": "https://g1.globo.com/ciencia/noticia/2026/03/06/nave-asteroide-orbita-sol-teste-terra-estudo.ghtml",
+              "exclusion_reason": "Nenhuma sentença completa elegível dentro dos limites de comparação."
+            },
+            {
+              "url": "https://www.nasa.gov/missions/dart/nasas-dart-mission-changed-orbit-of-asteroid-didymos-around-sun/",
+              "exclusion_reason": "Nenhuma sentença completa elegível dentro dos limites de comparação."
+            },
+            {
+              "url": "https://science.nasa.gov/mission/dart/",
+              "exclusion_reason": "Nenhuma sentença completa elegível dentro dos limites de comparação."
+            },
+            {
+              "url": "https://science.nasa.gov/missions/close-up-views-of-nasas-dart-impact-to-inform-planetary-defense/",
+              "exclusion_reason": "Nenhuma sentença completa elegível dentro dos limites de comparação."
+            },
+            {
+              "url": "https://www.nasa.gov/news-release/nasa-confirms-dart-mission-impact-changed-asteroids-motion-in-space/",
+              "exclusion_reason": "Nenhuma sentença completa elegível dentro dos limites de comparação."
+            },
+            {
+              "url": "https://www.theguardian.com/science/2022/sep/26/nasa-dart-asteroid-crash-mission-how-to-watch",
+              "exclusion_reason": "Nenhuma sentença completa elegível dentro dos limites de comparação."
+            }
+          ],
+          "selected_source_urls": [
+            "https://www.cnnbrasil.com.br/economia/money/tecnologia/choque-de-nave-da-nasa-com-asteroide-gera-nuvem-de-37-detritos/"
+          ],
+          "eligible_family_count": 1
+        },
+        "comparison_status": "not_requested",
+        "comparison_reason": "Faltam duas famílias de fontes elegíveis para iniciar a comparação.",
+        "google_fact_check": "no_results",
+        "auxiliary_extraction": {
+          "available": true,
+          "status": "success",
+          "model_used": "liquid/lfm-2.5-2.6b:free",
+          "decision_role": "search_hints_only",
+          "free_only": true
+        },
+        "research_provider": {
+          "gemini": {
+            "status": "success",
+            "model_used": "gemini-3.8-flash"
+          }
+        }
+      }
+    ],
+    "http_boundaries": [
+      {
+        "path": "/api/check-text",
+        "method": "POST",
+        "status": 200,
+        "content_type": "application/json",
+        "cache_control": "no-store"
+      },
+      {
+        "path": "/api/check-text",
+        "method": "POST",
+        "status": 200,
+        "content_type": "application/json",
+        "cache_control": "no-store"
+      }
+    ],
+    "provider_transport_counts": {
+      "openrouter": 2,
+      "facts": 2,
+      "news": 12,
+      "public_fetch": 20,
+      "gemini": 2
+    },
+    "provider_transport_status_counts": {
+      "openrouter": {
+        "200": 2
+      },
+      "facts": {
+        "200": 2
+      },
+      "news": {
+        "200": 12
+      },
+      "public_fetch": {
+        "200": 16,
+        "301": 1,
+        "307": 2,
+        "403": 1
+      },
+      "gemini": {
+        "200": 2
+      }
+    },
+    "media_paid_reservations": {
+      "image_requests": 0,
+      "audio_seconds": 0,
+      "audio_jobs": 0
+    },
+    "no_hive_requests": true,
+    "independent_factual_comparison_was_not_requested": true
+  },
+  "final_code": {
+    "application_source_fingerprint": "2215f7f7e8f0e2b3feacb3fd867db468998680582525a7a75fb998942f4405fb",
+    "post_diagnostic_change": "Reserve remaining direct-reference slots within ten reads during the final research wave, then follow real references or reuse the same queue",
+    "new_live_calls_after_that_change": 0,
+    "post_change_live_accuracy": "not_measured",
+    "decision_policy_changed": false
+  },
+  "automated": {
+    "backend": {
+      "tests": 988,
+      "skips": 0,
+      "failures": 0,
+      "seconds": 15.03,
+      "new_methods_since_base": 31,
+      "network": "Docker --network none; offline HTTP-blocking runner; disposable SQLite"
+    },
+    "frontend": {
+      "test_files": 22,
+      "failures": 0,
+      "skips": 0,
+      "build": "passed",
+      "source_changed": false
+    },
+    "frozen_conclusive_regression_replay": {
+      "scope": "Offline regression replay of all five conclusive frozen v2b text records; not a new factual, UI, model, source-retrieval or API validation",
+      "captured_run": "quality-v2b",
+      "captured_source_fingerprints": [
+        "4c6691f82d78ee7493ed88f6000af64f0a25d05254e7b51f66f52037c23ff921"
+      ],
+      "post_security_source_fingerprint": "2215f7f7e8f0e2b3feacb3fd867db468998680582525a7a75fb998942f4405fb",
+      "post_security_source_fingerprint_unchanged_after": true,
+      "records": 5,
+      "statuses_preserved": 5,
+      "real_api_calls": 0,
+      "searches": 0,
+      "public_fetches": 0,
+      "unexpected_transport_attempts": 0,
+      "rows": [
+        {
+          "input": "Elizabeth II morreu em 8 de setembro de 2022.",
+          "captured_public_documents": "source-documents-93.json",
+          "frozen_veracity_status": "supported",
+          "offline_replay_veracity_status": "supported",
+          "status_preserved": true,
+          "accepted_literal_evidence_count": 3,
+          "same_literal_evidence_remapped_count": 3,
+          "missing_previously_accepted_evidence_count": 0,
+          "replay_evidence_count": 3,
+          "simulated_provider_calls": 1,
+          "alternate_provider_calls": 0,
+          "original_record_only": false,
+          "policy_version": "2026-10-18.1"
+        },
+        {
+          "input": "Elizabeth II morreu em 9 de setembro de 2022.",
+          "captured_public_documents": "source-documents-95.json",
+          "frozen_veracity_status": "refuted",
+          "offline_replay_veracity_status": "refuted",
+          "status_preserved": true,
+          "accepted_literal_evidence_count": 2,
+          "same_literal_evidence_remapped_count": 2,
+          "missing_previously_accepted_evidence_count": 0,
+          "replay_evidence_count": 2,
+          "simulated_provider_calls": 1,
+          "alternate_provider_calls": 0,
+          "original_record_only": false,
+          "policy_version": "2026-10-18.1"
+        },
+        {
+          "input": "Em 11 de março de 2020, a Organização Mundial da Saúde caracterizou a COVID-19 como uma pandemia.",
+          "captured_public_documents": "source-documents-99.json",
+          "frozen_veracity_status": "supported",
+          "offline_replay_veracity_status": "supported",
+          "status_preserved": true,
+          "accepted_literal_evidence_count": 2,
+          "same_literal_evidence_remapped_count": 2,
+          "missing_previously_accepted_evidence_count": 0,
+          "replay_evidence_count": 2,
+          "simulated_provider_calls": 1,
+          "alternate_provider_calls": 0,
+          "original_record_only": false,
+          "policy_version": "2026-10-18.1"
+        },
+        {
+          "input": "Segundo o relatório do Copernicus de 10 de janeiro de 2025, a temperatura média global de 2024 ficou 1,60°C abaixo da média de 1850–1900.",
+          "captured_public_documents": "source-documents-107.json",
+          "frozen_veracity_status": "refuted",
+          "offline_replay_veracity_status": "refuted",
+          "status_preserved": true,
+          "accepted_literal_evidence_count": 1,
+          "same_literal_evidence_remapped_count": 1,
+          "missing_previously_accepted_evidence_count": 0,
+          "replay_evidence_count": 1,
+          "simulated_provider_calls": 1,
+          "alternate_provider_calls": 0,
+          "original_record_only": true,
+          "policy_version": "2026-10-18.1"
+        },
+        {
+          "input": "O artigo 1º da Lei nº 3.353, de 13 de maio de 1888, não declarou legalmente extinta a escravidão no Brasil.",
+          "captured_public_documents": "source-documents-109.json",
+          "frozen_veracity_status": "refuted",
+          "offline_replay_veracity_status": "refuted",
+          "status_preserved": true,
+          "accepted_literal_evidence_count": 1,
+          "same_literal_evidence_remapped_count": 1,
+          "missing_previously_accepted_evidence_count": 0,
+          "replay_evidence_count": 1,
+          "simulated_provider_calls": 1,
+          "alternate_provider_calls": 0,
+          "original_record_only": true,
+          "policy_version": "2026-10-18.1"
+        }
+      ]
+    }
+  },
+  "source_constraints": {
+    "no_ai_research": {
+      "max_attempts": 6,
+      "deadline_seconds": 45
+    },
+    "ai_research": {
+      "max_attempts": 10,
+      "deadline_seconds": 105
+    },
+    "max_direct_primary_leads_per_request": 2,
+    "max_follow_depth": 1,
+    "max_final_comparison_documents": 3,
+    "no_source_guard_relaxation": true,
+    "publication_metadata_never_dates_the_event": true
+  },
+  "last_complete_live_accuracy": {
+    "run": "quality-v2b",
+    "cases": 12,
+    "correct": 5,
+    "inconclusive": 7,
+    "correct_percent": 41.666666666666664,
+    "target_80_percent_demonstrated": false,
+    "not_updated_by_selected_diagnostics_or_offline_tests": true
+  },
+  "publication": {
+    "private_env_modified": false,
+    "production_database_accessed": false,
+    "push": false,
+    "deploy": false,
+    "temporary_servers_stopped": true,
+    "browser_tab_closed": true
+  },
+  "remaining": [
+    "One full frozen live text round of the final code",
+    "Independent corpus with true and false claims outside development examples",
+    "Better source bodies with all identity/event/date/qualifier fields",
+    "Ranking explicit month and main period versus comparison base",
+    "Human voice, camera videos, and real media detector benchmarking",
+    "Browser PDF saving/opening confirmation"
+  ]
+}

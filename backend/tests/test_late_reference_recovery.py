@@ -14,6 +14,8 @@ TEXT = "A missão Aurora IV foi lançada em 11 de maio de 2001."
 BASE = ["https://www.bbc.com/base", "https://www.cnnbrasil.com.br/base", "https://brasilescola.uol.com.br/base"]
 SECOND = ["https://www.nasa.gov/overview", "https://www.who.int/overview", "https://agenciabrasil.ebc.com.br/overview"]
 TARGETS = ["https://www.nasa.gov/aurora/launch", "https://www.who.int/aurora/launch"]
+RESEARCH = ["https://www.nasa.gov/research", "https://www.who.int/research",
+            "https://www.reuters.com/research", "https://www.bbc.com/research"]
 
 
 def lead(url):
@@ -40,7 +42,7 @@ def fixture_pages(*, base_references=False, useful=True):
 
 
 class LateReferenceRecoveryTests(unittest.IsolatedAsyncioTestCase):
-    async def run_case(self, pages=None, *, enabled=True, limit="3", timeout_late=False, slow_late=False):
+    async def run_case(self, pages=None, *, enabled=True, limit="3", timeout_late=False, slow_late=False, research_queue=()):
         pages = fixture_pages() if pages is None else pages
         calls, collect_calls = [], []
 
@@ -58,7 +60,7 @@ class LateReferenceRecoveryTests(unittest.IsolatedAsyncioTestCase):
 
         responses = [NewsSearch([lead(url) for url in BASE]),
                      NewsSearch([lead(url) for url in SECOND]), NewsSearch([lead(url) for url in SECOND]),
-                     NewsSearch(), NewsSearch()]
+                     NewsSearch([lead(url) for url in research_queue]), NewsSearch()]
         empty_plan = {"queries": [], "leads": [], "coverage": {"status": "success", "planned_query_count": 0}}
         original_timeout = asyncio.timeout
         with (patch.dict(os.environ, {"SOURCE_CROSSCHECK_ENABLED": "true", "SOURCE_CROSSCHECK_SEARCH_LIMIT": limit}),
@@ -132,6 +134,51 @@ class LateReferenceRecoveryTests(unittest.IsolatedAsyncioTestCase):
         pages[TARGETS[1]]["sentences"] = [TEXT]
         result, _, _, _, planner = await self.run_case(pages)
         self.assertEqual(result["coverage"]["usable_source_family_count"], 1)
+        planner.assert_awaited_once()
+
+    async def test_research_wave_reserves_two_slots_for_newly_discovered_direct_links(self):
+        pages = fixture_pages()
+        for url in SECOND:
+            pages[url]["reference_leads"] = []
+        pages.update({url: document(url) for url in RESEARCH})
+        pages[RESEARCH[0]]["reference_leads"] = [lead(TARGETS[0])]
+        pages[RESEARCH[1]]["reference_leads"] = [lead(TARGETS[1])]
+        result, calls, ceilings, searches, planner = await self.run_case(pages, research_queue=RESEARCH)
+        self.assertEqual(ceilings, [3, 6, 8, 10])
+        self.assertEqual(calls[-2:], TARGETS)
+        self.assertFalse(set(RESEARCH[2:]) & set(calls))
+        self.assertEqual(len(calls), 10)
+        self.assertEqual(result["coverage"]["usable_source_family_count"], 2)
+        self.assertEqual(result["coverage"]["direct_reference_recovery"]["waves"][-1]["stage"], "research_reference")
+        planner.assert_awaited_once()
+        self.assertEqual(searches.await_count, 4)
+
+    async def test_unused_reference_reserve_returns_to_existing_queue_without_new_search(self):
+        pages = fixture_pages()
+        for url in SECOND:
+            pages[url]["reference_leads"] = []
+        pages.update({url: document(url) for url in RESEARCH})
+        result, calls, ceilings, searches, planner = await self.run_case(pages, research_queue=RESEARCH)
+        self.assertEqual(ceilings, [3, 6, 8, 10])
+        self.assertTrue(set(RESEARCH) <= set(calls))
+        self.assertEqual(len(calls), 10)
+        self.assertEqual(result["coverage"]["cited_primary_reference_lead_count"], 0)
+        self.assertEqual(result["coverage"]["usable_source_family_count"], 0)
+        self.assertEqual(searches.await_count, 4)
+        planner.assert_awaited_once()
+
+    async def test_sufficient_research_bodies_do_not_spend_reserved_slots(self):
+        pages = fixture_pages()
+        for url in SECOND:
+            pages[url]["reference_leads"] = []
+        pages.update({url: document(url) for url in RESEARCH})
+        pages[RESEARCH[0]]["sentences"] = [TEXT]
+        pages[RESEARCH[1]]["sentences"] = ["The Aurora IV mission was launched on May 11, 2001."]
+        result, calls, ceilings, searches, planner = await self.run_case(pages, research_queue=RESEARCH)
+        self.assertEqual(ceilings, [3, 6, 8])
+        self.assertEqual(len(calls), 8)
+        self.assertEqual(result["coverage"]["usable_source_family_count"], 2)
+        self.assertEqual(searches.await_count, 4)
         planner.assert_awaited_once()
 
     async def test_late_wave_timeout_preserves_last_completed_collection_and_marks_incomplete(self):

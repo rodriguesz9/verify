@@ -1,5 +1,7 @@
 # Verify — estrutura e arquitetura
 
+Última continuação de 18/10: [prioridade de fontes, referências tardias e cancelamento](RECUPERACAO-FONTES-2026-10-18.md). Tentativas reservadas antes do envio; ranking mantido no preenchimento; duas referências diretas por pedido também nas ondas posteriores, com slots reservados na última pesquisa. Preservados seis/dez tentativas e 45/105 s; sem novas variáveis ou alteração da política factual. 988 testes backend; diagnósticos reais e validação offline separados.
+
 Revisão local de 18/10: [autoria, referências editoriais e vínculos de lançamento/título esportivo](RECUPERACAO-CONTEXTUAL-2026-10-18.md). Testes e replay offline não atualizam a última precisão real de 41,7%. Política `2026-10-18.1`; sem nova variável, chamada paga ou implantação.
 
 Continuação local de 17–18/10: [recuperação, correspondência contextual, prazos e mídias](QUALIDADE-CHECAGEM-2026-10-17.md). Fonte editorial adicional, preâmbulo/artigo legal separados, registro original estritamente delimitado e proteção contra reprodução fictícia, Hive 45 s totais/50 s externo e mídia no cliente até 240 s. Última rodada de desenvolvimento: 5/12 corretos, 7/12 inconclusivos; não homologada nem implantada. Resultados de versões distintas ficam separados.

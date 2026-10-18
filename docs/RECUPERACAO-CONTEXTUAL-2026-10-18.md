@@ -1,5 +1,7 @@
 # Recuperação contextual e vínculos de evento — 18/10/2026
 
+Continuação posterior: [prioridade, referências tardias e reservas de leitura](RECUPERACAO-FONTES-2026-10-18.md). O diagnóstico e os limites descritos abaixo pertencem a esta primeira revisão; a continuação atualiza a descoberta após ondas posteriores sem inventar nova precisão.
+
 ## Situação desta revisão
 
 Melhorias locais posteriores a `c3e6865`, com política `2026-10-18.1`. Não há nova medição de precisão com APIs reais nesta etapa. A última rodada completa continua sendo **5/12 textos corretos (41,7%) e 7/12 inconclusivos (58,3%)**, preservada no [registro de 17–18/10](QUALIDADE-CHECAGEM-2026-10-17.md). Meta de 80% ainda não comprovada.

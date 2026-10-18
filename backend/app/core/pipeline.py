@@ -240,6 +240,24 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
     attribution, plan, cited_leads = None, [], []
     fetched_cache, reference_waves = {}, []
     research = {"status": "not_requested", "decision_role": "online_research_planning_only"}
+
+    async def follow_primary_references(stage):
+        nonlocal attribution, leads
+        if len(fetched_cache) >= 10:
+            return False
+        fresh = _unread_primary_reference_leads(text, attribution.get("_documents", []), source_url,
+                                              fetched_cache, cited_leads)
+        if not fresh:
+            return False
+        cited_leads.extend(fresh)
+        reference_waves.append({"stage": stage, "selected_lead_count": len(fresh), "status": "reading"})
+        direct_reads = NewsSearch([*fresh, *[{"link": url} for url in fetched_cache]], status="success")
+        leads = NewsSearch([*fresh, *leads], status=getattr(leads, "status", "success"))
+        attribution = await collect_source_attribution(text, queries, source_url, search_results=direct_reads,
+            include_documents=True, max_sources=min(10, len(fetched_cache) + len(fresh)), fetched_cache=fetched_cache)
+        reference_waves[-1]["status"] = "completed"
+        return True
+
     try:
         async with asyncio.timeout(deadline):
             query = next((query for query in queries if 20 <= len(query.strip()) <= 500), None)
@@ -287,20 +305,11 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
             missing_claims = claims_needing_research(text, attribution.get("_documents", []), source_url) if ai_research else []
             if (ai_research and missing_claims and len(fetched_cache) < 10
                     and all(item["status"] in {"success", "no_results"} for item in plan)):
-                fresh = _unread_primary_reference_leads(text, attribution.get("_documents", []), source_url,
-                                                      fetched_cache, cited_leads)
-                if fresh:
+                if await follow_primary_references("late_reference"):
                     # Spend only the already-authorized remaining read slots,
                     # before asking a model for another plan. Keep all known
                     # candidates for later research, but this wave follows
                     # only the direct links and retains previous attempts.
-                    cited_leads.extend(fresh)
-                    reference_waves.append({"stage": "late_reference", "selected_lead_count": len(fresh), "status": "reading"})
-                    direct_reads = NewsSearch([*fresh, *[{"link": url} for url in fetched_cache]], status="success")
-                    leads = NewsSearch([*fresh, *leads], status=getattr(leads, "status", "success"))
-                    attribution = await collect_source_attribution(text, queries, source_url, search_results=direct_reads,
-                        include_documents=True, max_sources=min(10, len(fetched_cache) + len(fresh)), fetched_cache=fetched_cache)
-                    reference_waves[-1]["status"] = "completed"
                     families = usable_source_families(text, attribution.get("_documents", []), source_url)
                     missing_claims = claims_needing_research(text, attribution.get("_documents", []), source_url)
             if ai_research and missing_claims and all(item["status"] in {"success", "no_results"} for item in plan):
@@ -352,8 +361,20 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
                         break  # A real quota failure is not retried or bypassed.
                 if additions:
                     leads = NewsSearch([*additions, *leads], status="success")
+                    # A newly found article may contain the useful original
+                    # reference. Reserve the remaining direct-link slots before
+                    # spending all ten reads on search results; if no useful
+                    # link exists, release those slots back to the same queue.
+                    can_follow = all(item["status"] in {"success", "no_results"} for item in plan)
+                    reserve = max(0, 2 - len(cited_leads)) if can_follow else 0
                     attribution = await collect_source_attribution(text, queries, source_url, search_results=leads,
-                        include_documents=True, max_sources=10, fetched_cache=fetched_cache)
+                        include_documents=True, max_sources=max(len(fetched_cache), 10 - reserve), fetched_cache=fetched_cache)
+                    if can_follow and claims_needing_research(text, attribution.get("_documents", []), source_url):
+                        await follow_primary_references("research_reference")
+                    if (len(fetched_cache) < 10
+                            and claims_needing_research(text, attribution.get("_documents", []), source_url)):
+                        attribution = await collect_source_attribution(text, queries, source_url, search_results=leads,
+                            include_documents=True, max_sources=10, fetched_cache=fetched_cache)
                     families = usable_source_families(text, attribution.get("_documents", []), source_url)
             if crosscheck_enabled:
                 attribution["selection_audit"] = document_selection_audit(text, attribution.get("_documents", []), source_url)
