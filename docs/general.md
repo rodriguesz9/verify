@@ -1,5 +1,7 @@
 # Verify — estrutura e arquitetura
 
+Continuação local de 17–18/10: [recuperação, correspondência contextual, prazos e mídias](QUALIDADE-CHECAGEM-2026-10-17.md). Fonte editorial adicional, preâmbulo/artigo legal separados, registro original estritamente delimitado e proteção contra reprodução fictícia, Hive 45 s totais/50 s externo e mídia no cliente até 240 s. Última rodada de desenvolvimento: 5/12 corretos, 7/12 inconclusivos; não homologada nem implantada. Resultados de versões distintas ficam separados.
+
 Pesquisa orientada por IA em 17/10: [implementação, limites e avaliação congelada](PESQUISA-ONLINE-2026-10-17.md). A IA pode solicitar até duas consultas neutras e indicar referências reais já encontradas; busca, leitura e validação permanecem no servidor. Não habilita plugins pagos nem transforma a concordância dos modelos em prova.
 
 Revisão local de 17/10: [auditoria de vereditos e responsividade](AUDITORIA-VEREDITOS-2026-10-17.md). Recuperação de referências realmente citadas, ranking por período, citações por ID, leitura de registros institucionais delimitados e guardas adicionais de contexto/medição. Resultados de desenvolvimento e limitações registrados, sem homologação de precisão geral ou publicação presumida.

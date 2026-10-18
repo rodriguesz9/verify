@@ -101,16 +101,17 @@ class ResearchPlanTests(unittest.IsolatedAsyncioTestCase):
              patch("app.core.pipeline.research_enabled", return_value=True), \
              patch("app.core.pipeline.plan_source_research", new=AsyncMock(return_value=planned)) as model, \
              patch("app.core.pipeline.search_web", new=AsyncMock(side_effect=[NewsSearch(), NewsSearch(), NewsSearch(),
-                   NewsSearch([{"link": "https://science.nasa.gov/mission/dart/", "title": "DART"}])])) as search, \
+                   NewsSearch([{"link": "https://science.nasa.gov/mission/dart/", "title": "DART"}]), NewsSearch()])) as search, \
              patch("app.core.pipeline.collect_source_attribution", new=AsyncMock(return_value=attribution)) as collect:
             result = await _retrieve_source_attribution(TEXT, [TEXT], None)
         model.assert_awaited_once()
-        self.assertEqual(search.await_count, 4)
-        self.assertIn(PLAN["queries"][0]["query"], search.await_args_list[-1].args[0])
+        self.assertEqual(search.await_count, 5)
+        self.assertIn(PLAN["queries"][0]["query"], search.await_args_list[3].args[0])
         self.assertEqual(collect.await_args.kwargs["max_sources"], 10)
         self.assertTrue(all(call.args[0] == TEXT for call in collect.await_args_list))
         self.assertEqual(result["coverage"]["max_search_queries"], 5)
         self.assertEqual(result["coverage"]["online_research"]["executed_query_count"], 1)
+        self.assertEqual(result["coverage"]["online_research"]["deterministic_gap_query_executed_count"], 1)
 
     async def test_quota_failure_does_not_trigger_ai_or_further_search(self):
         with patch("app.core.pipeline.research_enabled", return_value=True), \
@@ -120,3 +121,30 @@ class ResearchPlanTests(unittest.IsolatedAsyncioTestCase):
             await _retrieve_source_attribution(TEXT, [TEXT], None)
         model.assert_not_awaited()
         search.assert_awaited_once()
+
+    async def test_empty_or_timed_out_model_does_not_suppress_one_bounded_gap_search(self):
+        for timed_out in (False, True):
+            attribution = {"status": "no_results", "matches": [], "coverage": {}, "_documents": []}
+            empty = {"queries": [], "leads": [], "coverage": {"status": "success", "planned_query_count": 0}}
+            with self.subTest(timed_out=timed_out), \
+                 patch.dict(os.environ, {"SOURCE_CROSSCHECK_SEARCH_LIMIT": "3", "SOURCE_CROSSCHECK_ENABLED": "true"}), \
+                 patch("app.core.pipeline.research_enabled", return_value=True), \
+                 patch("app.core.pipeline.plan_source_research", new=AsyncMock(
+                     side_effect=TimeoutError if timed_out else None, return_value=empty)) as model, \
+                 patch("app.core.pipeline.search_web", new=AsyncMock(return_value=NewsSearch())) as search, \
+                 patch("app.core.pipeline.collect_source_attribution", new=AsyncMock(return_value=attribution)) as collect:
+                result = await _retrieve_source_attribution(TEXT, [TEXT], None)
+            model.assert_awaited_once()
+            self.assertEqual(search.await_count, 4)
+            neutral = search.await_args.args[0]
+            self.assertNotIn("site:", neutral)
+            self.assertIn("DART", neutral)
+            self.assertIn("NASA", neutral)
+            self.assertNotEqual(neutral, TEXT)
+            self.assertTrue(all(call.args[0] == TEXT for call in collect.await_args_list))
+            coverage = result["coverage"]["online_research"]
+            self.assertEqual(coverage["status"], "timeout" if timed_out else "success")
+            self.assertEqual(coverage["executed_query_count"], 0)
+            self.assertEqual(coverage["deterministic_gap_query_executed_count"], 1)
+            self.assertLessEqual(coverage["planning_budget_seconds"], 45)
+            self.assertEqual(result["coverage"]["max_search_queries"], 5)

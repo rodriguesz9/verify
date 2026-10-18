@@ -7,7 +7,7 @@ from app.core.gemini_client import gemini_timeout_seconds
 from app.core.gemini_analyzer import analyze_image_with_vision, extract_text_from_image
 from app.core.sightengine_client import check_deepfake
 from app.core.huggingface_client import check_ai_image_hf
-from app.services.hive_service import check_hive_media, hive_v3_enabled
+from app.services.hive_service import check_hive_media, hive_v3_enabled, HIVE_LAYER_TIMEOUT_SECONDS
 from app.services.metadata_service import extract_metadata
 from app.services.c2pa_service import verify_c2pa
 from app.services.reverse_search_service import search_context_and_provenance
@@ -15,6 +15,7 @@ from app.services.audio_service import analyze_audio_quick_for_demonstration
 from app.services.speech_detector import detect_synthetic_speech
 from app.services.evidence_policy import media_report, media_signal_explanation, detector_score, DETECTOR_FIELDS, MEDIA_SIGNAL_VERSION
 from app.services.media_validation import ValidatedMedia, extract_video_frames, extract_video_audio
+from app.services.speech_input import prepare_speech_input
 
 
 def _fact_check_extracted_reason(text: str, origin: str) -> str | None:
@@ -61,13 +62,36 @@ async def extracted_content(text: str, origin: str, *, review_first: bool, timeo
 
 
 async def audio_layers(data: bytes, mime_type: str, *, duration_seconds: float | None = None) -> dict:
+    # Transcription and local signal inspection can run concurrently. Acoustic
+    # detectors must wait for the bounded local gate, before any paid request.
+    # Keep their original bytes/MIME/validated duration, not the gate's private
+    # mono PCM copy. Unknown/failed inspection is not a reason to suppress them.
+    audio, detectors = await asyncio.gather(
+        safe_layer(analyze_audio_quick_for_demonstration(data, "evidence.audio", mime_type),
+                   timeout=gemini_timeout_seconds() + 45),
+        _audio_detector_layers(data, mime_type, duration_seconds=duration_seconds),
+    )
+    return {"audio": audio, **detectors}
+
+
+async def _audio_detector_layers(data: bytes, mime_type: str, *, duration_seconds: float | None = None) -> dict:
+    try:
+        _, near_silent, gate_status = await asyncio.wait_for(prepare_speech_input(data), timeout=5)
+    except (Exception, asyncio.TimeoutError):
+        # Validation happened upstream. A failed optional optimization cannot
+        # be interpreted as silence, absence of speech, or source authenticity.
+        near_silent, gate_status = None, "unavailable"
+    if gate_status == "success" and near_silent is True:
+        skipped = {"available": False, "status": "insufficient_signal",
+                   "decision_role": "local_signal_gate",
+                   "reason": "Sinal silencioso ou muito baixo: nenhum áudio foi enviado aos detectores de origem. Aumente o volume ou regrave. Isso não determina autenticidade nem falsidade."}
+        return {"hive": dict(skipped), "sightengine_audio": dict(skipped)}
     suffix = {"audio/wav": "wav", "audio/mpeg": "mp3", "audio/ogg": "ogg", "audio/webm": "webm",
               "audio/flac": "flac", "audio/mp4": "m4a", "audio/aac": "aac"}.get(mime_type, "bin")
-    jobs = {"audio": analyze_audio_quick_for_demonstration(data, "evidence.audio", mime_type),
-            "hive": check_hive_media(data, f"evidence.{suffix}", "audio", mime_type, duration_seconds=duration_seconds),
+    jobs = {"hive": check_hive_media(data, f"evidence.{suffix}", "audio", mime_type, duration_seconds=duration_seconds),
             "sightengine_audio": detect_synthetic_speech(data, mime_type)}
-    return dict(zip(jobs, await asyncio.gather(*(safe_layer(job, timeout=gemini_timeout_seconds() + 45 if name == "audio" else 18)
-                                               for name, job in jobs.items()))))
+    return dict(zip(jobs, await asyncio.gather(*(safe_layer(job,
+        timeout=HIVE_LAYER_TIMEOUT_SECONDS if name == "hive" else 18) for name, job in jobs.items()))))
 
 
 async def safe_layer(coro, timeout=18):
@@ -92,7 +116,8 @@ async def image_layers(data: bytes, mime_type: str, filename: str, auxiliary=Tru
                      "gemini_vision": analyze_image_with_vision(data, mime_type, {})})
     # OCR: local decode + Gemini + bounded OpenRouter fallback. Vision uses
     # only Gemini. Preserve short independent budgets for other detectors.
-    timeouts = {"ocr": gemini_timeout_seconds() + 40, "gemini_vision": gemini_timeout_seconds() + 5}
+    timeouts = {"ocr": gemini_timeout_seconds() + 40, "gemini_vision": gemini_timeout_seconds() + 5,
+                "hive": HIVE_LAYER_TIMEOUT_SECONDS, "hive_deepfake": HIVE_LAYER_TIMEOUT_SECONDS}
     values = await asyncio.gather(*(safe_layer(job, timeout=timeouts.get(name, 18))
                                   for name, job in jobs.items()))
     result = dict(zip(jobs, values))

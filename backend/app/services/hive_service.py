@@ -1,4 +1,5 @@
 """Hive v2 projects / v3 service keys. Exact classes; no billable retries."""
+import asyncio
 import math
 import os
 import threading
@@ -7,6 +8,9 @@ import httpx
 HIVE_API_URL = "https://api.thehive.ai/api/v2/task/sync"
 HIVE_V3_MODEL = "hive/ai-generated-and-deepfake-content-detection"
 HIVE_V3_API_URL = f"https://api.thehive.ai/api/v3/{HIVE_V3_MODEL}"
+# One bounded attempt, not separate 45-second budgets for each HTTP phase.
+HIVE_REQUEST_TIMEOUT_SECONDS = 45.0
+HIVE_LAYER_TIMEOUT_SECONDS = HIVE_REQUEST_TIMEOUT_SECONDS + 5.0
 
 
 class HiveV3Budget:
@@ -106,9 +110,11 @@ async def _request_hive_v3(file_bytes, filename, media_type, mime_type, duration
     if rejected is not None:
         return rejected
     try:
-        async with httpx.AsyncClient(timeout=15, trust_env=False, follow_redirects=False) as client:
-            response = await client.post(HIVE_V3_API_URL, headers={"Authorization": f"Bearer {key}", "Accept": "application/json"},
-                                         files={"media": (filename, file_bytes, mime_type)})
+        async with asyncio.timeout(HIVE_REQUEST_TIMEOUT_SECONDS):
+            async with httpx.AsyncClient(timeout=httpx.Timeout(HIVE_REQUEST_TIMEOUT_SECONDS,
+                    connect=10.0, write=30.0, pool=5.0), trust_env=False, follow_redirects=False) as client:
+                response = await client.post(HIVE_V3_API_URL, headers={"Authorization": f"Bearer {key}", "Accept": "application/json"},
+                                             files={"media": (filename, file_bytes, mime_type)})
         if response.status_code == 202:
             return {"available": False, "status": "pending", "api_version": "v3",
                     "reason": "Hive aceitou a tarefa, mas não retornou detecção síncrona. Não houve reenvio."}
@@ -118,7 +124,7 @@ async def _request_hive_v3(file_bytes, filename, media_type, mime_type, duration
             return {"available": False, "status": status,
                     "api_version": "v3", "reason": f"Hive v3 indisponível (HTTP {response.status_code})."}
         return parse_hive_v3_scores(response.json(), media_type)
-    except httpx.TimeoutException:
+    except (asyncio.TimeoutError, httpx.TimeoutException):
         return {"available": False, "status": "timeout", "api_version": "v3",
                 "reason": "Tempo limite do detector Hive v3 atingido; não houve reenvio."}
     except Exception:
@@ -183,12 +189,17 @@ async def _request_hive(media_type: str, **payload) -> dict:
         return {"available": False, "status": "skipped", "reason": "Chave do projeto Hive não configurada.",
                 "ai_generated_score": None, "deepfake_score": None}
     try:
-        async with httpx.AsyncClient(timeout=15, trust_env=False) as client:
-            response = await client.post(HIVE_API_URL, headers={"Authorization": f"token {api_key}", "Accept": "application/json"}, **payload)
+        async with asyncio.timeout(HIVE_REQUEST_TIMEOUT_SECONDS):
+            async with httpx.AsyncClient(timeout=httpx.Timeout(HIVE_REQUEST_TIMEOUT_SECONDS,
+                    connect=10.0, write=30.0, pool=5.0), trust_env=False, follow_redirects=False) as client:
+                response = await client.post(HIVE_API_URL, headers={"Authorization": f"token {api_key}", "Accept": "application/json"}, **payload)
         if response.status_code != 200:
             return {"available": False, "status": "error", "reason": f"Hive indisponível (HTTP {response.status_code}).",
                     "ai_generated_score": None, "deepfake_score": None}
         return parse_hive_scores(response.json())
+    except (asyncio.TimeoutError, httpx.TimeoutException):
+        return {"available": False, "status": "timeout", "reason": "Tempo limite do detector Hive atingido; não houve reenvio.",
+                "ai_generated_score": None, "deepfake_score": None}
     except Exception:
         return {"available": False, "status": "error", "reason": "Não foi possível obter resposta válida do Hive.",
                 "ai_generated_score": None, "deepfake_score": None}

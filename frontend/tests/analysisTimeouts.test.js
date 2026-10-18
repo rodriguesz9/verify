@@ -25,7 +25,7 @@ test("analysis deadlines cover bounded server stages; auth and PDF remain short"
     await downloadPdfReport("vpdf1.control");
     assert.deepEqual(observed, [
       ["/check-text", 240000], ["/check-text-batch", 240000], ["/check-url", 240000], ["/check-extracted-text", 240000],
-      ["/upload", 180000], ["/verificar/audio-rapido", 180000], ["/verificar/completo", 180000],
+      ["/upload", 240000], ["/verificar/audio-rapido", 240000], ["/verificar/completo", 240000],
       ["/whatsapp/simulate", 240000], ["/auth/login", 60000], ["/verificar/relatorio-pdf", 30000],
     ]);
   } finally {

@@ -270,7 +270,9 @@ class MediaEndpointTests(unittest.TestCase):
         self.assertEqual(response.json()["analysis_status"], "inconclusive")
 
     def test_quick_audio_endpoint_exposes_actual_acoustic_indications(self):
+        # This isolates detector consensus, not the local silence gate.
         with patch("app.services.media_analysis.detect_synthetic_speech", new=AsyncMock(return_value={"available": True, "status": "success", "ai_speech_score": .98})), \
+             patch("app.services.media_analysis.prepare_speech_input", new=AsyncMock(return_value=(b"speech-control", False, "success"))), \
              patch("app.services.media_analysis.check_hive_media", new=AsyncMock(return_value={"available": True, "status": "success", "ai_generated_score": .97})):
             response = self.client.post("/api/verificar/audio-rapido", files={"file": ("neutral.wav", valid_wav(), "audio/wav")})
         self.assertEqual(response.status_code, 200)

@@ -1,0 +1,108 @@
+{
+  "date": "2026-10-17",
+  "scope": "Local UI development controls, not a blind or representative accuracy benchmark; no production deployment",
+  "manifest": "backend/tests/fixtures/validation/text-quality-2026-10-17.json",
+  "manifest_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+  "metric": "Exact supported/refuted label; inconclusive and errors stay in denominator",
+  "target": 0.8,
+  "target_met": false,
+  "runs": [
+    {
+      "id": "quality-v1",
+      "source_fingerprint": "0ccd735b941d7a5ef5cf8600446693d7ec23b1dc282394f8571fd8c5567491c8",
+      "frozen_for_all_requests": true,
+      "text_total": 12,
+      "correct": 7,
+      "inconclusive": 5,
+      "wrong_conclusive": 0,
+      "correct_fraction": 0.5833333333333334,
+      "previous_eight_correct": 5,
+      "additional_four_correct": 2,
+      "text_latency_median_seconds": 29.5325
+    },
+    {
+      "id": "quality-v2",
+      "source_fingerprint": "4c6691f82d78ee7493ed88f6000af64f0a25d05254e7b51f66f52037c23ff921",
+      "scope": "Interrupted after two requests when the cumulative QA diagnostic document limit reached 240; both requests retained",
+      "complete_cohort": false,
+      "text_total": 2,
+      "correct": 0,
+      "inconclusive": 2,
+      "wrong_conclusive": 0,
+      "cases": ["queen_true", "queen_false"]
+    },
+    {
+      "id": "quality-v2b",
+      "source_fingerprint": "4c6691f82d78ee7493ed88f6000af64f0a25d05254e7b51f66f52037c23ff921",
+      "scope": "Same application code as v2, QA diagnostic storage limit raised to 600 without resetting records or reservations",
+      "frozen_for_all_requests": true,
+      "text_total": 12,
+      "correct": 5,
+      "inconclusive": 7,
+      "wrong_conclusive": 0,
+      "correct_fraction": 0.4166666666666667,
+      "previous_eight_correct": 5,
+      "additional_four_correct": 0,
+      "text_latency_median_seconds": 35.3715
+    }
+  ],
+  "text_cases": [
+    {"id":"queen_true","expected":"supported","v1":"supported","v1_seconds":7.435,"v2b":"supported","v2b_seconds":71.962},
+    {"id":"queen_false","expected":"refuted","v1":"refuted","v1_seconds":12.505,"v2b":"refuted","v2b_seconds":24.930},
+    {"id":"dart_true","expected":"supported","v1":"unverified","v1_seconds":35.017,"v2b":"unverified","v2b_seconds":34.549},
+    {"id":"who_true","expected":"supported","v1":"supported","v1_seconds":34.051,"v2b":"supported","v2b_seconds":14.686},
+    {"id":"ibge_true","expected":"supported","v1":"supported","v1_seconds":55.090,"v2b":"unverified","v2b_seconds":46.705},
+    {"id":"copom_false","expected":"refuted","v1":"unverified","v1_seconds":39.703,"v2b":"unverified","v2b_seconds":24.579},
+    {"id":"copernicus_false","expected":"refuted","v1":"refuted","v1_seconds":36.588,"v2b":"refuted","v2b_seconds":58.362},
+    {"id":"lei_false","expected":"refuted","v1":"unverified","v1_seconds":22.980,"v2b":"refuted","v2b_seconds":14.190},
+    {"id":"webb_true","expected":"supported","v1":"supported","v1_seconds":31.427,"v2b":"unverified","v2b_seconds":67.708},
+    {"id":"constitution_true","expected":"supported","v1":"supported","v1_seconds":16.698,"v2b":"unverified","v2b_seconds":27.266},
+    {"id":"worldcup_false","expected":"refuted","v1":"unverified","v1_seconds":27.638,"v2b":"unverified","v2b_seconds":36.194},
+    {"id":"artemis_false","expected":"refuted","v1":"unverified","v1_seconds":21.203,"v2b":"unverified","v2b_seconds":48.099}
+  ],
+  "media_controls": [
+    {"id":"silence_2s","run":"quality-v1","http":200,"seconds":0.280,"remote_calls":0,"state":"insufficient_signal"},
+    {"id":"ai_plant","run":"quality-v1","http":200,"seconds":17.298,"state":"isolated_ai","sightengine_ai_signal":0.99,"hive":"timeout","gemini_vision":"success","gemini_ocr":"no_text"},
+    {"id":"nasa_photo","run":"quality-v1","http":200,"seconds":16.159,"state":"no_high_signal","sightengine_ai_signal":0.001,"hive_ai_signal":0.0001245901455752061,"authenticity_proven":false},
+    {"id":"ai_still_video_5s","run":"quality-v1","http":200,"seconds":3.578,"state":"consensus_ai","scope":"Three sampled frames, not complete video or lip-sync","timestamps_seconds":[0.5,2.5,4.5],"has_audio":false},
+    {"id":"espeak_5s","run":"quality-v1","http":200,"seconds":4.341,"state":"isolated_ai","hive_ai_signal":0.990826917954101,"assemblyai":"success_with_transcription_error","sightengine_audio":"disabled"},
+    {"id":"invalid_png","run":"quality-v1","http":422,"seconds":0.026,"remote_calls":0,"state":"rejected"},
+    {"id":"ai_cafe","run":"quality-v2b","http":200,"seconds":45.683,"state":"isolated_ai","sightengine_ai_signal":0.99,"hive":"timeout_even_with_45_second_budget","gemini_vision":"success"},
+    {"id":"printed_ocr","run":"quality-v2b","http":200,"seconds":56.720,"ocr":"tesseract-lstm-por-eng","negation_preserved":true,"value_preserved":"R$ 123,45","date_preserved":"03/10/2026","hive":"budget_exhausted_no_send","gemini_vision":"unavailable","factual_review":"awaiting_user_review"}
+  ],
+  "url_control": {
+    "url":"https://science.nasa.gov/mission/webb/launch/",
+    "run":"quality-v2b","http":200,"seconds":51.267,
+    "veracity_status":"unverified","page_read":true,
+    "openrouter":"invalid_response","gemini_extraction":"success",
+    "scope":"Functional page reading, not a factual accuracy control or certification of the whole page"
+  },
+  "hive_new_grant": {
+    "authorized_usd":0.05,"top_up":false,"paid_retries":0,
+    "reserved_image_or_frame_requests":6,"reserved_rounded_audio_seconds":5,
+    "nominal_ceiling_usd":0.049888889,
+    "successful_requests":5,"timed_out_requests":2,
+    "not_a_billing_statement":true
+  },
+  "transport": {
+    "scope":"Cumulative QA journal, including historical runs, not accuracy",
+    "end_counts":{"openrouter":79,"facts":87,"news":318,"public_fetch":467,"sightengine":15,"hive":14,"gemini":76,"assemblyai":14},
+    "prior_counts":{"openrouter":51,"facts":56,"news":190,"public_fetch":263,"sightengine":8,"hive":7,"gemini":31,"assemblyai":9},
+    "hive_cumulative_reservations":{"image_requests":12,"audio_seconds":10,"audio_jobs":2},
+    "per_request_counter_caveat":"Last v2b controls overlap in two UI tabs. Their global before/after deltas can overlap and must not be summed or interpreted as isolated per-request calls; use cumulative journal and each report coverage."
+  },
+  "http_boundaries":{"total":35,"http_200":34,"expected_http_422":1},
+  "measured_revision_precedes_final_security_hardening":true,
+  "final_local_revision": {
+    "verified_on":"2026-10-18",
+    "policy_version":"2026-10-17.4",
+    "source_fingerprint":"637248a67c3b0a5d035f58ba9cdeb710bf611450642cbd0d4631b997f611f0e5",
+    "backend_offline_tests":872,"backend_skips":0,"backend_runtime_seconds":27.952,
+    "frontend_test_files_passed":22,"frontend_skips":0,"build":"passed",
+    "offline_evidence_replay":{"prior_conclusive_records":5,"statuses_preserved":5,"prior_literal_evidence_preserved":9,"real_api_calls":0,"new_accuracy_measurement":false},
+    "new_external_accuracy_measurement_after_security_hardening":false
+  },
+  "no_general_accuracy_claim":true,
+  "human_voice_or_camera_benchmark_validated":false,
+  "production_deployed":false
+}

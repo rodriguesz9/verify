@@ -127,7 +127,8 @@ class GeminiDeadlineTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(observed["ocr"], 130)
         self.assertEqual(observed["vision"], 95)
         self.assertEqual(observed["audio"], 135)
-        for name in ("sightengine", "hf", "hive", "metadata", "c2pa", "context", "speech"):
+        self.assertEqual(observed["hive"], 50)
+        for name in ("sightengine", "hf", "metadata", "c2pa", "context", "speech"):
             self.assertEqual(observed[name], 18)
 
     async def test_fallback_timeout_does_not_hide_primary_provider_unavailability(self):

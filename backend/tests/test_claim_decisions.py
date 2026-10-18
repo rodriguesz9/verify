@@ -180,7 +180,9 @@ class EvidenceTransportTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_audio_consensus_uses_acoustics_not_transcript(self):
         media = await validate_media(valid_wav(), "fake.wav", "audio/wav")
+        # Consensus policy control; silence admission has separate real-byte tests.
         with patch("app.services.media_analysis.detect_synthetic_speech", new=AsyncMock(return_value={"available": True, "status": "success", "ai_speech_score": .98})), \
+             patch("app.services.media_analysis.prepare_speech_input", new=AsyncMock(return_value=(b"speech-control", False, "success"))), \
              patch("app.services.media_analysis.check_hive_media", new=AsyncMock(return_value={"available": True, "status": "success", "ai_generated_score": .97})):
             report = await analyze_media(media)
         self.assertEqual(report["verdict"], "AI_Generated")

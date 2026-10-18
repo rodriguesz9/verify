@@ -63,11 +63,15 @@ _ALIASES = {**{word: "event-death" for word in _DEATH_WORDS},
             "castle": "castelo", "scotland": "escócia", "brazil": "brasil", "england": "inglaterra",
             "portugal": "portugal", "apolo": "apollo"}
 _ALIASES.update({word: group[0] for group in WORD_GROUPS for word in group[1:]})
+# Explicit orthographic/inflection equivalents, not inferred legal effects.
+_ALIASES.update({"extincta": "extinta", "extincto": "extinto",
+                 "declara": "event-classification", "declarada": "event-classification",
+                 "declarado": "event-classification"})
 _NEGATION = re.compile(r"\b(não|nao|nunca|jamais|nem|not|never|didn't|wasn't|no\s+(?:humans?|man|men|astronauts?|persons?|people))\b", re.I)
 _UNASSERTED = re.compile(r"\b(boato|rumor|alegou|alega|supostamente|mensagem não confirmada|postagem|satírico|sátira|fictional|allegedly)\b", re.I)
 _UNCERTAIN = re.compile(r"\b(?:pode|poderia|teria|talvez|provável|possível|may|might|could|possibly|alleged)\b", re.I)
 _PLANNED = re.compile(r"\b(?:será|serão|vai|vão|irá|irão|planeja|previsto|prevista|agendado|agendada|will|scheduled|planned|plans)\b", re.I)
-_PAST_EVENT = re.compile(r"\b(?:recebeu|morreu|faleceu|nasceu|lançou|lançada|lançado|pisou|pisaram|pagou|enviou|inaugurou|cancelou|colidiu|declarou|classificou|caracterizou|decretou|died|received|launched|walked|paid|sent|born|impacted|crashed|smashed|declared|classified|characterized|characterised)\b", re.I)
+_PAST_EVENT = re.compile(r"\b(?:recebeu|morreu|faleceu|nasceu|lançou|lançada|lançado|pisou|pisaram|pagou|enviou|inaugurou|cancelou|colidiu|declarou|classificou|caracterizou|decretou|elevou|aumentou|reduziu|diminuiu|manteve|died|received|launched|walked|paid|sent|born|impacted|crashed|smashed|declared|classified|characterized|characterised)\b", re.I)
 _DATE_METADATA = re.compile(r"\b(?:publicad[oa]|publicação|atualizad[oa]|atualização|published|publication|updated|last update|posted)\b", re.I)
 _DATE_BYLINE = re.compile(r"^\s*(?:por|by)\s+.{1,100}\b\d{1,2}[/-]\d{1,2}[/-]\d{4}\b", re.I)
 _OTHER_DATED_EVENT = re.compile(r"\b(?:anunciou|anunciad[oa]|anúncio|informou|divulgou|divulgad[oa]|comunicado|announced|announcement|"
@@ -105,6 +109,18 @@ _WALK_PREDICATE = _DISTINCT_ACTIONS[0][1]
 _MACHINE_AGENT = re.compile(r"\b(?:rovers?|robôs?|robots?|spacecraft|sondas?)\b", re.I)
 _WALK_NEGATION = re.compile(r"\b(?:não|nao|nunca|jamais|nem|not|never|didn't|wasn't)\s+"
     r"(?:(?:has|have|did|foi|was|realmente|ever|ainda)\s+){0,2}(?:pisou|pisaram|walked)\b", re.I)
+_LEGAL_REFERENCE = re.compile(
+    r"\blei\s+(?:n[º°.]?\s*)?(\d{1,6}(?:\.\d{3})*),?\s+de\s+"
+    r"(\d{1,2}\s+de\s+(?:" + "|".join(_MONTHS) + r")\s+de\s+\d{4})\b", re.I)
+_LEGAL_ARTICLE = re.compile(r"^\s*(?:(?:art(?:igo)?\.?\s*)(\d{1,3})[º°o]?|(\d{1,3})[º°])\s+", re.I)
+_LEGAL_ATTRIBUTION = re.compile(
+    r"^\s*(?:o\s+)?artigo\s+(\d{1,3})[º°o]?\s+da\s+(lei\s+.+?),\s+"
+    r"((?:não\s+)?declarou)\s+(?:legalmente\s+)?(.+)$", re.I)
+_ORIGINAL_LEGISLATIVE_PATH = re.compile(
+    r"^/legin/fed/(?:lei|leimp)/\d{4}-\d{4}/lei-(?P<number>\d+)-(?P<day>\d{1,2})-(?P<month>[a-z]+)-(?P<year>\d{4})-\d+"
+    r"-publicacaooriginal-\d+-pl\.html$")
+_ORIGINAL_LEGISLATIVE_HEADER = re.compile(
+    r"^Legislação Informatizada\s*[-–—]\s*(.+?)\s*[-–—]\s*Publicação Original$", re.I)
 
 _EVIDENCE_SCHEMA = {"type": "object", "properties": {
     "source_id": {"type": "string"}, "excerpt_id": {"type": "string"},
@@ -121,6 +137,10 @@ SYSTEM_INSTRUCTION = (
     "Use somente source_id/excerpt_id existentes. Não reproduza ou reescreva quote: o servidor recupera o trecho literal pelo identificador. "
     "Um trecho pode ser uma sentença ou janela de até três sentenças consecutivas do corpo. "
     "temporal_anchor, quando fornecido, liga somente uma expressão relativa explícita do corpo à data de publicação verificada nos metadados; não é a data da consulta. "
+    "reporting_anchor liga o dia de divulgação explícito no corpo à publicação, sem datar o fenômeno divulgado. "
+    "annual_comparison_anchor identifica o ano anterior de uma variação anual explícita do PIB; não é previsão nem dado de outro período. "
+    "legal_article_anchor liga somente o número/data de uma lei à sua referência literal próxima e ao artigo numerado do próprio trecho; "
+    "confere o que o artigo declara, não seus efeitos sociais, interpretação jurídica ou validade atual. "
     "Considere também context, preserve qualificadores, negações, entidades, números e datas. "
     "supports exige confirmação da afirmação inteira e mesmo evento; refutes exige contradição explícita do mesmo evento. "
     "Ausência de informação, outro evento, fala atribuída não endossada, rumor ou citação não são confirmação nem refutação. "
@@ -180,6 +200,8 @@ def is_original_record_claim(claim, source):
         return False
     text = lexical_text(claim)
     family = identity["publisher_family"]
+    if family == "legislativo-br":
+        return _is_original_legal_record_claim(claim, source)
     return bool((family == "ibge" and re.search(r"\bIBGE\s+(?:informou|divulgou|publicou|reportou)\b", text, re.I)
              and re.search(r"\b(?:PIB|GDP)\b", text, re.I))
             or (family == "copernicus" and re.search(r"^Segundo o relatório do Copernicus\b", text, re.I))
@@ -542,7 +564,7 @@ def _window_subject_guard(claim, quote):
     return True
 
 
-def _body_temporal_anchor(quote, publication_date, *, reporting=False):
+def _body_temporal_anchor(quote, publication_date, *, reporting=False, decision=False):
     """Resolve only named body death/birth + explicit today/weekday and day.
 
     A publication date alone NEVER dates an event. Require a literal relative
@@ -567,6 +589,13 @@ def _body_temporal_anchor(quote, publication_date, *, reporting=False):
                    r"[^.!?;]{0,160}?(?P<expression>(?:hoje|(?:nesta\s+)?"
                    r"(?P<weekday>segunda-feira|terça-feira|quarta-feira|quinta-feira|sexta-feira|sábado|domingo))"
                    r"\s*\((?P<day>\d{1,2})(?:/(?P<month>\d{1,2}))?\))")
+    if decision:
+        # Require the literal relative date immediately after the completed
+        # action. Publication alone, a later announcement or a date elsewhere
+        # in the paragraph must not date a recurring rate decision.
+        pattern = (r"\b(?:elevou|aumentou|reduziu|diminuiu|manteve)\s+(?P<expression>"
+                   r"(?:hoje|(?:nesta\s+)?(?P<weekday>segunda-feira|terça-feira|quarta-feira|quinta-feira|sexta-feira|sábado|domingo))"
+                   r"\s*\((?P<day>\d{1,2})(?:/(?P<month>\d{1,2}))?\))")
     matches = list(re.finditer(pattern, quote, re.I))
     if len(matches) != 1:
         return None
@@ -575,7 +604,8 @@ def _body_temporal_anchor(quote, publication_date, *, reporting=False):
     if (int(match["day"]) != published.day or (match["month"] and int(match["month"]) != published.month)
             or (match["weekday"] and match["weekday"].casefold() != weekdays[published.weekday()])):
         return None
-    return {"kind": "explicit_reporting_body_date" if reporting else "explicit_relative_body_date",
+    return {"kind": ("explicit_decision_body_date" if decision else
+                     "explicit_reporting_body_date" if reporting else "explicit_relative_body_date"),
             "expression": match["expression"], "publication_date": publication_date}
 
 
@@ -599,9 +629,238 @@ def _annual_comparison_anchor(quote):
             "event_year": year, "reference_year": year - 1}
 
 
+def _legal_reference_value(reference):
+    if not isinstance(reference, str) or len(reference) > MAX_SENTENCE:
+        return None
+    match = _LEGAL_REFERENCE.fullmatch(reference.strip())
+    if not match:
+        return None
+    dates, numbers = _quantities(match[2])
+    if len(dates) != 1 or numbers or "invalid-date" in dates:
+        return None
+    return {"law_number": match[1].replace(".", ""), "law_date": next(iter(dates))}
+
+
+def _unsafe_legal_identity(prefix):
+    return bool(_UNASSERTED.search(prefix) or _FALSE_CONTEXT.search(prefix) or _NEGATION.search(prefix)
+        or _CORRECTION.search(prefix) or _INSTRUCTION.search(prefix)
+        or re.search(r"\b(?:simulad[oa]|fictíci[oa]|hipotétic[oa]|fabricad[oa]|inventad[oa])\b", prefix, re.I)
+        or re.search(r"\b(?:pode|poderia|talvez|seria)\b.{0,50}\b(?:texto|redação|reprodução)\b", prefix, re.I))
+
+
+def _original_legal_url(url):
+    identity = source_identity(url)
+    if not identity or identity["publisher_family"] != "legislativo-br":
+        return False
+    parsed = urlsplit(identity["url"])
+    return (parsed.hostname in {"camara.leg.br", "www.camara.leg.br", "www2.camara.leg.br"}
+        and not parsed.query and bool(_ORIGINAL_LEGISLATIVE_PATH.fullmatch(parsed.path)))
+
+
+def _original_legal_url_identity(url):
+    if not _original_legal_url(url):
+        return None
+    match = _ORIGINAL_LEGISLATIVE_PATH.fullmatch(urlsplit(url).path)
+    months = {name.replace("ç", "c"): value for name, value in _MONTHS.items()}
+    try:
+        date = datetime(int(match["year"]), months[match["month"]], int(match["day"])).date().isoformat()
+    except (KeyError, ValueError):
+        return None
+    return {"law_number": str(int(match["number"])), "law_date": date}
+
+
+def _scoped_nonoriginal_legal_declaration(statements, article_number):
+    """Explicitly non-original THIS reproduction/article, not any hypothetical.
+
+    These deictic subjects identify the text being reproduced, or the current
+    numbered article. A direct assertion of fabrication/simulation or failure
+    to reproduce the original defeats the original-record exception even when
+    it follows the provision. A discussion of a hypothetical scenario or the
+    usual 'este texto não substitui o original' disclaimer does not do so.
+    """
+    number = re.escape(article_number) + r"[º°o]?(?!\d)"
+    subject = (
+        r"(?:est[ea]|ess[ea]|presente)\s+(?:reprodução|transcrição|texto|documento|artigo)"
+        r"|(?:reprodução|transcrição|texto)\s+d(?:est[ea]|ess[ea])\s+artigo"
+        r"|(?:reprodução|transcrição|texto)\s+do\s+artigo\s+(?:reproduzido\s+)?acima"
+        r"|(?:reprodução|transcrição|texto|artigo)\s+(?:reproduzid[oa]\s+)?acima"
+        r"|(?:reprodução|transcrição|texto)\s+do\s+artigo\s+" + number +
+        r"|artigo\s+" + number)
+    predicate = (
+        r"(?:é|foi|era)\s+(?:(?:um|uma)\s+(?:texto|reprodução|transcrição)\s+)?"
+        r"(?:hipot[ée]tic[oa]|fict[íi]ci[oa]|simulad[oa]|fabricad[oa]|inventad[oa])"
+        r"|não\s+(?:corresponde\s+ao\s+|reproduz\s+(?:fielmente\s+)?o\s+|é\s+(?:o\s+)?)"
+        r"(?:texto\s+)?original")
+    pattern = re.compile(r"\b(?:" + subject + r")\s+(?:" + predicate + r")\b", re.I)
+    return any(pattern.search(statement) for statement in statements if isinstance(statement, str))
+
+
+def _original_legal_publication(quote, raw, source, article_anchor):
+    if (not source or not _original_legal_url(source.get("url")) or not article_anchor):
+        return None
+    sentences = raw.get("sentences", [])
+    roles = raw.get("sentence_roles", [])
+    if (not isinstance(sentences, list) or not isinstance(roles, list)
+            or len(sentences) != len(roles) or not all(isinstance(item, str) for item in sentences)):
+        return None
+    starts = [index for index in range(len(sentences)) if any(
+        " ".join(sentences[index:index + width]) == quote for width in (1, 2, 3))]
+    if len(starts) != 1:
+        return None
+    start = starts[0]
+    prefix = " ".join(sentences[:start])
+    if (len(prefix) > 3 * MAX_SENTENCE or _unsafe_legal_identity(prefix)
+            or _scoped_nonoriginal_legal_declaration(sentences, article_anchor["article_number"])):
+        return None
+    headers = [sentence for index, sentence in enumerate(sentences[:start])
+        if roles[index] == "context" and len(sentence) <= 500 and _ORIGINAL_LEGISLATIVE_HEADER.fullmatch(sentence)]
+    if len(headers) != 1:
+        return None
+    header_value = _legal_reference_value(_ORIGINAL_LEGISLATIVE_HEADER.fullmatch(headers[0])[1])
+    if (header_value != {key: article_anchor[key] for key in ("law_number", "law_date")}
+            or header_value != _original_legal_url_identity(source["url"])):
+        return None
+    return {"kind": "original_legislative_publication", "header": headers[0],
+            "scope": "literal_article_declaration_only"}
+
+
+def _is_original_legal_record_claim(claim, source):
+    if source.get("source_role") != "retrieved_reference" or not _original_legal_url(source.get("url")):
+        return False
+    candidates = source.get("passages", [source])
+    if not isinstance(candidates, list):
+        return False
+    for candidate in candidates:
+        if not isinstance(candidate, dict):
+            continue
+        proof = candidate.get("original_legal_publication")
+        if (not isinstance(proof, dict) or set(proof) != {"kind", "header", "scope"}
+                or proof.get("kind") != "original_legislative_publication"
+                or proof.get("scope") != "literal_article_declaration_only"
+                or not isinstance(proof.get("header"), str) or len(proof["header"]) > 500):
+            continue
+        header = _ORIGINAL_LEGISLATIVE_HEADER.fullmatch(proof["header"])
+        anchor = candidate.get("legal_article_anchor")
+        if not header or not isinstance(anchor, dict):
+            continue
+        if (_legal_reference_value(header[1]) != {key: anchor.get(key) for key in ("law_number", "law_date")}
+                or _legal_reference_value(header[1]) != _original_legal_url_identity(source["url"])):
+            continue
+        quote = candidate.get("quote", candidate.get("excerpt"))
+        if not isinstance(quote, str) or not 20 <= len(quote) <= MAX_SENTENCE:
+            continue
+        context = candidate.get("context", quote)
+        if not isinstance(context, str) or len(context) > 3 * MAX_SENTENCE:
+            continue
+        passage = {**candidate, "quote": quote, "context": context}
+        if not _legal_article_reading(claim, passage):
+            continue
+        if _scoped_nonoriginal_legal_declaration([quote, context], anchor["article_number"]):
+            continue
+        # Full body guards still apply. Remove only the redundant generic
+        # institutional wrapper to avoid recursion through this predicate.
+        passage.pop("original_record", None)
+        stamp = source.get("retrieved_at")
+        try:
+            retrieved = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+            if retrieved.tzinfo is None or retrieved > datetime.now(timezone.utc):
+                continue
+        except (ValueError, TypeError, AttributeError):
+            continue
+        relations = [candidate["relation"]] if candidate.get("relation") in {"supports", "refutes"} else ("supports", "refutes")
+        if any(_passage_guard(claim, passage, relation, stamp) is None for relation in relations):
+            return True
+    return False
+
+
+def _legal_article_anchor(quote, raw):
+    """Bind a numbered BODY article to a nearby literal diploma reference.
+
+    A title cannot establish the article's substance. A number/date in a
+    heading may identify the document, but only the actual numbered body is
+    evidence of what it declares. Never join different articles or borrow a
+    law identity from elsewhere in a long historical article.
+    """
+    article = _LEGAL_ARTICLE.match(quote)
+    if not article or re.search(r"\bArt(?:igo)?\.?\s*\d", quote[article.end():], re.I):
+        return None
+    sentences = raw.get("sentences", [])
+    if not isinstance(sentences, list):
+        return None
+    # All candidates are contiguous server-built windows. Find the original
+    # start, not a similarly worded law or a generated/model reference.
+    starts = [index for index in range(len(sentences)) if any(
+        " ".join(sentences[index:index + width]) == quote for width in (1, 2, 3))]
+    if len(starts) != 1:
+        return None
+    start = starts[0]
+    prefix = " ".join(sentences[max(0, start - 4):start])
+    # Identifying a diploma is itself an assertion. A disclaimer, fabricated
+    # reproduction or explicitly denied identity cannot lend its number/date
+    # to an otherwise plausible article several sentences later.
+    if _unsafe_legal_identity(prefix):
+        return None
+    references = list(_LEGAL_REFERENCE.finditer(prefix))
+    values = {match[1].replace(".", "") + "|" + match[2].casefold()
+              for match in references}
+    if len(values) != 1:
+        return None
+    reference = references[-1][0]
+    value = _legal_reference_value(reference)
+    if value is None:
+        return None
+    return {"kind": "explicit_numbered_legal_article", **value,
+            "article_number": str(int(article[1] or article[2])), "reference": reference}
+
+
+def _legal_article_reading(claim, passage):
+    attributed = _LEGAL_ATTRIBUTION.match(claim)
+    if attributed and _NEGATION.search(attributed[4]):
+        # This narrow grammar has one outer declaration/negation scope. Do
+        # not reduce double negation or a quoted prohibition to one boolean,
+        # even if a different body passage has no numbered-article anchor.
+        return False
+    anchor = passage.get("legal_article_anchor")
+    if not anchor:
+        return None
+    if not isinstance(anchor, dict):
+        return False
+    article = _LEGAL_ARTICLE.match(passage["quote"])
+    value = _legal_reference_value(anchor.get("reference", ""))
+    if (not article or not value or anchor != {"kind": "explicit_numbered_legal_article", **value,
+            "article_number": str(int(article[1] or article[2])), "reference": anchor.get("reference")}):
+        return False
+    if not attributed:
+        return None
+    claimed = _legal_reference_value(attributed[2])
+    if claimed != value or str(int(attributed[1])) != anchor["article_number"]:
+        return False
+    # Identity of the diploma is not identity of every legal subject. A
+    # declaration about slavery cannot refute a negative claim about property
+    # merely because both contain 'declarada extinta' and the same country.
+    if not _tokens(attributed[4]) <= _tokens(passage["quote"]):
+        return False
+    # 'Legalmente' describes the text's declaration, not abolition's social
+    # consequences or the law's current validity. Preserve the actual payload
+    # and its negation; no law-specific words, known verdict or truth lookup.
+    return attributed[3] + " " + attributed[4]
+
+
 def _passage_guard(claim, passage, relation, stamp):
     quote = passage["quote"]
     reading_claim = claim
+    legal_reading = _legal_article_reading(claim, passage)
+    if legal_reading is False:
+        return "Referência da lei, artigo, objeto ou escopo de negação diverge da leitura literal delimitada."
+    if legal_reading:
+        if passage["legal_article_anchor"]["law_date"] > datetime.fromisoformat(stamp.replace("Z", "+00:00")).date().isoformat():
+            return "Diploma apresentado como concluído tem data posterior à recuperação."
+        reading_claim = legal_reading
+    decision = passage.get("decision_anchor")
+    if decision:
+        if decision != _body_temporal_anchor(quote, decision.get("publication_date"), decision=True):
+            return "Ligação da decisão ao dia explícito do corpo inválida."
+        quote = quote.replace(decision["expression"], "em " + decision["publication_date"], 1)
     reporting = passage.get("reporting_anchor")
     if reporting:
         if reporting != _body_temporal_anchor(quote, reporting.get("publication_date"), reporting=True):
@@ -680,12 +939,21 @@ def _original_record_reading(claim, record, quote=None):
 
 def _candidate_passage(quote, context, raw, record_source=None, **fields):
     candidate = {"quote": quote, "context": context, **fields}
+    legal = _legal_article_anchor(quote, raw)
+    if legal:
+        candidate["legal_article_anchor"] = legal
+        publication = _original_legal_publication(quote, raw, record_source, legal)
+        if publication:
+            candidate["original_legal_publication"] = publication
     anchor = _body_temporal_anchor(quote, raw.get("publication_date"))
     if anchor:
         candidate["temporal_anchor"] = anchor
     reporting = _body_temporal_anchor(quote, raw.get("publication_date"), reporting=True)
     if reporting:
         candidate["reporting_anchor"] = reporting
+    decision = _body_temporal_anchor(quote, raw.get("publication_date"), decision=True)
+    if decision:
+        candidate["decision_anchor"] = decision
     annual = _annual_comparison_anchor(quote)
     if annual:
         candidate["annual_comparison_anchor"] = annual
@@ -842,6 +1110,8 @@ def _prepare_sources(documents, claims, source_url):
             if fingerprint in quote_fingerprints:
                 continue
             cost = len(candidate["context"]) + len(candidate["quote"])
+            if candidate.get("original_legal_publication"):
+                cost += len(json.dumps(candidate["original_legal_publication"], ensure_ascii=False))
             if budget + cost > MAX_PROMPT_BODY or source_budget + cost > MAX_SOURCE_PROMPT_BODY:
                 continue
             selected.append((index, candidate, fingerprint))
@@ -1048,18 +1318,27 @@ def _assess(claim, candidates):
         if passage.get("reporting_anchor"):
             record["reporting_anchor"] = dict(passage["reporting_anchor"])
             record["reason"] += " A data de divulgação explicitada no corpo foi conferida contra a publicação; não foi atribuída ao período econômico."
+        if passage.get("decision_anchor"):
+            record["decision_anchor"] = dict(passage["decision_anchor"])
+            record["reason"] += " O dia explícito imediatamente ligado à decisão no corpo foi conferido contra a publicação, sem datar outros anúncios ou decisões."
         if passage.get("annual_comparison_anchor"):
             record["annual_comparison_anchor"] = dict(passage["annual_comparison_anchor"])
             record["reason"] += (" A referência ao ano anterior usa a convenção de variação anual do PIB, a partir do único ano explícito do crescimento; não foi inferida da publicação."
                 if passage["annual_comparison_anchor"]["kind"] == "annual_gdp_growth_convention" else
                 " A expressão ano anterior foi ligada ao único ano anual explícito do trecho; a citação original foi preservada.")
+        if passage.get("legal_article_anchor"):
+            record["legal_article_anchor"] = dict(passage["legal_article_anchor"])
+            record["reason"] += " O artigo numerado foi vinculado à referência literal próxima do diploma; a comparação descreve o texto, não efeitos sociais ou aconselhamento jurídico."
+        if passage.get("original_legal_publication"):
+            record["original_legal_publication"] = dict(passage["original_legal_publication"])
+            record["reason"] += " O portal legislativo identifica esta página como publicação original do ato; isso não certifica efeitos sociais, vigência atual ou validade de uma decisão jurídica."
         evidence.append(record)
         if passage.get("original_record") and _original_record_reading(claim["claim"], passage["original_record"], passage["quote"]):
             if re.match(r"^(?:Na divulgação de|Segundo o relatório do Copernicus de|Em)\s+", claim["claim"], re.I):
                 record["record_publication_date"] = passage["original_record"].get("publication_date")
                 record["reason"] += " A data do registro ou pronunciamento original foi conferida separadamente nos campos de publicação; não foi inferida da data da consulta."
             else:
-                record["reason"] += " A atribuição ao instituto foi conferida no seu próprio registro original."
+                record["reason"] += " A atribuição à instituição foi conferida no seu próprio registro original."
     supporting = {item["publisher_family"] for item in evidence if item["relation"] == "supports"}
     refuting = {item["publisher_family"] for item in evidence if item["relation"] == "refutes"}
     original_support = any(item["relation"] == "supports" and is_original_record_claim(claim["claim"], item) for item in evidence)
@@ -1072,7 +1351,7 @@ def _assess(claim, candidates):
                     "insufficient": "Faltam duas famílias elegíveis com trechos completos e correspondentes para esta afirmação."}
     if state in {"corroborated", "refuted"} and (original_support or original_refutation) and len(supporting | refuting) < 2:
         explanations[state] = ("A afirmação sobre o que foi publicado foi " + ("confirmada" if state == "corroborated" else "contradita")
-            + " no registro original do instituto. É uma única fonte primária, não duas confirmações independentes nem certificação do fenômeno descrito.")
+            + " no registro original da instituição. É uma única fonte primária, não duas confirmações independentes nem certificação do fenômeno descrito.")
     return {**claim, "state": state, "status": state, "explanation": explanations[state],
             "evidence_basis": "original_institutional_record" if original_support or original_refutation else "cross_source_comparison",
             "evidence": evidence, "excluded_evidence": excluded,

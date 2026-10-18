@@ -1,0 +1,21 @@
+{
+  "purpose": "Predeclared local UI development controls; not a representative or independent blind benchmark",
+  "date": "2026-10-17",
+  "target_correct_fraction_including_abstentions": 0.8,
+  "metric": "Exact supported/refuted result versus expected; inconclusive stays in denominator and is not an accuracy success",
+  "no_retry_until_correct": true,
+  "cases": [
+    {"id":"queen_true","split":"previous-eight","text":"Elizabeth II morreu em 8 de setembro de 2022.","expected":"supported","reference":"https://www.royal.uk/the-king"},
+    {"id":"queen_false","split":"previous-eight","text":"Elizabeth II morreu em 9 de setembro de 2022.","expected":"refuted","reference":"https://www.royal.uk/the-king"},
+    {"id":"dart_true","split":"previous-eight","text":"Em 26 de setembro de 2022, a nave DART da NASA colidiu intencionalmente com o asteroide Dimorphos.","expected":"supported","reference":"https://www.nasa.gov/solar-system/darts-final-images-prior-to-impact/"},
+    {"id":"who_true","split":"previous-eight","text":"Em 11 de março de 2020, a Organização Mundial da Saúde caracterizou a COVID-19 como uma pandemia.","expected":"supported","reference":"https://www.who.int/news-room/speeches/item/who-director-general-s-opening-remarks-at-the-media-briefing-on-covid-19---11-march-2020"},
+    {"id":"ibge_true","split":"previous-eight","text":"Na divulgação de 7 de março de 2025, o IBGE informou que o PIB brasileiro cresceu 3,4% em 2024 em relação a 2023.","expected":"supported","reference":"https://agenciadenoticias.ibge.gov.br/agencia-sala-de-imprensa/2013-agencia-de-noticias/releases/42774-pib-cresce-3-4-em-2024-e-fecha-o-ano-em-r-11-7-trilhoes"},
+    {"id":"copom_false","split":"previous-eight","text":"Em 18 de setembro de 2024, o Copom reduziu a Selic de 10,75% para 10,50% ao ano.","expected":"refuted","reference":"https://www.bcb.gov.br/en/monetarypolicy/copomstatements/2565"},
+    {"id":"copernicus_false","split":"previous-eight","text":"Segundo o relatório do Copernicus de 10 de janeiro de 2025, a temperatura média global de 2024 ficou 1,60°C abaixo da média de 1850–1900.","expected":"refuted","reference":"https://climate.copernicus.eu/global-climate-highlights-2024"},
+    {"id":"lei_false","split":"previous-eight","text":"O artigo 1º da Lei nº 3.353, de 13 de maio de 1888, não declarou legalmente extinta a escravidão no Brasil.","expected":"refuted","reference":"https://www.planalto.gov.br/ccivil_03/leis/lim/lim3353.htm"},
+    {"id":"webb_true","split":"additional-four","text":"O Telescópio Espacial James Webb foi lançado em 25 de dezembro de 2021.","expected":"supported","reference":"https://science.nasa.gov/mission/webb/launch/"},
+    {"id":"constitution_true","split":"additional-four","text":"A Constituição brasileira de 1988 foi promulgada em 5 de outubro de 1988.","expected":"supported","reference":"https://www2.camara.leg.br/atividade-legislativa/legislacao/Constituicoes_Brasileiras/constituicao-cidada/constituicao-federal"},
+    {"id":"worldcup_false","split":"additional-four","text":"O Brasil venceu a Copa do Mundo de futebol masculino de 2014.","expected":"refuted","reference":"https://www.fifa.com/en/tournaments/mens/worldcup/articles/world-cup-champions-1982-2026-italy-argentina-germany-brazil-france-spain"},
+    {"id":"artemis_false","split":"additional-four","text":"A missão Artemis I foi lançada em 16 de novembro de 2021.","expected":"refuted","reference":"https://www.nasa.gov/reference/artemis-i-mission-timeline/"}
+  ]
+}

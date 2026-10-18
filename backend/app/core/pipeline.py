@@ -136,6 +136,74 @@ async def _run_gemini_check(text: str, context: dict) -> dict:
     return await generate_final_report(text, context)
 
 
+def _research_query_text(query, group):
+    suffix = PRIMARY_SITE_FILTER if group == "primary" else EDITORIAL_SITE_FILTER if group == "editorial" else ""
+    return (query + " " + suffix).strip()
+
+
+def _research_scope_plan(text, planned_queries, previous_queries):
+    """Reserve editorial discovery, not an extra vote or an extra request.
+
+    At most two operations. A model's second primary/open search can use the
+    editorial filter instead; its neutral words remain untouched. Deterministic
+    gaps reuse only the original input. Previously executed exact queries are
+    not repeated, even under a different provenance label.
+    """
+    def key(query):
+        return " ".join(query.casefold().split())
+
+    seen = {key(query) for query in previous_queries if isinstance(query, str)}
+    operations, duplicates = [], 0
+    for item in planned_queries[:2] if isinstance(planned_queries, list) else []:
+        if (not isinstance(item, dict) or not isinstance(item.get("query"), str)
+                or not 20 <= len(item["query"].strip()) <= 180
+                or item.get("source_group") not in {"primary", "editorial", "any"}
+                or re.search(r"https?://|www\.|\bsite\s*:|[\x00-\x1f\x7f]", item["query"], re.I)):
+            continue
+        operations.append({"query": item["query"].strip(), "source_group": item["source_group"],
+            "requested_source_group": item["source_group"], "query_origin": "ai_validated_query",
+            "scope_change_reason": None})
+    if len(operations) == 2 and not any(item["source_group"] == "editorial" for item in operations):
+        operations[1].update(source_group="editorial", scope_change_reason="independent_family_gap")
+
+    selected = []
+    for operation in operations:
+        final = _research_query_text(operation["query"], operation["source_group"])
+        if len(final) > 500:
+            continue
+        if key(final) in seen:
+            duplicates += 1
+            continue
+        selected.append(operation)
+        seen.add(key(final))
+
+    # No new query is needed when an already valid editorial plan exists.
+    # Otherwise use only one still-free slot; this never plans a third search.
+    if len(selected) < 2 and not any(item["source_group"] == "editorial" for item in selected):
+        neutral = neutral_source_query(text, preserve_period=True)
+        if (neutral and 20 <= len(neutral) <= 240
+                and not re.search(r"https?://|www\.|\bsite\s*:|[\x00-\x1f\x7f]", neutral, re.I)):
+            desired = _research_query_text(neutral, "editorial")
+            group, reason = "editorial", "original_neutral_editorial_gap"
+            if key(desired) in seen:
+                duplicates += 1
+                # The same editorial discovery already ran in the base wave.
+                # Preserve a novel unfiltered read instead of paying twice for
+                # an identical query or adding a cosmetic search modifier.
+                group, reason = "any", "duplicate_editorial_query_already_executed"
+            final = _research_query_text(neutral, group)
+            if len(final) <= 500 and key(final) not in seen:
+                selected.append({"query": neutral, "source_group": group,
+                    "requested_source_group": None, "query_origin": "deterministic_original_neutral",
+                    "scope_change_reason": reason})
+            elif key(final) in seen:
+                duplicates += 1
+    return selected[:2], {"skipped_duplicate_query_count": duplicates,
+        "scope_diversified_query_planned_count": sum(item["query_origin"] == "ai_validated_query"
+            and item["requested_source_group"] != item["source_group"] for item in selected),
+        "deterministic_gap_query_count": sum(item["query_origin"] == "deterministic_original_neutral" for item in selected)}
+
+
 async def _retrieve_source_attribution(text: str, queries: list[str], source_url: str | None,
                                       *, use_source_crosscheck: bool = True) -> dict:
     """One base search, optionally one qualified search, and bounded retrieval.
@@ -146,11 +214,13 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
     crosscheck_enabled = use_source_crosscheck and os.getenv("SOURCE_CROSSCHECK_ENABLED", "true").strip().lower() == "true"
     ai_research = crosscheck_enabled and research_enabled()
     deadline = 105 if ai_research else 45 if crosscheck_enabled else 20
+    started = asyncio.get_running_loop().time()
     attribution, plan, cited_leads = None, [], []
     research = {"status": "not_requested", "decision_role": "online_research_planning_only"}
     try:
         async with asyncio.timeout(deadline):
             query = next((query for query in queries if 20 <= len(query.strip()) <= 500), None)
+            previous_queries = [query] if query else []
             leads = (await search_web(query) if query else NewsSearch(
                 status="no_results", reason="Nenhuma frase completa cabe no limite da busca; nenhum texto foi cortado."))
             plan = [{"method": "whole_literal_claim", "status": getattr(leads, "status", "success" if leads else "no_results")}] if query else []
@@ -167,6 +237,7 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
                     if not 20 <= len(qualified) <= 500:
                         continue
                     extra = await search_web(qualified)
+                    previous_queries.append(qualified)
                     extra_status = getattr(extra, "status", "success" if extra else "no_results")
                     plan.append({"method": recovery_method, "status": extra_status,
                                  "decision_role": "retrieval_only_original_claim_unchanged"})
@@ -196,25 +267,45 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
                 audit["claims_needing_more_evidence"] = missing_claims
                 unread = [item for item in leads if isinstance(item, dict)
                           and (item.get("link") or item.get("url")) not in fetched_cache]
-                requested = await plan_source_research(text, unread, attribution.get("_documents", []), audit, source_url)
+                # Do not let a slow planner consume the entire retrieval
+                # deadline. Preserve time for real search and page reads.
+                planning_budget = min(45, max(0, deadline - (asyncio.get_running_loop().time() - started) - 20))
+                try:
+                    if planning_budget <= 0:
+                        raise TimeoutError
+                    requested = await asyncio.wait_for(plan_source_research(
+                        text, unread, attribution.get("_documents", []), audit, source_url), planning_budget)
+                except TimeoutError:
+                    requested = {"queries": [], "leads": [], "coverage": {
+                        "status": "timeout" if planning_budget > 0 else "not_requested",
+                        "decision_role": "online_research_planning_only",
+                        "planned_query_count": 0, "selected_lead_count": 0,
+                        "provider_coverage": {}, "provider_attempt_details_available": planning_budget <= 0,
+                        "reason": ("Planejamento interrompido pelo orçamento de recuperação; detalhes individuais das tentativas não foram recuperados."
+                                   if planning_budget > 0 else "Sem orçamento restante para iniciar o planejador; leituras concluídas foram preservadas.")}}
                 research = requested["coverage"]
+                research["planning_budget_seconds"] = round(planning_budget, 3)
                 additions = [{**item, "retrieval_method": "ai_selected_candidate_reference"} for item in requested["leads"]]
-                searches = requested["queries"][:2]
-                executed = []
+                searches, scope_audit = _research_scope_plan(text, requested["queries"], previous_queries)
+                research.update(scope_audit, executed_query_count=0, deterministic_gap_query_executed_count=0,
+                                scope_diversified_query_executed_count=0)
                 for search in searches:
-                    suffix = PRIMARY_SITE_FILTER if search["source_group"] == "primary" else EDITORIAL_SITE_FILTER if search["source_group"] == "editorial" else ""
-                    query_text = (search["query"] + " " + suffix).strip()
+                    query_text = _research_query_text(search["query"], search["source_group"])
                     if len(query_text) > 500:
                         continue
                     extra = await search_web(query_text)
                     extra_status = getattr(extra, "status", "success" if extra else "no_results")
-                    plan.append({"method": "ai_directed_online_research", "status": extra_status,
-                                 "decision_role": "retrieval_only_original_claim_unchanged"})
-                    executed.append(extra_status)
+                    deterministic_gap_query = search["query_origin"] == "deterministic_original_neutral"
+                    plan.append({"method": "deterministic_research_gap_recovery" if deterministic_gap_query else "ai_directed_online_research", "status": extra_status,
+                                 "decision_role": "retrieval_only_original_claim_unchanged", "query_origin": search["query_origin"],
+                                 "requested_source_group": search["requested_source_group"], "executed_source_group": search["source_group"],
+                                 "scope_change_reason": search["scope_change_reason"]})
+                    research["deterministic_gap_query_executed_count" if deterministic_gap_query else "executed_query_count"] += 1
+                    research["scope_diversified_query_executed_count"] += int(not deterministic_gap_query
+                        and search["requested_source_group"] != search["source_group"])
                     additions.extend(extra)
                     if extra_status not in {"success", "no_results"}:
                         break  # A real quota failure is not retried or bypassed.
-                research["executed_query_count"] = len(executed)
                 if additions:
                     leads = NewsSearch([*additions, *leads], status="success")
                     attribution = await collect_source_attribution(text, queries, source_url, search_results=leads,

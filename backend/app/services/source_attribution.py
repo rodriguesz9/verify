@@ -149,6 +149,31 @@ def _body_root(soup):
     return root, scope
 
 
+def _append_article_block(blocks, text, role):
+    """Separate an explicit numbered provision from its normative preamble.
+
+    Some legislative HTML puts a complete preamble and ``Art. N`` in one
+    paragraph. Only a narrow normative introduction ending ``Lei seguinte:``
+    can establish this structural boundary; arbitrary prose before ``Art.``
+    cannot. Preserve every prefix word as context, including denials, quoted
+    or hypothetical identities. Heading/caption/quoted article roles remain
+    context. The operative provision is a literal substring, not a rewrite.
+    """
+    boundary = re.search(
+        r"\b(?:decretou|decreta|decretam|sanccionou|sancionou|promulgou|aprovou|aprova)"
+        r"\b[^.!?]{0,240}\blei\s+seguinte\s*:\s+"
+        r"(?=art\.\s+\d{1,3}(?:[º°]|\.?\s))", text, re.I,
+    )
+    if boundary:
+        # Whitespace is already normalized; no punctuation or article number
+        # is invented. The prefix stays in the document and guard context.
+        prefix, provision = text[:boundary.end()].rstrip(), text[boundary.end():]
+        blocks.append((prefix, "context"))
+        blocks.append((provision, role))
+    else:
+        blocks.append((text, role))
+
+
 def _article_blocks(root, scope):
     blocks = []
 
@@ -164,7 +189,7 @@ def _article_blocks(root, scope):
             text = _visible_text(tag)
             if text:
                 role = "context" if contextual or not _inside(tag, root) or _AUTHOR_TEXT.fullmatch(text) else "body"
-                blocks.append((text, role))
+                _append_article_block(blocks, text, role)
             return
         # Text-only article containers also occur in static HTML. Preserve DOM
         # order without joining a headline/byline into the first body sentence.
@@ -173,7 +198,7 @@ def _article_blocks(root, scope):
         def flush():
             text = re.sub(r"\s+", " ", "".join(pending)).strip()
             if text:
-                blocks.append((text, "context" if contextual or not _inside(tag, root) else "body"))
+                _append_article_block(blocks, text, "context" if contextual or not _inside(tag, root) else "body")
             pending.clear()
 
         for child in tag.children:
@@ -245,7 +270,7 @@ def _block_sentences(blocks):
                 sentences.append(pending_body)
                 roles.append("body")
                 pending_body = ""
-            parts = input_claims(block)
+            parts = _source_statements(block)
             sentences.extend(parts)
             roles.extend(["context"] * len(parts))
             if not re.search(r"[.!?][\"”’)]?$", block) and _UNFINISHED_CONTEXT.search(block):
@@ -254,12 +279,12 @@ def _block_sentences(blocks):
         if unfinished_context:
             # An unfinished heading such as "Falso que:" cannot expose its
             # next positive paragraph as standalone endorsing body evidence.
-            parts = input_claims(block)
+            parts = _source_statements(block)
             sentences.extend(parts)
             roles.extend(["context"] * len(parts))
             unfinished_context = False
             continue
-        parts = input_claims((pending_body + " " + block).strip())
+        parts = _source_statements((pending_body + " " + block).strip())
         pending_body = ""
         if parts and not re.search(r"[.!?][\"”’)]?$", parts[-1]):
             pending_body = parts.pop()
@@ -271,6 +296,23 @@ def _block_sentences(blocks):
     return sentences, roles
 
 
+def _source_statements(text):
+    """Keep a numbered legal article attached to its literal provision.
+
+    ``Art.`` is punctuation within an article identifier, not the end of a
+    factual statement. Mask only that exact abbreviation before an explicit
+    Arabic article number; restore it before returning any source excerpt.
+    Arbitrary abbreviations, cross-paragraph text and source wording are not
+    rewritten. In particular, article 2 cannot acquire article 1's identifier.
+    """
+    marker = "\ue000"
+    if marker in text:
+        return input_claims(text)
+    masked = re.sub(r"\b(art)\.(?=\s+\d{1,3}(?:[º°]|\.?\s))",
+                    lambda match: match[1] + marker, text, flags=re.I)
+    return [part.replace(marker, ".") for part in input_claims(masked)]
+
+
 def _article_parts(resource):
     try:
         document = resource.data.decode(resource.encoding, errors="replace")
@@ -280,7 +322,7 @@ def _article_parts(resource):
     if resource.content_type == "text/plain":
         text = re.sub(r"\s+", " ", document).strip()
         truncated = len(text) > MAX_SOURCE_CHARACTERS
-        sentences = input_claims(text[:MAX_SOURCE_CHARACTERS])
+        sentences = _source_statements(text[:MAX_SOURCE_CHARACTERS])
         roles = ["body"] * len(sentences)
     else:
         soup = BeautifulSoup(document, "html.parser")
@@ -523,7 +565,12 @@ def _publication_date(resource):
                     return None
     dates = set()
     for value in values:
-        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?(?:Z|[+-]\d{2}:\d{2}))?", value):
+        # Some explicit publication properties use a civil timestamp without
+        # an offset, e.g. "2022-09-08 14:32:00". Only the stated calendar date
+        # is needed here; do not invent a timezone or move it to another day.
+        # This does not permit a URL, update time or arbitrary body date to
+        # supply publication metadata, nor publication alone to date an event.
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?(?:Z|[+-]\d{2}:\d{2})?)?", value):
             return None
         try:
             date = datetime.fromisoformat(value.replace("Z", "+00:00")).date()

@@ -1,5 +1,7 @@
 # Documentação do Verify
 
+Revisão local de 17–18/10: [recuperação, correspondência, prazos e revalidação de mídias](QUALIDADE-CHECAGEM-2026-10-17.md). Última rodada real: 5/12 textos corretos, 7/12 inconclusivos; meta de 80% não atingida. Ambas as rodadas completas e a interrupção do instrumento QA estão preservadas. Inclui status real de imagem/voz/vídeo/OCR/link, teto Hive consumido e limitações concretas de código/recuperação. [Dados sanitizados](validation-quality-2026-10-17.json). Revisão local, não produção.
+
 Pesquisa online orientada por IA em 17/10: [implementação, segurança e resultados da rodada congelada](PESQUISA-ONLINE-2026-10-17.md). Usa a busca existente, sem novos plugins pagos. Inconclusivos e erros permanecem nos denominadores; teste funcional não comprova precisão geral.
 
 Revisão local de 17/10: [vereditos, inconclusivos e responsividade](AUDITORIA-VEREDITOS-2026-10-17.md). Correções de recuperação, comparação e interface; resultados medidos com inconclusivos no denominador. Não equivale a homologação de todas as modalidades ou implantação em produção.
@@ -14,6 +16,7 @@ Atualizada em 08/10/2026. Código publicado e ensaiado no SHA `cba8d3f77cb60ae19
 
 ## Comece aqui
 
+- [Qualidade e revalidação de 17–18/10](QUALIDADE-CHECAGEM-2026-10-17.md): resultados atuais, mudanças verificadas, limitações e prioridades, sem precisão inventada.
 - [Validação de APIs de 14/10](VALIDACAO-APIS-2026-10-14.md): revisão atual, fornecedores realmente chamados, controles públicos/sintéticos, resultados e pendências, sem promessa de precisão universal.
 - [Cruzamento de fontes de 13/10](CRUZAMENTO-FONTES-2026-10-13.md): contrato e evidências históricas da primeira revisão; configuração atual complementada pelo registro de 14/10.
 - [Railway expirado: como recuperar](REATIVAR-RAILWAY-2026-10-13.md): guia de 13/10 revisado em 14/10; preservar banco/volume, revisar variáveis sem copiar segredos e validar após retomada.

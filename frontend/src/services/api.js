@@ -7,9 +7,10 @@ const baseURL = apiOrigin ? `${apiOrigin.replace(/\/$/, '')}/api` : "/api";
 export const api = axios.create({ baseURL, timeout: 60000, withCredentials: true });
 // These budgets cover the server's bounded provider deadlines, including
 // extraction + retrieval + grounded document comparison. This is a bounded
-// wait, not a retry; authentication, media uploads and PDF keep shorter limits.
+// wait, not a retry. Media also covers validation, bounded Hive/ASR and the
+// legacy content check; authentication and PDF keep their shorter limits.
 const ANALYSIS_TIMEOUT = 240000;
-const MEDIA_TIMEOUT = 180000;
+const MEDIA_TIMEOUT = 240000;
 
 // Compare epochs even before getMe initializes the account. The report storage
 // guard intentionally requires initialization, whereas this transport guard

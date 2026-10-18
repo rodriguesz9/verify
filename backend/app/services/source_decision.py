@@ -9,7 +9,7 @@ from copy import deepcopy
 from app.services.claim_policy import input_claims, normalize_claim
 from app.services.source_corroboration import is_original_record_claim
 
-POLICY_VERSION = "2026-10-17.2"
+POLICY_VERSION = "2026-10-17.4"
 SOURCE_SCORE_SEMANTICS = "not_calibrated_source_corroboration"
 _STATES = {"corroborated": "supported", "refuted": "refuted", "conflicting": "conflicting"}
 
@@ -82,7 +82,7 @@ def apply_source_decision(text, report, comparison):
         and len({item.get("publisher_family") for item in decision.get("evidence", [])}) < 2
         and any(is_original_record_claim(decision["claim"], item) for item in decision.get("evidence", [])) for decision in merged)
     if single_record and truth in {"supported", "refuted"}:
-        descriptions[truth] = ("A afirmação sobre o que o instituto publicou foi " + ("confirmada" if truth == "supported" else "contradita")
+        descriptions[truth] = ("A afirmação sobre o que a instituição publicou foi " + ("confirmada" if truth == "supported" else "contradita")
             + " no registro original consultado. Trata-se de uma fonte primária, não duas confirmações independentes; confira a citação e a data. Isso não certifica o fenômeno descrito.")
     result.update(claim_assessments=merged, veracity_status=truth,
         verdict="Authentic" if truth == "supported" else "False" if truth == "refuted" else "Suspicious",

@@ -214,7 +214,7 @@ export function sourceCorroborationPresentation(result = {}) {
   };
   const originalRecordOnly = content.original_record_only === true;
   if (originalRecordOnly && ["corroborated", "refuted"].includes(record.state)) {
-    explanations[record.state] = "A afirmação sobre o que o instituto publicou foi comparada com o registro original. É uma fonte primária, não duas confirmações independentes nem uma certificação do fenômeno descrito.";
+    explanations[record.state] = "A afirmação sobre o que a instituição publicou foi comparada com o registro original. É uma fonte primária, não duas confirmações independentes nem uma certificação do fenômeno descrito.";
   }
   const limitations = strings(record.limitations).filter((item) => !isTechnicalReportText(item)).slice(0, 10);
   if (coverage.complete_claim_coverage === false) limitations.push("O cruzamento não cobre todas as afirmações enviadas. Não é uma aprovação do conteúdo inteiro.");
