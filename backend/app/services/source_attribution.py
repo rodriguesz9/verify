@@ -76,6 +76,12 @@ _EDITORIAL_GENERIC_TOPICS = set(
 )
 _AUTHOR_TEXT = re.compile(r"^(?:por|by)\s+[^.!?]{1,200}$", re.I)
 _CALENDAR_NAMES = r"janeiro|fevereiro|março|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec"
+_DISCOVERY_MONTHS = {name: index for index, names in enumerate((
+    "janeiro january jan", "fevereiro february fev feb", "março marco march mar",
+    "abril april abr apr", "maio may", "junho june jun", "julho july jul",
+    "agosto august ago aug", "setembro september set sep sept",
+    "outubro october out oct", "novembro november nov", "dezembro december dez dec",
+), 1) for name in names.split()}
 _STANDALONE_DATE = re.compile(
     r"^(?:\d{1,2}\s+(?:de\s+)?(?:" + _CALENDAR_NAMES + r")\.?\s+(?:de\s+)?\d{4}"
     r"|(?:" + _CALENDAR_NAMES + r")\.?\s+\d{1,2},?\s+\d{4}|\d{1,2}/\d{1,2}/\d{4}|\d{4}-\d{2}-\d{2})"
@@ -555,6 +561,22 @@ def primary_reference_leads(text, documents, source_url=None, *, excluded_urls=(
         re.findall(r"[^\W\d_]+", reference["title"].casefold(), re.UNICODE))))[:2]
 
 
+def _lead_month_periods(title, path):
+    """Explicit title/path dates are discovery hints, never event evidence."""
+    year = r"(?:18|19|20)\d{2}"
+    month = "(?:" + "|".join(sorted(_DISCOVERY_MONTHS, key=len, reverse=True)) + ")"
+    # Normalize separators, not words: September 18, 2024 / setembro de 2024
+    # and their URL-slug variants are the same limited discovery hint.
+    periods = set()
+    for value in (title, path):
+        named = re.sub(r"[-_/.,]+", " ", value).casefold()
+        periods.update((match[2], _DISCOVERY_MONTHS[match[1]]) for match in re.finditer(
+            r"\b(" + month + r")\s+(?:de\s+)?(?:(?:[0-2]?\d|3[01])\s+)?(" + year + r")\b", named))
+    periods.update((match[1], int(match[2])) for match in re.finditer(
+        r"(?<!\d)(" + year + r")[/-](0[1-9]|1[0-2])(?:[/-]|\b)", path))
+    return periods
+
+
 def _retrieval_priority(text, title, url):
     """Rank unread leads by reference period/topic, not by alleged truth.
 
@@ -563,13 +585,27 @@ def _retrieval_priority(text, title, url):
     2025 merely because both came from the same institution. Titles and URL
     words remain untrusted hints; every factual/date/value guard runs on body.
     """
-    from app.services.source_queries import neutral_source_query
+    from app.services.source_queries import _discovery_subject, neutral_source_query
     from app.services.source_corroboration import source_identity
     subject = neutral_source_query(text, preserve_period=True) or text
-    lead = title + " " + unquote(urlsplit(url).path)
+    path = unquote(urlsplit(url).path)
+    lead = title + " " + path
     year_pattern = r"(?<!\d)(?:18|19|20)\d{2}(?!\d)"
     subject_years = set(re.findall(year_pattern, subject))
     lead_years = set(re.findall(year_pattern, lead))
+    subject_months = {_DISCOVERY_MONTHS[word.casefold()] for word in re.findall(
+        r"[^\W\d_]+", subject, re.UNICODE) if word.casefold() in _DISCOVERY_MONTHS}
+    month_priority = 0
+    # Do not guess which date belongs to an event with several years/months.
+    # For one explicit period: matching leads first, undated leads still
+    # eligible, explicitly different periods last. No URL/query date becomes
+    # a publication anchor or a fact, and all candidates retain body guards.
+    explicit_subject_periods = _lead_month_periods(_discovery_subject(text), "")
+    if len(subject_years) == len(subject_months) == len(explicit_subject_periods) == 1:
+        requested = (next(iter(subject_years)), next(iter(subject_months)))
+        periods = _lead_month_periods(title, path)
+        if requested in explicit_subject_periods:
+            month_priority = 0 if requested in periods else (2 if periods else 1)
     year_matches = len(subject_years & lead_years)
     unrelated_period = bool(subject_years and lead_years and not year_matches)
     subperiod = r"\b(?:trimestre|trimestral|quarter|quarterly|semestre|semestral|q[1-4])\b"
@@ -577,7 +613,7 @@ def _retrieval_priority(text, title, url):
     words = lambda value: {word.casefold() for word in re.findall(r"[^\W\d_]{3,}", value, re.UNICODE)}
     shared_topics = len(words(subject) & words(lead))
     primary = (source_identity(url) or {}).get("source_type") == "primary"
-    return (-year_matches, unrelated_period, narrower_period, not primary, -shared_topics)
+    return (month_priority, -year_matches, unrelated_period, narrower_period, not primary, -shared_topics)
 
 
 def _publication_date(resource):

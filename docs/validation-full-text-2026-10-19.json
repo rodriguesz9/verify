@@ -1,0 +1,433 @@
+{
+  "scope": "Same twelve public development controls; not independent/blind/representative precision",
+  "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+  "source_fingerprint": "513e4adb3d9f61d897db245931ade208127406307c923b34e174a47f8c75ea33",
+  "complete_cohort": true,
+  "total": 12,
+  "counts": {
+    "inconclusive": 8,
+    "correct": 4
+  },
+  "cases": [
+    {
+      "id": "queen_true",
+      "split": "previous-eight",
+      "expected": "supported",
+      "actual": "unverified",
+      "capture_status": "completed",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 24.886,
+      "submission_method": "ui",
+      "ui_report_observed": true,
+      "diagnosis": {
+        "id": "queen_true",
+        "actual": "unverified",
+        "attempted_pages": 6,
+        "read_pages": 4,
+        "failed_pages": 2,
+        "eligible_families": 2,
+        "accepted_evidence": 1,
+        "excluded_evidence": 0,
+        "cause": "Gemini unavailable, OpenRouter succeeded but selected only UOL; offline captured-HTML check confirms G1 temporal anchor and supporting guard also admissible. Eligibility is not a vote; report correctly remained partial."
+      }
+    },
+    {
+      "id": "queen_false",
+      "split": "previous-eight",
+      "expected": "refuted",
+      "actual": "refuted",
+      "capture_status": "completed",
+      "outcome": "correct",
+      "elapsed_seconds": 49.166,
+      "submission_method": "ui",
+      "ui_report_observed": false,
+      "diagnosis": {
+        "id": "queen_false",
+        "actual": "refuted",
+        "attempted_pages": 8,
+        "read_pages": 7,
+        "failed_pages": 1,
+        "eligible_families": 2,
+        "accepted_evidence": 2,
+        "excluded_evidence": 0,
+        "cause": "Gemini comparison accepted two literal refutations with explicit relative-body publication anchors and distinct dependency families."
+      }
+    },
+    {
+      "id": "dart_true",
+      "split": "previous-eight",
+      "expected": "supported",
+      "actual": "unverified",
+      "capture_status": "completed",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 29.03,
+      "submission_method": "ui",
+      "ui_report_observed": true,
+      "diagnosis": {
+        "id": "dart_true",
+        "actual": "unverified",
+        "attempted_pages": 10,
+        "read_pages": 6,
+        "failed_pages": 4,
+        "eligible_families": 1,
+        "accepted_evidence": 0,
+        "excluded_evidence": 0,
+        "cause": "Five searches and two completed research-reference reads still yielded only one family covering full claim. Comparison not requested. Gemini research unavailable; free OpenRouter planned two searches successfully."
+      }
+    },
+    {
+      "id": "who_true",
+      "split": "previous-eight",
+      "expected": "supported",
+      "actual": "unverified",
+      "capture_status": "completed",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 31.539,
+      "submission_method": "ui",
+      "ui_report_observed": true,
+      "diagnosis": {
+        "id": "who_true",
+        "actual": "unverified",
+        "attempted_pages": 3,
+        "read_pages": 2,
+        "failed_pages": 1,
+        "eligible_families": 2,
+        "accepted_evidence": 1,
+        "excluded_evidence": 0,
+        "cause": "Gemini comparison succeeded but selected CNN only, omitting WHO original formal characterization. Offline captured-HTML check confirms WHO original record and supporting guard admissible; no evidence rejected by guards."
+      }
+    },
+    {
+      "id": "ibge_true",
+      "split": "previous-eight",
+      "expected": "supported",
+      "actual": "supported",
+      "capture_status": "completed",
+      "outcome": "correct",
+      "elapsed_seconds": 85.118,
+      "submission_method": "ui",
+      "ui_report_observed": true,
+      "diagnosis": {
+        "id": "ibge_true",
+        "actual": "supported",
+        "attempted_pages": 8,
+        "read_pages": 5,
+        "failed_pages": 3,
+        "eligible_families": 2,
+        "accepted_evidence": 3,
+        "excluded_evidence": 0,
+        "cause": "AI-directed recovery reached relevant EBC and CNN bodies; Gemini accepted two families with separately validated release date and annual GDP period. Improvement over prior round is documented body recovery, not invented evidence."
+      }
+    },
+    {
+      "id": "copom_false",
+      "split": "previous-eight",
+      "expected": "refuted",
+      "actual": "unverified",
+      "capture_status": "completed",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 36.215,
+      "submission_method": "ui",
+      "ui_report_observed": true,
+      "diagnosis": {
+        "id": "copom_false",
+        "actual": "unverified",
+        "attempted_pages": 10,
+        "read_pages": 9,
+        "failed_pages": 1,
+        "eligible_families": 0,
+        "accepted_evidence": 0,
+        "excluded_evidence": 0,
+        "cause": "BCB HTML shells lacked readable bodies; other fetched pages lacked complete event/date/value binding. Two free OpenRouter-planned searches did not recover admissible bodies; comparison not requested."
+      }
+    },
+    {
+      "id": "copernicus_false",
+      "split": "previous-eight",
+      "expected": "refuted",
+      "actual": "unverified",
+      "capture_status": "completed",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 22.447,
+      "submission_method": "ui",
+      "ui_report_observed": true,
+      "diagnosis": {
+        "id": "copernicus_false",
+        "actual": "unverified",
+        "attempted_pages": 6,
+        "read_pages": 3,
+        "failed_pages": 3,
+        "eligible_families": 1,
+        "accepted_evidence": 0,
+        "excluded_evidence": 1,
+        "cause": "Copernicus original record was eligible. Gemini unavailable; free OpenRouter returned supports for an above-temperature quote against a below-temperature claim. Direction guard correctly rejected that relation, preventing a wrong conclusive verdict."
+      }
+    },
+    {
+      "id": "lei_false",
+      "split": "previous-eight",
+      "expected": "refuted",
+      "actual": "refuted",
+      "capture_status": "completed",
+      "outcome": "correct",
+      "elapsed_seconds": 24.049,
+      "submission_method": "ui",
+      "ui_report_observed": false,
+      "diagnosis": {
+        "id": "lei_false",
+        "actual": "refuted",
+        "attempted_pages": 6,
+        "read_pages": 2,
+        "failed_pages": 4,
+        "eligible_families": 1,
+        "accepted_evidence": 1,
+        "excluded_evidence": 0,
+        "cause": "Gemini unavailable; free OpenRouter correctly selected literal numbered article in original legislative publication. One-source original-record rule applies only to this bounded textual declaration."
+      }
+    },
+    {
+      "id": "webb_true",
+      "split": "additional-four",
+      "expected": "supported",
+      "actual": "supported",
+      "capture_status": "completed",
+      "outcome": "correct",
+      "elapsed_seconds": 72.918,
+      "submission_method": "ui",
+      "ui_report_observed": false,
+      "diagnosis": {
+        "id": "webb_true",
+        "actual": "supported",
+        "attempted_pages": 10,
+        "read_pages": 7,
+        "failed_pages": 3,
+        "eligible_families": 2,
+        "accepted_evidence": 2,
+        "excluded_evidence": 0,
+        "cause": "Two final research-reference reads reached NASA full-name launch release; NASA plus UOL quotes accepted by free OpenRouter fallback. Gemini research timed out and comparison unavailable. Late-reference recovery materially supplied missing body coverage."
+      }
+    },
+    {
+      "id": "constitution_true",
+      "split": "additional-four",
+      "expected": "supported",
+      "actual": "unverified",
+      "capture_status": "completed",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 50.578,
+      "submission_method": "local_http_not_ui",
+      "ui_report_observed": false,
+      "diagnosis": {
+        "id": "constitution_true",
+        "actual": "unverified",
+        "attempted_pages": 3,
+        "read_pages": 3,
+        "failed_pages": 0,
+        "eligible_families": 2,
+        "accepted_evidence": 1,
+        "excluded_evidence": 0,
+        "cause": "Gemini comparison timed out; free OpenRouter succeeded but selected Senate only. Offline captured-body check confirms UOL supporting window admissible. No guard exclusion; comparator omitted second source."
+      }
+    },
+    {
+      "id": "worldcup_false",
+      "split": "additional-four",
+      "expected": "refuted",
+      "actual": "unverified",
+      "capture_status": "completed",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 75.96,
+      "submission_method": "local_http_not_ui",
+      "ui_report_observed": false,
+      "diagnosis": {
+        "id": "worldcup_false",
+        "actual": "unverified",
+        "attempted_pages": 10,
+        "read_pages": 9,
+        "failed_pages": 1,
+        "eligible_families": 1,
+        "accepted_evidence": 0,
+        "excluded_evidence": 0,
+        "cause": "Other fetched bodies lacked complete competition/edition/category/winner relation within bounded passages. Gemini research timeout; free OpenRouter two queries did not yield second admissible family. Comparison not requested."
+      }
+    },
+    {
+      "id": "artemis_false",
+      "split": "additional-four",
+      "expected": "refuted",
+      "actual": "unverified",
+      "capture_status": "completed",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 56.484,
+      "submission_method": "local_http_not_ui",
+      "ui_report_observed": false,
+      "diagnosis": {
+        "id": "artemis_false",
+        "actual": "unverified",
+        "attempted_pages": 10,
+        "read_pages": 8,
+        "failed_pages": 2,
+        "eligible_families": 1,
+        "accepted_evidence": 0,
+        "excluded_evidence": 0,
+        "cause": "Two late references read; only NASA Artemis I eligible, other mission IDs or incomplete event/date bodies excluded. Gemini research unavailable; free OpenRouter transport HTTP200 but research response invalid; deterministic gap search still lacked second family. Comparison not requested."
+      }
+    }
+  ],
+  "correct_fraction": 0.3333333333333333,
+  "inconclusive_fraction": 0.6666666666666666,
+  "error_fraction": 0,
+  "wrong_conclusive_fraction": 0,
+  "conclusive_precision": 1,
+  "conclusive_precision_is_NOT_total_accuracy": true,
+  "true_false_groups": {
+    "supported": {
+      "total": 6,
+      "inconclusive": 4,
+      "correct": 2,
+      "correct_fraction": 0.3333333333333333
+    },
+    "refuted": {
+      "total": 6,
+      "correct": 2,
+      "inconclusive": 4,
+      "correct_fraction": 0.3333333333333333
+    }
+  },
+  "median_elapsed_seconds": 42.6905,
+  "date": "2026-10-19",
+  "submission_methods": {
+    "ui": 9,
+    "local_http_not_ui": 3
+  },
+  "observed_ui_reports": [
+    "queen_true",
+    "dart_true",
+    "who_true",
+    "ibge_true",
+    "copom_false",
+    "copernicus_false"
+  ],
+  "unobserved_ui_reports": [
+    "queen_false",
+    "lei_false",
+    "webb_true"
+  ],
+  "ui_capture_limitation": "Browser automation timed out twice after 300 s; API-side captures do not prove UI rendering.",
+  "http_observer_limitation": "Observer reset on harness restart; first two HTTP entries were overwritten, unlike the persistent provider budget and per-control reports.",
+  "configuration": {
+    "gemini_model": "gemini-3.8-flash",
+    "openrouter_model": "openrouter/free",
+    "source_crosscheck_primary_provider": "gemini",
+    "request_timeout_seconds": 60,
+    "source_policy": "2026-10-18.1",
+    "paid_media_enabled": false
+  },
+  "offline_tests": {
+    "backend": 997,
+    "backend_skipped": 0,
+    "backend_seconds": 16.07,
+    "frontend_test_files": 22,
+    "frontend_build": "passed",
+    "is_factual_accuracy": false
+  },
+  "previous_complete_round": {
+    "correct": 5,
+    "total": 12,
+    "correct_fraction": 0.4166666666666667
+  },
+  "target_80_percent_reached": false,
+  "provider_transport": {
+    "counts": {
+      "gemini": 16,
+      "openrouter": 24,
+      "facts": 12,
+      "news": 55,
+      "public_fetch": 87
+    },
+    "statuses": {
+      "gemini": {
+        "200": 4,
+        "503": 9,
+        "incomplete": 3
+      },
+      "openrouter": {
+        "200": 24
+      },
+      "facts": {
+        "200": 12
+      },
+      "news": {
+        "200": 55
+      },
+      "public_fetch": {
+        "200": 68,
+        "301": 4,
+        "307": 7,
+        "403": 6,
+        "incomplete": 2
+      }
+    },
+    "counts_survived_restart": true,
+    "no_429_recorded": true,
+    "http_200_not_equivalent_to_valid_model_output_or_truth": true,
+    "incomplete_is_transport_record_not_inferred_http_status": true,
+    "hive_image_requests": 0,
+    "hive_audio_seconds": 0,
+    "hive_audio_jobs": 0,
+    "paid_media_disabled": true
+  },
+  "diagnostic_groups": {
+    "comparator_omitted_other_admissible_source": [
+      "queen_true",
+      "who_true",
+      "constitution_true"
+    ],
+    "wrong_relation_selected_and_safely_rejected": [
+      "copernicus_false"
+    ],
+    "insufficient_retrieved_body_coverage_no_comparison_requested": [
+      "dart_true",
+      "copom_false",
+      "worldcup_false",
+      "artemis_false"
+    ],
+    "correct": [
+      "queen_false",
+      "ibge_true",
+      "lei_false",
+      "webb_true"
+    ]
+  },
+  "boundary_evidence": {
+    "persisted_final_http_events": 10,
+    "persisted_final_http_statuses": {
+      "200": 10
+    },
+    "all_persisted_events_json_and_no_store": true,
+    "first_two_http_events_lost_on_server_restart": true,
+    "configuration_started_at_overwritten_on_restart": true,
+    "twelve_pipeline_captures_do_not_prove_twelve_final_http_responses": true,
+    "ui_submission_does_not_prove_rendered_report": true,
+    "webb_submission_completed_but_render_not_observed_due_browser_timeout": true,
+    "last_three_controls_used_local_http_not_browser_ui": [
+      "constitution_true",
+      "worldcup_false",
+      "artemis_false"
+    ],
+    "media_accuracy_not_remeasured": true
+  },
+  "post_evaluation_qa_fix": {
+    "scope": "Test observer only, no production application change or new provider calls",
+    "http_journal_persists_on_restart": true,
+    "strict_finite_schema": true,
+    "max_events": 256,
+    "pending_slots_reserved_before_analysis": true,
+    "old_lost_events_recovered": false,
+    "new_tests": 9,
+    "final_backend_tests": 1006,
+    "final_backend_skipped": 0,
+    "final_backend_seconds": 15.433,
+    "source_fingerprint_unchanged": true
+  }
+}

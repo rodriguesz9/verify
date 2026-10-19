@@ -52,6 +52,93 @@ DIAGNOSTIC_TEXT_CONTROLS = {
 }
 DIAGNOSTIC_FIXED_SOURCES = {"royal": "https://www.royal.uk/the-king",
                             "uol": "https://brasilescola.uol.com.br/historia/elizabeth-ii.htm"}
+BOUNDARY_PATHS = {"/api/check-text", "/api/check-url", "/api/check-extracted-text",
+                  "/api/upload", "/api/verificar/relatorio-pdf"}
+
+
+class HTTPBoundaryJournal:
+    """Bounded, resumable QA evidence; never retain arbitrary HTTP values."""
+    SCOPE = "local UI HTTP boundaries, NOT provider accuracy"
+    MAX_EVENTS = 256
+    MAX_BYTES = 128 * 1024
+    METHODS = {"GET", "POST", "HEAD", "OPTIONS", "PUT", "PATCH", "DELETE", "TRACE", "CONNECT", "OTHER"}
+    CONTENT_TYPES = {"", "application/json", "application/pdf", "application/octet-stream",
+                     "text/plain", "text/html", "text/plain; charset=utf-8", "text/html; charset=utf-8", "other"}
+    CACHE_CONTROLS = {"", "no-store", "no-cache", "no-cache, no-store, must-revalidate", "other"}
+
+    def __init__(self, path):
+        self.path = Path(path)
+        self.events = []
+        self._pending = set()
+        if not self.path.exists() and not self.path.is_symlink():
+            return
+        try:
+            if self.path.is_symlink() or not self.path.is_file() or self.path.stat().st_size > self.MAX_BYTES:
+                raise ValueError
+            record = json.loads(self.path.read_text(encoding="utf-8"))
+            if (not isinstance(record, dict) or set(record) != {"scope", "events"}
+                    or record["scope"] != self.SCOPE or not isinstance(record["events"], list)
+                    or len(record["events"]) > self.MAX_EVENTS
+                    or any(not self._valid_event(event) for event in record["events"])):
+                raise ValueError
+        except (ValueError, OSError, UnicodeError):
+            raise ValueError("Invalid local HTTP boundary journal.") from None
+        self.events = record["events"]
+
+    @classmethod
+    def _valid_event(cls, event):
+        return (isinstance(event, dict)
+                and set(event) == {"path", "method", "status", "content_type", "cache_control"}
+                and isinstance(event["path"], str) and event["path"] in BOUNDARY_PATHS
+                and isinstance(event["method"], str) and event["method"] in cls.METHODS
+                and isinstance(event["status"], int) and not isinstance(event["status"], bool)
+                and 100 <= event["status"] <= 599
+                and isinstance(event["content_type"], str) and event["content_type"] in cls.CONTENT_TYPES
+                and isinstance(event["cache_control"], str) and event["cache_control"] in cls.CACHE_CONTROLS)
+
+    def has_capacity(self):
+        return len(self.events) + len(self._pending) < self.MAX_EVENTS
+
+    def reserve(self):
+        # Synchronous admission before the middleware's first await: concurrent
+        # requests cannot both spend providers against the final journal slot.
+        if not self.has_capacity():
+            raise ValueError("Local HTTP boundary journal is full.")
+        ticket = object()
+        self._pending.add(ticket)
+        return ticket
+
+    def release(self, ticket):
+        self._pending.discard(ticket)
+
+    def append(self, path, method, status, content_type="", cache_control="", *, reservation=None):
+        if not isinstance(path, str) or path not in BOUNDARY_PATHS:
+            return False
+        if reservation is None:
+            reservation = self.reserve()
+        elif reservation not in self._pending:
+            raise ValueError("Invalid local HTTP boundary reservation.")
+        event = {"path": path, "method": method if isinstance(method, str) and method in self.METHODS else "OTHER", "status": status,
+                 "content_type": content_type if isinstance(content_type, str) and content_type in self.CONTENT_TYPES else "other",
+                 "cache_control": cache_control if isinstance(cache_control, str) and cache_control in self.CACHE_CONTROLS else "other"}
+        if not self._valid_event(event):
+            self.release(reservation)
+            raise ValueError("Invalid local HTTP boundary event.")
+        events = [*self.events, event]
+        temporary = None
+        try:
+            descriptor, temporary = tempfile.mkstemp(prefix="http-boundary-", suffix=".tmp", dir=self.path.parent)
+            with os.fdopen(descriptor, "w", encoding="utf-8") as output:
+                json.dump({"scope": self.SCOPE, "events": events}, output, indent=2)
+                output.flush()
+                os.fsync(output.fileno())
+            os.replace(temporary, self.path)
+        finally:
+            self.release(reservation)
+            if temporary is not None and os.path.exists(temporary):
+                os.unlink(temporary)
+        self.events = events
+        return True
 
 
 def local_page_control_fetch(original):
@@ -543,6 +630,13 @@ def main():
         budget = ValidationBudgetJournal(record_dir / "provider-transport.json", caps)
     except ValueError:
         parser.error("QA budget journal unavailable or invalid; no provider request started.")
+    try:
+        boundaries = HTTPBoundaryJournal(record_dir / "http-boundaries.json")
+        if not boundaries.has_capacity():
+            raise ValueError
+    except ValueError:
+        budget.close()
+        parser.error("QA HTTP boundary journal unavailable, invalid or full; no provider request started.")
     backend = Path(__file__).resolve().parents[1]
     sys.path.insert(0, str(backend))
     import dotenv
@@ -614,22 +708,25 @@ def main():
         install_source_diagnostics(app, record_dir)
     # QA boundary evidence only: never capture bodies, query strings, cookies,
     # account identifiers or signed capabilities. Not installed in production.
-    http_events = []
-    observed_paths = {"/api/check-text", "/api/check-url", "/api/check-extracted-text",
-                      "/api/upload", "/api/verificar/relatorio-pdf"}
-
     @app.middleware("http")
     async def record_validation_boundary(request, call_next):
-        response = await call_next(request)
         path = request.url.path
-        if path in observed_paths:
-            http_events.append({"path": path, "method": request.method, "status": response.status_code,
-                                "content_type": response.headers.get("content-type", ""),
-                                "cache_control": response.headers.get("cache-control", "")})
-            (record_dir / "http-boundaries.json").write_text(json.dumps({
-                "scope": "local UI HTTP boundaries, NOT provider accuracy", "events": http_events,
-            }, indent=2), encoding="utf-8")
-        return response
+        if path not in BOUNDARY_PATHS:
+            return await call_next(request)
+        try:
+            ticket = boundaries.reserve()
+        except ValueError:
+            from fastapi.responses import JSONResponse
+            return JSONResponse({"detail": "QA HTTP boundary journal full; no analysis started."}, status_code=503,
+                                headers={"Cache-Control": "no-store"})
+        try:
+            response = await call_next(request)
+            boundaries.append(path, request.method, response.status_code,
+                              response.headers.get("content-type", ""), response.headers.get("cache-control", ""),
+                              reservation=ticket)
+            return response
+        finally:
+            boundaries.release(ticket)
 
     if args.local_page_control:
         from app.api import check_url

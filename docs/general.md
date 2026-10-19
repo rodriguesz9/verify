@@ -1,5 +1,7 @@
 # Verify — estrutura e arquitetura
 
+Rodada completa de 18–19/10: [medição real e diagnóstico](RODADA-COMPLETA-2026-10-19.md). Mesmo conjunto de doze textos, código congelado: 4/12 corretos (33,3%), 8/12 inconclusivos. Nove pedidos pelo formulário (seis relatórios observados), três por HTTP local após falha da automação. Prioridade de descoberta mensal explícita não altera a política factual `2026-10-18.1`; omissões de citações, relação incorreta bloqueada e recuperação insuficiente continuam limitando o resultado. Testes automatizados e resultados históricos abaixo não substituem esta medição nem homologam mídias/produção.
+
 Última continuação de 18/10: [prioridade de fontes, referências tardias e cancelamento](RECUPERACAO-FONTES-2026-10-18.md). Tentativas reservadas antes do envio; ranking mantido no preenchimento; duas referências diretas por pedido também nas ondas posteriores, com slots reservados na última pesquisa. Preservados seis/dez tentativas e 45/105 s; sem novas variáveis ou alteração da política factual. 988 testes backend; diagnósticos reais e validação offline separados.
 
 Revisão local de 18/10: [autoria, referências editoriais e vínculos de lançamento/título esportivo](RECUPERACAO-CONTEXTUAL-2026-10-18.md). Testes e replay offline não atualizam a última precisão real de 41,7%. Política `2026-10-18.1`; sem nova variável, chamada paga ou implantação.
@@ -135,7 +137,7 @@ Suíte backend: `python -B scripts/run_offline_tests.py`. Runner desliga credenc
 
 Interface: `npm test` e `npm run build`. Controles HTTP opcionais: `backend/scripts/audit_probe.py`; contas de teste somente em localhost. `provider_probe.py` é opt-in e pode consumir créditos. Controles estáticos não medem precisão de deepfake.
 
-`validation_ui_server.py` é harness descartável, nunca configuração de deploy. Registra fronteiras de análise/exportação em `http-boundaries.json` apenas com rota fixa, método, status e headers de tipo/cache: sem corpo, query, cookies, IDs ou tokens. A simulação local de página não valida HTTPS público. Um PDF/200 não comprova que o navegador o salvou.
+`validation_ui_server.py` é harness descartável, nunca configuração de deploy. Registra fronteiras de análise/exportação em `http-boundaries.json` apenas com rota fixa, método, status e valores finitos de tipo/cache: sem corpo, query, cookies, IDs ou tokens. Histórico válido é retomado, não sobrescrito no reinício; escrita atômica e reserva síncrona antes da análise limitam 256 eventos, incluindo pendentes. Arquivo inválido/cheio bloqueia startup antes de ler credenciais. Isso não recupera logs perdidos por revisões anteriores nem persiste pedidos interrompidos como respostas HTTP. A simulação local de página não valida HTTPS público. Um PDF/200 não comprova que o navegador o salvou.
 
 Primeira etapa: `local_release_server.py` gera seu próprio banco descartável, desliga provedores e ignora `.env` privado antes de importar a aplicação. `release_http_probe.py` testa histórico/PDF/isolamento por HTTP somente em localhost. Instruções e resultados em [PRIMEIRA-ETAPA-2026-10-03.md](PRIMEIRA-ETAPA-2026-10-03.md).
 
