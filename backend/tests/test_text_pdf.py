@@ -29,9 +29,9 @@ class TextPdfTests(unittest.TestCase):
         report = apply_source_decision(claim, text_report(claim, []), layer())
         report.update(content_type="text", query_input=claim, analyzed_at="2026-10-13T12:00:00+00:00")
         text = self.extract(self.export(report))
-        self.assertIn("Corroborado nas fontes consultadas", text)
+        self.assertIn("Verificada como verdadeira nas fontes consultadas", text)
         self.assertIn("Trecho do corpo:", text)
-        self.assertIn("Relação: sustenta a afirmação", text)
+        self.assertIn("Relação: concorda com a afirmação", text)
         self.assertIn("Recuperado em:", text)
         self.assertIn("royal.example.test/article", text)
         self.assertNotIn("Corroborado pelas checagens correspondentes", text)
@@ -144,7 +144,7 @@ class TextPdfTests(unittest.TestCase):
 
     @unittest.skipUnless(shutil.which("pdftotext"), "Poppler required")
     def test_veracity_states_and_corresponding_excluded_sources_are_faithful(self):
-        for state, label in (("supported", "Corroborado"), ("refuted", "Refutado"),
+        for state, label in (("supported", "Verificada como verdadeira nas fontes consultadas"), ("refuted", "Verificada como falsa nas fontes consultadas"),
                              ("conflicting", "Fontes discordantes"), ("unverified", "Evidência insuficiente")):
             with self.subTest(state=state):
                 report = original_text_report(veracity_status=state, claim_assessments=[
@@ -175,7 +175,7 @@ class TextPdfTests(unittest.TestCase):
                       "https://example.test/documento", TEXT, "Contexto fictício adjacente", "Só uma fonte",
                       "Data de atualização não é data do evento", "Não há duas fontes independentes", "completa das afirmações: Não"):
             self.assertIn(value, text)
-        self.assertNotIn("Veracidade do conteúdo: Corroborado", text)
+        self.assertNotIn("Veracidade do conteúdo: Verificada como verdadeira", text)
         self.assertEqual(report, original)
         source = report["source_corroboration"]["claims"][0]["evidence"][0]
         report["source_corroboration"]["claims"][0]["evidence"] = [

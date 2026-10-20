@@ -64,6 +64,14 @@ class ImageForensicsAndWhatsAppTests(unittest.TestCase):
         data = resp.json()
         self.assertEqual(data["status"], "ignored")
 
+    def test_whatsapp_true_false_badges_use_plain_words_and_keep_media_limit(self):
+        for verdict, label in (("Authentic", "VERDADEIRA"), ("False", "FALSA")):
+            with self.subTest(verdict=verdict):
+                message = format_whatsapp_response({"verdict": verdict, "analysis_status": "partial"})
+                self.assertIn("VERIFICADA COMO " + label + " NAS FONTES CONSULTADAS", message)
+                self.assertNotRegex(message, r"(?i)corroborad|refutad")
+        self.assertIn("não garante autenticidade", format_whatsapp_response({"verdict": "Authentic"}))
+
     def test_whatsapp_simulate_endpoint(self):
         fake_pipeline_result = {
             "report": {
@@ -83,7 +91,7 @@ class ImageForensicsAndWhatsAppTests(unittest.TestCase):
             self.assertEqual(resp.status_code, 200)
             data = resp.json()
             self.assertIn("whatsapp_reply", data)
-            self.assertIn("CORROBORADA NAS FONTES CONSULTADAS", data["whatsapp_reply"])
+            self.assertIn("VERIFICADA COMO VERDADEIRA NAS FONTES CONSULTADAS", data["whatsapp_reply"])
             self.assertNotIn("Confiança: 90%", data["whatsapp_reply"])
 
 

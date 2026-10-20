@@ -31,9 +31,8 @@ def detector_signal(value) -> str:
 
 
 def factual_labels(report):
-    sources = report.get("veracity_decision_basis") in {"retrieved_sources", "mixed_evidence"} or report.get("evidence_mode") == "retrieved_sources"
-    return {"supported": "Corroborado nas fontes consultadas" if sources else "Corroborado pelas checagens correspondentes",
-            "refuted": "Refutado nas fontes consultadas" if sources else "Refutado pelas checagens correspondentes",
+    return {"supported": "Verificada como verdadeira nas fontes consultadas",
+            "refuted": "Verificada como falsa nas fontes consultadas",
             "conflicting": "Fontes discordantes", "mixed": "Afirmações com resultados diferentes",
             "unverified": "Evidência insuficiente"}
 
@@ -44,7 +43,7 @@ def factual_source_lines(source):
         return ["Documento consultado: " + display_value(source.get("title") or source.get("publisher_family")),
                 display_value(source.get("url")),
                 "Trecho do corpo: " + display_value(source.get("excerpt")),
-                "Relação: " + ("sustenta a afirmação" if source["relation"] == "supports" else "contradiz a afirmação"),
+                "Relação: " + ("concorda com a afirmação" if source["relation"] == "supports" else "mostra informação diferente da afirmação"),
                 "Recuperado em: " + display_value(source.get("retrieved_at")),
                 "Família da fonte: " + display_value(source.get("publisher_family")),
                 "Comparação assistida por modelo e regras conservadoras; não é checagem editorial publicada nem garantia de verdade."]
@@ -59,7 +58,7 @@ def source_crosscheck_lines(report):
     if (not isinstance(layer, dict) or layer.get("version") != "source_corroboration_v1"
             or layer.get("decision_role") != "grounded_source_comparison"):
         return []
-    labels = {"corroborated": "Corroborada nas fontes consultadas", "refuted": "Refutada nas fontes consultadas",
+    labels = {"corroborated": "Verificada como verdadeira nas fontes consultadas", "refuted": "Verificada como falsa nas fontes consultadas",
               "conflicting": "Fontes discordantes", "mixed": "Afirmações com resultados diferentes",
               "insufficient": "Evidência insuficiente"}
     lines = ["CRUZAMENTO DE FONTES CONSULTADAS", "Estado: " + labels.get(layer.get("state"), "Evidência insuficiente"),

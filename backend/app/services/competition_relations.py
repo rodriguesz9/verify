@@ -137,6 +137,20 @@ _EN_ACTIVE = re.compile(_SUBJECT + r" (?:won|has won) " + _COMP_CAPTURE)
 _EN_CHAMPION = re.compile(_SUBJECT + r" (?:was|were|is|are)(?: crowned)? (?:the )?champions? of " + _COMP_CAPTURE)
 _CLAIM_PATTERNS = (_PT_ACTIVE, _PT_CHAMPION, _PT_PASSIVE, _PT_INVERSE, _EN_ACTIVE, _EN_CHAMPION)
 
+# A completed sports recap can use the historical present ("Zeta win ...").
+# This is quote-only: the original claim grammar is not shortened to its
+# first clause. Consume the entire literal recap, including its closed
+# scorer/opponent/venue complement, rather than discarding arbitrary prose.
+_RECAP_PLACE = r"[a-z]+(?: (?!in\b)[a-z]+){0,5}"
+_SCORER = r"[a-z]+(?:[ -][a-z]+){0,2}"
+_RECAP_SUBJECT = r"(?P<winner>(?:the )?(?:national team of )?[a-z]+(?:[ -][a-z]+){0,5}?)"
+_EN_TITLE_RECAP = re.compile(
+    _RECAP_SUBJECT + r" (?:has won|win|wins|won) " + _COMP_CAPTURE
+    + r" thanks to (?P<scorer>" + _SCORER + r")[’']s (?:superb )?(?:extra-time )?winner"
+    + r" against (?:the )?(?P<opponent>" + _NAME + r") at (?:the )?"
+    + r"(?P<venue>" + _RECAP_PLACE + r")(?: in (?P<city>" + _NAME + r"))?\.?"
+)
+
 
 def parse_competition_claim(claim) -> CompetitionOutcome | None:
     """Parse only complete positive title assertions, with no dropped suffix."""
@@ -152,10 +166,34 @@ def parse_competition_claim(claim) -> CompetitionOutcome | None:
     return None
 
 
+def competition_lead_priority(claim, lead) -> int:
+    """Order discovery only; never derive a winner or evidence from a title.
+
+    A first-party page about commemorative coins must not outrank a match
+    recap solely because its host is official. Keep every candidate eligible
+    and avoid using the claimed team to select agreeable search results.
+    Ambiguous/qualified claims retain their existing discovery order.
+    """
+    parsed = parse_competition_claim(claim)
+    if parsed is None:
+        return 0
+    text = _text(lead).replace("-", " ").replace("_", " ")
+    if not _SCOPE_COMP.search(text):
+        return 2
+    years = set(re.findall(_YEAR, text))
+    ancillary = re.search(
+        r"\b(?:moedas?|coins?|comemorativ[oa]s?|commemorative|numismatic[oa]s?|"
+        r"numismatic|cedulas?|banknotes?|circular|resolucao|ingressos?|tickets?)\b", text)
+    if _OTHER_CATEGORY.search(text) or ancillary or (years and str(parsed.year) not in years):
+        return 3
+    if str(parsed.year) in years:
+        return 0 if _OUTCOME_WORD.search(text) else 1
+    return 2
+
+
 _FINAL_COMP = re.compile(r"\b(?:final|grande decisao|grand final|championship final) (?:da|do|of (?:the )?)\s*(?:" + _PT_COMP + r"|" + _EN_COMP + r")\b")
 _OTHER_COMP = re.compile(r"\b(?:copa|cup|campeonato|championship|torneio|tournament|league|liga|mundial)\b")
 _ORDINAL = r"(?:(?:primeiro|segundo|terceiro|quarto|quinto|sexto|setimo|oitavo|nono|decimo|\d+[oa]?) )?"
-_SCORER = r"[a-z]+(?:[ -][a-z]+){0,2}"
 _PT_TITLE_TAIL = re.compile(
     r"(?: por \d+ (?:a|x) \d+)?"
     r"(?:,? com (?:o |um )?gol (?:do|da|de) (?:jovem )?(?P<scorer>" + _SCORER + r")(?: na prorrogacao)?)?"
@@ -270,6 +308,16 @@ def _quote_frame(quote):
     direct = parse_competition_claim(quote)
     if direct:
         return direct
+    recap = _EN_TITLE_RECAP.fullmatch(text)
+    if recap:
+        literal = _case_text(quote)
+        named = {key: _identity(recap[key], literal[recap.start(key):recap.end(key)])
+                 for key in ("winner", "scorer", "opponent", "venue", "city") if recap[key] is not None}
+        if (all(named.values()) and named["winner"] != named["opponent"]
+                and len(re.findall(_YEAR, text)) == 1):
+            return _frame(recap["competition"], recap["winner"],
+                          literal[recap.start("winner"):recap.end("winner")])
+        return None
     competitions = list(_COMP.finditer(text))
     # Exactly one explicit competition/edition avoids borrowing a title from
     # another tournament or selecting one of several repeated events.

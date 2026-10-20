@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 
 from helpers import FakeSession, app, fake_user, override_auth_and_db
 from app.core.openrouter_service import GeneratedText
+from test_source_corroboration import reviewed_response
 from app.models.history import Verification
 from app.services.competition_relations import competition_outcome_relation
 from app.services.launch_relations import launch_date_relation
@@ -45,7 +46,7 @@ class GroundedApiFlowTests(unittest.TestCase):
                         evidence.append({"source_id": source["source_id"],
                                          "excerpt_id": passage["excerpt_id"], "relation": relation})
                         break
-            return GeneratedText(json.dumps({"claims": [{"claim_id": "c1", "evidence": evidence}]}))
+            return reviewed_response(GeneratedText(json.dumps({"claims": [{"claim_id": "c1", "evidence": evidence}]})), prompt)
 
         attribution = {"status": "found", "decision_role": "source_attribution_only",
                        "matches": [], "coverage": {}, "limitations": [], "_documents": documents}

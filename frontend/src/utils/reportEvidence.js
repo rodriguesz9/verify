@@ -4,8 +4,8 @@ const strings = (value) => Array.isArray(value)
 export function batchResultLabel(result = {}) {
   if (result.verdict === "Scam") return "Sinais de possível golpe";
   if (result.analysis_status === "inconclusive") return "Análise inconclusiva";
-  if (result.veracity_status === "supported") return "Corroborado nas fontes consultadas";
-  if (result.veracity_status === "refuted") return "Refutado nas fontes consultadas";
+  if (result.veracity_status === "supported") return "Verificada como verdadeira nas fontes consultadas";
+  if (result.veracity_status === "refuted") return "Verificada como falsa nas fontes consultadas";
   if (result.veracity_status === "conflicting") return "Fontes em desacordo";
   if (result.veracity_status === "mixed") return "Resultados diferentes por afirmação";
   return "Sem conclusão suficiente";
@@ -49,7 +49,7 @@ export function groundedReportExplanation(result = {}) {
       || record.decision_role !== "explanation_only" || record.new_provider_calls !== 0
       || !Array.isArray(record.claims) || record.claims.length > 5
       || !Array.isArray(result.claim_assessments)) return null;
-  const labels = {supported: "corroborado nas evidências utilizadas", refuted: "refutado nas evidências utilizadas",
+  const labels = {supported: "verificado como verdadeiro nas fontes consultadas", refuted: "verificado como falso nas fontes consultadas",
     conflicting: "evidências em desacordo; exige conferência humana", unverified: "sem evidência correspondente suficiente para concluir"};
   const paragraphs = [];
   for (const entry of record.claims) {
@@ -166,7 +166,7 @@ export function sourceAttributionPresentation(result = {}) {
 }
 
 const corroborationLabels = {
-  corroborated: "Corroborada nas fontes consultadas", refuted: "Refutada nas fontes consultadas",
+  corroborated: "Verificada como verdadeira nas fontes consultadas", refuted: "Verificada como falsa nas fontes consultadas",
   conflicting: "Fontes discordam", mixed: "Conteúdo misto", insufficient: "Evidência insuficiente",
 };
 
@@ -189,7 +189,7 @@ export function sourceCorroborationPresentation(result = {}) {
           id: `cross-source-${claimIndex}-${sourceIndex}`, url: safeSourceUrl(source.url),
           title: typeof source.title === "string" && source.title.trim() ? source.title : "Documento consultado",
           excerpt: source.excerpt, context: typeof source.context === "string" ? source.context : "", relation: source.relation,
-          relationLabel: source.relation === "supports" ? "Sustenta esta afirmação" : "Contradiz esta afirmação",
+          relationLabel: source.relation === "supports" ? "Concorda com esta afirmação" : "Mostra informação diferente desta afirmação",
           reason: typeof source.reason === "string" && !isTechnicalReportText(source.reason) ? source.reason : "",
           family: source.publisher_family, sourceRole: source.source_role,
           retrievedAt: typeof source.retrieved_at === "string" && Number.isFinite(Date.parse(source.retrieved_at))
@@ -206,15 +206,15 @@ export function sourceCorroborationPresentation(result = {}) {
   const scope = selectedClaims !== null && totalClaims !== null && selectedSources !== null
     ? `Alcance do cruzamento: ${selectedClaims} de ${totalClaims} afirmações selecionadas e ${selectedSources} documentos selecionados para consulta.` : "";
   const explanations = {
-    corroborated: "Os trechos recuperados sustentam as afirmações analisadas em fontes independentes, com comparação de contexto. Isso não é garantia de verdade nem certifica a autenticidade de uma mídia.",
-    refuted: "Os trechos recuperados contradizem as afirmações analisadas em fontes independentes. Confira abaixo o que difere, principalmente pessoas, datas, valores e negações.",
+    corroborated: "A informação foi verificada como verdadeira nos trechos de fontes independentes consultadas. Confira datas e contexto: a análise pode errar e não comprova a origem de uma imagem, áudio ou vídeo.",
+    refuted: "A informação foi verificada como falsa nos trechos de fontes independentes consultadas. Veja abaixo o que está diferente, principalmente pessoas, datas, valores e palavras como “não”. A análise pode errar.",
     conflicting: "As fontes recuperadas apresentam informações incompatíveis. Não foi escolhida uma versão como verdadeira; confira as diferenças e a data de cada publicação.",
     mixed: "O conteúdo reúne afirmações com resultados diferentes. Confira cada uma abaixo; nenhum resultado isolado se aplica automaticamente ao texto inteiro.",
-    insufficient: "O cruzamento não reuniu evidência suficiente para confirmar ou refutar todo o conteúdo. Ausência de fonte ou falha de leitura não significa falsidade.",
+    insufficient: "A pesquisa não reuniu informações suficientes para dizer se todo o conteúdo é verdadeiro ou falso. Não encontrar uma fonte ou não conseguir ler uma página não significa que o conteúdo seja falso.",
   };
   const originalRecordOnly = content.original_record_only === true;
   if (originalRecordOnly && ["corroborated", "refuted"].includes(record.state)) {
-    explanations[record.state] = "A afirmação sobre o que a instituição publicou foi comparada com o registro original. É uma fonte primária, não duas confirmações independentes nem uma certificação do fenômeno descrito.";
+    explanations[record.state] = "A afirmação sobre o que a instituição publicou foi comparada com o registro original. Foi consultada a publicação da própria instituição, não duas fontes independentes. Isso não comprova que o fenômeno descrito realmente ocorreu.";
   }
   const limitations = strings(record.limitations).filter((item) => !isTechnicalReportText(item)).slice(0, 10);
   if (coverage.complete_claim_coverage === false) limitations.push("O cruzamento não cobre todas as afirmações enviadas. Não é uma aprovação do conteúdo inteiro.");
@@ -236,15 +236,15 @@ export function reportFactualHeadline(result = {}) {
   const scopedPage = result.source_extraction?.truncated === true && ["corroborated", "refuted"].includes(state);
   const headline = cross.originalRecordOnly && ["corroborated", "refuted"].includes(state)
     ? cross.explanation : state === "insufficient"
-    ? "Há observações por afirmação, mas a evidência não permite confirmar nem refutar o conteúdo inteiro. Confira as fontes e o que ficou sem confirmação."
+    ? "Há resultados para partes da mensagem, mas faltam informações para dizer se todo o conteúdo é verdadeiro ou falso. Confira as fontes e o que ficou sem confirmação."
     : state === "mixed"
-      ? "Há afirmações com resultados diferentes no mesmo conteúdo. Abra os trechos que sustentam ou contradizem cada uma; não interprete isso como uma aprovação do texto inteiro."
+      ? "Há afirmações com resultados diferentes no mesmo conteúdo. Abra os trechos das fontes para entender cada resultado; isso não significa que o texto inteiro seja verdadeiro."
       : state === "conflicting"
         ? "As fontes consultadas discordam sobre a informação. Os trechos e as diferenças estão registrados abaixo; é necessária uma conferência humana."
         : "A conclusão se baseia no cruzamento de documentos recuperados e trechos citados, não apenas em checagens já publicadas. Confira datas e contexto; isso não garante verdade nem autenticidade de mídia.";
-  return {title: scopedPage ? state === "corroborated" ? "Trecho corroborado nas fontes consultadas" : "Trecho refutado nas fontes consultadas"
+  return {title: scopedPage ? state === "corroborated" ? "Trecho verificado como verdadeiro nas fontes consultadas" : "Trecho verificado como falso nas fontes consultadas"
     : cross.originalRecordOnly && ["corroborated", "refuted"].includes(state)
-      ? state === "corroborated" ? "Confirmada no registro original" : "Contradita no registro original"
+      ? state === "corroborated" ? "Verificada como verdadeira no registro original" : "Verificada como falsa no registro original"
       : corroborationLabels[state], headline: scopedPage ? `A conclusão vale somente para o trecho analisado. O restante da página não foi checado. ${headline}` : headline,
   diagnostic: true, state};
 }
@@ -271,7 +271,7 @@ export function reportSourceHeadline(result = {}) {
       || (result.veracity_status != null && result.veracity_status !== "unverified")) return null;
   const attribution = sourceAttributionPresentation(result);
   if (attribution && attribution.matches.length === 0) return {title: "Análise inconclusiva",
-    headline: "As evidências utilizáveis nesta consulta não bastam para confirmar nem refutar a informação. Veja abaixo o que foi consultado e o que ficou sem confirmação. Isso não significa que o conteúdo seja falso.",
+    headline: "As informações encontradas nesta consulta não bastam para dizer se a mensagem é verdadeira ou falsa. Veja abaixo o que foi consultado e o que ficou sem confirmação. Isso não significa que o conteúdo seja falso.",
     diagnostic: true, state: "insufficient"};
   return attribution ? {title: attribution.title,
     headline: `${attribution.explanation} A veracidade da afirmação continua não determinada pelas checagens disponíveis.`, diagnostic: true} : null;
@@ -381,12 +381,12 @@ export function publicCoveragePresentation(result = {}) {
       : "A pesquisa de fontes indica onde um trecho aparece. Checagens publicadas avaliam afirmações; encontrar o mesmo texto em uma publicação não confirma sua verdade. Confira as correspondências e o alcance da pesquisa abaixo."
     : inconclusive
     ? media ? "As evidências disponíveis não bastam para confirmar a origem do arquivo ou a informação. Isso não significa que o conteúdo seja falso ou verdadeiro."
-      : "As evidências disponíveis não bastam para confirmar nem refutar a informação. Isso não significa que o conteúdo seja falso ou verdadeiro."
+      : "As informações encontradas não bastam para dizer se a mensagem é verdadeira ou falsa. Isso não significa que o conteúdo seja falso ou verdadeiro."
     : failed ? "Parte da análise não ficou disponível. Considere apenas as observações descritas neste relatório e confirme a informação por outra fonte."
     : media ? "A análise da produção do arquivo é separada da verdade da mensagem. Indícios de inteligência artificial não comprovam uma informação falsa; ausência de indícios não certifica uma mídia autêntica."
     : "Compare a afirmação, a data e o contexto com as fontes citadas. Notícias relacionadas ou ausência de checagens não comprovam verdade nem falsidade.";
   const limitations = [];
-  if (inconclusive) limitations.push(media ? "A origem do arquivo não foi confirmada." : "A informação não foi confirmada nem refutada pelas evidências disponíveis.");
+  if (inconclusive) limitations.push(media ? "A origem do arquivo não foi confirmada." : "Não foi possível verificar se a informação é verdadeira ou falsa com as fontes disponíveis.");
   if (failed) limitations.push("Não foi possível concluir todas as etapas desta análise.");
   if (skipped) limitations.push("Algumas consultas não foram realizadas; a cobertura ficou limitada.");
   if (layers.some((layer) => layer.status === "not_configured")) limitations.push("Algumas consultas não estão habilitadas nesta análise; a cobertura ficou limitada.");
@@ -597,7 +597,7 @@ export function buildReportEvidence(result = {}, query = "") {
   }
   const claimAssessments = Array.isArray(content.claim_assessments) ? content.claim_assessments.filter((item) =>
     item && typeof item.claim === "string" && typeof item.status === "string") : [];
-  const claimLabels = {supported: "Corroborada nas checagens", refuted: "Refutada nas checagens", conflicting: "Fontes em desacordo", unverified: "Não verificada"};
+  const claimLabels = {supported: "Verificada como verdadeira nas fontes consultadas", refuted: "Verificada como falsa nas fontes consultadas", conflicting: "Fontes em desacordo", unverified: "Não verificada"};
   for (const [index, item] of claimAssessments.entries()) {
     // Grounded documents have separate cards with actual body excerpts. They
     // must not be presented as editorial ClaimReview ratings.

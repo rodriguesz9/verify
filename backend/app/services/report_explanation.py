@@ -9,8 +9,8 @@ from urllib.parse import urlsplit
 
 VERSION = "grounded_text_explanation_v1"
 LABELS = {
-    "supported": "corroborado nas evidências utilizadas",
-    "refuted": "refutado nas evidências utilizadas",
+    "supported": "verificado como verdadeiro nas fontes consultadas",
+    "refuted": "verificado como falso nas fontes consultadas",
     "conflicting": "evidências em desacordo; exige conferência humana",
     "unverified": "sem evidência correspondente suficiente para concluir",
 }

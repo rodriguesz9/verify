@@ -5,6 +5,7 @@ import unittest
 from unittest.mock import AsyncMock, patch
 
 from app.core.openrouter_service import GeneratedText
+from test_source_corroboration import reviewed_response
 from app.services.source_corroboration import (
     _candidate_passage, _passage_guard, _body_temporal_anchor,
     _legal_article_anchor, corroborate_sources, document_selection_audit,
@@ -42,7 +43,7 @@ class LegalArticleBindingsTests(unittest.IsolatedAsyncioTestCase):
                 passage = next((item for item in source["passages"] if item.get("legal_article_anchor")), None)
                 if passage:
                     evidence.append({"source_id": source["source_id"], "excerpt_id": passage["excerpt_id"], "relation": relation})
-            return GeneratedText(json.dumps({"claims": [{"claim_id": "c1", "evidence": evidence}]}))
+            return reviewed_response(GeneratedText(json.dumps({"claims": [{"claim_id": "c1", "evidence": evidence}]})), prompt)
         with patch.dict(os.environ, {"SOURCE_CROSSCHECK_PRIMARY_PROVIDER": "openrouter", "SOURCE_CROSSCHECK_ENABLED": "true"}), \
              patch("app.services.source_corroboration.openrouter_service.generate", new=AsyncMock(side_effect=answer)) as model:
             result = await corroborate_sources(claim or self.claim, documents if documents is not None else self.docs())

@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, patch
 
 import helpers
 from app.core.openrouter_service import GeneratedText
+from test_source_corroboration import reviewed_response
 from app.services.source_corroboration import _passage_guard, _same_event, corroborate_sources
 
 
@@ -44,9 +45,9 @@ class InstrumentNameAliasTests(unittest.IsolatedAsyncioTestCase):
                                    ("https://agenciabrasil.ebc.com.br/controle-instrumento", self.claim))]
         async def answer(prompt, **_kwargs):
             request = json.loads(prompt)
-            return GeneratedText(json.dumps({"claims": [{"claim_id": "c1", "evidence": [
+            return reviewed_response(GeneratedText(json.dumps({"claims": [{"claim_id": "c1", "evidence": [
                 {"source_id": source["source_id"], "excerpt_id": source["passages"][0]["excerpt_id"],
-                 "relation": "supports"} for source in request["sources"]]}]}))
+                 "relation": "supports"} for source in request["sources"]]}]})), prompt)
         with patch.dict(os.environ, {"SOURCE_CROSSCHECK_ENABLED": "true", "SOURCE_CROSSCHECK_PRIMARY_PROVIDER": "openrouter"}), \
              patch("app.services.source_corroboration.openrouter_service.generate", new=AsyncMock(side_effect=answer)) as model:
             result = await corroborate_sources(self.claim, docs)

@@ -127,10 +127,10 @@ def text_report(text: str, reviews: list[dict], scam: dict | None = None, now=No
              "conflicting" if "conflicting" in states else
              "mixed" if {"supported", "refuted"} <= states else "unverified")
     descriptions = {
-        "supported": "A informação foi corroborada por checagens editoriais distintas para a mesma afirmação. Isso não certifica a autenticidade de uma mídia.",
-        "refuted": "A afirmação foi refutada por checagens editoriais distintas. Abra as fontes para consultar os argumentos e o contexto da refutação.",
+        "supported": "A informação foi verificada como verdadeira nas fontes consultadas, com duas checagens de grupos diferentes para a mesma afirmação. A análise pode errar e não comprova a origem de uma imagem, áudio ou vídeo.",
+        "refuted": "A informação foi verificada como falsa nas fontes consultadas, com duas checagens de grupos diferentes para a mesma afirmação. Abra as fontes para entender a explicação, as datas e o contexto. A análise pode errar.",
         "conflicting": "Checagens correspondentes discordaram. É necessária revisão humana antes de concluir.",
-        "mixed": "Há afirmações corroboradas e refutadas. Não cabe um único rótulo de verdadeiro ou falso para toda a mensagem.",
+        "mixed": "Há afirmações verificadas como verdadeiras e outras como falsas nas fontes consultadas. Não cabe um único resultado de verdadeiro ou falso para toda a mensagem.",
         "unverified": "Não há evidência correspondente suficiente para afirmar que a mensagem seja verdadeira ou falsa."}
     report = {"verdict": "Authentic" if truth == "supported" else "False" if truth == "refuted" else "Suspicious",
               "score": 90 if truth == "supported" else 10 if truth == "refuted" else 50,

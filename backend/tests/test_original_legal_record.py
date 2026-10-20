@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, patch
 
 
 from app.core.openrouter_service import GeneratedText
+from test_source_corroboration import reviewed_response
 from app.services.source_corroboration import corroborate_sources, document_selection_audit, _candidate_passage, _passage_guard
 
 
@@ -32,7 +33,7 @@ class OriginalLegalRecordTests(unittest.IsolatedAsyncioTestCase):
                     if item.get("original_legal_publication"):
                         evidence.append({"source_id": source["source_id"], "excerpt_id": item["excerpt_id"], "relation": relation})
                         break
-            return GeneratedText(json.dumps({"claims": [{"claim_id": "c1", "evidence": evidence}]}))
+            return reviewed_response(GeneratedText(json.dumps({"claims": [{"claim_id": "c1", "evidence": evidence}]})), prompt)
         with patch.dict(os.environ, {"SOURCE_CROSSCHECK_ENABLED": "true", "SOURCE_CROSSCHECK_PRIMARY_PROVIDER": "openrouter"}), \
              patch("app.services.source_corroboration.openrouter_service.generate", new=AsyncMock(side_effect=answer)) as model:
             result = await corroborate_sources(claim or self.claim, [document or self.doc()], source_url)
@@ -126,7 +127,7 @@ class OriginalLegalRecordTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(final["original_record_only"])
         self.assertIsNone(final["confidence"])
         self.assertIsNone(final["authenticity_percentage"])
-        self.assertIn("não duas confirmações independentes", final["summary"])
+        self.assertIn("não duas fontes independentes", final["summary"])
 
     async def test_original_header_does_not_prove_nonexistent_article_or_missing_body(self):
         for document in (self.doc(sentences=[self.header, "Lei nº 8.541, de 15 de abril de 2010", "Não há reprodução do artigo nesta página."]),

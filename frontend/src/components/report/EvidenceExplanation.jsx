@@ -36,7 +36,7 @@ export default function EvidenceExplanation({result, query}) {
 
       {evidence.media && (result.veracity_status || evidence.video || evidence.mediaDiagnosis) && <div className={`mb-6 grid min-w-0 gap-3 text-sm ${evidence.video ? "lg:grid-cols-3" : "sm:grid-cols-2"}`}>
         <div className="rounded-xl border border-[#1D3B4D] p-4"><h4 className="font-bold mb-2">Veracidade da informação</h4>
-          <p>{evidence.veracityLabel || ({supported: "Corroborada nas checagens", refuted: "Refutada nas checagens", mixed: "Afirmações mistas", conflicting: "Fontes em desacordo", unverified: "Não determinada"})[evidence.veracityStatus] || "Não determinada"}</p>
+          <p>{evidence.veracityLabel || ({supported: "Verificada como verdadeira nas fontes consultadas", refuted: "Verificada como falsa nas fontes consultadas", mixed: "Afirmações com resultados diferentes", conflicting: "Fontes em desacordo", unverified: "Não determinada"})[evidence.veracityStatus] || "Não determinada"}</p>
           {evidence.media && <p className="mt-2 text-xs text-[#8AA2B4]">{evidence.extractionMethod
             ? `Texto obtido pela ${readingLabel}: pode conter erros. Isso é separado da origem da mídia.`
             : evidence.transcriptionState.notice ? evidence.transcriptionState.contentMessage
@@ -70,7 +70,7 @@ export default function EvidenceExplanation({result, query}) {
       {excluded.length > 0 && <details className="mb-6 rounded-xl border border-[#1D3B4D] p-4">
         <summary className="cursor-pointer font-bold text-sm">Por que algumas checagens não foram usadas?</summary>
         <ul className="mt-3 space-y-2 text-sm text-[#A7BFCD]">{excluded.map((source, i) => <li key={i}>{source.publisher || "Fonte"}: {source.exclusion_reason || "Correspondência insuficiente."}</li>)}</ul>
-        <p className="mt-3 text-xs text-[#8AA2B4]">Somente duas famílias editoriais distintas, com avaliação explícita e correspondência válida, permitem corroborar ou refutar. Uma paráfrase pode exigir checagem humana.</p>
+        <p className="mt-3 text-xs text-[#8AA2B4]">Para concluir por checagens já publicadas, precisamos de duas fontes de grupos diferentes que avaliem a mesma informação como verdadeira ou falsa. Textos escritos de outro jeito podem precisar de conferência humana.</p>
       </details>}
 
       {evidence.checkedContent && <details className="mb-6 rounded-xl border border-[#1D3B4D] bg-[#070F17] p-4">
@@ -131,7 +131,7 @@ export default function EvidenceExplanation({result, query}) {
         {evidence.sourceAttribution && <AttributionContainer className="mb-6 min-w-0 rounded-xl border border-[#1D3B4D] bg-[#070F17] p-4" aria-labelledby="source-attribution-heading">
           {hasLiteralMatches ? <h4 id="source-attribution-heading" className="font-bold">Pesquisa de reprodução literal</h4>
             : <summary id="source-attribution-heading" className="cursor-pointer font-bold">Pesquisa de reprodução literal</summary>}
-          <p className="mt-3 text-sm leading-6 text-[#A7BFCD]">Esta etapa procura frases iguais às enviadas. É diferente da checagem factual: não encontrar uma cópia literal não confirma nem refuta a informação. Documentos com outra redação podem sustentar uma conclusão no cruzamento de fontes.</p>
+          <p className="mt-3 text-sm leading-6 text-[#A7BFCD]">Esta etapa procura frases iguais às enviadas. Não encontrar uma cópia exata não diz se a informação é verdadeira ou falsa. Fontes que usam outras palavras também podem ajudar na verificação.</p>
           <h5 className="mt-3 font-bold text-sm">{evidence.sourceAttribution.status === "no_results" ? "Nenhuma reprodução literal localizada" : evidence.sourceAttribution.title}</h5>
           <p className="mt-2 text-sm leading-6 text-[#A7BFCD]">{evidence.sourceAttribution.explanation}</p>
           {evidence.sourceAttribution.scope && <p className="mt-3 text-xs leading-5 text-[#8AA2B4]">{evidence.sourceAttribution.scope}</p>}

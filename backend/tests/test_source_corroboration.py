@@ -27,6 +27,36 @@ def documents(first=FIRST, second=SECOND):
     return [document(first), document(second, "https://www.royal.uk/announcement")]
 
 
+def reviewed_response(raw, prompt):
+    """Upgrade legacy test evidence selections to explicit per-source reviews.
+
+    Preserve relations, quotes, malformed fields and adversarial mutations;
+    an unselected source is explicitly insufficient, never fabricated support.
+    """
+    try:
+        body, request = json.loads(raw), json.loads(prompt)
+    except (ValueError, TypeError):
+        return raw
+    if not isinstance(body, dict) or not isinstance(body.get("claims"), list):
+        return raw
+    for claim in body["claims"]:
+        if not isinstance(claim, dict) or not isinstance(claim.get("evidence"), list):
+            continue
+        candidates = claim.pop("evidence")
+        source_ids = [source["source_id"] for source in request["sources"]]
+        source_ids.extend(candidate.get("source_id") for candidate in candidates
+                          if isinstance(candidate, dict) and candidate.get("source_id") not in source_ids)
+        reviews = []
+        for source_id in source_ids:
+            evidence = [{key: value for key, value in candidate.items() if key != "source_id"}
+                        for candidate in candidates if isinstance(candidate, dict) and candidate.get("source_id") == source_id]
+            reviews.append({"source_id": source_id, "assessment": "evidence" if evidence else "insufficient", "evidence": evidence})
+        claim["source_reviews"] = reviews
+    result = GeneratedText(json.dumps(body, ensure_ascii=False))
+    result.model_name = getattr(raw, "model_name", "test/model:free")
+    return result
+
+
 def response(prompt, relation="supports", transform=None):
     request = json.loads(prompt)
     body = {"claims": []}
@@ -42,13 +72,13 @@ def response(prompt, relation="supports", transform=None):
         transform(body)
     raw = GeneratedText(json.dumps(body, ensure_ascii=False))
     raw.model_name = "test/model:free"
-    return raw
+    return reviewed_response(raw, prompt)
 
 
 class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
     async def run_comparison(self, text=CLAIM, docs=None, relation="supports", transform=None, raw=None, source_url=None):
         async def answer(prompt, **kwargs):
-            return raw if raw is not None else response(prompt, relation, transform)
+            return reviewed_response(raw, prompt) if raw is not None else response(prompt, relation, transform)
         with patch.dict(os.environ, {"SOURCE_CROSSCHECK_ENABLED": "true", "SOURCE_CROSSCHECK_TIMEOUT_SECONDS": "60",
                                     "SOURCE_CROSSCHECK_PRIMARY_PROVIDER": "openrouter"}), \
              patch("app.services.source_corroboration.openrouter_service.generate", new=AsyncMock(side_effect=answer)) as router, \
@@ -195,7 +225,8 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["state"], "corroborated")
         self.assertEqual({item["excerpt"] for item in result["claims"][0]["evidence"]}, {FIRST, SECOND})
         schema = router.await_args.kwargs["response_format"]["json_schema"]["schema"]
-        self.assertNotIn("quote", schema["properties"]["claims"]["items"]["properties"]["evidence"]["items"]["properties"])
+        review_schema = schema["properties"]["claims"]["items"]["properties"]["source_reviews"]["items"]
+        self.assertNotIn("quote", review_schema["properties"]["evidence"]["items"]["properties"])
         def nonexistent(body):
             ids_only(body)
             body["claims"][0]["evidence"][0]["excerpt_id"] = "invented"

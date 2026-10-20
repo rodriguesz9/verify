@@ -1,5 +1,7 @@
 # Documentação do Verify
 
+Revisão local de 20/10: [comparação fonte a fonte, resultados e pendências](COMPARACAO-FONTES-2026-10-20.md), com [dados sanitizados](validation-source-review-2026-10-20.json). **5/12 acertos (41,7%) e 7/12 inconclusivos**; meta de 80% não atingida. Separa medição HTTP, observação móvel e correção esportiva posterior offline. Sem homologação de mídias ou produção.
+
 Rodada completa de 18–19/10: [método, resultados e falhas restantes](RODADA-COMPLETA-2026-10-19.md), com [dados sanitizados](validation-full-text-2026-10-19.json). **4/12 corretos (33,3%) e 8/12 inconclusivos (66,7%)**; meta de 80% não atingida. Separa nove submissões pela interface, seis relatórios observados, três testes HTTP e os testes automatizados. Preserva a piora global e os ganhos de IBGE/Webb; não homologa mídias nem publicação.
 
 Última continuação de 18/10: [prioridade, referências tardias e reservas de leitura](RECUPERACAO-FONTES-2026-10-18.md), com [dados sanitizados](validation-discovery-2026-10-18.json). 988 testes backend; dois diagnósticos reais inconclusivos preservados; revisão posterior da reserva final testada offline. Não comprova 80%, publicação ou novas modalidades.

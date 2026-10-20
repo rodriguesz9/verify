@@ -66,14 +66,22 @@ def _source_recovery_queries(query, limit):
         return [(f"{query} {PRIMARY_SITE_FILTER}", "whole_literal_claim_primary_sources"),
                 (f"{query} {SOURCE_SITE_FILTER}", method)]
     identity = re.search(r'"[^"\n]+"', combined)[0]
+    editorial_filter = EXPLAINER_SITE_FILTER
+    editorial_method = "literal_identity_event_editorial_explainers"
     if re.search(r"\b(?:morreu|faleceu|falecimento|morte|death|died)\b", query, re.I):
         primary, editorial, genre = "death OR died", "morte OR falecimento OR morreu", ""
     elif re.search(r"\b(?:nasceu|nascimento|birth|born)\b", query, re.I):
         primary, editorial, genre = "birth OR born", "nascimento OR nasceu", ""
     else:
-        primary, editorial, genre = "launched OR launch", "lançamento OR lançada", "mission"
+        primary, editorial, genre = "launched OR launch", "lançamento OR lançada OR launch OR launched", "mission"
+        # Launch reporting is not confined to Portuguese school explainers.
+        # The old filter excluded independent contemporary reporting already
+        # allowed by source policy. Keep the exact named identity, no alleged
+        # date or generated answer, and the same bounded search count.
+        editorial_filter = EDITORIAL_SITE_FILTER
+        editorial_method = "literal_identity_event_editorial_sources"
     return [(f"{identity} ({primary}) {genre} {PRIMARY_SITE_FILTER}".replace("  ", " "), "literal_identity_event_primary_sources"),
-            (f"{identity} ({editorial}) {EXPLAINER_SITE_FILTER}", "literal_identity_event_editorial_explainers")]
+            (f"{identity} ({editorial}) {editorial_filter}", editorial_method)]
 
 
 def _verdicts_agree(v1: str, v2: str) -> bool:

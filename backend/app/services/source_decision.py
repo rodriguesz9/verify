@@ -72,18 +72,18 @@ def apply_source_decision(text, report, comparison):
     truth = ("supported" if complete_input and states == {"supported"} else "refuted" if complete_input and states == {"refuted"}
              else "conflicting" if "conflicting" in states else "mixed" if {"supported", "refuted"} <= states else "unverified")
     descriptions = {
-        "supported": "A afirmação foi corroborada nos trechos de fontes independentes consultadas. Confira as fontes, datas e contexto; isso não é garantia de verdade nem de autenticidade de uma mídia.",
-        "refuted": "A afirmação foi refutada nos trechos de fontes independentes consultadas. Confira os argumentos, datas e contexto; a conclusão tem o alcance das fontes descritas.",
+        "supported": "A informação foi verificada como verdadeira nos trechos de fontes independentes consultadas. Confira as fontes, datas e contexto: a análise pode errar e não comprova a origem de uma imagem, áudio ou vídeo.",
+        "refuted": "A informação foi verificada como falsa nos trechos de fontes independentes consultadas. Confira a explicação, as datas e o contexto: a análise pode errar e vale somente para as afirmações analisadas.",
         "conflicting": "As fontes consultadas apresentam informações em desacordo. É necessária conferência humana antes de concluir.",
-        "mixed": "A mensagem contém afirmações corroboradas e refutadas nas fontes consultadas. Não cabe um único rótulo para todo o conteúdo.",
-        "unverified": "Parte da mensagem tem evidência nas fontes consultadas, mas outras afirmações ficaram sem confirmação. A mensagem inteira não foi confirmada nem refutada.",
+        "mixed": "A mensagem contém afirmações verificadas como verdadeiras e outras como falsas nas fontes consultadas. Não cabe um único resultado para todo o conteúdo.",
+        "unverified": "Foi possível verificar partes da mensagem nas fontes consultadas, mas outras partes ficaram sem confirmação. Não foi possível dizer se a mensagem inteira é verdadeira ou falsa.",
     }
     single_record = any(decision.get("evidence_mode") == "retrieved_sources"
         and len({item.get("publisher_family") for item in decision.get("evidence", [])}) < 2
         and any(is_original_record_claim(decision["claim"], item) for item in decision.get("evidence", [])) for decision in merged)
     if single_record and truth in {"supported", "refuted"}:
-        descriptions[truth] = ("A afirmação sobre o que a instituição publicou foi " + ("confirmada" if truth == "supported" else "contradita")
-            + " no registro original consultado. Trata-se de uma fonte primária, não duas confirmações independentes; confira a citação e a data. Isso não certifica o fenômeno descrito.")
+        descriptions[truth] = ("A afirmação sobre o que a instituição publicou foi verificada como " + ("verdadeira" if truth == "supported" else "falsa")
+            + " no registro original consultado. Foi consultada a publicação da própria instituição, não duas fontes independentes; confira o trecho e a data. Isso não comprova que o fenômeno descrito realmente ocorreu.")
     result.update(claim_assessments=merged, veracity_status=truth,
         verdict="Authentic" if truth == "supported" else "False" if truth == "refuted" else "Suspicious",
         analysis_status="partial" if truth in {"supported", "refuted"} else "inconclusive",

@@ -26,8 +26,8 @@ const TYPE_FILTERS = [
 ];
 const VERDICT_FILTERS = [
   { value: "all", label: "Todos" },
-  { value: "Authentic", label: "Corroborado" },
-  { value: "False", label: "Refutado" },
+  { value: "Authentic", label: "Verdadeira nas fontes" },
+  { value: "False", label: "Falsa nas fontes" },
   { value: "Suspicious", label: "Suspeito" },
   { value: "Scam", label: "Golpe" },
   { value: "AI_Generated", label: "IA" },
@@ -36,7 +36,7 @@ const VERDICT_FILTERS = [
 ];
 const LIMIT = 20;
 const VERDICT_LABELS = {
-  Authentic: "Corroborado", False: "Refutado", Suspicious: "Revisar",
+  Authentic: "Verificada como verdadeira nas fontes consultadas", False: "Verificada como falsa nas fontes consultadas", Suspicious: "Revisar",
   Scam: "Sinais de golpe", AI_Generated: "Indícios de IA",
   Manipulated: "Indícios de manipulação", Out_Of_Context: "Fora de contexto",
 };
@@ -225,7 +225,7 @@ export default function Dashboard() {
                         </td>
                         <td className="px-5 py-4">
                           <span
-                            className="whitespace-nowrap font-mono text-[10px] font-bold uppercase tracking-wider"
+                            className="block min-w-36 max-w-56 break-words font-mono text-[10px] font-bold uppercase leading-5 tracking-wider"
                             style={{ color }}
                           >
                             {item.analysis_status === "inconclusive" ? "Inconclusivo" : VERDICT_LABELS[item.verdict_label] || "Revisar"}

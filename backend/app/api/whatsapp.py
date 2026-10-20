@@ -64,10 +64,10 @@ def format_whatsapp_response(report: Dict[str, Any], query_preview: str = "") ->
         badge = "🔎 *ANÁLISE INCONCLUSIVA*"
         score_text = "Origem/veracidade não determinada; não é prova de falsificação."
     elif verdict == "Authentic":
-        badge = "📚 *INFORMAÇÃO CORROBORADA NAS FONTES CONSULTADAS*"
+        badge = "📚 *VERIFICADA COMO VERDADEIRA NAS FONTES CONSULTADAS*"
         score_text = "Confira as referências. Isso não garante autenticidade de uma mídia."
     elif verdict == "False":
-        badge = "📚 *AFIRMAÇÃO REFUTADA NAS CHECAGENS CONSULTADAS*"
+        badge = "📚 *VERIFICADA COMO FALSA NAS FONTES CONSULTADAS*"
         score_text = "Compare afirmação, data e argumentos nas fontes originais."
     elif verdict == "Scam":
         badge = "🚨 *CUIDADO: ALERTA DE GOLPE / FRAUDE*"

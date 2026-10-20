@@ -42,14 +42,14 @@ test("absence of a literal copy is a closed supplementary search, not a conflict
   assert.doesNotMatch(literalDetailsOpening(html), /\bopen(?:=|\s|>)/);
   assert.match(literalDetailsOpening(html), /min-w-0/);
   assert.match(html, /Pesquisa de reprodução literal/);
-  assert.match(html, /não encontrar uma cópia literal não confirma nem refuta a informação/);
+  assert.match(html, /Não encontrar uma cópia exata não diz se a informação é verdadeira ou falsa/);
   assert.match(html, /Nenhuma reprodução literal localizada/);
   assert.doesNotMatch(html, /Sem correspondência nas fontes consultadas/);
   assert.match(html, /Pesquisa limitada aos documentos selecionados/);
   assert.match(html, /1 frases selecionadas, 2 páginas selecionadas e 2 páginas com leitura concluída/);
   assert.match(html, /Cruzamento de fontes/);
   assert.match(html, /href="https:\/\/www\.who\.int\/control"/);
-  assert.match(html, /Sustenta esta afirmação/);
+  assert.match(html, /Concorda com esta afirmação/);
   assert.match(html, /We have made the assessment that COVID-19 can be characterized as a pandemic\./);
   assert.deepEqual(result, before, "Presentation must not change evidence or verdicts");
 });

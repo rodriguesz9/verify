@@ -31,6 +31,16 @@ def pair(claim=CLAIM, rating="Verdadeiro"):
 
 
 class ClaimDecisionTests(unittest.TestCase):
+    def test_published_review_summary_uses_plain_true_false_words_and_keeps_limits(self):
+        for rating, label in (("Verdadeiro", "verdadeira"), ("Falso", "falsa")):
+            with self.subTest(rating=rating):
+                report = text_report(CLAIM, pair(rating=rating), now=NOW)
+                self.assertIn("verificada como " + label + " nas fontes consultadas", report["summary"])
+                self.assertIn("duas checagens de grupos diferentes", report["summary"])
+                self.assertIn("análise pode errar", report["summary"])
+                self.assertNotRegex(report["summary"], r"(?i)corrobor|refutad|refutação")
+                self.assertEqual(report["claims"], [CLAIM])
+
     def test_distinct_reviews_support_or_refute(self):
         for rating, verdict, status in (("Verdadeiro", "Authentic", "supported"), ("Falso", "False", "refuted")):
             result = text_report(CLAIM, pair(rating=rating), now=NOW)

@@ -254,6 +254,29 @@ def is_launch_date_claim(claim: str) -> bool:
                 and _SCOPE_LAUNCH.search(claim) and (_DATE.search(claim) or _SCOPE_YEAR.search(claim)))
 
 
+def launch_lead_identity_priority(claim: str, lead: str) -> int:
+    """Reading order only: exact numbered mission, unknown, different mission.
+
+    A disputed year must not send the reader to a different mission that
+    happens to share that year. Only a completely parsed mission claim can
+    identify the requested program/number here; ambiguous or vehicle/payload
+    claims keep the old ordering. A title/path remains an untrusted lead,
+    never a body quote, a date, an eligibility filter or a factual relation.
+    """
+    left = _frame(claim)
+    if left is None or left.identity_kind != "mission" or not isinstance(lead, str):
+        return 0
+    program, requested = left.identity
+    words = re.split(r"[ -]+", program)
+    pattern = (r"(?<!\w)" + r"[\s-]+".join(re.escape(word) for word in words)
+               + r"[\s-]+([1-9]\d{0,2}|[IVXLCDM]{1,8})(?![\w-])")
+    identities = {_number(match[1].upper()) for match in re.finditer(pattern, lead, re.I)}
+    identities.discard(None)
+    if requested in identities:
+        return 0
+    return 2 if identities else 1
+
+
 def launch_date_relation(claim: str, quote: str, *, quote_role: str = "body") -> Relation | None:
     """Compare one literal BODY launch with the whole scoped claim.
 

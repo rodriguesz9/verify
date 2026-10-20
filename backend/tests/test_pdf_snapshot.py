@@ -225,7 +225,7 @@ class PdfExportEndpointTests(unittest.TestCase):
         response = self.client.post("/api/verificar/relatorio-pdf", json={"snapshot_token": result["pdf_snapshot_token"]})
         self.assertEqual(response.status_code, 200)
         extracted = subprocess.run(["pdftotext", "-", "-"], input=response.content, capture_output=True, check=True).stdout.decode()
-        for value in ("2026-10-03T18:30:00+00:00", "Refutado", "Fonte de controle", "Fonte diferente", "Afirmação diferente", "OCR pode conter erros", "Precisão não calibrada"):
+        for value in ("2026-10-03T18:30:00+00:00", "Verificada como falsa nas fontes consultadas", "Fonte de controle", "Fonte diferente", "Afirmação diferente", "OCR pode conter erros", "Precisão não calibrada"):
             self.assertIn(value, extracted)
         self.assertNotIn("vpdf1", extracted)
 

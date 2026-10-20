@@ -10,8 +10,8 @@ test("batch labels never turn an inconclusive or legacy code into a public accus
   assert.equal(batchResultLabel({verdict: "Authentic", analysis_status: "inconclusive", veracity_status: "supported"}), "Análise inconclusiva");
   assert.equal(batchResultLabel({verdict: "Authentic", veracity_status: "unverified"}), "Sem conclusão suficiente");
   assert.equal(batchResultLabel({verdict: "Scam", analysis_status: "inconclusive"}), "Sinais de possível golpe");
-  assert.equal(batchResultLabel({veracity_status: "refuted", analysis_status: "partial"}), "Refutado nas fontes consultadas");
-  assert.equal(batchResultLabel({veracity_status: "supported", analysis_status: "partial"}), "Corroborado nas fontes consultadas");
+  assert.equal(batchResultLabel({veracity_status: "refuted", analysis_status: "partial"}), "Verificada como falsa nas fontes consultadas");
+  assert.equal(batchResultLabel({veracity_status: "supported", analysis_status: "partial"}), "Verificada como verdadeira nas fontes consultadas");
   const page = readFileSync(new URL("../src/pages/Home.jsx", import.meta.url), "utf8");
   assert.match(page, /\{batchResultLabel\(r\)\}/);
   assert.doesNotMatch(page, /\{r\.verdict \|\|/);
@@ -29,7 +29,7 @@ test("an omitted complete news query is not presented as an unavailable provider
     provider_coverage: {serper: {status: "not_requested", reason, decision_role: "context_only"}}});
   assert.equal(report.veracityStatus, "unverified");
   assert.equal(report.publicPresentation.incomplete, true);
-  assert.deepEqual(report.publicMissing, ["A informação não foi confirmada nem refutada pelas evidências disponíveis.",
+  assert.deepEqual(report.publicMissing, ["Não foi possível verificar se a informação é verdadeira ou falsa com as fontes disponíveis.",
     "Algumas consultas não foram realizadas; a cobertura ficou limitada."]);
   assert.deepEqual(report.missing, ["serper: auxílio de pesquisa não realizado; isso não determina verdade ou falsidade."]);
   assert.doesNotMatch(report.publicMissing.join(" "), /Não foi possível concluir todas as etapas/);
@@ -147,14 +147,14 @@ test("refuted claims show attributed evidence, dates and exclusions", () => {
     claim_assessments: [{claim: "Afirmação sintética de teste", status: "refuted", explanation: "Duas fontes refutam.", evidence: [{}, {}], excluded_evidence: []}],
     fact_checks: [{claim_text: "Afirmação sintética de teste", rating: "Falso", publisher: "Teste", review_date: "2026-09-01", url: "https://example.com/fixture"}]});
   assert.equal(result.veracityStatus, "refuted");
-  assert.equal(result.findings[0].title, "Refutada nas checagens");
+  assert.equal(result.findings[0].title, "Verificada como falsa nas fontes consultadas");
   assert.equal(result.sources[0].date, "2026-09-01");
   assert.match(result.interpretation, /refutam/);
 });
 test("OCR truth stays separate from unknown media origin", () => {
   const result = buildReportEvidence({content_type: "image", verdict: "Suspicious", analysis_status: "inconclusive",
     authenticity_status: "undetermined", veracity_status: "unverified",
-    content_analysis: {origin: "ocr", veracity_status: "supported", summary: "Corroborada nas checagens", claim_assessments: [],
+    content_analysis: {origin: "ocr", veracity_status: "supported", summary: "Verificada como verdadeira nas fontes consultadas", claim_assessments: [],
       fact_checks: [{claim_text: "Texto", rating: "Verdadeiro", url: "https://example.com/fixture"}]}});
   assert.equal(result.inconclusive, true);
   assert.equal(result.veracityStatus, "supported");

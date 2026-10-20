@@ -12,16 +12,16 @@ import { Shield, AlertTriangle, ArrowRight, Volume2, Phone, ChevronDown, Chevron
 
 const BADGE_STYLES = {
   False: {
-    title: "AFIRMAÇÃO REFUTADA",
+    title: "VERIFICADA COMO FALSA NAS FONTES CONSULTADAS",
     color: "#FF3B5C", bg: "rgba(255,59,92,0.06)", border: "rgba(255,59,92,0.2)",
-    headline: "Checagens editoriais distintas refutam a mesma afirmação. Consulte os argumentos, a data e o contexto nas fontes originais.",
+    headline: "Fontes diferentes verificaram a mesma informação como falsa. Confira a explicação, a data e o contexto nas fontes originais. A análise pode errar.",
   },
   Authentic: {
-    title: "INFORMAÇÃO CORROBORADA",
+    title: "VERIFICADA COMO VERDADEIRA NAS FONTES CONSULTADAS",
     color: "#00FF87",
     bg: "rgba(0,255,135,0.06)",
     border: "rgba(0,255,135,0.2)",
-    headline: "As fontes consultadas corroboram a informação. Confira as referências; isso não garante que uma mídia seja autêntica.",
+    headline: "A informação foi verificada como verdadeira nas fontes consultadas. Confira as referências: a análise pode errar e não comprova a origem de uma imagem, áudio ou vídeo.",
   },
   AI_Generated: {
     title: "INDÍCIOS DE IA",

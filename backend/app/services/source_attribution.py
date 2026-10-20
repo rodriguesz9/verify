@@ -337,6 +337,14 @@ def _source_statements(text):
         return input_claims(text)
     masked = re.sub(r"\b(art)\.(?=\s+\d{1,3}(?:[º°]|\.?\s))",
                     lambda match: match[1] + marker, text, flags=re.I)
+    # A civil clock followed by a zone/date is still one literal statement:
+    # splitting at "a.m. EST on ..." detached the launch from its full date.
+    # Mask only this closed abbreviation construction, not arbitrary initials
+    # or the final period before a new sentence. No DOM blocks are joined.
+    masked = re.sub(
+        r"\b\d{1,2}:\d{2}\s+[ap]\.m\.(?=\s+(?:UTC|GMT|EST|EDT|CST|CDT|MST|MDT|PST|PDT|BRT)\s+(?:on|em)\s+)",
+        lambda match: match[0].replace(".", marker), masked, flags=re.I,
+    )
     return [part.replace(marker, ".") for part in input_claims(masked)]
 
 
@@ -587,6 +595,8 @@ def _retrieval_priority(text, title, url):
     """
     from app.services.source_queries import _discovery_subject, neutral_source_query
     from app.services.source_corroboration import source_identity
+    from app.services.launch_relations import launch_lead_identity_priority
+    from app.services.competition_relations import competition_lead_priority
     subject = neutral_source_query(text, preserve_period=True) or text
     path = unquote(urlsplit(url).path)
     lead = title + " " + path
@@ -613,7 +623,11 @@ def _retrieval_priority(text, title, url):
     words = lambda value: {word.casefold() for word in re.findall(r"[^\W\d_]{3,}", value, re.UNICODE)}
     shared_topics = len(words(subject) & words(lead))
     primary = (source_identity(url) or {}).get("source_type") == "primary"
-    return (month_priority, -year_matches, unrelated_period, narrower_period, not primary, -shared_topics)
+    # Identity bands precede the three month bands, preserving the existing
+    # tuple contract/month ordering for all non-launch or unparsed claims.
+    discovery_priority = (3 * launch_lead_identity_priority(text, lead)
+                          + 3 * competition_lead_priority(text, lead) + month_priority)
+    return (discovery_priority, -year_matches, unrelated_period, narrower_period, not primary, -shared_topics)
 
 
 def _publication_date(resource):

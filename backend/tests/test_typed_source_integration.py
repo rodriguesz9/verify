@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, patch
 
 import helpers
 from app.core.openrouter_service import GeneratedText
+from test_source_corroboration import reviewed_response
 from app.services.source_corroboration import _passage_guard, corroborate_sources
 from app.services.launch_relations import launch_date_relation
 from app.services.competition_relations import competition_outcome_relation
@@ -36,7 +37,7 @@ class TypedSourceIntegrationTests(unittest.IsolatedAsyncioTestCase):
                         evidence.append({"source_id": source["source_id"], "excerpt_id": passage["excerpt_id"],
                                          "relation": relation})
                         break
-            return GeneratedText(json.dumps({"claims": [{"claim_id": "c1", "evidence": evidence}]}))
+            return reviewed_response(GeneratedText(json.dumps({"claims": [{"claim_id": "c1", "evidence": evidence}]})), prompt)
         with patch.dict(os.environ, {"SOURCE_CROSSCHECK_ENABLED": "true", "SOURCE_CROSSCHECK_PRIMARY_PROVIDER": "openrouter"}), \
              patch("app.services.source_corroboration.openrouter_service.generate", new=AsyncMock(side_effect=answer)) as model:
             result = await corroborate_sources(claim, docs)

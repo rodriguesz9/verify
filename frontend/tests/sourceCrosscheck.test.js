@@ -75,7 +75,7 @@ test("grounded source presentation preserves literal negation, value, date, rela
   const cross = helpers.sourceCorroborationPresentation(result);
   assert.equal(cross.claims[0].claim, literal);
   assert.equal(cross.claims[0].evidence[0].excerpt, literal);
-  assert.equal(cross.claims[0].evidence[0].relationLabel, "Sustenta esta afirmação");
+  assert.equal(cross.claims[0].evidence[0].relationLabel, "Concorda com esta afirmação");
   assert.equal(cross.claims[0].evidence[0].retrievedAt, "2026-10-13T13:00:00Z");
   assert.match(cross.scope, /1 de 1 afirmações selecionadas e 2 documentos/);
   assert.deepEqual(result, before);
@@ -85,14 +85,14 @@ test("single original record is not presented as two independent confirmations",
   const result = fixture("corroborated", {original_record_only: true});
   result.source_corroboration.claims[0].evidence.splice(1);
   const headline = helpers.reportFactualHeadline(result);
-  assert.equal(headline.title, "Confirmada no registro original");
-  assert.match(headline.headline, /É uma fonte primária, não duas confirmações independentes/);
+  assert.equal(headline.title, "Verificada como verdadeira no registro original");
+  assert.match(headline.headline, /publicação da própria instituição, não duas fontes independentes/);
   assert.equal(helpers.sourceCorroborationPresentation(result).originalRecordOnly, true);
 });
 
 test("source decisions show grounded headlines, never an invented certainty percentage or Google-only rating", () => {
-  for (const [state, title] of [["corroborated", "Corroborada nas fontes consultadas"],
-    ["refuted", "Refutada nas fontes consultadas"], ["conflicting", "Fontes discordam"], ["mixed", "Conteúdo misto"],
+  for (const [state, title] of [["corroborated", "Verificada como verdadeira nas fontes consultadas"],
+    ["refuted", "Verificada como falsa nas fontes consultadas"], ["conflicting", "Fontes discordam"], ["mixed", "Conteúdo misto"],
     ["insufficient", "Evidência insuficiente"]]) {
     const result = fixture(state);
     assert.equal(helpers.reportFactualHeadline(result).title, title);
@@ -105,9 +105,25 @@ test("source decisions show grounded headlines, never an invented certainty perc
   }
 });
 
+test("public true and false labels use plain words without changing internal states or quotes", () => {
+  for (const [state, label] of [["corroborated", "verdadeira"], ["refuted", "falsa"]]) {
+    const result = fixture(state), before = structuredClone(result);
+    const cross = helpers.sourceCorroborationPresentation(result), visible = visibleDefault(renderPage(result));
+    assert.equal(cross.state, state);
+    assert.equal(cross.title, `Verificada como ${label} nas fontes consultadas`);
+    assert.doesNotMatch(visible, /corroborad|refutad|refutar|refutação/i);
+    assert.match(visible, /análise pode errar/);
+    assert.equal(cross.claims[0].evidence[0].excerpt, result.source_corroboration.claims[0].evidence[0].excerpt);
+    assert.deepEqual(result, before);
+  }
+  const dashboard = read("../src/pages/Dashboard.jsx");
+  assert.match(dashboard, /block min-w-36 max-w-56 break-words/);
+  assert.doesNotMatch(dashboard, /label: "Corroborado"|label: "Refutado"/);
+});
+
 test("real source body quotation, relation, original link and consultation date render publicly", () => {
   const html = renderPage(fixture("refuted")), visible = visibleDefault(html);
-  assert.match(visible, /Contradiz esta afirmação/);
+  assert.match(visible, /Mostra informação diferente desta afirmação/);
   assert.match(visible, /Não houve cobrança de R\$ 123,45 em 13\/10\/2026\./);
   assert.match(visible, /href="https:\/\/example\.org\/noticia"/);
   assert.match(visible, /datetime="2026-10-13T13:00:00Z"/i);
@@ -155,13 +171,13 @@ test("partial claim coverage cannot receive global approval; a truncated page is
     assert.match(helpers.sourceCorroborationPresentation(partial).limitations.join(" "), /Não é uma aprovação do conteúdo inteiro/);
     const truncated = fixture(state, {content_type: "url", source_extraction: {method: "static_html", truncated: true}});
     assert.equal(helpers.reportFactualHeadline(truncated).title,
-      state === "corroborated" ? "Trecho corroborado nas fontes consultadas" : "Trecho refutado nas fontes consultadas");
+      state === "corroborated" ? "Trecho verificado como verdadeiro nas fontes consultadas" : "Trecho verificado como falso nas fontes consultadas");
     assert.match(helpers.reportFactualHeadline(truncated).headline, /vale somente para o trecho analisado/);
     assert.match(visibleDefault(renderPage(truncated)), /restante não foi checado/);
   }
   const combined = fixture("corroborated", {veracity_decision_basis: "mixed_evidence"});
   combined.source_corroboration.coverage.complete_claim_coverage = false;
-  assert.equal(helpers.reportFactualHeadline(combined).title, "Corroborada nas fontes consultadas");
+  assert.equal(helpers.reportFactualHeadline(combined).title, "Verificada como verdadeira nas fontes consultadas");
   for (const value of [undefined, false, "true", 1]) {
     assert.equal(helpers.reportFactualHeadline({...combined, veracity_decision_coverage_complete: value}).title, "Evidência insuficiente");
   }
@@ -172,9 +188,9 @@ test("incomplete source layer cannot overwrite an existing editorial ClaimReview
     veracity_decision_basis: "claim_reviews", claim_assessments: [{claim: literal, status: "refuted", evidence: [{}, {}]}]});
   const report = helpers.buildReportEvidence(result);
   assert.equal(report.veracityStatus, "refuted");
-  assert.equal(report.findings.find((item) => item.id === "claim-0").title, "Refutada nas checagens");
+  assert.equal(report.findings.find((item) => item.id === "claim-0").title, "Verificada como falsa nas fontes consultadas");
   assert.equal(helpers.reportFactualHeadline(result), null);
-  assert.match(visibleDefault(renderPage(result)), /AFIRMAÇÃO REFUTADA/);
+  assert.match(visibleDefault(renderPage(result)), /VERIFICADA COMO FALSA NAS FONTES CONSULTADAS/);
 });
 
 test("a source-backed statement cannot certify the image or voice that carried it", () => {
@@ -183,10 +199,10 @@ test("a source-backed statement cannot certify the image or voice that carried i
     media_signal: {version: "1", scope: "image", state: "no_high_signal"}, content_analysis: {...content, origin: "ocr"}};
   const report = helpers.buildReportEvidence(result), visible = visibleDefault(renderPage(result));
   assert.equal(helpers.reportFactualHeadline(result), null);
-  assert.equal(report.veracityLabel, "Corroborada nas fontes consultadas");
+  assert.equal(report.veracityLabel, "Verificada como verdadeira nas fontes consultadas");
   assert.match(visible, /Sem indícios fortes nas consultas feitas/);
   assert.match(visible, /não prova autenticidade/);
-  assert.match(visible, /Corroborada nas fontes consultadas/);
+  assert.match(visible, /Verificada como verdadeira nas fontes consultadas/);
   assert.doesNotMatch(visible, /INFORMAÇÃO CORROBORADA|mídia autêntica garantida/);
 });
 

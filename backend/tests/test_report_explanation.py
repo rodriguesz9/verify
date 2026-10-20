@@ -41,7 +41,7 @@ class ReportExplanationTests(unittest.TestCase):
         report = apply_source_decision(CLAIM, text_report(CLAIM, []), layer(status="refuted"))
         result = enrich_grounded_report(report)
         self.assertEqual(result["verdict"], "False")
-        self.assertIn("refutado", result["plain_explanation"])
+        self.assertIn("verificado como falso nas fontes consultadas", result["plain_explanation"])
         self.assertEqual(result["authenticity_status"], "not_applicable")
 
     def test_unsafe_or_excluded_accepted_rows_are_not_rendered(self):

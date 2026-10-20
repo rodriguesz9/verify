@@ -32,7 +32,7 @@ class SourceDecisionTests(unittest.TestCase):
         result = apply_source_decision(text, text_report(text, []), comparison)
         self.assertEqual(result["veracity_status"], "supported")
         self.assertTrue(result["original_record_only"])
-        self.assertIn("não duas confirmações", result["summary"])
+        self.assertIn("não duas fontes independentes", result["summary"])
         self.assertIsNone(result["confidence"])
         for change in ({"url":"https://www.bbc.com/story", "publisher_family":"bbc"},
                        {"source_type":"editorial"}, {"source_role":"submitted_source"}):
@@ -49,6 +49,16 @@ class SourceDecisionTests(unittest.TestCase):
         self.assertTrue(result["veracity_decision_coverage_complete"])
         self.assertEqual(original["veracity_status"], "unverified")
         self.assertNotIn("veracity_decision_basis", original)
+
+    def test_public_source_decision_uses_plain_true_false_words_and_preserves_scope(self):
+        for state, label in (("corroborated", "verdadeira"), ("refuted", "falsa")):
+            with self.subTest(state=state):
+                result = apply_source_decision(CLAIM, text_report(CLAIM, []), layer(status=state))
+                self.assertIn("verificada como " + label, result["summary"])
+                self.assertIn("fontes independentes consultadas", result["summary"])
+                self.assertIn("a análise pode errar", result["summary"])
+                self.assertNotRegex(result["summary"], r"(?i)corrobor|refutad|refutação")
+                self.assertEqual(result["claim_assessments"][0]["evidence"][0]["excerpt"], CLAIM)
 
     def test_two_refutations_are_attributed_not_authenticity_claims(self):
         result = apply_source_decision(CLAIM, text_report(CLAIM, []), layer(status="refuted"))
