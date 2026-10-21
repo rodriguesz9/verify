@@ -38,12 +38,16 @@ class NewsQueryPipelineTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(plan["truncated"])
 
     async def test_unsupported_hint_never_becomes_query_or_checked_claim(self):
-        text = "A avó não recebeu R$ 20 em 14/10/2026."
+        sentences = ["A avó não recebeu R$ 20 em 14/10/2026.",
+                     "O comunicado não autorizou o pagamento em 15/10/2026."]
+        text = " ".join(sentences)
         invented = "A avó recebeu R$ 20 em 14/10/2026."
         result, searches, _ = await self.run_control(text, [invented])
-        searches.assert_awaited_once_with(text)
+        queries = [call.args[0] for call in searches.await_args_list]
+        self.assertEqual(queries, [text, *sentences])
+        self.assertNotIn(invented, queries)
         report = result["report"]
-        self.assertEqual(report["claims"], [text])
+        self.assertEqual(report["claims"], sentences)
         self.assertEqual(report["search_claims"], [invented])
         self.assertEqual(report["search_claims_decision_role"], "search_hints_only")
         self.assertEqual(report["provider_coverage"]["serper"]["query_plan"]["extracted_rejected_count"], 1)

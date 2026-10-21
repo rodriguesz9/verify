@@ -18,7 +18,10 @@ from app.core import gemini_client, openrouter_service
 from app.services.claim_policy import input_claims, normalize_claim, RELATIVE_TIME
 from app.services.source_relations import lexical_text, WORD_GROUPS, opposing_directions, percentage_transition, opposing_measurements, supporting_measurements_bound
 from app.services.launch_relations import is_launch_date_claim, launch_date_relation
+from app.services.monetary_decisions import parse_copom_claim, copom_record_relation, validate_copom_record
+from app.services.launch_body_dates import launch_body_temporal_anchor, launch_date_claim_matches_body
 from app.services.competition_relations import is_competition_outcome_claim, competition_outcome_relation, parse_competition_claim
+from app.services.typed_source_comparison import typed_review_matrix, COMPARISON_METHOD as TYPED_COMPARISON_METHOD
 
 VERSION = "source_corroboration_v1"
 MAX_INPUT = 5000
@@ -157,7 +160,10 @@ SYSTEM_INSTRUCTION = (
     "Se o fato aparece somente em context ou na passagem seguinte, não use o ID da introdução; selecione uma passagem ou janela cujo próprio quote contenha o fato. "
     "Um trecho pode ser uma sentença ou janela de até três sentenças consecutivas do corpo. "
     "temporal_anchor, quando fornecido, liga somente uma expressão relativa explícita do corpo à data de publicação verificada nos metadados; não é a data da consulta. "
+    "launch_anchor liga um lançamento concluído a dia e semana explícitos no próprio corpo, conferidos com os metadados de publicação; não usa data do título, URL ou consulta. "
     "original_record identifica um registro institucional delimitado: sua data documenta quando o pronunciamento foi publicado, não inventa a data de outro evento. "
+    "official_record do tipo bcb_copom_comunicado identifica a decisão informada naquele comunicado oficial e sua data de referência, não o horário de uma reunião. "
+    "Compare a direção e as taxas da própria decisão do Copom. Um único ajuste explícito em pontos percentuais permite calcular a taxa anterior a partir da taxa final; não confunda pontos percentuais com variação percentual. "
     "Em um pronunciamento formal, 'concluímos que pode ser caracterizado como' registra o ato de caracterização; "
     "não confunda esse ato institucional com uma hipótese sobre o fenômeno. Compare exatamente o que a afirmação atribui à instituição. "
     "reporting_anchor liga o dia de divulgação explícito no corpo à publicação, sem datar o fenômeno divulgado. "
@@ -209,6 +215,38 @@ def source_family(url, body=""):
     return identity["publisher_family"]
 
 
+def _is_original_copom_record_claim(claim, source):
+    if parse_copom_claim(claim) is None or source.get("source_role") != "retrieved_reference":
+        return False
+    candidates = source.get("passages", [source])
+    if not isinstance(candidates, list):
+        return False
+    stamp = source.get("retrieved_at")
+    try:
+        retrieved = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+        if retrieved.tzinfo is None or retrieved > datetime.now(timezone.utc):
+            return False
+    except (ValueError, TypeError, AttributeError):
+        return False
+    for candidate in candidates:
+        if not isinstance(candidate, dict):
+            continue
+        proof = candidate.get("official_record")
+        if not validate_copom_record(proof) or proof["record_url"] != source.get("url"):
+            continue
+        quote = candidate.get("quote", candidate.get("excerpt"))
+        context = candidate.get("context", quote)
+        if (not isinstance(quote, str) or not 20 <= len(quote) <= MAX_SENTENCE
+                or not isinstance(context, str) or len(context) > 3 * MAX_SENTENCE):
+            continue
+        relation = copom_record_relation(claim, quote, proof)
+        if relation is None or candidate.get("relation", relation) != relation:
+            continue
+        if _passage_guard(claim, {**candidate, "quote": quote, "context": context}, relation, stamp) is None:
+            return True
+    return False
+
+
 def is_original_record_claim(claim, source):
     """Narrow attributed-record scope, NOT trust in every official assertion.
 
@@ -226,6 +264,8 @@ def is_original_record_claim(claim, source):
     family = identity["publisher_family"]
     if family == "legislativo-br":
         return _is_original_legal_record_claim(claim, source)
+    if family == "bcb":
+        return _is_original_copom_record_claim(claim, source)
     return bool((family == "ibge" and re.search(r"\bIBGE\s+(?:informou|divulgou|publicou|reportou)\b", text, re.I)
              and re.search(r"\b(?:PIB|GDP)\b", text, re.I))
             or (family == "copernicus" and re.search(r"^Segundo o relatório do Copernicus\b", text, re.I))
@@ -234,8 +274,8 @@ def is_original_record_claim(claim, source):
 
 
 def crosscheck_timeout_seconds():
-    raw = os.getenv("SOURCE_CROSSCHECK_TIMEOUT_SECONDS", "60").strip()
-    return int(raw) if re.fullmatch(r"[0-9]{1,2}", raw) and 10 <= int(raw) <= 60 else 60
+    raw = os.getenv("SOURCE_CROSSCHECK_TIMEOUT_SECONDS", "90").strip()
+    return int(raw) if re.fullmatch(r"[0-9]{1,2}", raw) and 10 <= int(raw) <= 90 else 90
 
 
 def _name_ordinal_spans(text):
@@ -472,7 +512,9 @@ def _relation_guard(claim, quote, context, relation, retrieved_at):
         return "Entidades e âncoras do mesmo evento não foram preservadas."
     if relation == "supports" and "intentional" in _tokens(claim) and "intentional" not in _tokens(quote):
         return "Intencionalidade alegada não está explícita no próprio trecho; ocorrência de impacto não comprova intenção."
-    if any(pattern.search(claim) and not pattern.search(quote) for _, pattern in _DISTINCT_ACTIONS):
+    if any(pattern.search(claim) and not pattern.search(quote)
+           for action, pattern in _DISTINCT_ACTIONS
+           if not (action == "event-launch" and launch_scope and typed_relation == relation)):
         return "Ação alegada não aparece no trecho; pouso de uma nave não comprova caminhada de pessoas."
     if _WALK_PREDICATE.search(claim) and _HUMAN_AGENT.search(claim):
         if not _HUMAN_AGENT.search(quote):
@@ -595,10 +637,27 @@ def _window_subject_guard(claim, quote):
         return False
     before = quote[:predicate.start()]
     kinship = r"\b(?:mãe|pai|filh[oa]|espos[oa]|irm[ãa]o?|mother|father|daughter|son|wife|husband|sister|brother)\b"
+    if re.search(kinship, before, re.I):
+        return False
+    # One closed territorial appositive describes the SAME monarch, not a
+    # competing person: "Zeta II, monarca mais longeva do Reino Leste, morreu".
+    # Do not erase arbitrary comma text, personal names, relatives or actions.
+    # A territorial head and a bounded proper place name are mandatory; the
+    # original quote/context remain intact for every other evidence guard.
+    place_word = r"[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][a-záàâãéêíóôõúç]+"
+    territory_appositive = (
+        r",\s*(?i:monarca(?:\s+mais\s+longev[oa])?\s+d[oa])\s+"
+        r"(?i:reino|república|país|território)"
+        r"(?:\s+(?:(?i:de|da|do)\s+)?" + place_word + r"){1,4}\s*,\s*"
+    )
+    appositives = list(re.finditer(territory_appositive, before))
+    if len(appositives) == 1:
+        appositive = appositives[0]
+        before = before[:appositive.start()] + " " + before[appositive.end():]
     # An appositive may introduce another person before a later "she/he".
     # Inspect the complete antecedent, not only the text before its first
     # comma. Unbound additional proper names remain ambiguous and abstain.
-    if re.search(kinship, before, re.I) or not _names(before) <= _names(claim):
+    if not _names(before) <= _names(claim):
         return False
     if len(predicates) > 1:
         statements = input_claims(quote)
@@ -900,6 +959,44 @@ def _legal_article_reading(claim, passage):
 
 def _passage_guard(claim, passage, relation, stamp):
     quote = passage["quote"]
+    if passage.get("official_record"):
+        # This is a narrowly typed publication of the institution's OWN
+        # decision, not an arbitrary news date or a generic official-host vote.
+        proof = passage["official_record"]
+        observed = copom_record_relation(claim, quote, proof)
+        if observed != relation:
+            return "O comunicado oficial não vincula integralmente a decisão, a data e as taxas alegadas."
+        context = passage["context"]
+        before = context.partition(quote)[0] if quote in context else context
+        after = context.partition(quote)[2] if quote in context else ""
+        denied_act = re.search(
+            r"\b(?:essa|esta|aquela)\s+decisão\s+(?:(?:não|nunca)\s+(?:ocorreu|aconteceu|foi\s+tomada)"
+            r"|talvez\s+(?:tenha\s+)?ocorrido|pode\s+não\s+ter\s+ocorrido"
+            r"|é\s+(?:hipotética|fictícia|simulada))\b", after, re.I)
+        contextual_dates = {value for value in _quantities(context)[0] if len(value) == 10}
+        if (denied_act or _NEGATION.search(before) or _uncertain_statement(before) or _PLANNED.search(before)
+                or re.search(r"\b(?:hipot[ée]tic[oa]s?|simulad[oa]s?|fict[íi]ci[oa]s?|"
+                             r"se|caso|suposta|suposto|(?:reunião|decisão|comunicado)\s+anterior)\b", context, re.I)
+                or contextual_dates - {proof["record_reference_date"]}):
+            return "Contexto hipotético, negado ou de outra decisão impede atribuir esta frase ao comunicado atual."
+        if (RELATIVE_TIME.search(claim) or _PRESCRIPTIVE.search(claim)
+                or _UNASSERTED.search(passage["context"]) or _INSTRUCTION.search(passage["context"])
+                or _FALSE_CONTEXT.search(passage["context"]) or _CORRECTION.search(passage["context"])
+                or any(c in claim for c in ('?', '"', '“', '”', '«', '»'))):
+            return "Contexto condicional, citação, instrução ou desmentido impede a leitura direta do comunicado."
+        if proof["record_reference_date"] > datetime.fromisoformat(stamp.replace("Z", "+00:00")).date().isoformat():
+            return "Comunicado apresentado como publicado tem data posterior à recuperação."
+        return None
+    launch = passage.get("launch_anchor")
+    if launch:
+        if not launch_date_claim_matches_body(claim, quote):
+            return "A ligação de data relativa não cobre a identidade ou os qualificadores adicionais desta afirmação."
+        if (not isinstance(launch, dict)
+                or launch != launch_body_temporal_anchor(quote, launch.get("publication_date"))):
+            return "Ligação do lançamento ao dia explícito do corpo inválida."
+        if launch["publication_date"] > datetime.fromisoformat(stamp.replace("Z", "+00:00")).date().isoformat():
+            return "Data relativa do lançamento é posterior à recuperação."
+        quote = quote.replace(launch["expression"], "em " + launch["publication_date"], 1)
     reading_claim = claim
     legal_reading = _legal_article_reading(claim, passage)
     if legal_reading is False:
@@ -991,6 +1088,11 @@ def _original_record_reading(claim, record, quote=None):
 
 def _candidate_passage(quote, context, raw, record_source=None, **fields):
     candidate = {"quote": quote, "context": context, **fields}
+    proof = raw.get("official_record")
+    if (record_source and record_source.get("source_type") == "primary"
+            and record_source.get("publisher_family") == "bcb" and validate_copom_record(proof)
+            and raw.get("url") == record_source.get("url") == proof["record_url"]):
+        candidate["official_record"] = dict(proof)
     legal = _legal_article_anchor(quote, raw)
     if legal:
         candidate["legal_article_anchor"] = legal
@@ -1000,6 +1102,9 @@ def _candidate_passage(quote, context, raw, record_source=None, **fields):
     anchor = _body_temporal_anchor(quote, raw.get("publication_date"))
     if anchor:
         candidate["temporal_anchor"] = anchor
+    launch = launch_body_temporal_anchor(quote, raw.get("publication_date"))
+    if launch:
+        candidate["launch_anchor"] = launch
     reporting = _body_temporal_anchor(quote, raw.get("publication_date"), reporting=True)
     if reporting:
         candidate["reporting_anchor"] = reporting
@@ -1164,6 +1269,8 @@ def _prepare_sources(documents, claims, source_url):
             cost = len(candidate["context"]) + len(candidate["quote"])
             if candidate.get("original_legal_publication"):
                 cost += len(json.dumps(candidate["original_legal_publication"], ensure_ascii=False))
+            if candidate.get("official_record"):
+                cost += len(json.dumps(candidate["official_record"], ensure_ascii=False))
             if budget + cost > MAX_PROMPT_BODY or source_budget + cost > MAX_SOURCE_PROMPT_BODY:
                 continue
             selected.append((index, candidate, fingerprint))
@@ -1281,7 +1388,8 @@ async def _compare(prompt, coverage):
                     temperature=0, max_tokens=2048, response_schema=_gemini_schema(SCHEMA))
             else:
                 operation = openrouter_service.generate(prompt, system_instruction=SYSTEM_INSTRUCTION,
-                    temperature=0, max_tokens=2048, response_format=RESPONSE_FORMAT)
+                    temperature=0, max_tokens=4096, response_format=RESPONSE_FORMAT,
+                    timeout_seconds=min(45, attempt_timeout))
             raw = await asyncio.wait_for(operation, timeout=attempt_timeout)
             # A transport success is not a completed examination. Enforce the
             # entire claim × source matrix before accepting this response.
@@ -1397,7 +1505,7 @@ def _decode(raw, claims, passages, *, require_source_reviews=False):
     return result
 
 
-def _assess(claim, candidates):
+def _assess(claim, candidates, comparison_method="model_source_review_v2"):
     evidence, excluded, fingerprints = [], [], set()
     for candidate, passage in candidates:
         family = passage["publisher_family"]
@@ -1423,11 +1531,18 @@ def _assess(claim, candidates):
         record["reason"] = ("Sentença do corpo consultado sustenta a afirmação; comparação assistida por modelo e validada por regras conservadoras."
                             if candidate["relation"] == "supports" else
                             "Sentença do corpo consultado contradiz a afirmação sobre o mesmo evento; não é mera ausência de resultado.")
+        if comparison_method == TYPED_COMPARISON_METHOD:
+            record["reason"] = ("O trecho do corpo sustenta a afirmação completa, com identidade, data e valores conferidos por regras delimitadas."
+                                if candidate["relation"] == "supports" else
+                                "O trecho do corpo contradiz a afirmação completa sobre o mesmo evento, com identidade, data e valores conferidos por regras delimitadas.")
         if passage.get("temporal_anchor"):
             record["temporal_anchor"] = dict(passage["temporal_anchor"])
             record["reason"] += (" A expressão literal ‘" + passage["temporal_anchor"]["expression"]
                 + "’ foi vinculada à publicação em " + passage["temporal_anchor"]["publication_date"]
                 + ", com dia e dia da semana compatíveis; a citação não foi reescrita.")
+        if passage.get("launch_anchor"):
+            record["launch_anchor"] = dict(passage["launch_anchor"])
+            record["reason"] += " O dia e a semana explícitos do lançamento foram conferidos com a publicação, sem reescrever o trecho nem inferir agência, local ou horário alegados."
         if passage.get("reporting_anchor"):
             record["reporting_anchor"] = dict(passage["reporting_anchor"])
             record["reason"] += " A data de divulgação explicitada no corpo foi conferida contra a publicação; não foi atribuída ao período econômico."
@@ -1445,6 +1560,11 @@ def _assess(claim, candidates):
         if passage.get("original_legal_publication"):
             record["original_legal_publication"] = dict(passage["original_legal_publication"])
             record["reason"] += " O portal legislativo identifica esta página como publicação original do ato; isso não certifica efeitos sociais, vigência atual ou validade de uma decisão jurídica."
+        if passage.get("official_record"):
+            record["official_record"] = dict(passage["official_record"])
+            record["record_publication_date"] = passage["official_record"]["record_reference_date"]
+            record["relation_scope"] = "official_copom_communicated_decision"
+            record["reason"] += (" A data é a referência do comunicado oficial do Banco Central. A comparação verifica a decisão informada nesse registro, não infere horário de reunião nem recomenda investimentos.")
         if is_launch_date_claim(claim["claim"]):
             record["relation_scope"] = "explicit_mission_launch_date"
             record["reason"] += " O trecho liga a data ao lançamento concluído da mesma missão e identificador de voo; não usa data de publicação nem de outro evento."
@@ -1493,6 +1613,7 @@ async def corroborate_sources(text, documents, source_url=None):
     provider_coverage = {"openrouter": {"status": "not_requested", "decision_role": "grounded_comparison_assistant", "free_only": True},
                          "gemini": {"status": "not_requested", "decision_role": "grounded_comparison_assistant"}}
     status, decoded = "not_requested", {}
+    comparison_method, deterministic_coverage = "not_requested", {}
     reason = "Faltam duas famílias de fontes elegíveis para iniciar a comparação."
     if not enabled:
         status, reason = "disabled", "Cruzamento de fontes desabilitado por configuração."
@@ -1501,13 +1622,23 @@ async def corroborate_sources(text, documents, source_url=None):
     elif not claims:
         reason = "Nenhuma afirmação literal disponível para comparação."
     elif len(families) >= 2 or any(is_original_record_claim(claim["claim"], source) for claim in claims for source in sources):
-        prompt = json.dumps({"claims": claims, "sources": [{"source_id": source["source_id"], "passages": source["passages"]}
-                                                         for source in sources]}, ensure_ascii=False)
         try:
-            async with asyncio.timeout(crosscheck_timeout_seconds()):
-                raw, provider_coverage, status = await _compare(prompt, provider_coverage)
-            if raw is not None:
-                decoded = _decode(raw, claims, passages)
+            typed = typed_review_matrix(claims, sources, _passage_guard, _window_subject_guard)
+            if typed is not None:
+                raw, pending_coverage = typed
+                decoded = _decode(raw, claims, passages, require_source_reviews=True)
+                deterministic_coverage = pending_coverage
+                comparison_method, status = TYPED_COMPARISON_METHOD, "success"
+            else:
+                comparison_method = "model_source_review_v2"
+                prompt = json.dumps({"claims": claims, "sources": [{"source_id": source["source_id"], "passages": source["passages"]}
+                                                                 for source in sources]}, ensure_ascii=False)
+                async with asyncio.timeout(crosscheck_timeout_seconds()):
+                    raw, provider_coverage, status = await _compare(prompt, provider_coverage)
+            if raw is not None and typed is None:
+                decoded = _decode(raw, claims, passages, require_source_reviews=True)
+                reason = None
+            elif typed is not None:
                 reason = None
             else:
                 reason = "Comparação indisponível; não houve substituição por opinião ou evidência inventada."
@@ -1518,7 +1649,7 @@ async def corroborate_sources(text, documents, source_url=None):
                     record["status"] = "timeout"
         except (ValueError, TypeError, KeyError):
             status, reason = "invalid_response", "Resposta fora do contrato ou sem citação literal; comparação descartada integralmente."
-    assessments = [_assess(claim, decoded.get(claim["claim_id"], [])) for claim in claims]
+    assessments = [_assess(claim, decoded.get(claim["claim_id"], []), comparison_method) for claim in claims]
     complete = valid_input and len(segments) <= MAX_CLAIMS and bool(assessments) and all(
         item["state"] in {"corroborated", "refuted"} for item in assessments)
     states = {item["state"] for item in assessments}
@@ -1532,6 +1663,8 @@ async def corroborate_sources(text, documents, source_url=None):
         "Até três páginas, cinco segmentos e trechos limitados; conteúdo não consultado, JavaScript e CSS externo não são resolvidos.",
         "Publicação/data de evento não equivale à data de recuperação; notícias relativas e citações exigem revisão humana.",
     ]
+    if comparison_method == TYPED_COMPARISON_METHOD:
+        limitations[0] = "Comparação de construções completas e delimitadas nos corpos consultados, sem chamada de modelo nessa etapa; não é garantia de verdade nem probabilidade de acerto."
     if len(segments) > MAX_CLAIMS:
         limitations.append("Mais de cinco segmentos: nenhuma conclusão global positiva ou negativa é permitida.")
     if any(source["truncated"] for source in sources):
@@ -1547,7 +1680,9 @@ async def corroborate_sources(text, documents, source_url=None):
                 "eligible_family_count": len(families), "complete_claim_coverage": complete,
                 "assessed_claim_count": len(assessments), "grounded_evidence_count": sum(len(item["evidence"]) for item in assessments),
                 "source_review_protocol": SOURCE_REVIEW_PROTOCOL,
+                "comparison_method": comparison_method,
                 "expected_source_pair_count": len(claims) * len(sources),
                 "complete_source_review": any(item.get("complete_source_review") is True for item in provider_coverage.values()),
-                "max_sources": MAX_SOURCES, "max_claims": MAX_CLAIMS, "max_prompt_body_characters": MAX_PROMPT_BODY},
+                "max_sources": MAX_SOURCES, "max_claims": MAX_CLAIMS, "max_prompt_body_characters": MAX_PROMPT_BODY,
+                **deterministic_coverage},
             "provider_coverage": provider_coverage, "limitations": limitations}

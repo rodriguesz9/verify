@@ -218,7 +218,9 @@ class CuratedSourceSearchTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(search.await_count, 3)
         self.assertEqual(len(result["coverage"]["search_queries"]), 3)
         self.assertEqual(result["coverage"]["retrieval_deadline_seconds"], 45)
-        self.assertEqual(urls[:3], initial)
+        # Topic-bearing article precedes an otherwise generic official URL;
+        # same three first-wave resources, same total budget/reference depth.
+        self.assertEqual(urls[:3], [initial[1], initial[0], initial[2]])
         self.assertEqual(urls[3], cited)
         self.assertEqual(len(urls), 6)
         self.assertEqual(len(set(urls)), 6)

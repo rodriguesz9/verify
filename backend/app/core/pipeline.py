@@ -13,7 +13,7 @@ from app.core.openrouter_service import analyze_with_openrouter
 from app.services.claim_policy import text_report, input_claims
 from app.services.news_relevance import filter_context_news
 from app.services.factual_queries import build_fact_check_queries
-from app.services.source_attribution import collect_source_attribution, primary_reference_leads
+from app.services.source_attribution import collect_source_attribution, primary_reference_leads, collect_official_copom_record
 from app.services.source_corroboration import corroborate_sources
 from app.services.source_corroboration import select_comparison_documents, usable_source_families
 from app.services.source_corroboration import document_selection_audit
@@ -25,8 +25,8 @@ from app.services.source_research import plan_source_research, research_enabled
 
 SOURCE_SITE_FILTER = "(site:royal.uk OR site:brasilescola.uol.com.br OR site:mundoeducacao.uol.com.br OR site:nasa.gov OR site:cnnbrasil.com.br OR site:aosfatos.org OR site:bbc.com OR site:theguardian.com OR site:time.com OR site:axios.com)"
 PRIMARY_SITE_FILTER = "(site:royal.uk OR site:nasa.gov OR site:ibge.gov.br OR site:bcb.gov.br OR site:who.int OR site:planalto.gov.br OR site:copernicus.eu)"
-EDITORIAL_SITE_FILTER = "(site:bbc.com OR site:reuters.com OR site:apnews.com OR site:ebc.com.br OR site:cnnbrasil.com.br OR site:theguardian.com OR site:brasilescola.uol.com.br OR site:aosfatos.org)"
-EXPLAINER_SITE_FILTER = "(site:brasilescola.uol.com.br OR site:mundoeducacao.uol.com.br OR site:cnnbrasil.com.br OR site:aosfatos.org)"
+EDITORIAL_SITE_FILTER = "(site:bbc.com OR site:reuters.com OR site:apnews.com OR site:ebc.com.br OR site:cnnbrasil.com.br OR site:theguardian.com OR site:g1.globo.com OR site:brasilescola.uol.com.br OR site:aosfatos.org)"
+EXPLAINER_SITE_FILTER = "(site:brasilescola.uol.com.br OR site:mundoeducacao.uol.com.br OR site:cnnbrasil.com.br OR site:g1.globo.com OR site:aosfatos.org)"
 
 
 def _source_recovery_query(query):
@@ -247,6 +247,7 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
     started = asyncio.get_running_loop().time()
     attribution, plan, cited_leads = None, [], []
     fetched_cache, reference_waves = {}, []
+    official_record_recovery = {"status": "not_requested", "decision_role": "official_record_retrieval_only"}
     research = {"status": "not_requested", "decision_role": "online_research_planning_only"}
 
     async def follow_primary_references(stage):
@@ -273,6 +274,14 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
             leads = (await search_web(query) if query else NewsSearch(
                 status="no_results", reason="Nenhuma frase completa cabe no limite da busca; nenhum texto foi cortado."))
             plan = [{"method": "whole_literal_claim", "status": getattr(leads, "status", "success" if leads else "no_results")}] if query else []
+            if crosscheck_enabled:
+                official_record_recovery = await collect_official_copom_record(text, fetched_cache, max_sources=3)
+                # Keep charged official resources inside the ordinary handoff.
+                # The index is a locator only; the detail body is independent
+                # of whether a search engine also happened to return its URL.
+                if fetched_cache:
+                    leads = NewsSearch([*leads, *[{"link": url} for url in fetched_cache]],
+                                       status=getattr(leads, "status", "success"))
             attribution = await collect_source_attribution(text, queries, source_url, search_results=leads,
                 include_documents=crosscheck_enabled, fetched_cache=fetched_cache)
             families = usable_source_families(text, attribution.get("_documents", []), source_url) if crosscheck_enabled else set()
@@ -397,6 +406,7 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
                 "max_leads": 2, "max_depth": 1, "selected_lead_count": len(cited_leads),
                 "waves": reference_waves, "decision_role": "retrieval_only_no_truth_vote"}
             attribution["coverage"]["online_research"] = research
+            attribution["coverage"]["official_record_recovery"] = official_record_recovery
             return attribution
     except Exception:
         if isinstance(attribution, dict):
@@ -410,6 +420,7 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
                 search_queries=plan, retrieval_deadline_seconds=deadline,
                 online_research={**research, "incomplete": True},
                 cumulative_fetch_attempt_count=len(fetched_cache),
+                official_record_recovery=official_record_recovery,
                 direct_reference_recovery={"max_leads": 2, "max_depth": 1, "selected_lead_count": len(cited_leads),
                     "waves": [{**wave, "status": "incomplete" if wave["status"] == "reading" else wave["status"]}
                               for wave in reference_waves], "decision_role": "retrieval_only_no_truth_vote"},
@@ -420,7 +431,9 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
         return {"status": "error", "decision_role": "source_attribution_only", "matches": [],
                 "reason": "A leitura das referências não foi concluída no prazo ou com segurança.",
                 "limitations": ["Referências não confirmam automaticamente verdade, falsidade ou a página inteira."],
-                "coverage": {"status": "error", "decision_role": "source_attribution_only"}}
+                "coverage": {"status": "error", "decision_role": "source_attribution_only",
+                    "cumulative_fetch_attempt_count": len(fetched_cache),
+                    "official_record_recovery": official_record_recovery}}
 
 
 def extract_dates_from_text(text: str) -> list[str]:
@@ -509,11 +522,22 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
     openrouter_result = {"available": False, "status": "not_configured", "claims": [],
                          "decision_role": "search_hints_only", "free_only": True}
     gemini_coverage = None
-    if use_ai_extraction and os.getenv("OPENROUTER_API_KEY", "").strip() and os.getenv("OPENROUTER_ENABLED", "true").lower() == "true":
+    literal_input = analysis_text.strip()
+    skip_literal_extraction = (use_ai_extraction and 0 < len(literal_input) <= MAX_NEWS_QUERY_CHARS
+                               and input_claims(literal_input) == [literal_input])
+    if skip_literal_extraction:
+        # The complete sentence already fits both literal search paths. Another
+        # model cannot select a different sentence, so reserve its free budget
+        # for source research/comparison and preserve every original qualifier.
+        openrouter_result.update(status="not_requested", reason="literal_single_sentence_no_extra_extraction")
+        gemini_coverage = {"available": False, "status": "not_requested", "decision_role": "search_hints_only",
+                           "reason": "literal_single_sentence_no_extra_extraction"}
+    if (use_ai_extraction and not skip_literal_extraction and os.getenv("OPENROUTER_API_KEY", "").strip()
+            and os.getenv("OPENROUTER_ENABLED", "true").lower() == "true"):
         openrouter_result = await _run_openrouter_check(analysis_text)
     if openrouter_result.get("available"):
         claims = openrouter_result["claims"]
-    elif use_ai_extraction:
+    elif use_ai_extraction and not skip_literal_extraction:
         try:
             claims = await asyncio.wait_for(extract_claims_with_ai(analysis_text), gemini_timeout_seconds() + 2)
             gemini_coverage = getattr(claims, "coverage", {"status": "success", "decision_role": "search_hints_only"})
@@ -527,8 +551,8 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
             gemini_coverage = {"available": False, "status": "error", "decision_role": "search_hints_only",
                                "reason": "Extração Gemini indisponível; a consulta literal foi preservada."}
     else:
-        # OCR/transcription is already extraction. Do not spend another LLM
-        # request or let a slow helper cancel literal evidence retrieval.
+        # Short single sentences need no selection; OCR/transcription may also
+        # explicitly disable extraction. Neither spends another LLM request.
         claims = []
     # Retrieve literal input as well as extraction. Model paraphrases are search
     # hints only: they cannot change the statement that receives the verdict.

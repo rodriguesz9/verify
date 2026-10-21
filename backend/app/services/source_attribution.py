@@ -348,6 +348,26 @@ def _source_statements(text):
     return [part.replace(marker, ".") for part in input_claims(masked)]
 
 
+def _player_caption(tag):
+    """Recognize a standalone player caption, never words in article prose.
+
+    The caption paragraph, its dedicated container and an explicit player
+    ancestor must agree. Keep inline captions, quoted/contextual blocks and
+    ordinary paragraphs, including other children of the same container.
+    """
+    if tag.name != "p" or "codex-caption" not in tag.get("class", []):
+        return False
+    container = tag.parent
+    if (not isinstance(container, Tag) or container.name != "div"
+            or "cxm-block-video__caption-container" not in container.get("class", [])
+            or tag.find_parent(list(_BLOCK_TAGS)) is not None):
+        return False
+    video_types = {"http://schema.org/videoobject", "https://schema.org/videoobject"}
+    return any("cxm-block-video" in ancestor.get("class", []) or any(
+        value.casefold().rstrip("/") in video_types for value in str(ancestor.get("itemtype", "")).split())
+        for ancestor in container.parents if isinstance(ancestor, Tag))
+
+
 def _article_parts(resource):
     try:
         document = resource.data.decode(resource.encoding, errors="replace")
@@ -386,6 +406,7 @@ def _article_parts(resource):
                     or str(tag.get("role", "")).lower() == "dialog"
                     or _HIDDEN_STYLE.search(str(tag.get("style", "")))
                     or _CONSENT_UI.search(identifiers)
+                    or _player_caption(tag)
                     or publication_date or global_navigation):
                 tag.decompose()
         for line_break in soup.find_all("br"):
@@ -470,6 +491,7 @@ def _article_reference_leads(resource):
                 or _AUTHOR_UI.search(identifiers)
                 or (_HEADING_UI.search(identifiers) and tag.name not in {"h1", "h2", "h3", "h4", "h5", "h6"})
                 or _CAPTION_UI.search(identifiers)
+                or _player_caption(tag)
                 or _ADVERTISING_UI.search(identifiers)
                 or "sponsored" in {str(value).casefold() for value in tag.get("rel", [])}
                 or re.search(r"(?:^|[-_\s])(?:related|share|social|menu|breadcrumb|teaser|card)(?:$|[-_\s])", identifiers, re.I)):
@@ -593,7 +615,7 @@ def _retrieval_priority(text, title, url):
     2025 merely because both came from the same institution. Titles and URL
     words remain untrusted hints; every factual/date/value guard runs on body.
     """
-    from app.services.source_queries import _discovery_subject, neutral_source_query
+    from app.services.source_queries import _discovery_subject, neutral_source_query, discovery_target_years
     from app.services.source_corroboration import source_identity
     from app.services.launch_relations import launch_lead_identity_priority
     from app.services.competition_relations import competition_lead_priority
@@ -601,7 +623,7 @@ def _retrieval_priority(text, title, url):
     path = unquote(urlsplit(url).path)
     lead = title + " " + path
     year_pattern = r"(?<!\d)(?:18|19|20)\d{2}(?!\d)"
-    subject_years = set(re.findall(year_pattern, subject))
+    subject_years = discovery_target_years(text)
     lead_years = set(re.findall(year_pattern, lead))
     subject_months = {_DISCOVERY_MONTHS[word.casefold()] for word in re.findall(
         r"[^\W\d_]+", subject, re.UNICODE) if word.casefold() in _DISCOVERY_MONTHS}
@@ -627,7 +649,19 @@ def _retrieval_priority(text, title, url):
     # tuple contract/month ordering for all non-launch or unparsed claims.
     discovery_priority = (3 * launch_lead_identity_priority(text, lead)
                           + 3 * competition_lead_priority(text, lead) + month_priority)
-    return (discovery_priority, -year_matches, unrelated_period, narrower_period, not primary, -shared_topics)
+    # The reader accepts HTML/plain text only. An obvious PDF, audio/video or
+    # gallery lead must not consume the sole slot ahead of a readable article
+    # from the SAME family. This is a queue hint, not a fetch bypass or a vote;
+    # such leads remain eligible when no better candidate exists and failures
+    # still count against the unchanged attempt ceiling.
+    unsupported_format = bool(re.search(
+        r"\.(?:pdf|docx?|xlsx?|pptx?|mp[34]|wav|ogg|webm|jpe?g|png|gif)(?:$|/)", path, re.I,
+    ) or re.search(r"/(?:galerias?|galleries|videos?|audios?|v)/", path, re.I))
+    # An official host cannot repair an unrelated title/path. Previously the
+    # primary-source flag preceded topic overlap and ranked an unrelated
+    # institutional overview before an article naming the actual subject.
+    return (100 * unsupported_format + discovery_priority, -year_matches, unrelated_period,
+            narrower_period, -shared_topics, not primary)
 
 
 def _publication_date(resource):
@@ -737,6 +771,67 @@ async def _fetch_article(url):
         return {"failure": "error"}
 
 
+async def collect_official_copom_record(text, fetched_cache, *, max_sources=3):
+    """Two charged public resources, no JavaScript or unbounded API crawl.
+
+    The index only discovers one exact formal-record date. Each reservation,
+    including failure/cancellation, spends the SAME request-local read budget
+    as article retrieval. Metadata never becomes a synthetic body sentence.
+    """
+    from app.services.monetary_decisions import parse_copom_claim
+    from app.services.official_source_body import (
+        COPOM_INDEX_URL, COPOM_MAX_BYTES, COPOM_ALLOWED_TYPES,
+        select_copom_reference, copom_detail_url, decode_copom_body,
+    )
+    claim = parse_copom_claim(text)
+    coverage = {"status": "not_requested", "decision_role": "official_record_retrieval_only",
+                "max_resources": 2, "new_fetch_count": 0}
+    if (claim is None or claim.reference_date > datetime.now(timezone.utc).date().isoformat()
+            or not isinstance(fetched_cache, dict) or type(max_sources) is not int
+            or not 2 <= max_sources <= MAX_RECOVERY_SOURCES):
+        return coverage
+    # No cross-request cache, no retry/refund for an earlier failed index.
+    if COPOM_INDEX_URL in fetched_cache:
+        return {**coverage, "status": "already_attempted"}
+    if len(fetched_cache) + 2 > max_sources:
+        return {**coverage, "status": "budget_exhausted"}
+
+    async def read_json(url):
+        fetched_cache[url] = {"failure": "error"}
+        coverage["new_fetch_count"] += 1
+        return await asyncio.wait_for(fetch_public_resource(
+            url, max_bytes=COPOM_MAX_BYTES, max_redirects=0,
+            allowed_types=set(COPOM_ALLOWED_TYPES), total_timeout=FETCH_TIMEOUT_SECONDS),
+            timeout=FETCH_TIMEOUT_SECONDS)
+
+    active_url = COPOM_INDEX_URL
+    try:
+        index = await read_json(active_url)
+        reference = select_copom_reference(index, claim.reference_date)
+        fetched_cache[active_url] = {"discovery_only": True, "retrieved_at": datetime.now(timezone.utc).isoformat()}
+        if reference is None:
+            return {**coverage, "status": "no_matching_record"}
+        active_url = copom_detail_url(reference)
+        if active_url in fetched_cache:
+            return {**coverage, "status": "already_attempted"}
+        detail = await read_json(active_url)
+        record = decode_copom_body(detail, reference)
+        sentences, title, truncated, roles = _article_parts(record.resource)
+        fetched_cache[active_url] = {"url": active_url, "sentences": sentences, "title": title,
+            "truncated": truncated, "sentence_roles": roles, "reference_leads": [],
+            "publication_date": None, "official_record": record.official_record,
+            "retrieved_at": datetime.now(timezone.utc).isoformat()}
+        return {**coverage, "status": "retrieved"}
+    except HTTPException as exc:
+        fetched_cache[active_url] = {"failure": {413: "oversize", 415: "unsupported_content", 504: "timeout"}.get(
+            exc.status_code, "blocked_or_unavailable")}
+    except (TimeoutError, httpx.TimeoutException):
+        fetched_cache[active_url] = {"failure": "timeout"}
+    except Exception:
+        fetched_cache[active_url] = {"failure": "error"}
+    return {**coverage, "status": "unavailable"}
+
+
 async def collect_source_attribution(text, queries, source_url=None, *, search_results=None, include_documents=False,
                                      max_sources=MAX_SOURCES, fetched_cache=None):
     """Return exact page excerpts with explicit bounded retrieval coverage.
@@ -835,8 +930,11 @@ async def collect_source_attribution(text, queries, source_url=None, *, search_r
                 "blocked_or_unavailable": 0, "error": 0}
     matches, seen_matches = [], set()
     documents = []
-    fetched_count = truncated_count = 0
+    fetched_count = truncated_count = discovery_only_count = 0
     for requested_url, result in zip(selected_urls, fetched):
+        if result.get("discovery_only") is True:
+            discovery_only_count += 1
+            continue  # An official index is a locator, never a body/source vote.
         if "failure" in result:
             failures[result["failure"]] += 1
             continue
@@ -873,6 +971,7 @@ async def collect_source_attribution(text, queries, source_url=None, *, search_r
         "new_fetch_count": len(missing), "reused_fetch_count": len(selected_urls) - len(missing),
         "cumulative_fetch_attempt_count": len(cache),
         "invalid_url_count": invalid_urls, "fetched_count": fetched_count,
+        "discovery_only_resource_count": discovery_only_count,
         "failed_fetch_count": sum(failures.values()), "fetch_failure_counts": failures,
         "oversize_fetch_count": failures["oversize"], "source_text_truncated_count": truncated_count,
         "literal_segment_count": segment_count, "eligible_claim_count": eligible_count,

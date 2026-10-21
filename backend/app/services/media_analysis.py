@@ -17,6 +17,13 @@ from app.services.evidence_policy import media_report, media_signal_explanation,
 from app.services.media_validation import ValidatedMedia, extract_video_frames, extract_video_audio
 from app.services.speech_input import prepare_speech_input
 
+# Frame extraction is sequential: a 120-second clip now samples nine frames
+# by default (up to twelve). One 20-second envelope could cancel valid later
+# frames while every FFmpeg invocation was still inside its 15-second limit.
+# Keep one total cap, with room for the 50-second detector wave and validation
+# inside the client's media deadline. No provider retry.
+VIDEO_FRAME_EXTRACTION_TIMEOUT_SECONDS = 90.0
+
 
 def _fact_check_extracted_reason(text: str, origin: str) -> str | None:
     if not isinstance(text, str) or not text.strip():
@@ -129,7 +136,7 @@ async def image_layers(data: bytes, mime_type: str, filename: str, auxiliary=Tru
 
 async def video_visual_layers(media: ValidatedMedia):
     try:
-        frames = await asyncio.wait_for(extract_video_frames(media), 20)
+        frames = await asyncio.wait_for(extract_video_frames(media), VIDEO_FRAME_EXTRACTION_TIMEOUT_SECONDS)
     except asyncio.TimeoutError:
         raise HTTPException(504, "Extração de quadros excedeu o tempo limite. Tente um vídeo menor.")
     results = await asyncio.gather(*(image_layers(frame, "image/jpeg", "frame.jpg", auxiliary=False)

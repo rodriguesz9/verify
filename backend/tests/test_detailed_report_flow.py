@@ -67,16 +67,20 @@ class DetailedPipelineTests(unittest.IsolatedAsyncioTestCase):
         compare.assert_awaited_once()
 
     async def test_editorial_evidence_is_preserved_when_gemini_extraction_has_no_quota(self):
-        # Same literal input as the fixture's reviews, without rewriting dates.
+        # Multiple sentences exercise extraction; reviews cover the exact whole
+        # input, preserving both the editorial decision and the quota failure.
         from test_claim_decisions import CLAIM as EDITORIAL_CLAIM
-        with patch("app.core.pipeline.extract_claims_with_ai", new=AsyncMock(return_value=ClaimsExtraction(status="rate_limited"))), \
-             patch("app.core.pipeline.query_fact_check_api", new=AsyncMock(return_value=[FactCheckResult(**r) for r in pair()])), \
+        text = EDITORIAL_CLAIM + ". A obra não recebeu recursos adicionais em 2025."
+        with patch("app.core.pipeline.extract_claims_with_ai", new=AsyncMock(return_value=ClaimsExtraction(status="rate_limited"))) as extraction, \
+             patch("app.core.pipeline.query_fact_check_api", new=AsyncMock(return_value=[FactCheckResult(**r) for r in pair(claim=text)])), \
              patch("app.core.pipeline.search_news", new=AsyncMock(return_value=[])), \
              patch("app.core.pipeline.detect_ai_text", new=AsyncMock(return_value={})), \
              patch("app.core.pipeline._retrieve_source_attribution", new=AsyncMock(return_value={"status": "no_results", "matches": [], "coverage": {}})), \
              patch("app.core.pipeline.corroborate_sources", new=AsyncMock()) as cross, \
              patch("app.core.pipeline.generate_final_report", new=AsyncMock(side_effect=TimeoutError())) as legacy:
-            report = (await run_pipeline(EDITORIAL_CLAIM, use_detailed_report=True))["report"]
+            report = (await run_pipeline(text, use_detailed_report=True))["report"]
+        extraction.assert_awaited_once_with(text)
+        self.assertEqual(report["claims"], [text])
         self.assertEqual(report["verdict"], "Authentic")
         self.assertEqual(report["veracity_status"], "supported")
         self.assertEqual(report["provider_coverage"]["gemini"]["status"], "rate_limited")

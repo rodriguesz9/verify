@@ -35,6 +35,35 @@ test("an omitted complete news query is not presented as an unavailable provider
   assert.doesNotMatch(report.publicMissing.join(" "), /Não foi possível concluir todas as etapas/);
 });
 
+test("intentional literal extraction skip is not a failed or missing query", () => {
+  const layer = {status: "not_requested", decision_role: "search_hints_only",
+    reason: "literal_single_sentence_no_extra_extraction"};
+  for (const provider of ["gemini", "openrouter"]) {
+    const presentation = providerCoveragePresentation(provider, layer);
+    assert.equal(presentation.label, "Extração dispensada");
+    assert.match(presentation.detail, /frase completa/);
+    assert.match(presentation.detail, /não confirma/);
+  }
+  const evidence = buildReportEvidence({analysis_status: "inconclusive", veracity_status: "unverified",
+    provider_coverage: {gemini: layer, openrouter: {...layer}}});
+  assert.equal(evidence.veracityStatus, "unverified");
+  assert.equal(evidence.publicPresentation.incomplete, true);
+  assert.deepEqual(evidence.missing, []);
+  assert.deepEqual(evidence.publicMissing, ["Não foi possível verificar se a informação é verdadeira ou falsa com as fontes disponíveis."]);
+});
+
+test("only the exact intentional auxiliary skip avoids the missing-query notice", () => {
+  for (const layer of [
+    {status: "not_requested", decision_role: "search_hints_only", reason: "different_reason"},
+    {status: "not_requested", decision_role: "context_only", reason: "literal_single_sentence_no_extra_extraction"},
+  ]) {
+    assert.equal(providerCoveragePresentation("gemini", layer).label, "Consulta não realizada");
+    const evidence = buildReportEvidence({analysis_status: "inconclusive", veracity_status: "unverified",
+      provider_coverage: {gemini: layer}});
+    assert.ok(evidence.publicMissing.includes("Algumas consultas não foram realizadas; a cobertura ficou limitada."));
+  }
+});
+
 test("a facial-only response does not claim absence of AI evidence in an unqueried dimension", () => {
   const presentation = mediaSignalPresentation({version: "1", state: "no_high_signal", scope: "image",
     ai_provider_count: 0, manipulation_provider_count: 1}, "image");

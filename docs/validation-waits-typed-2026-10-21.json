@@ -1,0 +1,569 @@
+{
+  "date": "2026-10-21",
+  "scope": "Completed frozen text cohort: same twelve known public development controls, live public-source retrieval; not independent, blind or representative accuracy",
+  "source_fingerprint": "87dc81c080b689b89437c93cc1c4d169369073bcb7a20120493cb3895c757170",
+  "source_file_count": 127,
+  "source_fingerprint_algorithm": "sha256(sorted relative-posix-path NUL file-bytes NUL), backend/app py plus frontend/src js/jsx/css",
+  "fixture_path": "backend/tests/fixtures/validation/text-quality-2026-10-17.json",
+  "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+  "comparison_protocol": "claim_source_review_v2",
+  "policy_version": "2026-10-20.1",
+  "complete_cohort": true,
+  "total": 12,
+  "correct": 8,
+  "inconclusive": 4,
+  "wrong_conclusive": 0,
+  "terminal_pipeline_errors": 0,
+  "pending": 0,
+  "correct_fraction": 0.6666666666666666,
+  "inconclusive_fraction": 0.3333333333333333,
+  "correct_percent": 66.66666666666667,
+  "inconclusive_percent": 33.333333333333336,
+  "inconclusive_and_errors_stay_in_total_accuracy_denominator": true,
+  "conclusive_only_precision_is_not_total_accuracy": true,
+  "target_80_percent_met": false,
+  "attempts_per_case": 1,
+  "retry_until_correct": false,
+  "expected_labels_not_passed_to_pipeline": true,
+  "records_verified_against_fixture_inputs_ids_and_source_fingerprint": true,
+  "started_at": "2026-10-21T11:28:14.513612+00:00",
+  "finished_at": "2026-10-21T11:34:27.833411+00:00",
+  "median_pipeline_seconds": 21.9375,
+  "minimum_pipeline_seconds": 9.697,
+  "maximum_pipeline_seconds": 66.342,
+  "timing_scope": "elapsed_seconds measures the recorded pipeline; http_elapsed_seconds measures the separate HTTP driver and is null for the browser-submitted case; local QA, not production latency",
+  "true_false_groups": {
+    "supported": {
+      "total": 6,
+      "correct": 4,
+      "inconclusive": 2,
+      "wrong_conclusive": 0,
+      "correct_fraction": 0.6666666666666666
+    },
+    "refuted": {
+      "total": 6,
+      "correct": 4,
+      "inconclusive": 2,
+      "wrong_conclusive": 0,
+      "correct_fraction": 0.6666666666666666
+    }
+  },
+  "submission_channel": "One browser form submission plus eleven ordinary local HTTP submissions to the real analysis endpoint",
+  "browser_analysis_submissions": 1,
+  "browser_submitted_case_ids": [
+    "queen_true"
+  ],
+  "browser_submission_evidence": "Actual form submission confirmed by browser observation in the task; queen_true has a completed frozen record and no HTTP-driver marker; HTTP driver explicitly skipped replay of that completed case",
+  "ordinary_http_submissions": 11,
+  "ordinary_http_marker_count": 11,
+  "analysis_http_boundary_count": 12,
+  "http_200_json_no_store_count": 12,
+  "ordinary_http_200_json_no_store_marker_count": 11,
+  "not_twelve_browser_form_submissions": true,
+  "cases": [
+    {
+      "id": "queen_true",
+      "split": "previous-eight",
+      "expected": "supported",
+      "actual": "supported",
+      "capture_status": "completed",
+      "outcome": "correct",
+      "submission_method": "browser_form_ui",
+      "elapsed_seconds": 15.231,
+      "http_elapsed_seconds": null,
+      "started_at": "2026-10-21T11:28:14.513612+00:00",
+      "finished_at": "2026-10-21T11:28:29.746812+00:00",
+      "source_comparison_status": "success",
+      "comparison_method": "model_source_review_v2",
+      "selected_source_count": 2,
+      "complete_source_review": true,
+      "complete_claim_coverage": true,
+      "comparison_provider_coverage": {
+        "gemini": {
+          "status": "success",
+          "model_used": "gemini-3.1-flash-lite"
+        },
+        "openrouter": {
+          "status": "not_requested"
+        }
+      },
+      "research_status": "not_requested",
+      "research_provider_coverage": {}
+    },
+    {
+      "id": "queen_false",
+      "split": "previous-eight",
+      "expected": "refuted",
+      "actual": "refuted",
+      "capture_status": "completed",
+      "outcome": "correct",
+      "submission_method": "ordinary_local_http_not_ui",
+      "elapsed_seconds": 9.697,
+      "http_elapsed_seconds": 9.731,
+      "started_at": "2026-10-21T11:29:06.633370+00:00",
+      "finished_at": "2026-10-21T11:29:16.332736+00:00",
+      "source_comparison_status": "success",
+      "comparison_method": "model_source_review_v2",
+      "selected_source_count": 2,
+      "complete_source_review": true,
+      "complete_claim_coverage": true,
+      "comparison_provider_coverage": {
+        "gemini": {
+          "status": "success",
+          "model_used": "gemini-3.8-flash"
+        },
+        "openrouter": {
+          "status": "not_requested"
+        }
+      },
+      "research_status": "not_requested",
+      "research_provider_coverage": {}
+    },
+    {
+      "id": "dart_true",
+      "split": "previous-eight",
+      "expected": "supported",
+      "actual": "unverified",
+      "capture_status": "completed",
+      "outcome": "inconclusive",
+      "submission_method": "ordinary_local_http_not_ui",
+      "elapsed_seconds": 30.907,
+      "http_elapsed_seconds": 30.942,
+      "started_at": "2026-10-21T11:29:16.365223+00:00",
+      "finished_at": "2026-10-21T11:29:47.274040+00:00",
+      "source_comparison_status": "not_requested",
+      "comparison_method": "not_requested",
+      "selected_source_count": 1,
+      "complete_source_review": false,
+      "complete_claim_coverage": false,
+      "comparison_provider_coverage": {
+        "gemini": {
+          "status": "not_requested"
+        },
+        "openrouter": {
+          "status": "not_requested"
+        }
+      },
+      "research_status": "success",
+      "research_provider_coverage": {
+        "gemini": {
+          "status": "success",
+          "model_used": "gemini-3.1-flash-lite"
+        }
+      }
+    },
+    {
+      "id": "who_true",
+      "split": "previous-eight",
+      "expected": "supported",
+      "actual": "supported",
+      "capture_status": "completed",
+      "outcome": "correct",
+      "submission_method": "ordinary_local_http_not_ui",
+      "elapsed_seconds": 66.342,
+      "http_elapsed_seconds": 66.376,
+      "started_at": "2026-10-21T11:29:47.306819+00:00",
+      "finished_at": "2026-10-21T11:30:53.650825+00:00",
+      "source_comparison_status": "success",
+      "comparison_method": "model_source_review_v2",
+      "selected_source_count": 2,
+      "complete_source_review": true,
+      "complete_claim_coverage": true,
+      "comparison_provider_coverage": {
+        "gemini": {
+          "status": "success",
+          "model_used": "gemini-3.8-flash"
+        },
+        "openrouter": {
+          "status": "not_requested"
+        }
+      },
+      "research_status": "timeout",
+      "research_provider_coverage": {}
+    },
+    {
+      "id": "ibge_true",
+      "split": "previous-eight",
+      "expected": "supported",
+      "actual": "unverified",
+      "capture_status": "completed",
+      "outcome": "inconclusive",
+      "submission_method": "ordinary_local_http_not_ui",
+      "elapsed_seconds": 25.917,
+      "http_elapsed_seconds": 25.952,
+      "started_at": "2026-10-21T11:30:53.682637+00:00",
+      "finished_at": "2026-10-21T11:31:19.601793+00:00",
+      "source_comparison_status": "not_requested",
+      "comparison_method": "not_requested",
+      "selected_source_count": 1,
+      "complete_source_review": false,
+      "complete_claim_coverage": false,
+      "comparison_provider_coverage": {
+        "gemini": {
+          "status": "not_requested"
+        },
+        "openrouter": {
+          "status": "not_requested"
+        }
+      },
+      "research_status": "success",
+      "research_provider_coverage": {
+        "gemini": {
+          "status": "success",
+          "model_used": "gemini-3.8-flash"
+        }
+      }
+    },
+    {
+      "id": "copom_false",
+      "split": "previous-eight",
+      "expected": "refuted",
+      "actual": "refuted",
+      "capture_status": "completed",
+      "outcome": "correct",
+      "submission_method": "ordinary_local_http_not_ui",
+      "elapsed_seconds": 11.568,
+      "http_elapsed_seconds": 11.734,
+      "started_at": "2026-10-21T11:31:19.634124+00:00",
+      "finished_at": "2026-10-21T11:31:31.204996+00:00",
+      "source_comparison_status": "success",
+      "comparison_method": "literal_typed_rules_v1",
+      "selected_source_count": 1,
+      "complete_source_review": true,
+      "complete_claim_coverage": true,
+      "comparison_provider_coverage": {
+        "gemini": {
+          "status": "not_requested"
+        },
+        "openrouter": {
+          "status": "not_requested"
+        }
+      },
+      "research_status": "not_requested",
+      "research_provider_coverage": {}
+    },
+    {
+      "id": "copernicus_false",
+      "split": "previous-eight",
+      "expected": "refuted",
+      "actual": "refuted",
+      "capture_status": "completed",
+      "outcome": "correct",
+      "submission_method": "ordinary_local_http_not_ui",
+      "elapsed_seconds": 17.407,
+      "http_elapsed_seconds": 17.468,
+      "started_at": "2026-10-21T11:31:31.370370+00:00",
+      "finished_at": "2026-10-21T11:31:48.806970+00:00",
+      "source_comparison_status": "success",
+      "comparison_method": "model_source_review_v2",
+      "selected_source_count": 1,
+      "complete_source_review": true,
+      "complete_claim_coverage": true,
+      "comparison_provider_coverage": {
+        "gemini": {
+          "status": "success",
+          "model_used": "gemini-3.8-flash"
+        },
+        "openrouter": {
+          "status": "not_requested"
+        }
+      },
+      "research_status": "not_requested",
+      "research_provider_coverage": {}
+    },
+    {
+      "id": "lei_false",
+      "split": "previous-eight",
+      "expected": "refuted",
+      "actual": "refuted",
+      "capture_status": "completed",
+      "outcome": "correct",
+      "submission_method": "ordinary_local_http_not_ui",
+      "elapsed_seconds": 17.193,
+      "http_elapsed_seconds": 17.228,
+      "started_at": "2026-10-21T11:31:48.840721+00:00",
+      "finished_at": "2026-10-21T11:32:06.034915+00:00",
+      "source_comparison_status": "success",
+      "comparison_method": "model_source_review_v2",
+      "selected_source_count": 1,
+      "complete_source_review": true,
+      "complete_claim_coverage": true,
+      "comparison_provider_coverage": {
+        "gemini": {
+          "status": "success",
+          "model_used": "gemini-3.8-flash"
+        },
+        "openrouter": {
+          "status": "not_requested"
+        }
+      },
+      "research_status": "not_requested",
+      "research_provider_coverage": {}
+    },
+    {
+      "id": "webb_true",
+      "split": "additional-four",
+      "expected": "supported",
+      "actual": "supported",
+      "capture_status": "completed",
+      "outcome": "correct",
+      "submission_method": "ordinary_local_http_not_ui",
+      "elapsed_seconds": 62.435,
+      "http_elapsed_seconds": 62.468,
+      "started_at": "2026-10-21T11:32:06.067014+00:00",
+      "finished_at": "2026-10-21T11:33:08.503577+00:00",
+      "source_comparison_status": "success",
+      "comparison_method": "model_source_review_v2",
+      "selected_source_count": 2,
+      "complete_source_review": true,
+      "complete_claim_coverage": true,
+      "comparison_provider_coverage": {
+        "gemini": {
+          "status": "success",
+          "model_used": "gemini-3.8-flash"
+        },
+        "openrouter": {
+          "status": "not_requested"
+        }
+      },
+      "research_status": "success",
+      "research_provider_coverage": {
+        "gemini": {
+          "status": "success",
+          "model_used": "gemini-3.1-flash-lite"
+        }
+      }
+    },
+    {
+      "id": "constitution_true",
+      "split": "additional-four",
+      "expected": "supported",
+      "actual": "supported",
+      "capture_status": "completed",
+      "outcome": "correct",
+      "submission_method": "ordinary_local_http_not_ui",
+      "elapsed_seconds": 20.607,
+      "http_elapsed_seconds": 20.641,
+      "started_at": "2026-10-21T11:33:08.536215+00:00",
+      "finished_at": "2026-10-21T11:33:29.145054+00:00",
+      "source_comparison_status": "success",
+      "comparison_method": "model_source_review_v2",
+      "selected_source_count": 2,
+      "complete_source_review": true,
+      "complete_claim_coverage": true,
+      "comparison_provider_coverage": {
+        "gemini": {
+          "status": "success",
+          "model_used": "gemini-3.8-flash"
+        },
+        "openrouter": {
+          "status": "not_requested"
+        }
+      },
+      "research_status": "not_requested",
+      "research_provider_coverage": {}
+    },
+    {
+      "id": "worldcup_false",
+      "split": "additional-four",
+      "expected": "refuted",
+      "actual": "unverified",
+      "capture_status": "completed",
+      "outcome": "inconclusive",
+      "submission_method": "ordinary_local_http_not_ui",
+      "elapsed_seconds": 23.268,
+      "http_elapsed_seconds": 23.302,
+      "started_at": "2026-10-21T11:33:29.177372+00:00",
+      "finished_at": "2026-10-21T11:33:52.446752+00:00",
+      "source_comparison_status": "not_requested",
+      "comparison_method": "not_requested",
+      "selected_source_count": 1,
+      "complete_source_review": false,
+      "complete_claim_coverage": false,
+      "comparison_provider_coverage": {
+        "gemini": {
+          "status": "not_requested"
+        },
+        "openrouter": {
+          "status": "not_requested"
+        }
+      },
+      "research_status": "success",
+      "research_provider_coverage": {
+        "gemini": {
+          "status": "success",
+          "model_used": "gemini-3.1-flash-lite"
+        }
+      }
+    },
+    {
+      "id": "artemis_false",
+      "split": "additional-four",
+      "expected": "refuted",
+      "actual": "unverified",
+      "capture_status": "completed",
+      "outcome": "inconclusive",
+      "submission_method": "ordinary_local_http_not_ui",
+      "elapsed_seconds": 35.352,
+      "http_elapsed_seconds": 35.388,
+      "started_at": "2026-10-21T11:33:52.479973+00:00",
+      "finished_at": "2026-10-21T11:34:27.833411+00:00",
+      "source_comparison_status": "not_requested",
+      "comparison_method": "not_requested",
+      "selected_source_count": 1,
+      "complete_source_review": false,
+      "complete_claim_coverage": false,
+      "comparison_provider_coverage": {
+        "gemini": {
+          "status": "not_requested"
+        },
+        "openrouter": {
+          "status": "not_requested"
+        }
+      },
+      "research_status": "success",
+      "research_provider_coverage": {
+        "gemini": {
+          "status": "success",
+          "model_used": "gemini-3.1-flash-lite"
+        }
+      }
+    }
+  ],
+  "source_comparison_status_counts": {
+    "success": 8,
+    "not_requested": 4
+  },
+  "comparison_method_counts": {
+    "model_source_review_v2": 7,
+    "literal_typed_rules_v1": 1,
+    "not_requested": 4
+  },
+  "successful_model_comparison_counts": {
+    "gemini-3.1-flash-lite": 1,
+    "gemini-3.8-flash": 6
+  },
+  "typed_rule_comparison_case_ids": [
+    "copom_false"
+  ],
+  "research_status_counts": {
+    "success": 5,
+    "timeout": 1,
+    "not_requested": 6
+  },
+  "auxiliary_extraction_coverage": {
+    "case_count": 12,
+    "gemini": {
+      "status": "not_requested",
+      "reason": "literal_single_sentence_no_extra_extraction"
+    },
+    "openrouter": {
+      "status": "not_requested",
+      "reason": "literal_single_sentence_no_extra_extraction"
+    },
+    "decision_role": "search_hints_only"
+  },
+  "provider_transport_counts": {
+    "gemini": 21,
+    "openrouter": 1,
+    "facts": 12,
+    "news": 53,
+    "public_fetch": 79
+  },
+  "provider_transport_status_counts": {
+    "gemini": {
+      "http_status_counts": {
+        "200": 12,
+        "503": 8
+      },
+      "without_http_status": 1,
+      "method_counts": {
+        "POST": 21
+      }
+    },
+    "openrouter": {
+      "http_status_counts": {},
+      "without_http_status": 1,
+      "method_counts": {
+        "POST": 1
+      }
+    },
+    "facts": {
+      "http_status_counts": {
+        "200": 12
+      },
+      "without_http_status": 0,
+      "method_counts": {
+        "GET": 12
+      }
+    },
+    "news": {
+      "http_status_counts": {
+        "200": 53
+      },
+      "without_http_status": 0,
+      "method_counts": {
+        "POST": 53
+      }
+    },
+    "public_fetch": {
+      "http_status_counts": {
+        "200": 66,
+        "301": 4,
+        "307": 2,
+        "401": 1,
+        "403": 5
+      },
+      "without_http_status": 1,
+      "method_counts": {
+        "GET": 79
+      }
+    }
+  },
+  "fixed_round_transport_caps": {
+    "gemini": 36,
+    "openrouter": 10,
+    "facts": 24,
+    "news": 72,
+    "assemblyai": 0,
+    "sightengine": 0,
+    "hf": 0,
+    "public_fetch": 180,
+    "hive": 0
+  },
+  "known_prior_openrouter_sends": 30,
+  "conservative_round_openrouter_cap": 10,
+  "openrouter_effective_local_daily_limit": 10,
+  "new_round_openrouter_sends": 1,
+  "known_prior_plus_this_round_openrouter_sends": 31,
+  "prior_journals_not_reset": true,
+  "openrouter_local_round_cap_reached": false,
+  "provider_http_200_does_not_mean_factual_success": true,
+  "unrecorded_http_status_is_not_assumed_success": true,
+  "source_research_enabled": true,
+  "model_profile": {
+    "gemini_primary": "gemini-3.1-flash-lite",
+    "gemini_explicit_unavailable_fallback": "gemini-3.8-flash",
+    "openrouter": "openrouter/free",
+    "gemini_request_timeout_seconds": 90,
+    "source_crosscheck_shared_timeout_seconds": 90,
+    "comparison_provider_attempts_share_deadline": true,
+    "implicit_model_rotation": false,
+    "runtime_configuration_scope": "Disposable local frozen QA environment; not a deployment configuration change"
+  },
+  "previous_round": {
+    "artifact": "validation-main-recovery-2026-10-20.json",
+    "correct": 2,
+    "inconclusive": 10,
+    "total": 12,
+    "kept_separate": true
+  },
+  "media_included_in_this_text_cohort": false,
+  "hive_requests": 0,
+  "sightengine_requests": 0,
+  "huggingface_requests": 0,
+  "assemblyai_requests": 0,
+  "deployed": false,
+  "post_round_changes_are_not_measured_by_this_cohort": true,
+  "sanitization": "Case IDs, labels, methods, statuses, model names, timestamps, elapsed times, aggregate transport counts and hashes only; no credentials, bearer capabilities, raw model responses or source-document bodies"
+}

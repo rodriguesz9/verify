@@ -5,6 +5,9 @@ A mission-date frame needs one completed launch, an explicit mission/flight
 label, a proper program name plus flight number, and one full calendar date
 directly bound to that launch. Numeric/Roman flight numbers are equivalent;
 the existing Apolo/Apollo spelling alias is explicit, not an entity lookup.
+Closed past-tense liftoff/blastoff/decolagem predicates are launch synonyms.
+An agency possessive is retained; an explicitly claimed owner cannot vanish
+or be replaced by an inferred organization alias during comparison.
 Named vehicle/mission or vehicle/payload frames can support an identical date
 only; different dates of those potentially repeated launches never refute.
 Vehicle model numbers alone are not mission identities. Unknown constructions
@@ -48,15 +51,20 @@ _UNSAFE = re.compile(
     r"e|and|also|but|mas|porém|também|caption|legenda|credit|crédito)\b", re.I)
 _LAUNCH = re.compile(
     r"^(?P<subject>.+?)\s+(?P<verb>(?:(?:was\s+)?(?:successfully\s+)?launched"
-    r"|foi\s+lançad[oa](?:\s+com\s+sucesso)?))(?P<details>\s.*|)$", re.I)
+    r"|(?:successfully\s+)?(?:lifted|blasted)\s+off"
+    r"|(?:foi\s+lançad[oa]|decolou)(?:\s+com\s+sucesso)?))(?P<details>\s.*|)$", re.I)
 _LABEL = r"(?:mission|flight|missão|voo)"
 _SCOPE_LABEL = re.compile(r"\b" + _LABEL + r"\b", re.I)
 _SCOPE_VEHICLE = re.compile(r"\b(?:foguete|rocket)\b", re.I)
 _SCOPE_PAYLOAD = re.compile(r"\b(?:espaçonave|nave|spacecraft|payload)\b", re.I)
 _SCOPE_LAUNCH = re.compile(
-    r"\b(?:launch(?:ed|es|ing)?|lançamentos?|lançad[oa]s?|lançou|lançaram|lançar|lança|decolou|decolar)\b", re.I)
+    r"\b(?:launch(?:ed|es|ing)?|(?:lift(?:ed|ing)?|blast(?:ed|ing)?)\s+off|"
+    r"lançamentos?|lançad[oa]s?|lançou|lançaram|lançar|lança|decolou|decolar)\b", re.I)
 _SCOPE_YEAR = re.compile(r"\b(?:18|19|20|21)\d{2}\b")
 _NAME_WORD = r"[A-ZÀ-ÖØ-Þ][A-Za-zÀ-ÖØ-öø-ÿ’'-]{1,40}"
+_AGENCY = _NAME_WORD + r"(?:\s+" + _NAME_WORD + r"){0,4}"
+_AGENCY_FRONT = re.compile(r"^(?P<agency>" + _AGENCY + r")[’']s\s+(?P<subject>.+)$")
+_AGENCY_BACK = re.compile(r"^(?P<subject>.+?)\s+(?i:da|do|de|of)\s+(?P<agency>" + _AGENCY + r")$")
 _IDENTITY = re.compile(r"(?P<program>" + _NAME_WORD + r"(?:\s+" + _NAME_WORD
                        + r"){0,3})[ -](?P<number>[1-9]\d{0,2}|[IVXLCDM]{1,8})")
 _OBJECT_ID = (_NAME_WORD + r"(?:\s+" + _NAME_WORD + r"){0,3}[ -](?:[1-9]\d{0,2}|[IVXLCDM]{1,8})")
@@ -91,6 +99,7 @@ class _Launch:
     time: tuple[int, int, str | None] | None
     identity_kind: Literal["mission", "vehicle_mission", "vehicle_payload"]
     vehicle: tuple[str, int] | None = None
+    agency: str | None = None
 
 
 def _number(value):
@@ -127,6 +136,16 @@ def _day(value):
 
 def _subject(value):
     value = re.sub(r"^(?:a|o|the)\s+", "", value.strip(), flags=re.I)
+    agency = None
+    # An explicit owner is a claim qualifier, not decoration. Removing it
+    # without carrying it to the comparison would let a different agency's
+    # mission support/refute a qualified claim. Unknown aliasing abstains.
+    front_agency, back_agency = _AGENCY_FRONT.fullmatch(value), _AGENCY_BACK.fullmatch(value)
+    if front_agency and back_agency:
+        return None
+    if owned := front_agency or back_agency:
+        agency = " ".join(owned["agency"].casefold().split())
+        value = owned["subject"]
     value = re.sub(r"\bnão\s+tripulad[oa]\b", "uncrewed", value, flags=re.I)
     value = re.sub(r"\btripulad[oa]\b", "crewed", value, flags=re.I)
     crew_words = re.findall(r"\b(?:uncrewed|crewed)\b", value, re.I)
@@ -144,7 +163,7 @@ def _subject(value):
     identity = _object_identity(value)
     if identity is None:
         return None
-    return identity, crew
+    return identity, crew, agency
 
 
 def _object_identity(value):
@@ -174,7 +193,7 @@ def _assertion(value):
         payload = _object_identity(vehicle_payload["payload"])
         vehicle = _object_identity(vehicle_payload["vehicle"])
         if payload and vehicle:
-            return (payload, None), vehicle_payload["details"], False, "vehicle_payload", vehicle
+            return (payload, None, None), vehicle_payload["details"], False, "vehicle_payload", vehicle
     return None
 
 
@@ -237,7 +256,8 @@ def _frame(text):
     details = _details(extras_before or extras_after)
     if details is None:
         return None
-    return _Launch(subject[0], day, subject[1], successful, details[0], details[1], identity_kind, vehicle)
+    return _Launch(subject[0], day, subject[1], successful, details[0], details[1], identity_kind, vehicle,
+                   subject[2])
 
 
 def is_launch_date_claim(claim: str) -> bool:
@@ -280,7 +300,7 @@ def launch_lead_identity_priority(claim: str, lead: str) -> int:
 def launch_date_relation(claim: str, quote: str, *, quote_role: str = "body") -> Relation | None:
     """Compare one literal BODY launch with the whole scoped claim.
 
-    All claimed crew/success/location/time qualifiers must be present and
+    All claimed agency/crew/success/location/time qualifiers must be present and
     equal. Additional source detail is allowed. Different full dates refute
     only after this exact mission/flight and qualifier binding, never merely
     because two launch-related strings contain different years. A vehicle or
@@ -295,7 +315,8 @@ def launch_date_relation(claim: str, quote: str, *, quote_role: str = "body") ->
     if ((left.crew is not None and left.crew != right.crew)
             or (left.successful and not right.successful)
             or (left.location is not None and left.location != right.location)
-            or (left.time is not None and left.time != right.time)):
+            or (left.time is not None and left.time != right.time)
+            or (left.agency is not None and left.agency != right.agency)):
         return None
     if left.identity_kind != "mission" and (left.identity_kind != right.identity_kind or left.vehicle != right.vehicle):
         return None

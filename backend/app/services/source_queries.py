@@ -24,6 +24,26 @@ def _discovery_subject(text):
     return report[1] + " " + report[2] if report else text
 
 
+def discovery_target_years(text):
+    """Separate one measured year from its explicitly named comparison year.
+
+    Discovery only: the complete claim, including its baseline, still reaches
+    every evidence guard. No earlier/later year is inferred from a number or
+    from chronology. Ambiguous constructions preserve all literal years.
+    """
+    subject = _discovery_subject(text)
+    year = r"(?:18|19|20)\d{2}"
+    years = set(re.findall(r"\b" + year + r"\b", subject))
+    pairs = list(re.finditer(
+        r"\b(?:em|in)\s+(" + year + r")\s+"
+        r"(?:em relação a|na comparação com|comparado com|comparada com|compared with|compared to)"
+        r"\s+(" + year + r")\b", subject, re.I,
+    ))
+    if len(pairs) == 1 and years == {pairs[0][1], pairs[0][2]}:
+        return {pairs[0][1]}
+    return years
+
+
 def neutral_source_query(text, *, preserve_period=False):
     if not isinstance(text, str) or not 20 <= len(text.strip()) <= 500:
         return None
@@ -35,7 +55,8 @@ def neutral_source_query(text, *, preserve_period=False):
     eligible = [word for word in words if len(word) >= 3 and word.casefold() not in omitted]
     names = [word for word in eligible if word[0].isupper()]
     topics = [word for word in eligible if not word[0].isupper() and not word.isdigit()]
-    years = [word for word in eligible if word.isdigit()]
+    target_years = discovery_target_years(text)
+    years = [word for word in eligible if word.isdigit() and word in target_years]
     ordered = list(dict.fromkeys([*names, *topics, *years]))
     # Do not silently drop a final entity/qualifier to meet a provider limit.
     # If a neutral query cannot fit as a whole, keep the existing literal plan.

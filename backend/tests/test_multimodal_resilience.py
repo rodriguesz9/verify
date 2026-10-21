@@ -39,13 +39,14 @@ class MultimodalResilienceTests(unittest.IsolatedAsyncioTestCase):
     async def test_pipeline_records_extraction_timeout_without_losing_literal_query(self):
         import asyncio
         from app.core.pipeline import run_pipeline
-        text = "Não pague R$ 123,45 em 03/10/2026."
+        text = "Não pague R$ 123,45 em 03/10/2026. A cobrança não foi autorizada."
         with patch.dict(os.environ, {"OPENROUTER_API_KEY": ""}), \
-             patch("app.core.pipeline.extract_claims_with_ai", new=AsyncMock(side_effect=asyncio.TimeoutError)), \
+             patch("app.core.pipeline.extract_claims_with_ai", new=AsyncMock(side_effect=asyncio.TimeoutError)) as extraction, \
              patch("app.core.pipeline.query_fact_check_api", new=AsyncMock(return_value=[])) as facts, \
              patch("app.core.pipeline.search_news", new=AsyncMock(return_value=[])), \
              patch("app.core.pipeline.detect_ai_text", new=AsyncMock(return_value={"ai_probability": None})):
             result = await run_pipeline(text)
+        extraction.assert_awaited_once_with(text)
         self.assertEqual(result["report"]["provider_coverage"]["gemini"]["status"], "timeout")
         self.assertIn(text, [call.args[0] for call in facts.await_args_list])
         self.assertEqual(result["report"]["veracity_status"], "unverified")

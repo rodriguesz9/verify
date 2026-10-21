@@ -85,7 +85,7 @@ class OpenRouterRotator:
         return configured_models()[0]
 
 
-async def _generate(prompt, system_instruction, temperature, max_tokens, json_output, response_format=None):
+async def _generate(prompt, system_instruction, temperature, max_tokens, json_output, response_format=None, timeout_seconds=25):
     global _cooldown_until
     key = os.getenv("OPENROUTER_API_KEY", "").strip()
     if not key or os.getenv("OPENROUTER_ENABLED", "true").lower() != "true":
@@ -95,11 +95,14 @@ async def _generate(prompt, system_instruction, temperature, max_tokens, json_ou
     messages.append({"role": "user", "content": prompt})
     headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json",
                "HTTP-Referer": "https://verifybr.vercel.app", "X-OpenRouter-Title": "Verify"}
-    async with httpx.AsyncClient(timeout=25, trust_env=False, follow_redirects=False) as client:
+    if (isinstance(timeout_seconds, bool) or not isinstance(timeout_seconds, (int, float))
+            or not math.isfinite(timeout_seconds) or not 0 < timeout_seconds <= 45):
+        raise OpenRouterError("invalid_configuration", "Prazo OpenRouter fora do limite permitido.")
+    async with httpx.AsyncClient(timeout=timeout_seconds, trust_env=False, follow_redirects=False) as client:
         for index, model in enumerate(models):
             _reserve_request()
             payload = {"model": model, "messages": messages, "temperature": temperature,
-                       "max_tokens": max(64, min(2048, max_tokens)),
+                       "max_tokens": max(64, min(4096, max_tokens)),
                        "provider": {"sort": "latency", "max_price": {"prompt": 0, "completion": 0, "request": 0, "image": 0}}}
             if json_output:
                 payload["response_format"] = response_format or {"type": "json_object"}
@@ -137,8 +140,8 @@ async def _generate(prompt, system_instruction, temperature, max_tokens, json_ou
                 raise OpenRouterError("invalid_response", "OpenRouter não retornou uma resposta completa e válida.") from None
 
 
-async def generate(prompt, system_instruction=None, temperature=.1, max_tokens=1024, response_format=None):
-    return await _generate(prompt, system_instruction, temperature, max_tokens, True, response_format)
+async def generate(prompt, system_instruction=None, temperature=.1, max_tokens=1024, response_format=None, timeout_seconds=25):
+    return await _generate(prompt, system_instruction, temperature, max_tokens, True, response_format, timeout_seconds)
 
 
 async def generate_text(prompt, system_instruction=None, temperature=.1, max_tokens=1024):

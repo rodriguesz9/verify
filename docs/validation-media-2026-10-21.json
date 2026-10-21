@@ -1,0 +1,287 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-21",
+  "timezone": "America/Sao_Paulo",
+  "scope": "Three completed local UI uploads of known development media controls; real provider responses, not a blind, independent or representative accuracy benchmark",
+  "source_fingerprint": "87dc81c080b689b89437c93cc1c4d169369073bcb7a20120493cb3895c757170",
+  "source_file_count": 127,
+  "source_fingerprint_algorithm": "sha256(sorted relative-posix-path NUL file-bytes NUL), backend/app py plus frontend/src js/jsx/css",
+  "same_application_snapshot_as_text_cohort": "validation-waits-typed-2026-10-21.json",
+  "media_results_excluded_from_text_accuracy": true,
+  "all_three_record_hashes_match_authorization_manifest": true,
+  "all_three_record_source_fingerprints_match": true,
+  "complete_media_control_set": true,
+  "total_controls": 3,
+  "attempts_per_control": 1,
+  "retry_until_correct": false,
+  "method": "local_ui_upload",
+  "runtime": {
+    "database": "disposable_local",
+    "production_deployed": false,
+    "private_environment_modified": false,
+    "providers_selected": ["assemblyai", "gemini", "hive", "sightengine"],
+    "gemini_media_model": "gemini-3.1-flash-lite",
+    "transcription_preference": "assemblyai",
+    "local_ocr_enabled": true,
+    "huggingface_enabled": false,
+    "sightengine_audio_enabled": false,
+    "public_source_fetches": 0,
+    "factual_checks_submitted": 0
+  },
+  "ui_observation": {
+    "uploads_submitted_through_form": 3,
+    "real_reports_observed": 3,
+    "audio_text_review_presented": true,
+    "audio_review_action": "Ver só sinais da mídia",
+    "audio_review_skip_created_another_post": false,
+    "audio_review_skip_changed_original_media_analysis": false,
+    "timing_scope": "Recorded elapsed_seconds for each local UI upload; not production latency or provider-only processing time"
+  },
+  "controls": [
+    {
+      "id": "nasa_real_plant",
+      "kind": "image",
+      "status": "completed",
+      "elapsed_seconds": 48.983,
+      "started_at": "2026-10-21T20:54:54.177023+00:00",
+      "finished_at": "2026-10-21T20:55:43.163706+00:00",
+      "fixture_path": "backend/tests/fixtures/validation/internet-real-2026-10-07/nasa-zinnia-iss046e009018.jpg",
+      "fixture_sha256": "0263876f57ff9cf1ee94e27335b7e68af592e3f7f3fbff76fa97f374a31cbb2d",
+      "provenance": {
+        "label": "source-published-photo",
+        "description": "NASA-published photograph of zinnia plants in the ISS Veggie facility; article associates the photograph with Scott Kelly",
+        "source_page": "https://www.nasa.gov/image-article/first-flower-grown-space-stations-veggie-facility-2/",
+        "asset_url": "https://www.nasa.gov/wp-content/uploads/2023/03/iss046e009018.jpg",
+        "credit": "NASA; Scott Kelly as identified by the source article",
+        "manifest": "backend/tests/fixtures/validation/internet-real-2026-10-07/manifest.json",
+        "format": "JPEG",
+        "width": 1041,
+        "height": 693,
+        "size_bytes": 131801,
+        "local_transformations": [],
+        "limitations": "Published processed JPEG, not independently authenticated camera RAW. Editorial provenance and metadata do not certify the camera, scene, factual truth or complete editing history."
+      },
+      "observed": {
+        "verdict": "Suspicious",
+        "analysis_status": "inconclusive",
+        "authenticity_status": "undetermined",
+        "veracity_status": "unverified",
+        "media_signal_state": "no_high_signal",
+        "sightengine": {
+          "status": "success",
+          "ai_signal": 0.001,
+          "deepfake_signal": 0.001
+        },
+        "hive": {
+          "status": "success",
+          "api_version": "v3",
+          "model": "hive/ai-generated-and-deepfake-content-detection",
+          "ai_signal": 0.0001245901455752061,
+          "facial_signal": 0,
+          "facial_head_shares_image_request": true
+        },
+        "ocr": {
+          "status": "unavailable",
+          "gemini_status": "unavailable",
+          "gemini_http_status": 503,
+          "openrouter_fallback_status": "not_configured",
+          "valid_text_reading_obtained": false
+        },
+        "gemini_vision": {
+          "status": "success",
+          "model": "gemini-3.1-flash-lite",
+          "decision_role": "inspection_only"
+        },
+        "huggingface_status": "disabled",
+        "camera_authenticity_proven": false,
+        "interpretation": "Neither image detector returned a high AI signal. The report correctly preserved undetermined origin; low detector signals are not proof of human capture or factual truth."
+      }
+    },
+    {
+      "id": "generated_plant",
+      "kind": "image",
+      "status": "completed",
+      "elapsed_seconds": 24.823,
+      "started_at": "2026-10-21T20:56:28.900542+00:00",
+      "finished_at": "2026-10-21T20:56:53.759408+00:00",
+      "fixture_path": "backend/tests/fixtures/validation/generated-2026-10-07/ai-plant-windowsill.png",
+      "fixture_sha256": "5a8dbdf2e0c69a7ca57420fd50032f62b11163685c280951a1bf988b06db8b21",
+      "provenance": {
+        "label": "known_ai_generated",
+        "description": "Fictional potted plant on a windowsill, created by the integrated image-generation tool on 2026-10-07; reused documented development control",
+        "record": "backend/tests/fixtures/validation/generated-2026-10-07/README.md",
+        "format": "PNG",
+        "width": 1254,
+        "height": 1254,
+        "size_bytes": 2332838,
+        "contains_real_person": false,
+        "limitations": "Known synthetic provenance for this file only; reused during development, not an independent holdout or a test of every image generator."
+      },
+      "observed": {
+        "verdict": "AI_Generated",
+        "analysis_status": "partial",
+        "authenticity_status": "ai_indications",
+        "veracity_status": "unverified",
+        "media_signal_state": "consensus_ai",
+        "sightengine": {
+          "status": "success",
+          "ai_signal": 0.99,
+          "deepfake_signal": 0.001
+        },
+        "hive": {
+          "status": "success",
+          "api_version": "v3",
+          "model": "hive/ai-generated-and-deepfake-content-detection",
+          "ai_signal": 0.9999999188492892,
+          "facial_signal": 0,
+          "facial_head_shares_image_request": true
+        },
+        "ocr": {
+          "status": "no_text",
+          "provider": "gemini",
+          "model": "gemini-3.1-flash-lite",
+          "interpretation": "No text was read; this does not determine the truth or origin of the image."
+        },
+        "gemini_vision": {
+          "status": "unavailable",
+          "http_status": 503,
+          "configured_model": "gemini-3.1-flash-lite",
+          "decision_role": "non_voting_observation"
+        },
+        "huggingface_status": "disabled",
+        "interpretation": "Two independent image-provider families returned concordant high AI signals for this known synthetic control. This does not verify an associated factual claim, identity or general detector accuracy."
+      }
+    },
+    {
+      "id": "synthetic_voice_5s",
+      "kind": "audio",
+      "status": "completed",
+      "elapsed_seconds": 4.848,
+      "started_at": "2026-10-21T20:57:47.342995+00:00",
+      "finished_at": "2026-10-21T20:57:52.219730+00:00",
+      "fixture_filename": "known-synthetic-5s.wav",
+      "fixture_sha256": "81a2829aab87fadf826d88416a07777b91b877b0d9bc260a1417e84a154dac1d",
+      "provenance": {
+        "label": "known_conventional_tts",
+        "description": "Existing five-second excerpt of the documented eSpeak NG pt-br demonstration voice, speed 145; fictional public speech, no imitation of a real person",
+        "parent_fixture": "frontend/public/audio/demo-pedido-sintetico.wav",
+        "parent_recipe": "backend/scripts/generate_demo_audio.sh",
+        "parent_documentation": "backend/tests/fixtures/README.md",
+        "derivative_record": "qa-real-ui-oct16.W8BxJZ/provenance.md; qa-ui-expanded-oct14.Gn8vIo/RESUMO-VALIDACAO-2026-10-14.md",
+        "format": "WAV",
+        "codec": "pcm_s16le",
+        "sample_rate_hz": 16000,
+        "channels": 1,
+        "duration_seconds": 5,
+        "size_bytes": 160078,
+        "limitations": "Conventional TTS control, not a human voice reference, neural cloning control or identity benchmark."
+      },
+      "observed": {
+        "verdict": "Suspicious",
+        "analysis_status": "inconclusive",
+        "authenticity_status": "undetermined",
+        "veracity_status": "unverified",
+        "media_signal_state": "isolated_ai",
+        "hive": {
+          "status": "success",
+          "api_version": "v3",
+          "model": "hive/ai-generated-and-deepfake-content-detection",
+          "ai_signal": 0.990826917954101
+        },
+        "sightengine_audio_status": "disabled",
+        "transcription": {
+          "provider": "assemblyai",
+          "status": "success",
+          "model": "universal-2",
+          "decision_role": "transcription_only",
+          "recognized_words_count": 15,
+          "provider_reported_duration_seconds": 5,
+          "fidelity_validated": false,
+          "suspected_error_excerpt": "pixu da gente",
+          "limitations": "A transcript was returned, but its apparent word error prevents claiming faithful recognition. No word-error rate or transcription-accuracy percentage was measured."
+        },
+        "content_analysis_status": "pending_user_review",
+        "text_review_skipped_without_another_post": true,
+        "voice_cloning_proven": false,
+        "speaker_identity_verified": false,
+        "interpretation": "One acoustic provider returned a high synthetic-speech signal. The policy preserved inconclusive origin because this was isolated evidence; successful transcription is not another acoustic vote."
+      }
+    }
+  ],
+  "http_boundaries": {
+    "scope": "Actual application boundary journal for the three UI submissions, not provider accuracy",
+    "path": "/api/upload",
+    "method": "POST",
+    "requests": 3,
+    "http_200": 3,
+    "response_content_type": "application/json",
+    "response_cache_control": "no-store",
+    "additional_factual_or_review_posts": 0
+  },
+  "provider_transport": {
+    "scope": "Persistent session transport journal; each request was reserved before sending; counts are not an accuracy metric or billing statement",
+    "total_http_requests": 14,
+    "hive": {"requests": 3, "post": 3, "http_200": 3, "image_requests": 2, "audio_jobs": 1, "rounded_audio_seconds": 5},
+    "sightengine": {"requests": 2, "post": 2, "http_200": 2},
+    "gemini": {"requests": 4, "post": 4, "http_200": 2, "http_503": 2},
+    "assemblyai": {"requests": 5, "post": 2, "get": 3, "http_200": 5, "uploads": 1, "transcription_jobs_created": 1},
+    "openrouter_requests": 0,
+    "fact_check_requests": 0,
+    "news_requests": 0,
+    "public_fetch_requests": 0,
+    "huggingface_requests": 0,
+    "sightengine_audio_requests": 0,
+    "incomplete_transports": 0,
+    "http_503_is_not_timeout": true,
+    "provider_http_200_does_not_mean_factual_or_authenticity_success": true,
+    "assemblyai_polling_gets_are_not_new_transcription_posts": true
+  },
+  "hive_separate_authorization": {
+    "grant_date": "2026-10-21",
+    "maximum_existing_balance_usd": 0.05,
+    "image_request_cap": 2,
+    "audio_job_cap": 1,
+    "rounded_audio_second_cap": 5,
+    "reserved_image_requests": 2,
+    "reserved_audio_jobs": 1,
+    "reserved_rounded_audio_seconds": 5,
+    "successful_requests": 3,
+    "paid_retries": 0,
+    "top_up_or_subscription": false,
+    "prior_authorizations_or_reservations_reset": false,
+    "reserve_before_send": true,
+    "nominal_cost_estimate": {
+      "usd": 0.0258888889,
+      "image_rate_usd_per_1000_requests": 6,
+      "audio_rate_usd_per_hour": 10,
+      "formula": "2 * 6 / 1000 + 5 * 10 / 3600",
+      "official_reference_url": "https://thehive.ai/models/hive/ai-generated-and-deepfake-content-detection",
+      "basis": "Rates supplied for this authorized QA estimate and recorded by the local harness; not re-queried during summary preparation",
+      "not_a_billing_statement": true,
+      "provider_balance_or_invoice_queried": false
+    }
+  },
+  "evaluation_limits": {
+    "accuracy_percentage": null,
+    "general_accuracy_estimated": false,
+    "independent_or_blind_corpus": false,
+    "human_voice_benchmark_validated": false,
+    "camera_authenticity_benchmark_validated": false,
+    "voice_cloning_or_identity_tested": false,
+    "video_face_swap_or_lip_sync_tested": false,
+    "factual_truth_of_media_tested": false,
+    "detector_signals_are_not_calibrated_probabilities": true,
+    "no_high_signal_does_not_prove_authenticity": true,
+    "isolated_high_signal_does_not_prove_cloning": true,
+    "synthetic_origin_does_not_make_associated_content_false": true,
+    "three_controls_do_not_validate_all_media_or_provider_apis": true
+  },
+  "evidence_sources": [
+    "QA authorization media-manifest.json",
+    "QA media-nasa_real_plant.json, media-generated_plant.json and media-synthetic_voice_5s.json: manually selected public fields only",
+    "QA provider-transport.json and http-boundaries.json",
+    "Root observer's direct UI report and audio-review observations",
+    "Existing fixture provenance manifests and README files"
+  ],
+  "sanitization": "Manually selected control IDs, fixture paths and provenance URLs, hashes, dimensions, durations, timestamps, statuses, model names, detector signals, aggregate transport counters and one short suspected ASR-error excerpt only. No credentials, authorization headers, provider job IDs, upload URLs, signed report or text-review capabilities, complete transcripts, raw model responses or source bodies."
+}

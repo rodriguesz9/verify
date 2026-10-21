@@ -104,7 +104,9 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(router.await_count, 1)
         gemini.assert_not_awaited()
         kwargs = router.await_args.kwargs
-        self.assertEqual(kwargs["max_tokens"], 2048)
+        self.assertEqual(kwargs["max_tokens"], 4096)
+        self.assertGreater(kwargs["timeout_seconds"], 0)
+        self.assertLessEqual(kwargs["timeout_seconds"], 45)
         self.assertEqual(kwargs["temperature"], 0)
         self.assertTrue(kwargs["response_format"]["json_schema"]["strict"])
         self.assertNotIn("url", json.loads(router.await_args.args[0])["sources"][0])
@@ -430,7 +432,9 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
         second = "Em 16 de julho de 1969, o foguete Saturn V lançou a espaçonave Apolo 11."
         result, router, _ = await self.run_comparison(claim, documents(first, second))
         self.assertEqual(result["state"], "corroborated")
-        router.assert_awaited_once()
+        router.assert_not_awaited()
+        self.assertEqual(result["coverage"]["comparison_method"], "literal_typed_rules_v1")
+        self.assertTrue(all(provider["status"] == "not_requested" for provider in result["provider_coverage"].values()))
 
     async def test_context_roles_are_not_quotes_but_preserve_adjacent_rumor_guard(self):
         docs = [document([FIRST, "Texto contextual sem relação direta."], sentence_roles=["context", "body"]),
@@ -745,7 +749,7 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
             result = await corroborate_sources(CLAIM, documents())
         self.assertEqual(result["status"], "timeout")
         self.assertEqual(result["state"], "insufficient")
-        timeout.assert_called_once_with(60)
+        timeout.assert_called_once_with(90)
         router.assert_not_awaited()
         gemini.assert_not_awaited()
 
@@ -1022,7 +1026,7 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
         gemini.assert_not_awaited()
 
     def test_timeout_configuration_is_bounded_and_family_is_pure(self):
-        for configured, expected in (("10", 10), ("60", 60), ("9", 60), ("61", 60), ("garbage", 60)):
+        for configured, expected in (("10", 10), ("60", 60), ("90", 90), ("9", 90), ("61", 61), ("91", 90), ("garbage", 90)):
             with patch.dict(os.environ, {"SOURCE_CROSSCHECK_TIMEOUT_SECONDS": configured}):
                 self.assertEqual(crosscheck_timeout_seconds(), expected)
         self.assertEqual(source_family("https://g1.globo.com/story"), "globo")

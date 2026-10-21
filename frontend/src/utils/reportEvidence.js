@@ -328,7 +328,14 @@ export function transcriptionPresentation(result = {}) {
   };
 }
 
+function literalExtractionNotNeeded(layer) {
+  return layer?.status === "not_requested" && layer.decision_role === "search_hints_only"
+    && layer.reason === "literal_single_sentence_no_extra_extraction";
+}
+
 export function providerCoveragePresentation(name, layer = {}, result = {}) {
+  if (literalExtractionNotNeeded(layer)) return {label: "Extração dispensada",
+    detail: "A frase completa foi usada na pesquisa, sem precisar extrair outros trechos. Isso não confirma se ela é verdadeira ou falsa.", notice: false};
   const labels = {success: "Respondeu", partial: "Cobertura parcial", no_results: "Consulta sem resultados",
     no_text: "Sem texto legível", no_speech: "Sem fala transcritível", not_requested: "Consulta não realizada"};
   const regular = {label: typeof layer?.status === "string" && Object.hasOwn(labels, layer.status) ? labels[layer.status] : "Não disponível",
@@ -362,7 +369,7 @@ export function publicCoveragePresentation(result = {}) {
     ? Object.values(value).filter((layer) => layer && typeof layer === "object" && !Array.isArray(layer)
       && layer.decision_role !== "experimental_signal" && layer.voting_eligible !== false) : []);
   const failed = layers.some((layer) => !["success", "partial", "no_results", "no_text", "no_speech", "disabled", "not_requested"].includes(layer.status));
-  const skipped = layers.some((layer) => layer.status === "not_requested");
+  const skipped = layers.some((layer) => layer.status === "not_requested" && !literalExtractionNotNeeded(layer));
   const partial = layers.some((layer) => layer.status === "partial");
   const media = ["image", "audio", "video"].includes(result.content_type);
   const inconclusive = result.analysis_status === "inconclusive";
@@ -618,6 +625,7 @@ export function buildReportEvidence(result = {}, query = "") {
   }
   for (const [provider, layer] of Object.entries(coverage)) {
     if (!layer || typeof layer !== "object") continue;
+    if (literalExtractionNotNeeded(layer)) continue;
     if (transcriptionState.notice && (layer.decision_role === "transcription_only"
         || ["transcription", "áudio/transcription"].includes(provider))) continue;
     if (provider === "google_fact_check" || provider === "conteúdo/google_fact_check") {
