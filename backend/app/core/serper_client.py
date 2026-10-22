@@ -16,12 +16,15 @@ class NewsSearch(list):
         self.reason = reason
 
 
-async def search_web(query: str) -> list[dict]:
+async def search_web(query: str, *, language: str = "pt-br") -> list[dict]:
     """One bounded search for candidate pages, never evidence from snippets.
 
     Long queries are refused, not silently cut (which could remove a negation
     or date). Only links/title are passed to the safe document retriever.
     """
+    if not isinstance(language, str) or language not in {"pt-br", "en"}:
+        return NewsSearch(status="invalid_configuration", reason="Idioma da busca de referências fora dos perfis permitidos.")
+    locale = {"gl": "us", "hl": "en"} if language == "en" else {"gl": "br", "hl": "pt-br"}
     key = os.getenv("SERPERAPI_KEY", "").strip()
     if not key:
         return NewsSearch(status="not_configured", reason="Busca de referências não configurada.")
@@ -31,7 +34,7 @@ async def search_web(query: str) -> list[dict]:
         async with httpx.AsyncClient(timeout=10, trust_env=False, follow_redirects=False) as client:
             response = await client.post(
                 WEB_ENDPOINT, headers={"X-API-KEY": key, "Content-Type": "application/json"},
-                json={"q": query.strip(), "gl": "br", "hl": "pt-br", "num": MAX_WEB_RESULTS},
+                json={"q": query.strip(), **locale, "num": MAX_WEB_RESULTS},
             )
         if response.status_code != 200:
             return NewsSearch(status="rate_limited" if response.status_code in {402, 429} else "error",

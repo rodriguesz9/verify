@@ -161,7 +161,7 @@ class OfficialCopomFlowTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(final["original_record_only"])
         self.assertIn("não duas fontes independentes", final["summary"])
         self.assertIsNone(final["confidence"])
-        self.assertEqual(final["policy_version"], "2026-10-20.1")
+        self.assertEqual(final["policy_version"], "2026-10-22.1")
 
     async def test_wrong_model_relation_metadata_only_or_submitted_record_cannot_conclude(self):
         _, cache, _ = await self.read()

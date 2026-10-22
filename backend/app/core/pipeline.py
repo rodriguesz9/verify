@@ -20,7 +20,7 @@ from app.services.source_corroboration import document_selection_audit
 from app.services.source_corroboration import claims_needing_research
 from app.services.source_decision import apply_source_decision
 from app.services.report_explanation import enrich_grounded_report
-from app.services.source_queries import neutral_source_query, primary_source_query, primary_source_filter
+from app.services.source_queries import neutral_source_query, primary_source_query, primary_source_filter, editorial_source_query
 from app.services.source_research import plan_source_research, research_enabled
 
 SOURCE_SITE_FILTER = "(site:royal.uk OR site:brasilescola.uol.com.br OR site:mundoeducacao.uol.com.br OR site:nasa.gov OR site:cnnbrasil.com.br OR site:aosfatos.org OR site:bbc.com OR site:theguardian.com OR site:time.com OR site:axios.com)"
@@ -61,8 +61,10 @@ def _source_recovery_queries(query, limit):
         neutral = neutral_source_query(query)
         if neutral:
             primary = primary_source_query(query) or neutral
+            editorial, language = editorial_source_query(query)
             return [(f"{primary} {primary_source_filter(query, PRIMARY_SITE_FILTER)}", "literal_topic_anchors_primary_sources"),
-                    (f"{neutral_source_query(query, preserve_period=True) or neutral} {EDITORIAL_SITE_FILTER}", "literal_topic_anchors_editorial_sources")]
+                    (f"{editorial or neutral} {EDITORIAL_SITE_FILTER}",
+                     "literal_topic_anchors_bilingual_editorial_sources" if language == "en" else "literal_topic_anchors_editorial_sources")]
         return [(f"{query} {PRIMARY_SITE_FILTER}", "whole_literal_claim_primary_sources"),
                 (f"{query} {SOURCE_SITE_FILTER}", method)]
     identity = re.search(r'"[^"\n]+"', combined)[0]
@@ -293,10 +295,14 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
                 for qualified, recovery_method in _source_recovery_queries(query, limit):
                     if not 20 <= len(qualified) <= 500:
                         continue
-                    extra = await search_web(qualified)
+                    # The same existing slot may use a declared English
+                    # locale; never add a second request or retry a quota.
+                    language = "en" if recovery_method == "literal_topic_anchors_bilingual_editorial_sources" else "pt-br"
+                    extra = await search_web(qualified, language="en") if language == "en" else await search_web(qualified)
                     previous_queries.append(qualified)
                     extra_status = getattr(extra, "status", "success" if extra else "no_results")
                     plan.append({"method": recovery_method, "status": extra_status,
+                                 "search_language": language,
                                  "decision_role": "retrieval_only_original_claim_unchanged"})
                     # Qualified recovery leads get their own reading chance.
                     # Already attempted URLs remain in the cumulative budget;

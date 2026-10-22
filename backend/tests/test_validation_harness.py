@@ -1,8 +1,13 @@
 import unittest
 import httpx
-from unittest.mock import AsyncMock
-from fastapi import HTTPException
-from scripts.validation_ui_server import request_provider, local_page_control_fetch, LOCAL_PAGE_CONTROL_URL
+import tempfile
+from unittest.mock import AsyncMock, patch
+from fastapi import FastAPI, HTTPException
+from scripts.validation_ui_server import (request_provider, local_page_control_fetch,
+    LOCAL_PAGE_CONTROL_URL, install_source_diagnostics)
+from app.core import pipeline
+from app.core.serper_client import NewsSearch
+from app.services import source_attribution
 
 
 class ValidationHarnessTests(unittest.TestCase):
@@ -37,3 +42,42 @@ class LocalPageHarnessTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(HTTPException) as caught:
                 await fetch(LOCAL_PAGE_CONTROL_URL, **kwargs)
             self.assertEqual(caught.exception.status_code, code)
+
+
+class DiagnosticSearchTransparencyTests(unittest.IsolatedAsyncioTestCase):
+    def install(self, directory, search):
+        # Restore all instrumentation patches after each test; install itself
+        # must not start a server, read keys or replace provider responses.
+        self.enterContext(patch.object(pipeline, "search_web", search))
+        self.enterContext(patch.object(pipeline, "_retrieve_source_attribution", pipeline._retrieve_source_attribution))
+        self.enterContext(patch.object(source_attribution, "fetch_public_resource", source_attribution.fetch_public_resource))
+        self.enterContext(patch.object(source_attribution, "_fetch_article", source_attribution._fetch_article))
+        return install_source_diagnostics(FastAPI(), directory)
+
+    async def test_search_locale_and_response_are_forwarded_without_extra_send(self):
+        for kwargs in ({}, {"language": "en"}):
+            with self.subTest(kwargs=kwargs), tempfile.TemporaryDirectory() as directory:
+                response = NewsSearch(status="no_results")
+                search = AsyncMock(return_value=response)
+                diagnostics = self.install(directory, search)
+                result = await diagnostics.run_scoped(pipeline.search_web, "queen_true",
+                    "Mensagem pública de controle sem instruções.", **kwargs)
+                self.assertIs(result, response)
+                search.assert_awaited_once_with("Mensagem pública de controle sem instruções.", **kwargs)
+                self.assertEqual(len(diagnostics.records["searches"]), 1)
+
+    async def test_recovery_with_diagnostics_completes_bilingual_slot_instead_of_typeerror(self):
+        with tempfile.TemporaryDirectory() as directory:
+            response = NewsSearch(status="no_results")
+            search = AsyncMock(return_value=response)
+            self.install(directory, search)
+            attribution = {"status": "no_results", "matches": [], "coverage": {}, "_documents": []}
+            with patch.object(pipeline, "research_enabled", return_value=False), \
+                 patch.object(pipeline, "collect_source_attribution", new=AsyncMock(return_value=attribution)):
+                result = await pipeline._retrieve_source_attribution(
+                    "A nave Aurora da NASA colidiu intencionalmente com o asteroide Zeta em 2021.",
+                    ["A nave Aurora da NASA colidiu intencionalmente com o asteroide Zeta em 2021."], None)
+            self.assertEqual(search.await_count, 3)
+            self.assertEqual(search.await_args_list[-1].kwargs, {"language": "en"})
+            self.assertNotEqual(result["coverage"].get("recovery_status"), "timeout_or_error")
+            self.assertEqual(len(result["coverage"]["search_queries"]), 3)

@@ -8,6 +8,7 @@ import asyncio
 from datetime import datetime, timezone
 import re
 from urllib.parse import unquote, urljoin, urlsplit
+from xml.etree import ElementTree
 
 from bs4 import BeautifulSoup, NavigableString, Tag
 from fastapi import HTTPException
@@ -94,6 +95,8 @@ _BLOCK_TAGS = {"p", "li", "dd", "dt", "blockquote", "figcaption", "caption",
 # byline and join its publication date to the first body sentence.
 _FLOW_CONTAINERS = {"article", "main", "section", "div", "header", "address"}
 _CONTEXT_TAGS = {"blockquote", "figcaption", "caption", "dt", "h1", "h2", "h3", "h4", "h5", "h6"}
+_LIVEBLOG_BODY_UI = {"liveblog-body", "js-liveblog-body", "live-blog-body",
+                    "liveblog-updates", "live-blog-updates"}
 _UNFINISHED_CONTEXT = re.compile(
     r"\b(?:falso|falsa|false|boato|rumou?r|alega|alegou|afirma|claim|claims|"
     r"segundo|according|mensagem|message|n[aã]o|not)\b", re.I,
@@ -153,6 +156,54 @@ def _visible_text(tag):
     return re.sub(r"\s+", " ", tag.get_text("", strip=False)).strip()
 
 
+def _liveblog_region(soup):
+    """An explicit update stream with its own visible, dated entry headers.
+
+    Entry clocks delimit updates; they never supply an event date. Refuse a
+    mixed/undated stream rather than concatenate unrelated article bodies.
+    """
+    def visible(tag):
+        for node in [tag, *tag.parents]:
+            if not isinstance(node, Tag):
+                continue
+            if (node.name in {"head", "script", "style", "template", "noscript", "nav", "aside",
+                              "footer", "form", "video", "audio", "dialog"}
+                    or node.has_attr("hidden") or str(node.get("aria-hidden", "")).casefold() == "true"
+                    or _HIDDEN_STYLE.search(str(node.get("style", "")))):
+                return False
+        return True
+
+    regions = []
+    for region in [soup, *soup.find_all(["div", "section", "main"])]:
+        identifiers = {str(region.get("id", "")), *region.get("class", [])}
+        if not identifiers & _LIVEBLOG_BODY_UI or not visible(region):
+            continue
+        entries = [entry for entry in region.find_all("article")
+                   if not entry.find_parent("article") or not _inside(entry.find_parent("article"), region)]
+        if len(entries) < 2:
+            continue
+        headers = []
+        for entry in entries:
+            header = entry.find("header", recursive=False)
+            if header is None or not visible(header):
+                break
+            for clock in header.find_all("time", datetime=True):
+                value = str(clock.get("datetime", ""))
+                if not visible(clock) or not _visible_text(clock) or not re.match(r"^\d{4}-\d{2}-\d{2}(?:$|[T ])", value):
+                    continue
+                try:
+                    datetime.fromisoformat(value.replace("Z", "+00:00"))
+                except ValueError:
+                    continue
+                headers.append(header)
+                break
+            else:
+                break
+        if len(headers) == len(entries):
+            regions.append((region, headers))
+    return max(regions, key=lambda item: (len(item[0].find_all("p")), len(_visible_text(item[0])))) if regions else (None, [])
+
+
 def _body_root(soup):
     def paragraph_size(tag):
         return sum(len(_visible_text(paragraph)) for paragraph in tag.find_all("p"))
@@ -162,7 +213,10 @@ def _body_root(soup):
     explicit = [tag for tag in soup.find_all(True)
                 if "articlebody" in {value.casefold() for value in str(tag.get("itemprop", "")).split()}
                 and _visible_text(tag)]
-    if explicit:
+    liveblog, _ = _liveblog_region(soup)
+    if liveblog is not None:
+        root = liveblog
+    elif explicit:
         root = max(explicit, key=lambda tag: (paragraph_size(tag), len(_visible_text(tag))))
     else:
         articles = [tag for tag in soup.find_all("article") if _visible_text(tag)]
@@ -202,11 +256,24 @@ def _append_article_block(blocks, text, role):
 
 def _article_blocks(root, scope):
     blocks = []
+    liveblog, liveblog_headers = _liveblog_region(scope)
+    entry_header_ids = {id(header) for header in liveblog_headers}
+    entry_ids = {id(header.parent) for header in liveblog_headers}
+
+    def block_role(tag, contextual):
+        # A stream can also contain a key-events carousel or other UI before
+        # and between updates. Only the validated entry articles supply body;
+        # retain the remaining visible text as context, without flattening the
+        # whole stream container and swallowing its nested article bodies.
+        outside_entry = (liveblog is not None and _inside(tag, liveblog)
+                         and not any(id(node) in entry_ids for node in [tag, *tag.parents]))
+        return "context" if contextual or not _inside(tag, root) or outside_entry else "body"
 
     def visit(tag, inherited_context=False):
         identifiers = " ".join([str(tag.get("id", "")), *tag.get("class", [])])
         properties = {value.casefold() for value in str(tag.get("itemprop", "")).split()}
-        contextual = (inherited_context or tag.name in _CONTEXT_TAGS or tag.name == "table"
+        contextual = (inherited_context or id(tag) in entry_header_ids
+                      or tag.name in _CONTEXT_TAGS or tag.name == "table"
                       or bool(_AUTHOR_UI.search(identifiers)) or bool(_HEADING_UI.search(identifiers))
                       or bool(_CAPTION_UI.search(identifiers))
                       or tag.name in _BLOCK_TAGS and tag.find(class_=_CAPTION_UI) is not None
@@ -214,7 +281,7 @@ def _article_blocks(root, scope):
         if tag.name in _BLOCK_TAGS or contextual:
             text = _visible_text(tag)
             if text:
-                role = "context" if contextual or not _inside(tag, root) or _AUTHOR_TEXT.fullmatch(text) else "body"
+                role = block_role(tag, contextual or bool(_AUTHOR_TEXT.fullmatch(text)))
                 _append_article_block(blocks, text, role)
             return
         # Text-only article containers also occur in static HTML. Preserve DOM
@@ -224,7 +291,7 @@ def _article_blocks(root, scope):
         def flush():
             text = re.sub(r"\s+", " ", "".join(pending)).strip()
             if text:
-                _append_article_block(blocks, text, "context" if contextual or not _inside(tag, root) else "body")
+                _append_article_block(blocks, text, block_role(tag, contextual))
             pending.clear()
 
         for child in tag.children:
@@ -368,6 +435,41 @@ def _player_caption(tag):
         for ancestor in container.parents if isinstance(ancestor, Tag))
 
 
+def _bbc_reference_markup(tag, source_url):
+    """Recognize one escaped legacy BBC Mundo read-more widget in its own p.
+
+    The visible serialized XML is UI, not quoted article prose or a real DOM
+    link. Require the complete closed structure; never erase a prefix, suffix,
+    inline qualifier or a quoted example, and never interpret it as HTML.
+    """
+    hosts = {"bbc.com", "www.bbc.com", "bbc.co.uk", "www.bbc.co.uk"}
+    source = _canonical_url(source_url)
+    if (tag.name != "p" or tag.find(True) is not None or tag.find_parent(list(_BLOCK_TAGS)) is not None
+            or source is None or urlsplit(source).hostname not in hosts
+            or not urlsplit(source).path.startswith("/mundo/")):
+        return False
+    text = _visible_text(tag)
+    if not text.startswith('<link type="page">') or len(text) > 4096:
+        return False
+    try:
+        reference = ElementTree.fromstring(text)
+    except ElementTree.ParseError:
+        return False
+    if (reference.tag != "link" or reference.attrib != {"type": "page"}
+            or (reference.text or "").strip() or len(reference) != 2):
+        return False
+    caption, target = reference
+    if (caption.tag != "caption" or caption.attrib or len(caption)
+            or not re.match(r"^Lea también:\s+\S", (caption.text or "").strip())
+            or (caption.tail or "").strip() or target.tag != "url" or len(target)
+            or (target.text or "").strip() or (target.tail or "").strip()
+            or set(target.attrib) != {"href", "platform"} or target.get("platform") != "highweb"):
+        return False
+    destination = _canonical_url(target.get("href"))
+    return (destination is not None and urlsplit(destination).hostname in hosts
+            and urlsplit(destination).path.startswith("/mundo/"))
+
+
 def _article_parts(resource):
     try:
         document = resource.data.decode(resource.encoding, errors="replace")
@@ -382,6 +484,11 @@ def _article_parts(resource):
     else:
         soup = BeautifulSoup(document, "html.parser")
         title = soup.title.get_text(" ", strip=True)[:300] if soup.title else ""
+        _, liveblog_headers = _liveblog_region(soup)
+        # Retain the actual visible header text as context between updates.
+        # Removing every <time> here would erase the only block boundary.
+        liveblog_context_nodes = {id(node) for header in liveblog_headers
+                                 for node in [header, *header.find_all(True)]}
         for tag in list(soup.find_all(True)):
             if tag.attrs is None:
                 continue
@@ -407,7 +514,8 @@ def _article_parts(resource):
                     or _HIDDEN_STYLE.search(str(tag.get("style", "")))
                     or _CONSENT_UI.search(identifiers)
                     or _player_caption(tag)
-                    or publication_date or global_navigation):
+                    or _bbc_reference_markup(tag, resource.final_url)
+                    or publication_date and id(tag) not in liveblog_context_nodes or global_navigation):
                 tag.decompose()
         for line_break in soup.find_all("br"):
             line_break.replace_with(" ")
@@ -478,6 +586,7 @@ def _article_reference_leads(resource):
         soup = BeautifulSoup(resource.data.decode(resource.encoding, errors="replace"), "html.parser")
     except LookupError:
         return []
+    liveblog, _ = _liveblog_region(soup)
     for tag in list(soup.find_all(True)):
         if tag.attrs is None:
             continue
@@ -497,6 +606,10 @@ def _article_reference_leads(resource):
                 or re.search(r"(?:^|[-_\s])(?:related|share|social|menu|breadcrumb|teaser|card)(?:$|[-_\s])", identifiers, re.I)):
             tag.decompose()
     root, _ = _body_root(soup)
+    # Header removal is intentional for link discovery, but must not turn a
+    # previously validated update stream back into just its longest entry.
+    if liveblog is not None and liveblog.attrs is not None:
+        root = liveblog
     own_url = _canonical_url(resource.final_url)
     references = {}
     for anchor in root.find_all("a", href=True, limit=MAX_REFERENCE_ANCHORS):
@@ -677,7 +790,12 @@ def _publication_date(resource):
         soup = BeautifulSoup(resource.data.decode(resource.encoding, errors="replace"), "html.parser")
     except LookupError:
         return None
+    _, liveblog_headers = _liveblog_region(soup)
+    entry_metadata_ids = {id(node) for header in liveblog_headers for node in [header, *header.find_all(True)]}
     def eligible_visible_date(tag):
+        # An update's timestamp is not publication of the whole live blog.
+        if id(tag) in entry_metadata_ids:
+            return False
         for node in [tag, *tag.parents]:
             if not isinstance(node, Tag):
                 continue

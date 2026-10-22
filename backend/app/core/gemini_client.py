@@ -50,31 +50,107 @@ class GeminiAdmission:
         self._capacity = capacity
         self._lock = threading.Lock()
         self._models = {}
+        self._waiters = {}
+        self._pending_count = 0
 
     def _prune(self, now):
         for model, record in list(self._models.items()):
             stamps, paused_until = record
             while stamps and now - stamps[0] >= 60:
                 stamps.popleft()
-            if not stamps and now >= paused_until:
+            if not stamps and now >= paused_until and not self._waiters.get(model):
                 del self._models[model]
 
+    def _record(self, model, now):
+        # Called only with the process lock held. Pending models keep their
+        # record during pruning so another model cannot steal its state slot.
+        self._prune(now)
+        record = self._models.get(model)
+        if record is None:
+            if len(self._models) >= self._capacity:
+                raise GeminiError("Serviço de leitura temporariamente ocupado. Aguarde antes de tentar novamente.", "rate_limited")
+            record = self._models[model] = [deque(), 0.0]
+        if now < record[1]:
+            raise GeminiError("Serviço de leitura em pausa após limite de solicitações. Aguarde antes de tentar novamente.", "rate_limited")
+        return record
+
+    def _wake_waiters(self, model):
+        # The lock owns state across threads/loops; each event is touched only
+        # by its own loop. Tickets hold no payload, key, media or response.
+        for loop, event in self._waiters.get(model, ()):
+            try:
+                loop.call_soon_threadsafe(event.set)
+            except RuntimeError:
+                pass  # Loop shutdown cancels pending tasks and runs cleanup.
+
     def reserve(self, model, requests_per_minute):
+        """Immediate reservation for synchronous callers; never jump a queue."""
         with self._lock:
             now = self._clock()
-            self._prune(now)
-            record = self._models.get(model)
-            if record is None:
-                if len(self._models) >= self._capacity:
-                    raise GeminiError("Serviço de leitura temporariamente ocupado. Aguarde antes de tentar novamente.", "rate_limited")
-                record = self._models[model] = [deque(), 0.0]
-            stamps, paused_until = record
-            if now < paused_until:
-                raise GeminiError("Serviço de leitura em pausa após limite de solicitações. Aguarde antes de tentar novamente.", "rate_limited")
-            if len(stamps) >= requests_per_minute:
+            record = self._record(model, now)
+            if self._waiters.get(model) or len(record[0]) >= requests_per_minute:
                 raise GeminiError("Muitas solicitações de leitura em pouco tempo. Aguarde antes de tentar novamente.", "rate_limited")
             # Failed/ambiguous requests also consume the local burst budget.
-            stamps.append(now)
+            record[0].append(now)
+
+    async def wait(self, model, requests_per_minute):
+        """Wait only for the local window, within the caller's same deadline.
+
+        At most 32 pending tickets in this process, FIFO per model. No task or
+        HTTP request is detached. Cancellation while queued removes the ticket
+        without consuming a slot; after reservation an attempted/ambiguous
+        transport remains charged. Provider cooldown never waits or retries.
+        """
+        ticket = (asyncio.get_running_loop(), asyncio.Event())
+        with self._lock:
+            now = self._clock()
+            record = self._record(model, now)
+            if not self._waiters.get(model) and len(record[0]) < requests_per_minute:
+                record[0].append(now)
+                return
+            if self._pending_count >= 32:
+                raise GeminiError("Fila de leitura temporariamente cheia. Aguarde antes de tentar novamente.", "rate_limited")
+            self._waiters.setdefault(model, deque()).append(ticket)
+            self._pending_count += 1
+        queued = True
+        try:
+            while True:
+                with self._lock:
+                    now = self._clock()
+                    record = self._record(model, now)
+                    queue = self._waiters[model]
+                    if queue[0] is ticket and len(record[0]) < requests_per_minute:
+                        queue.popleft()
+                        self._pending_count -= 1
+                        queued = False
+                        if not queue:
+                            del self._waiters[model]
+                        record[0].append(now)
+                        self._wake_waiters(model)
+                        return
+                    ticket[1].clear()
+                    delay = (max(0.0, record[0][0] + 60 - now)
+                             if queue[0] is ticket and len(record[0]) >= requests_per_minute else None)
+                if delay is None:
+                    await ticket[1].wait()
+                else:
+                    try:
+                        # A local timer rechecks the same window; it does not
+                        # extend generate_text's or the caller's deadline.
+                        async with asyncio.timeout(delay):
+                            await ticket[1].wait()
+                    except TimeoutError:
+                        pass
+        finally:
+            if queued:
+                with self._lock:
+                    queue = self._waiters.get(model)
+                    if queue is not None and ticket in queue:
+                        queue.remove(ticket)
+                        self._pending_count -= 1
+                        if not queue:
+                            del self._waiters[model]
+                        self._wake_waiters(model)
 
     def pause(self, model, duration):
         with self._lock:
@@ -86,14 +162,15 @@ class GeminiAdmission:
                     return
                 record = self._models[model] = [deque(), 0.0]
             record[1] = max(record[1], now + duration)
+            self._wake_waiters(model)
 
 
 _gemini_admission = GeminiAdmission()
 
 
-def _reserve_request(model):
+async def _reserve_request(model):
     if _admission_enabled():
-        _gemini_admission.reserve(model, _bounded_integer("GEMINI_LOCAL_REQUESTS_PER_MINUTE", 5, 1, 15))
+        await _gemini_admission.wait(model, _bounded_integer("GEMINI_LOCAL_REQUESTS_PER_MINUTE", 5, 1, 15))
 
 
 def _pause_after_rate_limit(model, response):
@@ -182,7 +259,7 @@ async def _generate_text(contents, *, system_instruction=None, temperature=.1, j
             # thinkingLevel is documented only for Gemini 3+; no legacy breakage.
             body["generationConfig"] = {**config, **({"thinkingConfig": {"thinkingLevel": "LOW"}} if model.startswith("gemini-3") else {})}
             _validate_request_size(body)
-            _reserve_request(model)
+            await _reserve_request(model)
             try:
                 response = await client.post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
                                              headers={"x-goog-api-key": key}, json=body)

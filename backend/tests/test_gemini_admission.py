@@ -26,6 +26,21 @@ class GeminiAdmissionTests(unittest.IsolatedAsyncioTestCase):
             "GEMINI_LOCAL_REQUESTS_PER_MINUTE": "5", "GEMINI_RATE_LIMIT_COOLDOWN_SECONDS": "60",
         }))
 
+    async def pending(self, count):
+        for _ in range(200):
+            if self.guard._pending_count == count:
+                return
+            await asyncio.sleep(0)
+        self.fail(f"Expected {count} pending requests, observed {self.guard._pending_count}.")
+
+    def advance(self, seconds):
+        self.now += seconds
+        # The test clock moves without real time. Wake only the same local
+        # recheck that a rolling-window timer would trigger in production.
+        with self.guard._lock:
+            for model in self.guard._waiters:
+                self.guard._wake_waiters(model)
+
     def test_bounded_configurations_reject_non_ascii_and_unbounded_values(self):
         for raw, expected in [("1", 1), ("15", 15), (" 7 ", 7), ("0", 5),
                               ("16", 5), ("5.0", 5), ("NaN", 5), ("５", 5),
@@ -44,12 +59,21 @@ class GeminiAdmissionTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_concurrent_requests_share_model_window_and_never_send_above_limit(self):
         with patch.object(httpx.AsyncClient, "post", new=AsyncMock(return_value=reply())) as post:
-            results = await asyncio.gather(*(gemini.generate_text(f"fixed control {n}") for n in range(12)), return_exceptions=True)
-        self.assertEqual(post.await_count, 5)
-        self.assertEqual(sum(isinstance(result, gemini.GeneratedText) for result in results), 5)
-        failures = [result for result in results if isinstance(result, gemini.GeminiError)]
-        self.assertEqual(len(failures), 7)
-        self.assertTrue(all(result.status == "rate_limited" and result.http_status is None for result in failures))
+            tasks = [asyncio.create_task(gemini.generate_text(f"fixed control {n}")) for n in range(12)]
+            await self.pending(7)
+            self.assertEqual(post.await_count, 5)
+            self.assertEqual(sum(task.done() for task in tasks), 5)
+            self.advance(60)
+            await self.pending(2)
+            self.assertEqual(post.await_count, 10)
+            self.advance(60)
+            results = await asyncio.gather(*tasks)
+        self.assertEqual(post.await_count, 12)
+        self.assertTrue(all(isinstance(result, gemini.GeneratedText) for result in results))
+        self.assertEqual([call.kwargs["json"]["contents"][0]["parts"][0]["text"]
+                          for call in post.await_args_list], [f"fixed control {n}" for n in range(12)])
+        self.assertEqual(self.guard._pending_count, 0)
+        self.assertEqual(self.guard._waiters, {})
         self.assertEqual(set(self.guard._models), {"gemini-3.8-flash"})
         self.assertNotIn("fixed control", repr(self.guard._models))
         self.assertNotIn("offline-unit-placeholder", repr(self.guard._models))
@@ -59,31 +83,41 @@ class GeminiAdmissionTests(unittest.IsolatedAsyncioTestCase):
                 patch.object(httpx.AsyncClient, "post", new=AsyncMock(side_effect=httpx.ReadTimeout("private-error"))) as post:
             with self.assertRaises(gemini.GeminiError) as first:
                 await gemini.generate_text("fixed control")
-            with self.assertRaises(gemini.GeminiError) as second:
-                await gemini.generate_text("fixed control")
+            second = asyncio.create_task(gemini.generate_text("fixed control"))
+            await self.pending(1)
+            self.assertFalse(second.done())
+            second.cancel()
+            with self.assertRaises(asyncio.CancelledError):
+                await second
         self.assertEqual(first.exception.status, "timeout")
-        self.assertEqual(second.exception.status, "rate_limited")
         self.assertEqual(post.await_count, 1)
+        self.assertEqual(len(self.guard._models["gemini-3.8-flash"][0]), 1)
+        self.assertEqual(self.guard._pending_count, 0)
 
         self.now += 60
         with patch.dict(os.environ, {"GEMINI_LOCAL_REQUESTS_PER_MINUTE": "1"}), \
                 patch.object(httpx.AsyncClient, "post", new=AsyncMock(side_effect=asyncio.CancelledError)) as post:
             with self.assertRaises(asyncio.CancelledError):
                 await gemini.generate_text("fixed control")
-            with self.assertRaises(gemini.GeminiError) as cancelled_next:
-                await gemini.generate_text("fixed control")
-        self.assertEqual(cancelled_next.exception.status, "rate_limited")
+            cancelled_next = asyncio.create_task(gemini.generate_text("fixed control"))
+            await self.pending(1)
+            cancelled_next.cancel()
+            with self.assertRaises(asyncio.CancelledError):
+                await cancelled_next
         self.assertEqual(post.await_count, 1)
+        self.assertEqual(len(self.guard._models["gemini-3.8-flash"][0]), 1)
+        self.assertEqual(self.guard._pending_count, 0)
 
     async def test_local_window_expires_at_sixty_seconds(self):
         with patch.dict(os.environ, {"GEMINI_LOCAL_REQUESTS_PER_MINUTE": "1"}), \
                 patch.object(httpx.AsyncClient, "post", new=AsyncMock(return_value=reply())) as post:
             await gemini.generate_text("fixed control")
-            self.now += 59.999
-            with self.assertRaises(gemini.GeminiError):
-                await gemini.generate_text("fixed control")
-            self.now += .001
-            await gemini.generate_text("fixed control")
+            self.advance(59.999)
+            waiting = asyncio.create_task(gemini.generate_text("fixed control"))
+            await self.pending(1)
+            self.assertEqual(post.await_count, 1)
+            self.advance(.001)
+            await waiting
         self.assertEqual(post.await_count, 2)
 
     async def test_model_windows_separate_but_quota_does_not_trigger_fallback(self):
@@ -126,8 +160,8 @@ class GeminiAdmissionTests(unittest.IsolatedAsyncioTestCase):
             await gemini.generate_text("fixed control")
         self.assertEqual(post.await_count, 2)
 
-    def test_cooldown_durations_are_bounded_and_never_decrease_an_active_pause(self):
-        gemini._reserve_request("fixed-model")
+    async def test_cooldown_durations_are_bounded_and_never_decrease_an_active_pause(self):
+        await gemini._reserve_request("fixed-model")
         gemini._pause_after_rate_limit("fixed-model", httpx.Response(429,
             headers={"retry-after": "999999999"}, json={"error": {"details": []}}))
         self.assertEqual(self.guard._models["fixed-model"][1], self.now + 3600)
@@ -135,13 +169,13 @@ class GeminiAdmissionTests(unittest.IsolatedAsyncioTestCase):
         gemini._pause_after_rate_limit("fixed-model", httpx.Response(429, headers={"retry-after": "1"}))
         self.assertEqual(self.guard._models["fixed-model"][1], 3700)
 
-    def test_malformed_retry_hints_use_default_cooldown_without_exposing_body(self):
+    async def test_malformed_retry_hints_use_default_cooldown_without_exposing_body(self):
         for body in ([], {"error": None}, {"error": {"details": "private-value"}},
                      {"error": {"details": [None, {"@type": "type.googleapis.com/google.rpc.RetryInfo", "retryDelay": "NaNs"}]}}):
             with self.subTest(body=body):
                 guard = gemini.GeminiAdmission(clock=lambda: self.now)
                 with patch.object(gemini, "_gemini_admission", guard):
-                    gemini._reserve_request("fixed-model")
+                    await gemini._reserve_request("fixed-model")
                     gemini._pause_after_rate_limit("fixed-model", httpx.Response(429,
                         headers={"retry-after": "private-invalid-header"}, json=body))
                 self.assertEqual(guard._models["fixed-model"][1], self.now + 60)

@@ -101,3 +101,28 @@ def primary_source_filter(text, default):
         if re.search(pattern, canonical, re.I):
             targets.append("site:" + domain)
     return "(" + " OR ".join(targets) + ")" if targets else default
+
+
+def editorial_source_query(text):
+    """Diversify one existing recovery slot, not the factual assertion.
+
+    The first literal query already searches in Portuguese. For an explicitly
+    named international institution and a known translated topic, the second
+    editorial slot can search English reporting instead of repeating only PT
+    mirrors. Domestic/unknown institutions keep the original native recovery.
+    No date, result or entity is added; the caller owns filters and request cap.
+    """
+    native = neutral_source_query(text, preserve_period=True)
+    if not isinstance(text, str) or native is None:
+        return native, "pt-br"
+    canonical = lexical_text(text)
+    if (not re.search(r"\b(?:NASA|WHO|Copernicus)\b", canonical, re.I)
+            or re.search(r"\b(?:IBGE|Copom|Banco Central)\b", canonical, re.I)):
+        return native, "pt-br"
+    # Without a recognized vocabulary bridge an English locale is a guess,
+    # not a useful language diversification. Keep names and unknown prose.
+    if not any(re.search(r"\b(?:" + "|".join(map(re.escape, group[1:])) + r")\b", canonical, re.I)
+               for group in WORD_GROUPS):
+        return native, "pt-br"
+    translated = primary_source_query(text)
+    return (translated, "en") if translated else (native, "pt-br")

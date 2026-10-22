@@ -1,0 +1,38 @@
+{
+  "schema": "verify_independent_inputs_v1",
+  "language": "pt-BR",
+  "cases": [
+    {
+      "id": "I01",
+      "text": "Marie Curie recebeu o Prêmio Nobel de Química em 1912."
+    },
+    {
+      "id": "I02",
+      "text": "O Titanic afundou no Atlântico Norte em 15 de abril de 1912."
+    },
+    {
+      "id": "I03",
+      "text": "Os primeiros Jogos Olímpicos modernos foram realizados em Atenas em 1900."
+    },
+    {
+      "id": "I04",
+      "text": "O Muro de Berlim foi aberto em 9 de novembro de 1989."
+    },
+    {
+      "id": "I05",
+      "text": "O Titanic afundou no Atlântico Norte em 14 de abril de 1912."
+    },
+    {
+      "id": "I06",
+      "text": "Os primeiros Jogos Olímpicos modernos foram realizados em Atenas em 1896."
+    },
+    {
+      "id": "I07",
+      "text": "Marie Curie recebeu o Prêmio Nobel de Química em 1911."
+    },
+    {
+      "id": "I08",
+      "text": "O Muro de Berlim foi aberto em 9 de novembro de 1988."
+    }
+  ]
+}

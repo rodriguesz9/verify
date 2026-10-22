@@ -493,7 +493,62 @@ def _singleton_date_bound(quote, event, claim=None):
     return False
 
 
-def _relation_guard(claim, quote, context, relation, retrieved_at):
+def _opposite_statement_scope(claim, quote):
+    """One literal statement owns its polarity, identity and full predicate.
+
+    A negation in another sentence cannot negate an event merely because its
+    names and dates occur elsewhere in the window. Unknown negative paraphrases
+    abstain: remove exactly one simple negation, preserving every other word,
+    qualifier and value. Only one identical explicit calendar adjunct may move
+    between front and body; every other word keeps its order. No new evidence.
+    """
+    def polarity(statement):
+        negations = list(_NEGATION.finditer(statement))
+        if not negations:
+            return normalize_claim(statement), False
+        if (len(negations) != 1
+                or negations[0][0].casefold() not in {"não", "nao", "nunca", "jamais", "not", "never"}):
+            return None
+        negation = negations[0]
+        return normalize_claim(statement[:negation.start()] + statement[negation.end():]), True
+
+    def same_dated_statement(left, right):
+        # A single explicit calendar adjunct may precede or follow the same
+        # complete statement. Bind the SAME date before removing its surface
+        # position; do not pool years/dates across sentences or events.
+        def undated(statement):
+            spans = {(match.start(), match.end()) for pattern in
+                     (_LONG_DATE, _EN_DATE, _NUM_DATE, _ISO_DATE) for match in pattern.finditer(statement)}
+            dates, _ = _quantities(statement)
+            if len(spans) != 1 or len(dates) != 1 or len(next(iter(dates))) != 10 or "invalid-date" in dates:
+                return None
+            start, end = next(iter(spans))
+            connector = re.search(r"(?:^|\s)(?:em|on)\s*$", statement[:start], re.I)
+            if connector is None:
+                return None
+            before, after = statement[:connector.start()], statement[end:]
+            if not before.strip():
+                after = after.lstrip(" ,")
+            return normalize_claim(before + " " + after), dates
+        left, right = undated(left), undated(right)
+        return left is not None and right is not None and left == right
+
+    statements = input_claims(claim)
+    if len(statements) != 1:
+        return False
+    claimed = polarity(statements[0])
+    if claimed is None:
+        return False
+    matched_polarities = set()
+    for statement in input_claims(quote):
+        observed = polarity(statement)
+        if observed is not None and (observed[0] == claimed[0] or same_dated_statement(observed[0], claimed[0])):
+            matched_polarities.add(observed[1])
+    # Conflicting copies of the same assertion are not a categorical denial.
+    return matched_polarities == {not claimed[1]}
+
+
+def _relation_guard(claim, quote, context, relation, retrieved_at, *, bound_negative_declaration=False):
     if (RELATIVE_TIME.search(claim) or any(c in claim for c in ('?', '"', '“', '”', '«', '»'))
             or (_UNASSERTED.search(context) and not (relation == "refutes" and _FALSE_PREFIX.match(quote))) or _INSTRUCTION.search(context)):
         return "Contexto relativo, citação, instrução ou alegação não endossada exige revisão humana."
@@ -516,7 +571,8 @@ def _relation_guard(claim, quote, context, relation, retrieved_at):
            for action, pattern in _DISTINCT_ACTIONS
            if not (action == "event-launch" and launch_scope and typed_relation == relation)):
         return "Ação alegada não aparece no trecho; pouso de uma nave não comprova caminhada de pessoas."
-    if _WALK_PREDICATE.search(claim) and _HUMAN_AGENT.search(claim):
+    walk_scope = bool(_WALK_PREDICATE.search(claim) and _HUMAN_AGENT.search(claim))
+    if walk_scope:
         if not _HUMAN_AGENT.search(quote):
             return "Caminhada humana exige sujeito humano explícito no corpo; caminhada de robô/sonda não comprova ação de pessoas."
         for predicate in _WALK_PREDICATE.finditer(quote):
@@ -605,7 +661,13 @@ def _relation_guard(claim, quote, context, relation, retrieved_at):
     # Refutation is not mere absence. Require explicit opposing assertion with
     # preserved quantities, a correction, or different dates of a unique birth/
     # death event. Different dates of repeated payments cannot refute each other.
-    opposite = (claim_neg != quote_neg and _dates_covered(claim_dates, quote_dates) and claim_numbers <= quote_numbers)
+    opposite = (claim_neg != quote_neg and _dates_covered(claim_dates, quote_dates)
+                and claim_numbers <= quote_numbers
+                and (false_prefix is not None
+                     or (walk_scope and len(input_claims(claim)) == len(input_claims(quote)) == 1
+                         and len(_WALK_PREDICATE.findall(claim)) == len(_WALK_PREDICATE.findall(quote)) == 1)
+                     or bound_negative_declaration
+                     or _opposite_statement_scope(claim, quote)))
     corrected = (bool(_CORRECTION.search(quote)) and not false_prefix
                  and _dates_covered(claim_dates, quote_dates)
                  and bool(claim_numbers - quote_numbers))
@@ -1047,7 +1109,14 @@ def _passage_guard(claim, passage, relation, stamp):
         # its wording is 'we conclude it can be characterized as ...'. This
         # does not turn an ordinary medical possibility into a proven fact.
         quote = re.sub(r"\b(?:pode ser|can be)[\s\u200e\u200f]+(?=caracterizad[oa]|characteri[sz]ed)", "", quote, flags=re.I)
-    return _relation_guard(reading or reading_claim, quote, passage["context"], relation, stamp)
+    # The numbered declaration parser already binds diploma, article, action
+    # and identical payload. Preserve only its verified outer negative claim
+    # versus a positive literal provision; do not waive scope for a negative
+    # quote, arbitrary legal prose or a model-supplied field.
+    bound_declaration = bool(legal_reading and _NEGATION.search(legal_reading)
+                             and not _NEGATION.search(quote))
+    return _relation_guard(reading or reading_claim, quote, passage["context"], relation, stamp,
+                           bound_negative_declaration=bound_declaration)
 
 
 def _original_record_reading(claim, record, quote=None):
@@ -1119,8 +1188,30 @@ def _candidate_passage(quote, context, raw, record_source=None, **fields):
     return candidate
 
 
-def _prepare_sources(documents, claims, source_url):
+def _prepare_sources(documents, claims, source_url, *, reading_gaps=None):
     sources, excluded, passages, selected_documents = [], [], {}, []
+
+    def admits(candidate, tested_claims, stamp, *, window=False):
+        # Optional retrieval diagnostics reuse the SAME decisions. A reason
+        # counts only a rejected candidate/direction, never a source vote or
+        # an exhaustive review. No source text, claim text or model is stored.
+        for claim in tested_claims:
+            reasons = []
+            window_allowed = not window or _window_subject_guard(claim, candidate["quote"])
+            for relation in ("supports", "refutes"):
+                reason = (_passage_guard(claim, candidate, relation, stamp) if window_allowed else
+                    "Janela do corpo contém sujeito ambíguo; não é evidência da pessoa alegada.")
+                if reason is None:
+                    return True
+                reasons.append(reason)
+            if reading_gaps is not None:
+                claim_id = f"c{claims.index(claim) + 1}"
+                counters = reading_gaps.setdefault(claim_id, {})
+                for reason in set(reasons):
+                    if isinstance(reason, str) and len(reason) <= 500 and (reason in counters or len(counters) < 8):
+                        counters[reason] = min(20000, counters.get(reason, 0) + 1)
+        return False
+
     submitted = source_identity(source_url)
     body_hashes, urls = set(), set()
     candidates = []
@@ -1205,8 +1296,7 @@ def _prepare_sources(documents, claims, source_url):
             # call. Explicit aliases broaden reading without weakening the
             # same subject/date/quantity safeguards used after comparison.
             candidate = _candidate_passage(quote, context, raw, identity)
-            if not any(_passage_guard(claim, candidate, relation, stamp) is None
-                       for claim in claims for relation in ("supports", "refutes")):
+            if not admits(candidate, claims, stamp):
                 continue
             source["candidates"].append(((index, index), candidate))
             if len(source["candidates"]) >= MAX_PASSAGES:
@@ -1234,8 +1324,7 @@ def _prepare_sources(documents, claims, source_url):
                     if len(context) > 3 * MAX_SENTENCE:
                         continue
                     candidate = _candidate_passage(quote, context, raw, identity, body_window=True)
-                    if any(_window_subject_guard(claim, quote) and _passage_guard(claim, candidate, relation, stamp) is None
-                           for claim in missing_claims for relation in ("supports", "refutes")):
+                    if admits(candidate, missing_claims, stamp, window=True):
                         source["candidates"].append((span, candidate))
                     if len(source["candidates"]) >= MAX_PASSAGES:
                         break
@@ -1343,10 +1432,16 @@ def document_selection_audit(text, documents, source_url=None):
         return {"excluded_sources": [{"exclusion_reason": "Entrada fora do contrato de seleção documental."}],
                 "selected_source_urls": [], "eligible_family_count": 0}
     claims = input_claims(text)[:MAX_CLAIMS]
-    sources, _, excluded, _ = _prepare_sources(documents, claims, source_url)
+    gaps = {}
+    sources, _, excluded, _ = _prepare_sources(documents, claims, source_url, reading_gaps=gaps)
     return {"excluded_sources": excluded[:MAX_RECOVERY_DOCUMENTS],
             "selected_source_urls": [source["url"] for source in sources],
-            "eligible_family_count": len({source["publisher_family"] for source in sources})}
+            "eligible_family_count": len({source["publisher_family"] for source in sources}),
+            "reading_gaps": {"scope": "bounded_rejected_candidates_not_exhaustive_not_evidence",
+                "claims": [{"claim_id": claim_id, "reasons": [
+                    {"reason": reason, "rejected_candidate_count": count}
+                    for reason, count in sorted(reasons.items(), key=lambda item: (-item[1], item[0]))]}
+                    for claim_id, reasons in sorted(gaps.items())]}}
 
 
 def _gemini_schema(schema):

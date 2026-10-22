@@ -450,8 +450,11 @@ def install_source_diagnostics(app, record_dir):
         diagnostics.record_article(url, result)
         return result
 
-    async def capture_search(query):
-        result = await original_search(query)
+    async def capture_search(query, **kwargs):
+        # Transparent instrumentation: discovery locale belongs to the real
+        # client. Dropping it raises TypeError mid-recovery and would measure
+        # a broken QA wrapper rather than the application's search path.
+        result = await original_search(query, **kwargs)
         diagnostics.record_search(query, result)
         return result
 

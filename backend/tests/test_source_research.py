@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 from app.core import gemini_client
 from app.core.serper_client import NewsSearch
-from app.core.pipeline import _retrieve_source_attribution
+from app.core.pipeline import _retrieve_source_attribution, EDITORIAL_SITE_FILTER
 from app.services import source_research as research
 from app.services.source_corroboration import claims_needing_research, usable_source_families
 
@@ -137,7 +137,9 @@ class ResearchPlanTests(unittest.IsolatedAsyncioTestCase):
             model.assert_awaited_once()
             self.assertEqual(search.await_count, 4)
             neutral = search.await_args.args[0]
-            self.assertNotIn("site:", neutral)
+            # The earlier editorial slot now searched EN; the still-unused
+            # native editorial query remains a legitimate bounded gap search.
+            self.assertTrue(neutral.endswith(EDITORIAL_SITE_FILTER))
             self.assertIn("DART", neutral)
             self.assertIn("NASA", neutral)
             self.assertNotEqual(neutral, TEXT)

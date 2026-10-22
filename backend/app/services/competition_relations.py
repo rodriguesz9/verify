@@ -5,6 +5,10 @@ senior men's national association football here. Explicit women's, youth,
 club, futsal or other-sport qualifiers anywhere in quote/context veto that
 convention. Bare English ``World Cup`` has no such default: FIFA or an
 explicit men's football/soccer designation is required.
+One closed Spanish recap can bind a named host/year, ``Mundial de Fútbol``
+and an explicit title winner. Its ordinal counts that team's titles; it is
+never the competition edition. Spanish category and nonassertion guards
+apply to that recap and its context as well.
 
 Only the caller's literal BODY quote supplies evidence. A quote may contain
 at most three consecutive body sentences; headings and metadata must never
@@ -83,6 +87,8 @@ _TEAM_ALIASES = {
     "england": "inglaterra", "italy": "italia", "uruguay": "uruguai", "croatia": "croacia",
     "netherlands": "paises baixos", "holland": "paises baixos", "holanda": "paises baixos",
     "japan": "japao", "south korea": "coreia do sul", "united states": "estados unidos",
+    "alemania": "alemanha", "francia": "franca", "espana": "espanha",
+    "paises bajos": "paises baixos", "japon": "japao", "corea del sur": "coreia do sul",
 }
 
 
@@ -150,6 +156,59 @@ _EN_TITLE_RECAP = re.compile(
     + r" against (?:the )?(?P<opponent>" + _NAME + r") at (?:the )?"
     + r"(?P<venue>" + _RECAP_PLACE + r")(?: in (?P<city>" + _NAME + r"))?\.?"
 )
+
+# A single complete Spanish BODY assertion. Neither a host/year headline nor
+# an ordinal title count alone supplies a winner or competition. Named host
+# and winner remain distinct slots, even when the host itself won the event.
+_ES_ORDINAL = (r"(?:primer|primero|segundo|tercer|tercero|cuarto|quinto|sexto|septimo|octavo|"
+               r"noveno|decimo|undecimo|duodecimo|decimotercero|decimocuarto|decimoquinto|"
+               r"decimosexto|decimoseptimo|decimoctavo|decimonoveno|vigesimo)")
+_ES_TITLE_RECAP = re.compile(
+    r"(?P<host>" + _NAME + r") (?P<year>" + _YEAR + r") es el " + _ES_ORDINAL
+    + r" mundial de futbol que gana (?P<winner>" + _NAME + r")\.?"
+)
+_ES_OTHER_CATEGORY = re.compile(
+    r"\b(?:femenin[oa]s?|mujeres|damas|ninas?|juveniles?|infantiles?|menores|"
+    r"olimpic[oa]s?|clubes?|sala|salon|playa|callejer[oa]s?|amateur|aficionad[oa]s?|"
+    r"veteran[oa]s?|masters?|leyendas|"
+    r"baloncesto|balonmano|hielo|discapacitados|ciegos)\b"
+)
+_ES_UNASSERTED = re.compile(
+    r"\b(?:no|nunca|jamas|tampoco|sin|si|niega|nego|negaba|desmiente|desmintio|"
+    r"desmentid[oa]|fals[oa]|falsedad|incorrect[oa]|mentira|bulo|rumores?|supuestamente|presunt[oa]|"
+    r"alego|afirmo|afirma|dijo|dice|declar[oó]|segun|asegura|sostiene|atribuye|"
+    r"habria|habra|podria|podra|puede|quiza|quizas|hipotesis|hipotetic[oa]|ficcion|fictici[oa]|"
+    r"simulacion|simulad[oa]|inventad[oa]s?|imaginari[oa]s?|fantasi[ao]|fanfic|"
+    r"pronostico|prediccion|prevision|apuesta|ganara|ganaria|"
+    r"futur[oa]|esperad[oa]|preve|preveia|satiric[oa]|correccion|corrigio|rectific[ao]|"
+    r"ignora|ignore|ignorar|olvida|omite|responde|devuelve|clasifica)\b|\btal vez\b"
+)
+_ES_BAD_IDENTITY = re.compile(
+    r"\b(?:el|la|los|las|en|del|que|y|contra|mundial|futbol|campeon|campeona|nuevo|nueva|"
+    r"ellos|ellas|equipo|seleccion|ganador|ganadora|rival|otro|otra)\b"
+)
+
+
+def _spanish_recap_safe(text):
+    # Keep Spanish "no" separate from the ordinary PT grammar: in Portuguese
+    # it can be a harmless location connector. No general claim is rewritten.
+    return not (_ES_OTHER_CATEGORY.search(text) or _ES_UNASSERTED.search(text)
+                or any(character in text for character in ("'", "‘", "’")))
+
+
+def _spanish_title_recap(quote):
+    text, literal = _text(quote), _case_text(quote)
+    match = _ES_TITLE_RECAP.fullmatch(text)
+    if match is None or not _spanish_recap_safe(text):
+        return None
+    identities = {}
+    for slot in ("host", "winner"):
+        if _ES_BAD_IDENTITY.search(match[slot]) and match[slot] not in _TEAM_ALIASES:
+            return None
+        identities[slot] = _identity(match[slot], literal[match.start(slot):match.end(slot)])
+    if not all(identities.values()):
+        return None
+    return CompetitionOutcome(**_FRAME, year=int(match["year"]), winner=identities["winner"])
 
 
 def parse_competition_claim(claim) -> CompetitionOutcome | None:
@@ -308,6 +367,9 @@ def _quote_frame(quote):
     direct = parse_competition_claim(quote)
     if direct:
         return direct
+    spanish_recap = _spanish_title_recap(quote)
+    if spanish_recap:
+        return spanish_recap
     recap = _EN_TITLE_RECAP.fullmatch(text)
     if recap:
         literal = _case_text(quote)
@@ -398,6 +460,8 @@ def competition_outcome_relation(claim, quote, context="") -> Relation | None:
     """
     context_text = _text(context)
     if context_text and not _safe(context_text):
+        return None
+    if _ES_TITLE_RECAP.fullmatch(_text(quote)) and not _spanish_recap_safe(context_text):
         return None
     claimed, observed = parse_competition_claim(claim), _quote_frame(quote)
     if not claimed or not observed:

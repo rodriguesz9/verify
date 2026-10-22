@@ -1,0 +1,261 @@
+{
+  "date": "2026-10-22",
+  "scope": "Separate known12 after Gemini admission-wait and harness fixes; prior rounds separate; not general accuracy",
+  "scored_at": "2026-10-22T20:13:48.413684+00:00",
+  "source_fingerprint": "6662dabdf2d933ea37fc0b37722a7bd61c1c346ca011d0aa4adcc99639276d33",
+  "scorer_sha256": "e0bf90761da0472054d06ce3df5da889bfaf6b3d6dfe465876bbfff1a52b4f67",
+  "fixture_sha256": {
+    "development_known": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04"
+  },
+  "all_twelve_terminal_before_scoring": true,
+  "labels_not_passed_to_pipeline": true,
+  "prior_rounds_not_pooled": true,
+  "submission_methods": {
+    "ui_form_observed_by_root": 1,
+    "ordinary_local_http_not_ui": 11
+  },
+  "http_submissions_are_not_browser_form_validation": true,
+  "cohorts": {
+    "development_known": {
+      "total": 12,
+      "complete_cohort": true,
+      "counts": {
+        "correct": 4,
+        "wrong_conclusive": 0,
+        "inconclusive": 8,
+        "error": 0
+      },
+      "correct_fraction": 0.3333333333333333,
+      "wrong_conclusive_fraction": 0,
+      "inconclusive_fraction": 0.6666666666666666,
+      "error_fraction": 0,
+      "inconclusive_and_errors_remain_in_denominator": true,
+      "true_false_groups": {
+        "supported": {
+          "total": 6,
+          "counts": {
+            "correct": 1,
+            "wrong_conclusive": 0,
+            "inconclusive": 5,
+            "error": 0
+          },
+          "correct_fraction": 0.16666666666666666
+        },
+        "refuted": {
+          "total": 6,
+          "counts": {
+            "correct": 3,
+            "wrong_conclusive": 0,
+            "inconclusive": 3,
+            "error": 0
+          },
+          "correct_fraction": 0.5
+        }
+      },
+      "latency_seconds": {
+        "median": 27.121499999999997,
+        "minimum": 12.133,
+        "maximum": 93.126
+      },
+      "cases": [
+        {
+          "id": "dev12-queen_true",
+          "original_case_id": "queen_true",
+          "input_sha256": "ad8e6d54f49f168cdf962ecdc6e3064617093a0a000f7f628d19ed4658694261",
+          "expected": "supported",
+          "actual": "unverified",
+          "capture_status": "completed",
+          "outcome": "inconclusive",
+          "elapsed_seconds": 30.75,
+          "submission_method": "ui_form_observed_by_root"
+        },
+        {
+          "id": "dev12-queen_false",
+          "original_case_id": "queen_false",
+          "input_sha256": "06a18e497a0de15f43dce69b60235057e359b4ca13d8e74776d4cae38675b628",
+          "expected": "refuted",
+          "actual": "unverified",
+          "capture_status": "completed",
+          "outcome": "inconclusive",
+          "elapsed_seconds": 93.126,
+          "submission_method": "ordinary_local_http_not_ui"
+        },
+        {
+          "id": "dev12-dart_true",
+          "original_case_id": "dart_true",
+          "input_sha256": "40f5c53138f6ab379f23bce1721158deda961cc9c67b9cc784496a73d06a08c0",
+          "expected": "supported",
+          "actual": "unverified",
+          "capture_status": "completed",
+          "outcome": "inconclusive",
+          "elapsed_seconds": 62.309,
+          "submission_method": "ordinary_local_http_not_ui"
+        },
+        {
+          "id": "dev12-who_true",
+          "original_case_id": "who_true",
+          "input_sha256": "25a92757200a744010dde9e01f7360a2ccead07d72d7288becb0b7138e022c05",
+          "expected": "supported",
+          "actual": "unverified",
+          "capture_status": "completed",
+          "outcome": "inconclusive",
+          "elapsed_seconds": 31.423,
+          "submission_method": "ordinary_local_http_not_ui"
+        },
+        {
+          "id": "dev12-ibge_true",
+          "original_case_id": "ibge_true",
+          "input_sha256": "55f1806034147c292daff9806193a508c9e383eb1c330d4deaae81d600798673",
+          "expected": "supported",
+          "actual": "supported",
+          "capture_status": "completed",
+          "outcome": "correct",
+          "elapsed_seconds": 17.613,
+          "submission_method": "ordinary_local_http_not_ui"
+        },
+        {
+          "id": "dev12-copom_false",
+          "original_case_id": "copom_false",
+          "input_sha256": "b25f1159a2cda4603f227e071640bbcb367cd4647cb76df3589f8050517949fc",
+          "expected": "refuted",
+          "actual": "refuted",
+          "capture_status": "completed",
+          "outcome": "correct",
+          "elapsed_seconds": 12.133,
+          "submission_method": "ordinary_local_http_not_ui"
+        },
+        {
+          "id": "dev12-copernicus_false",
+          "original_case_id": "copernicus_false",
+          "input_sha256": "8e765231c6279921baaf94ecf39a6ec5c86f8e0fb13d9192604f79f5ad9b9520",
+          "expected": "refuted",
+          "actual": "refuted",
+          "capture_status": "completed",
+          "outcome": "correct",
+          "elapsed_seconds": 34.462,
+          "submission_method": "ordinary_local_http_not_ui"
+        },
+        {
+          "id": "dev12-lei_false",
+          "original_case_id": "lei_false",
+          "input_sha256": "9de86e1e5d44083537391d8c329363a939d6ebe5ab832227b15dc912ac837639",
+          "expected": "refuted",
+          "actual": "unverified",
+          "capture_status": "completed",
+          "outcome": "inconclusive",
+          "elapsed_seconds": 23.938,
+          "submission_method": "ordinary_local_http_not_ui"
+        },
+        {
+          "id": "dev12-webb_true",
+          "original_case_id": "webb_true",
+          "input_sha256": "d7760df9e1320190085fba3fc0bf5bc77eb86ac3185fa1961e7f86447ba2d84d",
+          "expected": "supported",
+          "actual": "unverified",
+          "capture_status": "completed",
+          "outcome": "inconclusive",
+          "elapsed_seconds": 15.878,
+          "submission_method": "ordinary_local_http_not_ui"
+        },
+        {
+          "id": "dev12-constitution_true",
+          "original_case_id": "constitution_true",
+          "input_sha256": "8317606b75b53a2018ee7ce0c2ba497413b3971be590092e6955905d4e1bc29d",
+          "expected": "supported",
+          "actual": "unverified",
+          "capture_status": "completed",
+          "outcome": "inconclusive",
+          "elapsed_seconds": 21.316,
+          "submission_method": "ordinary_local_http_not_ui"
+        },
+        {
+          "id": "dev12-worldcup_false",
+          "original_case_id": "worldcup_false",
+          "input_sha256": "1f5d957a6ebfb699f94f5c326d0ab5fccded69608724566914903f526a282f84",
+          "expected": "refuted",
+          "actual": "refuted",
+          "capture_status": "completed",
+          "outcome": "correct",
+          "elapsed_seconds": 27.267,
+          "submission_method": "ordinary_local_http_not_ui"
+        },
+        {
+          "id": "dev12-artemis_false",
+          "original_case_id": "artemis_false",
+          "input_sha256": "986e76d8a8a340aecb3e452fc7f914f337838be75f61ed521603b1e27d267a73",
+          "expected": "refuted",
+          "actual": "unverified",
+          "capture_status": "completed",
+          "outcome": "inconclusive",
+          "elapsed_seconds": 26.976,
+          "submission_method": "ordinary_local_http_not_ui"
+        }
+      ]
+    }
+  },
+  "policy_version": "2026-10-22.1",
+  "comparison_protocol": "claim_source_review_v2",
+  "attempts_per_input": 1,
+  "retry_until_correct": false,
+  "correct_percent": 33.33333333333333,
+  "target_80_percent_met": false,
+  "prior_valid_known_round": {
+    "date": "2026-10-21",
+    "correct": 8,
+    "total": 12,
+    "percent": 66.66666666666667
+  },
+  "first_oct22_known_round_invalid_due_to_instrumentation": true,
+  "provider_request_counts": {
+    "facts": 12,
+    "news": 56,
+    "public_fetch": 82,
+    "gemini": 16,
+    "openrouter": 2
+  },
+  "provider_transport_states": {
+    "facts:200": 12,
+    "news:200": 56,
+    "public_fetch:200": 69,
+    "gemini:200": 6,
+    "gemini:503": 9,
+    "openrouter:incomplete": 1,
+    "public_fetch:307": 2,
+    "public_fetch:301": 2,
+    "gemini:incomplete": 1,
+    "openrouter:200": 1,
+    "public_fetch:incomplete": 5,
+    "public_fetch:403": 3,
+    "public_fetch:401": 1
+  },
+  "openrouter": {
+    "user_reported_key_reenabled": true,
+    "authenticated_response_observed": true,
+    "successful_research_model": "dots-studio/dots-3-note-preview:free",
+    "successful_research_case": "dev12-dart_true",
+    "timeouts": 1,
+    "round_request_cap": 2,
+    "prior_conservative_reserved_count": 38,
+    "conservative_total_after_round": 40,
+    "rate_limited_coverage_may_mean_QA_or_local_admission_not_upstream_429": true
+  },
+  "test_profile_limitations": [
+    "Known development cases, not representative general accuracy",
+    "One UI form observation and eleven HTTP submissions, not twelve browser tests",
+    "Live pages/provider state and declared budgets differ from earlier rounds; worsening counts are retained, causal effect of each code change is not isolated",
+    "No paid media calls or production validation"
+  ],
+  "backend_tests_before_measurement": 1263,
+  "frontend_test_files": 22,
+  "frontend_build": "passed",
+  "post_measurement_change": {
+    "source_fingerprint_after_hardening": "591890cdba158e6f0dfe47938fa434b8964344e8878d0a3483a7d13d6b13349d",
+    "backend_tests_after_hardening": 1264,
+    "offline_real_http_requests": 0,
+    "offline_skips": 0,
+    "description": "Constrain existing human-walking polarity exception to exactly one walking predicate per statement, rejecting negation of another location in the same sentence",
+    "offline_regression_added": true,
+    "new_live_accuracy_not_measured": true
+  },
+  "push_or_deploy_performed": false
+}

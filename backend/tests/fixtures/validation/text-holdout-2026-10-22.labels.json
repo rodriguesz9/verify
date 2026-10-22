@@ -1,0 +1,207 @@
+{
+  "schema": "verify_independent_labels_v1",
+  "prepared_on": "2026-10-21",
+  "inputs_file": "inputs-8.json",
+  "inputs_sha256": "9406a3ac8021cadc1b60ba977c2b3d3a46fdc044ec20f5f970731800788e384a",
+  "protocol": {
+    "read_after": "Congelamento da implementação e encerramento de todos os casos.",
+    "source_verification": "Pesquisa pública seguida de leitura das oito referências indicadas, em 21/10/2026; sem execução da aplicação.",
+    "construction": "Quatro eventos históricos novos; um controle verdadeiro e um falso por evento; cada negativo altera somente um campo factual da frase correspondente.",
+    "counts": {
+      "cases": 8,
+      "true": 4,
+      "false": 4,
+      "topics": 4,
+      "unique_source_urls": 8,
+      "distinct_source_families": 8,
+      "case_reference_associations": 16
+    },
+    "limitation": "Pequeno conjunto pareado de desenvolvimento, selecionado por julgamento. Não é amostra representativa, avaliação global cega nem estimativa de precisão geral. O implementador recebe apenas entradas e hashes antes do congelamento."
+  },
+  "labels": [
+    {
+      "id": "I01",
+      "expected": "refuted",
+      "ground_truth": false,
+      "topic": "história da ciência e premiação",
+      "paired_with": "I07",
+      "changed_field": "ano do prêmio: 1911 para 1912",
+      "justification": "O Nobel de Química de Marie Curie foi concedido em 1911; 1912 altera o ano desse prêmio.",
+      "references": [
+        {
+          "publisher": "Musée Curie",
+          "family": "musee-curie",
+          "url": "https://curiotheque.musee.curie.fr/s/fr/item/15332",
+          "finding": "Registro de acervo MCP141 identifica o Nobel de Química concedido a Marie Curie e o data em 1911."
+        },
+        {
+          "publisher": "Science History Institute",
+          "family": "science-history-institute",
+          "url": "https://www.sciencehistory.org/education/scientific-biographies/marie-sklodowska-curie/",
+          "finding": "Biografia registra dois Nobel: Física em 1903 e Química em 1911."
+        }
+      ]
+    },
+    {
+      "id": "I02",
+      "expected": "supported",
+      "ground_truth": true,
+      "topic": "história marítima",
+      "paired_with": "I05",
+      "changed_field": null,
+      "justification": "O naufrágio do Titanic no Atlântico Norte ocorreu em 15/04/1912, após a colisão na noite anterior.",
+      "references": [
+        {
+          "publisher": "Royal Museums Greenwich",
+          "family": "royal-museums-greenwich",
+          "url": "https://www.rmg.co.uk/stories/maritime-history/rms-titanic-facts",
+          "finding": "Cronologia distingue colisão em 14/04/1912 às 23h40 e naufrágio em 15/04/1912 às 02h20, no Atlântico Norte."
+        },
+        {
+          "publisher": "U.S. National Archives and Records Administration",
+          "family": "us-national-archives",
+          "url": "https://www.archives.gov/files/calendar/genealogy-fair/2012/handouts/titanic.pdf",
+          "finding": "Página 1 identifica explicitamente o naufrágio em 15/04/1912; o artigo descreve as águas do Atlântico Norte."
+        }
+      ]
+    },
+    {
+      "id": "I03",
+      "expected": "refuted",
+      "ground_truth": false,
+      "topic": "história olímpica",
+      "paired_with": "I06",
+      "changed_field": "ano da primeira edição moderna: 1896 para 1900",
+      "justification": "Os primeiros Jogos modernos ocorreram em Atenas em 1896; 1900 altera o ano da primeira edição.",
+      "references": [
+        {
+          "publisher": "IOC Olympic Studies Centre",
+          "family": "international-olympic-committee",
+          "url": "https://oscnewsletter.olympics.com/article/9/hidden-treasures_lang=en.html",
+          "finding": "Boletim de abril de 2016 identifica Atenas 1896 como a primeira edição dos Jogos modernos."
+        },
+        {
+          "publisher": "Greek Ministry of Culture",
+          "family": "greek-ministry-of-culture",
+          "url": "https://olympicgames.culture.gov.gr/en/revival.html",
+          "finding": "História do renascimento dos Jogos afirma que Atenas sediou os primeiros Jogos modernos em 1896."
+        }
+      ]
+    },
+    {
+      "id": "I04",
+      "expected": "supported",
+      "ground_truth": true,
+      "topic": "história política europeia",
+      "paired_with": "I08",
+      "changed_field": null,
+      "justification": "A abertura do Muro de Berlim começou na noite de 09/11/1989; não se afirma que sua demolição física terminou nesse dia.",
+      "references": [
+        {
+          "publisher": "German Federal Government",
+          "family": "german-federal-government",
+          "url": "https://www.bundesregierung.de/breg-de/schwerpunkte/deutsche-einheit/die-mauer-ist-offen--403858",
+          "finding": "Crônica de 09/11/1989 descreve a abertura naquela noite e a passagem de pessoas pelo posto Bornholmer Straße."
+        },
+        {
+          "publisher": "Berlin Wall Foundation",
+          "family": "berlin-wall-foundation",
+          "url": "https://www.stiftung-berliner-mauer.de/en/topics/berlin-wall",
+          "finding": "História institucional delimita a barreira entre 13/08/1961 e 09/11/1989 e relaciona novembro de 1989 à abertura da fronteira."
+        }
+      ]
+    },
+    {
+      "id": "I05",
+      "expected": "refuted",
+      "ground_truth": false,
+      "topic": "história marítima",
+      "paired_with": "I02",
+      "changed_field": "dia do naufrágio: 15 para 14",
+      "justification": "14/04/1912 foi o dia da colisão; o Titanic afundou na madrugada de 15/04/1912.",
+      "references": [
+        {
+          "publisher": "Royal Museums Greenwich",
+          "family": "royal-museums-greenwich",
+          "url": "https://www.rmg.co.uk/stories/maritime-history/rms-titanic-facts",
+          "finding": "Cronologia distingue colisão em 14/04/1912 às 23h40 e naufrágio em 15/04/1912 às 02h20, no Atlântico Norte."
+        },
+        {
+          "publisher": "U.S. National Archives and Records Administration",
+          "family": "us-national-archives",
+          "url": "https://www.archives.gov/files/calendar/genealogy-fair/2012/handouts/titanic.pdf",
+          "finding": "Página 1 identifica explicitamente o naufrágio em 15/04/1912 e o diferencia do avistamento do iceberg em 14/04."
+        }
+      ]
+    },
+    {
+      "id": "I06",
+      "expected": "supported",
+      "ground_truth": true,
+      "topic": "história olímpica",
+      "paired_with": "I03",
+      "changed_field": null,
+      "justification": "Atenas sediou a primeira edição dos Jogos Olímpicos modernos em 1896.",
+      "references": [
+        {
+          "publisher": "IOC Olympic Studies Centre",
+          "family": "international-olympic-committee",
+          "url": "https://oscnewsletter.olympics.com/article/9/hidden-treasures_lang=en.html",
+          "finding": "Boletim de abril de 2016 identifica Atenas 1896 como a primeira edição dos Jogos modernos."
+        },
+        {
+          "publisher": "Greek Ministry of Culture",
+          "family": "greek-ministry-of-culture",
+          "url": "https://olympicgames.culture.gov.gr/en/revival.html",
+          "finding": "História do renascimento dos Jogos afirma que Atenas sediou os primeiros Jogos modernos em 1896."
+        }
+      ]
+    },
+    {
+      "id": "I07",
+      "expected": "supported",
+      "ground_truth": true,
+      "topic": "história da ciência e premiação",
+      "paired_with": "I01",
+      "changed_field": null,
+      "justification": "Marie Curie recebeu o Nobel de Química em 1911.",
+      "references": [
+        {
+          "publisher": "Musée Curie",
+          "family": "musee-curie",
+          "url": "https://curiotheque.musee.curie.fr/s/fr/item/15332",
+          "finding": "Registro de acervo MCP141 identifica o Nobel de Química concedido a Marie Curie e o data em 1911."
+        },
+        {
+          "publisher": "Science History Institute",
+          "family": "science-history-institute",
+          "url": "https://www.sciencehistory.org/education/scientific-biographies/marie-sklodowska-curie/",
+          "finding": "Biografia registra dois Nobel: Física em 1903 e Química em 1911."
+        }
+      ]
+    },
+    {
+      "id": "I08",
+      "expected": "refuted",
+      "ground_truth": false,
+      "topic": "história política europeia",
+      "paired_with": "I04",
+      "changed_field": "ano da abertura: 1989 para 1988",
+      "justification": "A abertura ocorreu em 09/11/1989; 1988 antecipa o mesmo evento em um ano.",
+      "references": [
+        {
+          "publisher": "German Federal Government",
+          "family": "german-federal-government",
+          "url": "https://www.bundesregierung.de/breg-de/schwerpunkte/deutsche-einheit/die-mauer-ist-offen--403858",
+          "finding": "Crônica de 09/11/1989 descreve a abertura naquela noite e a passagem de pessoas pelo posto Bornholmer Straße."
+        },
+        {
+          "publisher": "Berlin Wall Foundation",
+          "family": "berlin-wall-foundation",
+          "url": "https://www.stiftung-berliner-mauer.de/en/topics/berlin-wall",
+          "finding": "História institucional delimita a barreira entre 13/08/1961 e 09/11/1989 e relaciona novembro de 1989 à abertura da fronteira."
+        }
+      ]
+    }
+  ]
+}
