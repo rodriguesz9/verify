@@ -1,12 +1,15 @@
-"""Literal passive-launch body dates, never a date inferred from a URL/title.
+"""Literal completed-launch body dates, never a date inferred from URL/title.
 
-This deliberately small PT grammar only connects one completed passive launch
-to an immediately attached relative weekday/day. Publication must come from
-the caller's explicit publication metadata. It does not identify who owns an
-instrument, certify a source, compare claimed dates or decide a verdict.
+Closed PT passive and active mission grammars connect one completed launch
+to an attached explicit relative weekday/day. Publication must come from the
+caller's publication metadata. A dated internal reading requires revalidation
+of the entire literal BODY frame; it never replaces that original quote.
+These helpers do not infer instrument ownership or decide any verdict.
 """
 from datetime import date
 import re
+
+from app.services.launch_relations import _frame as _launch_frame, _object_identity
 
 
 _WEEKDAYS = ("segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado", "domingo")
@@ -22,6 +25,11 @@ _INSTRUMENT = r"(?i:telescópio(?:\s+espacial)?|missão|nave|sonda|foguete|saté
 _AGENCY = _PROPER_NAME + r"(?:\s+\([A-Z]{2,8}\))?"
 _RELATIVE = (
     r"(?:(?i:n[ae]\s+manhã|na\s+tarde|na\s+noite)\s+(?i:dest[ae])|(?i:nest[ae]))\s+"
+    r"(?P<weekday>" + "|".join(_WEEKDAYS) + r")\s*"
+    r"\((?P<day>\d{1,2})(?:/(?P<month>\d{1,2}))?\)"
+)
+_ACTIVE_RELATIVE = (
+    r"(?:(?i:na\s+manhã|na\s+madrugada|na\s+tarde|na\s+noite)\s+(?i:dest[ae])|(?i:nest[ae]))\s+"
     r"(?P<weekday>" + "|".join(_WEEKDAYS) + r")\s*"
     r"\((?P<day>\d{1,2})(?:/(?P<month>\d{1,2}))?\)"
 )
@@ -44,6 +52,38 @@ _DATE_ONLY_CLAIM = re.compile(
     r"(?i:[oa])\s+(?P<instrument>" + _INSTRUMENT + r")\s+(?P<name>" + _FLIGHT_NAME
     + r")\s+(?i:foi lançad[oa] em)\s+(?i:" + _ABSOLUTE + r")\.?"
 )
+_NUMBERED_MISSION = _PROPER_NAME + r"\s+(?:[1-9]\d{0,2}|[IVXLCDM]{1,8})"
+_ACTIVE_COMPLEMENT = (
+    r",\s+(?i:primeiro voo do foguete)\s+" + _FLIGHT_NAME
+    + r"(?:\s+\(" + _PROPER_NAME + r"\))?\s+(?i:com a cápsula)\s+" + _FLIGHT_NAME
+    + r",\s+(?i:destinada a levar humanos de volta)\s+(?i:à|ao)\s+" + _PROPER_NAME
+)
+_ACTIVE_FRAME = re.compile(
+    r"^\s*(?:(?i:a|o)\s+)?(?P<agency>" + _AGENCY + r")\s+(?i:lançou)\s+"
+    r"(?P<expression>" + _ACTIVE_RELATIVE + r")\s+(?i:a missão)\s+"
+    r"(?P<name>" + _NUMBERED_MISSION + r")(?P<complement>" + _ACTIVE_COMPLEMENT + r")?\s*\.?\s*$"
+)
+_ACTIVE_DATE_ONLY_CLAIM = re.compile(
+    r"(?i:a missão)\s+(?P<name>" + _NUMBERED_MISSION + r")\s+"
+    r"(?i:foi lançada em)\s+(?i:" + _ABSOLUTE + r")\.?"
+)
+_ACTIVE_UNSAFE = re.compile(
+    r"\b(?:se|caso|sem|segundo|conforme|reportagem|relato|relatou|reportou|"
+    r"fict[íi]ci[oa]s?|ficção|ficcao|simulad[oa]s?|simula[çc][ãa]o|hip[óo]tese|"
+    r"hipot[ée]tic[oa]s?|inventad[oa]s?|imagin[áa]ri[oa]s?|fantasia|sonho|"
+    r"supost[oa]s?|alegad[oa]s?|sat[íi]ric[oa]s?|s[áa]tira|possivelmente|aparentemente|"
+    r"publicad[oa]|atualizad[oa])\b"
+    r"|[;!?\"“”«»'‘’]", re.I,
+)
+
+
+def _active_mission(quote):
+    if (not isinstance(quote, str) or not 20 <= len(quote) <= 1200
+            or _OUT_OF_SCOPE.search(quote) or _ACTIVE_UNSAFE.search(quote)):
+        return None
+    match = _ACTIVE_FRAME.fullmatch(quote)
+    identity = _object_identity(match["name"]) if match else None
+    return (match, identity) if identity is not None else None
 
 
 def launch_date_claim_matches_body(claim, quote):
@@ -55,6 +95,15 @@ def launch_date_claim_matches_body(claim, quote):
     """
     if not isinstance(claim, str) or not isinstance(quote, str):
         return False
+    active = _active_mission(quote)
+    if active is not None:
+        # The object is explicitly a numbered mission, not a vehicle inferred
+        # to stand for it. The existing parser owns Roman/numeric equivalence.
+        left = _launch_frame(claim)
+        return bool(_ACTIVE_DATE_ONLY_CLAIM.fullmatch(claim.strip()) and left is not None
+                    and left.identity_kind == "mission" and left.identity == active[1]
+                    and left.agency is None and left.crew is None and not left.successful
+                    and left.location is None and left.time is None)
     left, right = _DATE_ONLY_CLAIM.fullmatch(claim.strip()), _FRAME.fullmatch(quote)
     if left is None or right is None or _OUT_OF_SCOPE.search(claim):
         return False
@@ -84,14 +133,43 @@ def launch_body_temporal_anchor(quote, publication_date):
     if _OUT_OF_SCOPE.search(quote):
         return None
     match = _FRAME.fullmatch(quote)
-    if match is None:
+    active = _active_mission(quote) if match is None else None
+    if match is None and active is None:
         return None
-    if (match["intro_name"] and " ".join(match["intro_name"].casefold().split())
+    if active is not None:
+        match = active[0]
+    elif (match["intro_name"] and " ".join(match["intro_name"].casefold().split())
             != " ".join(match["name"].casefold().split())):
         return None
     if (int(match["day"]) != published.day
             or match["month"] and int(match["month"]) != published.month
             or match["weekday"].casefold() != _WEEKDAYS[published.weekday()]):
         return None
-    return {"kind": "explicit_launch_body_date", "expression": match["expression"],
-            "publication_date": publication_date}
+    anchor = {"kind": "explicit_launch_body_date", "expression": match["expression"],
+              "publication_date": publication_date}
+    if active is not None:
+        anchor.update(kind="explicit_active_mission_launch_body_date",
+                      mission_identity={"program": active[1][0], "number": active[1][1]})
+    return anchor
+
+
+def launch_body_dated_reading(quote, anchor):
+    """Revalidate the complete literal frame before returning internal text.
+
+    Active prose may contain only the closed nominal vehicle/capsule/purpose
+    complement above. This proves a mission/date reading without treating a
+    vehicle as the mission or approving any additional claimed qualifier.
+    Callers must separately require launch_date_claim_matches_body, preserve
+    the original quote, and retain chronology, provenance and context guards.
+    """
+    if (not isinstance(anchor, dict)
+            or anchor != launch_body_temporal_anchor(quote, anchor.get("publication_date"))):
+        return None
+    if anchor["kind"] == "explicit_launch_body_date":
+        return quote.replace(anchor["expression"], "em " + anchor["publication_date"], 1)
+    active = _active_mission(quote)
+    if active is None:
+        return None
+    reading = "A missão " + active[0]["name"] + " foi lançada em " + anchor["publication_date"] + "."
+    parsed = _launch_frame(reading)
+    return reading if parsed is not None and parsed.identity == active[1] else None

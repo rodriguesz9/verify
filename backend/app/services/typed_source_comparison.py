@@ -12,6 +12,8 @@ import re
 from app.services.competition_relations import competition_outcome_relation, parse_competition_claim
 from app.services.launch_relations import _frame as _launch_frame, launch_date_relation
 from app.services.monetary_decisions import copom_record_relation, parse_copom_claim
+from app.services.legal_declaration_relations import parse_legal_declaration_claim, legal_declaration_relation
+from app.services.launch_body_dates import launch_body_dated_reading, launch_date_claim_matches_body
 
 
 COMPARISON_METHOD = "literal_typed_rules_v1"
@@ -23,6 +25,8 @@ _MAX_BODY_CHARACTERS = 18000
 
 
 def _claim_kind(claim):
+    if parse_legal_declaration_claim(claim) is not None:
+        return "numbered_article_declaration"
     if parse_copom_claim(claim) is not None:
         return "copom_record"
     launch = _launch_frame(claim)
@@ -36,6 +40,8 @@ def _claim_kind(claim):
 
 
 def _literal_relation(kind, claim, passage):
+    if kind == "numbered_article_declaration":
+        return legal_declaration_relation(claim, passage["quote"], passage.get("legal_article_anchor"))
     if kind == "copom_record":
         # Never infer an official decision's date from a generic news page,
         # hostname, headline or bare publication date. The helper revalidates
@@ -43,7 +49,14 @@ def _literal_relation(kind, claim, passage):
         proof = passage.get("official_record")
         return copom_record_relation(claim, passage["quote"], proof) if isinstance(proof, dict) else None
     if kind == "mission_launch":
-        return launch_date_relation(claim, passage["quote"])
+        quote = passage["quote"]
+        if passage.get("launch_anchor"):
+            if not launch_date_claim_matches_body(claim, quote):
+                return None
+            quote = launch_body_dated_reading(quote, passage["launch_anchor"])
+            if quote is None:
+                return None
+        return launch_date_relation(claim, quote)
     return competition_outcome_relation(claim, passage["quote"], passage["context"])
 
 

@@ -1,6 +1,7 @@
 """Free-only OpenRouter assistance. Model opinions never determine a verdict."""
-import json
+import asyncio
 import base64
+import json
 import math
 import os
 import re
@@ -86,7 +87,6 @@ class OpenRouterRotator:
 
 
 async def _generate(prompt, system_instruction, temperature, max_tokens, json_output, response_format=None, timeout_seconds=25):
-    global _cooldown_until
     key = os.getenv("OPENROUTER_API_KEY", "").strip()
     if not key or os.getenv("OPENROUTER_ENABLED", "true").lower() != "true":
         raise OpenRouterError("not_configured", "OpenRouter não configurado ou desabilitado.")
@@ -96,8 +96,21 @@ async def _generate(prompt, system_instruction, temperature, max_tokens, json_ou
     headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json",
                "HTTP-Referer": "https://verifybr.vercel.app", "X-OpenRouter-Title": "Verify"}
     if (isinstance(timeout_seconds, bool) or not isinstance(timeout_seconds, (int, float))
-            or not math.isfinite(timeout_seconds) or not 0 < timeout_seconds <= 45):
+            or not math.isfinite(timeout_seconds) or not 0 < timeout_seconds <= 90):
         raise OpenRouterError("invalid_configuration", "Prazo OpenRouter fora do limite permitido.")
+    try:
+        # One wall-clock budget includes client setup/cleanup and every
+        # explicitly configured free fallback. HTTPX phase limits alone do not.
+        async with asyncio.timeout(timeout_seconds):
+            return await _generate_with_models(models, messages, headers, temperature,
+                max_tokens, json_output, response_format, timeout_seconds)
+    except TimeoutError:
+        raise OpenRouterError("timeout", "Tempo limite do OpenRouter atingido.") from None
+
+
+async def _generate_with_models(models, messages, headers, temperature, max_tokens,
+                                json_output, response_format, timeout_seconds):
+    global _cooldown_until
     async with httpx.AsyncClient(timeout=timeout_seconds, trust_env=False, follow_redirects=False) as client:
         for index, model in enumerate(models):
             _reserve_request()

@@ -28,7 +28,8 @@ class LegalReproductionScopeTests(unittest.IsolatedAsyncioTestCase):
         footer = "Este texto não substitui o original publicado no Diário Oficial da União - Seção 1 de 14/05/1888."
         result, model = await self.control.compare(document=self.with_footer(footer))
         self.assertEqual(result["state"], "refuted")
-        model.assert_awaited_once()
+        model.assert_not_awaited()
+        self.assertEqual(result["coverage"]["comparison_method"], "literal_typed_rules_v1")
         self.assertEqual(result["claims"][0]["evidence_basis"], "original_institutional_record")
         positive, _ = await self.control.compare(claim=self.control.claim.replace("não declarou", "declarou"),
             document=self.with_footer(footer), relation="supports")
@@ -42,7 +43,8 @@ class LegalReproductionScopeTests(unittest.IsolatedAsyncioTestCase):
             with self.subTest(footer=footer):
                 result, model = await self.control.compare(document=self.with_footer(footer))
                 self.assertEqual(result["state"], "refuted")
-                model.assert_awaited_once()
+                model.assert_not_awaited()
+                self.assertEqual(result["coverage"]["comparison_method"], "literal_typed_rules_v1")
 
     async def test_late_scoped_fabrication_is_not_lost_beyond_the_local_quote_context(self):
         c = self.control

@@ -47,7 +47,8 @@ class OriginalLegalRecordTests(unittest.IsolatedAsyncioTestCase):
         record = result["claims"][0]["evidence"][0]
         self.assertEqual(record["excerpt"], self.quote)
         self.assertEqual(record["original_legal_publication"]["header"], self.header)
-        model.assert_awaited_once()
+        model.assert_not_awaited()
+        self.assertEqual(result["coverage"]["comparison_method"], "literal_typed_rules_v1")
         result, _ = await self.compare(self.claim.replace("não declarou", "declarou"), relation="supports")
         self.assertEqual(result["state"], "corroborated")
 

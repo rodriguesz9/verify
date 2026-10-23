@@ -212,7 +212,13 @@ class TypedMatrixExistingGuardTests(unittest.TestCase):
         doc = source("s1", quote)
         doc["passages"][0]["launch_anchor"] = launch_body_temporal_anchor(quote, "2021-11-16")
         self.assertIsNotNone(doc["passages"][0]["launch_anchor"])
-        self.assertIsNone(typed_review_matrix(claim_rows(LAUNCH), [doc], _passage_guard, _window_subject_guard))
+        original = deepcopy(doc)
+        result = typed_review_matrix(claim_rows(LAUNCH), [doc], _passage_guard, _window_subject_guard)
+        self.assertIsNotNone(result)
+        self.assertEqual(json.loads(result[0])["claims"][0]["source_reviews"][0]["evidence"],
+                         [{"excerpt_id": "s1:e1", "relation": "supports"}])
+        self.assertEqual(doc, original)
+        self.assertEqual(doc["passages"][0]["quote"], quote)
 
     def test_raw_matrix_passes_existing_strict_decoder_and_keeps_family_threshold(self):
         from app.services.source_corroboration import _decode, _assess, _passage_guard, _window_subject_guard

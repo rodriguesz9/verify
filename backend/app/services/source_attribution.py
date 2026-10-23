@@ -58,7 +58,7 @@ _AUTHOR_UI = re.compile(
 _HEADING_UI = re.compile(
     r"(?:^|[-_\s])(?:headline|title|subtitle|subheading|standfirst|dek)(?:$|[-_\s])", re.I,
 )
-_CAPTION_UI = re.compile(r"(?:^|\s)(?:mc-image-caption|media-caption|wp-caption-text)(?:$|\s)", re.I)
+_CAPTION_UI = re.compile(r"(?:^|\s)(?:mc-image-caption|media-caption|wp-caption-text|content-media__description)(?:$|\s)", re.I)
 _EDITORIAL_CALLOUT_UI = re.compile(
     r"(?:^|[-_\s])(?:featured[-_](?:story|article)|editorial[-_](?:callout|story)|"
     r"story[-_](?:callout|feature)|article[-_]callout)(?:$|[-_\s])", re.I,
@@ -470,7 +470,7 @@ def _bbc_reference_markup(tag, source_url):
             and urlsplit(destination).path.startswith("/mundo/"))
 
 
-def _article_parts(resource):
+def _article_parts(resource, *, provenance=None):
     try:
         document = resource.data.decode(resource.encoding, errors="replace")
     except LookupError:
@@ -520,6 +520,29 @@ def _article_parts(resource):
         for line_break in soup.find_all("br"):
             line_break.replace_with(" ")
         root, scope = _body_root(soup)
+        if isinstance(provenance, dict):
+            from app.services.source_corroboration import _PHOTO_CREDIT_START, _isolated_photo_credit
+            fragments = []
+            # Only explicit visible media units can mark photo provenance.
+            # Keep their full text/roles in the evidence context below; remove
+            # only independently validated credit suffixes from agency checks.
+            for tag in scope.find_all(True):
+                identifiers = " ".join(tag.get("class", []))
+                if tag.name != "figcaption" and not _CAPTION_UI.search(identifiers):
+                    continue
+                text = _visible_text(tag)
+                for marker in _PHOTO_CREDIT_START.finditer(text):
+                    if re.search(r"\b(?:texto|reportagem|redação|autoria|text|reporting|written|article|story)\b",
+                                 text[:marker.start()], re.I):
+                        continue  # Mixed textual authorship is not photo-only.
+                    fragment = text[marker.start():].strip()
+                    textual_credit = re.search(r";\s*(?:texto|reportagem|reporting|text)\b", fragment, re.I)
+                    if textual_credit:
+                        fragment = fragment[:textual_credit.start()].rstrip()
+                    if _isolated_photo_credit(fragment) and fragment not in fragments:
+                        fragments.append(fragment)
+            if len(fragments) <= 64 and sum(map(len, fragments)) <= 4000:
+                provenance.update(version="visible_media_credits_v1", media_credit_fragments=fragments)
         blocks = [*_external_context(scope), *_article_blocks(root, scope)]
         text_size = sum(len(text) for text, _ in blocks) + max(0, len(blocks) - 1)
         truncated = text_size > MAX_SOURCE_CHARACTERS
@@ -773,7 +796,7 @@ def _retrieval_priority(text, title, url):
     # An official host cannot repair an unrelated title/path. Previously the
     # primary-source flag preceded topic overlap and ranked an unrelated
     # institutional overview before an article naming the actual subject.
-    return (100 * unsupported_format + discovery_priority, -year_matches, unrelated_period,
+    return (100 * unsupported_format + discovery_priority + 10 * (shared_topics == 0), -year_matches, unrelated_period,
             narrower_period, -shared_topics, not primary)
 
 
@@ -874,9 +897,11 @@ async def _fetch_article(url):
         final_url = _canonical_url(resource.final_url)
         if not final_url:
             return {"failure": "blocked_or_unavailable"}
-        sentences, title, truncated, roles = _article_parts(resource)
+        editorial_provenance = {}
+        sentences, title, truncated, roles = _article_parts(resource, provenance=editorial_provenance)
         return {"url": final_url, "sentences": sentences, "title": title, "truncated": truncated,
                 "sentence_roles": roles,
+                "editorial_provenance": editorial_provenance,
                 "reference_leads": _article_reference_leads(resource),
                 "publication_date": _publication_date(resource),
                 "retrieved_at": datetime.now(timezone.utc).isoformat()}
@@ -1005,13 +1030,21 @@ async def collect_source_attribution(text, queries, source_url=None, *, search_r
         if submitted:
             families.add(source_family(submitted))
         ranked_urls = sorted(urls, key=lambda url: (url not in cited_urls, *_retrieval_priority(text, urls[url], url)))
+        # Diversity must not promote an unrelated/unsupported lead ahead of
+        # a readable subject match. Diversify within each quality band first,
+        # then retain the other ranked candidates in that same band.
+        bands = {}
         for candidate in ranked_urls:
-            if candidate in cache:
-                continue
-            family = source_family(candidate)
-            if family and family not in families:
-                preferred.append(candidate)
-                families.add(family)
+            band = (candidate not in cited_urls, _retrieval_priority(text, urls[candidate], candidate)[0])
+            bands.setdefault(band, []).append(candidate)
+        for band in sorted(bands):
+            fresh = [candidate for candidate in bands[band] if candidate not in cache]
+            for candidate in fresh:
+                family = source_family(candidate)
+                if family and family not in families:
+                    preferred.append(candidate)
+                    families.add(family)
+            preferred.extend(fresh)
         # Recovery keeps every previous attempt (including failures) inside the
         # cumulative ceiling. No failed page is retried or silently refunded.
         attempted = [url for url in cache if url in urls]

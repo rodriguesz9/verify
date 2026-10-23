@@ -1,5 +1,7 @@
 # Reduzir inconclusivos sem aumentar conclusões erradas
 
+Atualização de 23/10: [implementação central e resultado](CAUSA-CENTRAL-2026-10-22.md). A rodada completa mais recente foi **7/12 corretos (58,3%), cinco inconclusivos**, não 80%. Equivalências delimitadas de relatos de competição e lançamento foram implementadas depois, com testes offline. Próximas prioridades são falha dos modelos com duas fontes já prontas, leitura completa de intenção/data do DART, recuperação acessível da OMS e avaliação independente da versão final, incluindo mídias. Não corrigir esses casos apagando qualificadores, promovendo legenda a prova ou reduzindo o denominador. Toda alteração posterior exige nova avaliação separada. O estado inicial abaixo é histórico.
+
 Implementação e medição desta etapa: [recuperação, espera e diagnóstico](RECUPERACAO-ESPERA-2026-10-22.md).
 O estado inicial descrito abaixo é histórico. A primeira execução de 12 teve
 interferência do registrador e não vale como precisão; os oito casos novos

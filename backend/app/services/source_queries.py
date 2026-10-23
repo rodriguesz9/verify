@@ -90,9 +90,15 @@ def primary_source_query(text):
     return neutral_source_query(translated)
 
 
-def primary_source_filter(text, default):
-    # Route a named institution to its public corpus. This is not a truth
-    # assertion: its actual body still has to be retrieved and cross-checked.
+def primary_source_filter(text, default=""):
+    """Route explicit institutions; leave unknown subjects open by default.
+
+    A fixed collection of institutional sites is not a primary corpus for an
+    unrelated subject. An empty filter lets the existing bounded search find
+    candidates without assigning them authority: accepted bodies still pass
+    the same source identity, family and evidence guards. Callers that need a
+    deliberate fallback can supply it explicitly.
+    """
     canonical = lexical_text(text)
     targets = []
     for pattern, domain in ((r"\bWHO\b", "who.int"), (r"\bNASA\b", "nasa.gov"),

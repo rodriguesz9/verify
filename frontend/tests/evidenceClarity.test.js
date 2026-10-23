@@ -94,3 +94,16 @@ test("related sources remain visible without claiming they are confirmations", (
   assert.match(html, /href="https:\/\/example\.test\/news"/);
   assert.doesNotMatch(html, /A busca não retornou checagens/);
 });
+
+test("execution budget metadata is not an unavailable provider or public missing evidence", () => {
+  const baseline = fixture();
+  for (const status of [undefined, "success", "partial"]) {
+    const result = {...baseline, provider_coverage: {analysis_budget: {
+      status, total_seconds: 330, incomplete_query_count: 0, decision_role: "execution_coverage_only"}}};
+    assert.deepEqual(helpers.publicCoveragePresentation(result), helpers.publicCoveragePresentation(baseline));
+    assert.deepEqual(helpers.buildReportEvidence(result), helpers.buildReportEvidence(baseline));
+    assert.doesNotMatch(render(result), /analysis_budget|Não foi possível concluir todas as etapas/);
+  }
+  const failed = {...baseline, provider_coverage: {gemini: {status: "timeout", decision_role: "grounded_comparison_assistant"}}};
+  assert.match(helpers.publicCoveragePresentation(failed).limitations.join(" "), /tempo disponível/);
+});

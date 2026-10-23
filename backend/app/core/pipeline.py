@@ -27,6 +27,24 @@ SOURCE_SITE_FILTER = "(site:royal.uk OR site:brasilescola.uol.com.br OR site:mun
 PRIMARY_SITE_FILTER = "(site:royal.uk OR site:nasa.gov OR site:ibge.gov.br OR site:bcb.gov.br OR site:who.int OR site:planalto.gov.br OR site:copernicus.eu)"
 EDITORIAL_SITE_FILTER = "(site:bbc.com OR site:reuters.com OR site:apnews.com OR site:ebc.com.br OR site:cnnbrasil.com.br OR site:theguardian.com OR site:g1.globo.com OR site:brasilescola.uol.com.br OR site:aosfatos.org)"
 EXPLAINER_SITE_FILTER = "(site:brasilescola.uol.com.br OR site:mundoeducacao.uol.com.br OR site:cnnbrasil.com.br OR site:g1.globo.com OR site:aosfatos.org)"
+PIPELINE_BUDGET_SECONDS = 330
+INITIAL_QUERY_BUDGET_SECONDS = 110
+
+
+def _task_failed(task):
+    return task.cancelled() or task.exception() is not None
+
+
+async def _await_pipeline_tasks(tasks, timeout):
+    """Preserve completed work; cancel/join unfinished I/O, never detach it."""
+    try:
+        if timeout > 0:
+            await asyncio.wait(tasks, timeout=timeout)
+    finally:
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
 
 
 def _source_recovery_query(query):
@@ -62,10 +80,10 @@ def _source_recovery_queries(query, limit):
         if neutral:
             primary = primary_source_query(query) or neutral
             editorial, language = editorial_source_query(query)
-            return [(f"{primary} {primary_source_filter(query, PRIMARY_SITE_FILTER)}", "literal_topic_anchors_primary_sources"),
+            return [((primary + " " + primary_source_filter(query)).strip(), "literal_topic_anchors_primary_sources"),
                     (f"{editorial or neutral} {EDITORIAL_SITE_FILTER}",
                      "literal_topic_anchors_bilingual_editorial_sources" if language == "en" else "literal_topic_anchors_editorial_sources")]
-        return [(f"{query} {PRIMARY_SITE_FILTER}", "whole_literal_claim_primary_sources"),
+        return [((query + " " + primary_source_filter(query)).strip(), "whole_literal_claim_primary_sources"),
                 (f"{query} {SOURCE_SITE_FILTER}", method)]
     identity = re.search(r'"[^"\n]+"', combined)[0]
     editorial_filter = EXPLAINER_SITE_FILTER
@@ -82,7 +100,7 @@ def _source_recovery_queries(query, limit):
         # date or generated answer, and the same bounded search count.
         editorial_filter = EDITORIAL_SITE_FILTER
         editorial_method = "literal_identity_event_editorial_sources"
-    return [(f"{identity} ({primary}) {genre} {PRIMARY_SITE_FILTER}".replace("  ", " "), "literal_identity_event_primary_sources"),
+    return [((f"{identity} ({primary}) {genre} " + primary_source_filter(query)).replace("  ", " ").strip(), "literal_identity_event_primary_sources"),
             (f"{identity} ({editorial}) {editorial_filter}", editorial_method)]
 
 
@@ -146,8 +164,10 @@ async def _run_gemini_check(text: str, context: dict) -> dict:
     return await generate_final_report(text, context)
 
 
-def _research_query_text(query, group):
-    suffix = PRIMARY_SITE_FILTER if group == "primary" else EDITORIAL_SITE_FILTER if group == "editorial" else ""
+def _research_query_text(query, group, original_text=None):
+    # An institution must be named in the user's input, not invented by the
+    # planner. Unknown topics stay open instead of reading unrelated agencies.
+    suffix = primary_source_filter(original_text or query) if group == "primary" else EDITORIAL_SITE_FILTER if group == "editorial" else ""
     return (query + " " + suffix).strip()
 
 
@@ -178,7 +198,7 @@ def _research_scope_plan(text, planned_queries, previous_queries):
 
     selected = []
     for operation in operations:
-        final = _research_query_text(operation["query"], operation["source_group"])
+        final = _research_query_text(operation["query"], operation["source_group"], text)
         if len(final) > 500:
             continue
         if key(final) in seen:
@@ -366,7 +386,7 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
                 research.update(scope_audit, executed_query_count=0, deterministic_gap_query_executed_count=0,
                                 scope_diversified_query_executed_count=0)
                 for search in searches:
-                    query_text = _research_query_text(search["query"], search["source_group"])
+                    query_text = _research_query_text(search["query"], search["source_group"], text)
                     if len(query_text) > 500:
                         continue
                     extra = await search_web(query_text)
@@ -520,6 +540,7 @@ def analyze_temporal_context(serper_news: list, scrape_date: str = None) -> dict
 
 async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: bool = True,
                        use_source_crosscheck: bool = True, use_detailed_report: bool = False) -> dict:
+    deadline = asyncio.get_running_loop().time() + PIPELINE_BUDGET_SECONDS
     source_url = url
     analysis_text = text
 
@@ -582,12 +603,13 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
     if domain_task:
         tasks.append(domain_task)
     
-    await asyncio.gather(*tasks, return_exceptions=True)
+    await _await_pipeline_tasks(tasks, min(INITIAL_QUERY_BUDGET_SECONDS,
+        max(0, deadline - asyncio.get_running_loop().time())))
     
     fact_checks = []
     seen_fact_checks: set[tuple[str, str | None]] = set()
     for task in fact_tasks:
-        if task.exception():
+        if _task_failed(task):
             continue
         for fact_check in task.result():
             key = (fact_check.claim_text.casefold(), fact_check.url)
@@ -597,14 +619,14 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
             fact_checks.append(fact_check)
     fact_checks = fact_checks[:30]
 
-    ai_forensics = ai_task.result() if not ai_task.exception() else {"ai_probability": None}
-    domain_info = domain_task.result() if domain_task and not domain_task.exception() else { "score": None, "note": "Domínio não analisado" }
+    ai_forensics = ai_task.result() if not _task_failed(ai_task) else {"ai_probability": None}
+    domain_info = domain_task.result() if domain_task and not _task_failed(domain_task) else { "score": None, "note": "Domínio não analisado" }
 
     serper_news_results = []
     raw_news_count = 0
     seen_links: set[str] = set()
     for task in serper_news_tasks:
-        if task.exception():
+        if _task_failed(task):
             continue
         for item in task.result():
             raw_news_count += 1
@@ -642,12 +664,16 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
     ai["search_claims_decision_role"] = "search_hints_only"
     ai["scam_analysis"] = scam_info
     ai["serper_news"] = serper_news_results
-    source_attribution = dict(attribution_task.result())
+    source_attribution = (dict(attribution_task.result()) if not _task_failed(attribution_task) else {
+        "status": "timeout" if attribution_task.cancelled() else "error", "matches": [], "coverage": {},
+        "reason": "A leitura das fontes não foi concluída; somente consultas concluídas foram preservadas."})
     source_documents = source_attribution.pop("_documents", [])
     source_comparison = None
     if use_source_crosscheck and ai.get("veracity_status") == "unverified" and not scam_info["is_scam"]:
         try:
-            source_comparison = await corroborate_sources(analysis_text, source_documents, source_url)
+            remaining = max(0, deadline - asyncio.get_running_loop().time())
+            source_comparison = await corroborate_sources(analysis_text, source_documents, source_url,
+                                                         timeout_seconds=remaining)
             if not isinstance(source_comparison, dict):
                 raise ValueError("Invalid comparison envelope")
         except Exception:
@@ -658,8 +684,8 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
         ai = apply_source_decision(analysis_text, ai, source_comparison)
         ai["source_corroboration"] = source_comparison
     ai["source_attribution"] = source_attribution
-    queries = [{"status": "error" if task.exception() else getattr(task.result(), "status", "success" if task.result() else "no_results"),
-                "reason": "Falha na consulta." if task.exception() else getattr(task.result(), "reason", None)} for task in fact_tasks]
+    queries = [{"status": "timeout" if task.cancelled() else "error" if _task_failed(task) else getattr(task.result(), "status", "success" if task.result() else "no_results"),
+                "reason": "Consulta não concluída." if _task_failed(task) else getattr(task.result(), "reason", None)} for task in fact_tasks]
     status = ("success" if fact_checks else "no_results" if any(q["status"] in {"success", "no_results"} for q in queries)
               else "not_configured" if all(q["status"] == "not_configured" for q in queries) else "error")
     ai["provider_coverage"] = {"google_fact_check": {
@@ -684,8 +710,14 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
             if key in {"available", "status", "reason", "model_used", "decision_role", "free_only", "response_issue"}}
         if gemini_coverage is not None:
             ai["provider_coverage"]["gemini"] = gemini_coverage
-    news_queries = [{"status": "error" if task.exception() else getattr(task.result(), "status", "success" if task.result() else "no_results"),
-                     "reason": "Falha na busca de contexto." if task.exception() else getattr(task.result(), "reason", None)}
+    ai["provider_coverage"]["analysis_budget"] = {
+        "status": "partial" if any(task.cancelled() for task in tasks) else "success",
+        "total_seconds": PIPELINE_BUDGET_SECONDS, "parallel_queries_seconds": INITIAL_QUERY_BUDGET_SECONDS,
+        "incomplete_query_count": sum(task.cancelled() for task in tasks),
+        "elapsed_seconds": round(max(0, PIPELINE_BUDGET_SECONDS - (deadline - asyncio.get_running_loop().time())), 3),
+        "decision_role": "execution_coverage_only"}
+    news_queries = [{"status": "timeout" if task.cancelled() else "error" if _task_failed(task) else getattr(task.result(), "status", "success" if task.result() else "no_results"),
+                     "reason": "Busca de contexto não concluída." if _task_failed(task) else getattr(task.result(), "reason", None)}
                     for task in serper_news_tasks]
     news_status = ("not_requested" if not news_queries else "success" if serper_news_results else "no_results" if any(q["status"] in {"success", "no_results"} for q in news_queries)
                    else "not_configured" if all(q["status"] == "not_configured" for q in news_queries) else "error")

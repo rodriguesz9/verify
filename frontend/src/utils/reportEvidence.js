@@ -367,7 +367,8 @@ export function publicCoveragePresentation(result = {}) {
       ? result.audio_analysis?.provider_coverage : null];
   const layers = coverage.flatMap((value) => value && typeof value === "object" && !Array.isArray(value)
     ? Object.values(value).filter((layer) => layer && typeof layer === "object" && !Array.isArray(layer)
-      && layer.decision_role !== "experimental_signal" && layer.voting_eligible !== false) : []);
+      && !["experimental_signal", "execution_coverage_only"].includes(layer.decision_role)
+      && layer.voting_eligible !== false) : []);
   const failed = layers.some((layer) => !["success", "partial", "no_results", "no_text", "no_speech", "disabled", "not_requested"].includes(layer.status));
   const skipped = layers.some((layer) => layer.status === "not_requested" && !literalExtractionNotNeeded(layer));
   const partial = layers.some((layer) => layer.status === "partial");
@@ -625,6 +626,7 @@ export function buildReportEvidence(result = {}, query = "") {
   }
   for (const [provider, layer] of Object.entries(coverage)) {
     if (!layer || typeof layer !== "object") continue;
+    if (layer.decision_role === "execution_coverage_only") continue;
     if (literalExtractionNotNeeded(layer)) continue;
     if (transcriptionState.notice && (layer.decision_role === "transcription_only"
         || ["transcription", "áudio/transcription"].includes(provider))) continue;

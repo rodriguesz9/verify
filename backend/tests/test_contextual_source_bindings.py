@@ -52,7 +52,8 @@ class LegalArticleBindingsTests(unittest.IsolatedAsyncioTestCase):
     async def test_explicit_law_article_identity_and_historical_spelling_preserve_original_quote(self):
         result, model = await self.compare()
         self.assertEqual(result["state"], "refuted")
-        model.assert_awaited_once()
+        model.assert_not_awaited()
+        self.assertEqual(result["coverage"]["comparison_method"], "literal_typed_rules_v1")
         records = result["claims"][0]["evidence"]
         self.assertEqual({item["excerpt"] for item in records}, {self.first, self.second})
         self.assertEqual({item["legal_article_anchor"]["law_date"] for item in records}, {"1888-05-13"})

@@ -3,6 +3,7 @@ import asyncio
 import base64
 from collections import deque
 import json
+import math
 import os
 import re
 import threading
@@ -214,8 +215,11 @@ def gemini_timeout_seconds() -> int:
     return value if 10 <= value <= 90 else 60
 
 
-async def generate_text(contents, *, system_instruction=None, temperature=.1, json_output=True, max_tokens=2048, model_name=None, response_schema=None):
-    deadline = gemini_timeout_seconds()
+async def generate_text(contents, *, system_instruction=None, temperature=.1, json_output=True, max_tokens=2048, model_name=None, response_schema=None, timeout_seconds=None):
+    deadline = gemini_timeout_seconds() if timeout_seconds is None else timeout_seconds
+    if (isinstance(deadline, bool) or not isinstance(deadline, (int, float))
+            or not math.isfinite(deadline) or not 0 < deadline <= 90):
+        raise GeminiError("Prazo da solicitação de leitura inválido.", "invalid_configuration")
     try:
         # The explicit fallback shares the deadline, not a second full budget.
         async with asyncio.timeout(deadline):

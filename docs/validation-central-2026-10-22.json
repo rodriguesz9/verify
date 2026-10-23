@@ -1,0 +1,75 @@
+{
+  "scope": "Frozen known12 development controls; not blind or general accuracy",
+  "measured_on": "2026-10-22",
+  "audited_on": "2026-10-23",
+  "source_sha256": "21aa4191d33067a1e9dc83a5952a5025f4b85c6582a2495bfb42f4ace6c2a668",
+  "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+  "freeze_contract_sha256": "8cdc75046cd55a1fcb0b31fc1fc694b52f780ed8904de1ae80efa28df5e3069d",
+  "all_twelve_completed_and_matched_freeze": true,
+  "metric_includes_inconclusives_in_denominator": true,
+  "denominator": 12,
+  "correct": 7,
+  "inconclusive": 5,
+  "wrong_conclusive": 0,
+  "execution_errors": 0,
+  "correct_fraction": 0.5833333333333334,
+  "target_fraction": 0.8,
+  "target_met": false,
+  "ui": {
+    "observed_form_submissions": 1,
+    "observed_case_id": "queen_true",
+    "observed_result": "Verificada como verdadeira nas fontes consultadas",
+    "evidence": "Root agent observed form, loading state, report accessibility tree and screenshot in the integrated browser; not inferred only from HTTP records",
+    "ordinary_http_submissions_not_ui": 11,
+    "post_200_count": 12
+  },
+  "cases": [
+    {"id":"queen_true","expected":"supported","actual":"supported","seconds":100.802,"eligible_families":2,"comparison":"success"},
+    {"id":"queen_false","expected":"refuted","actual":"unverified","seconds":127.056,"eligible_families":2,"comparison":"timeout"},
+    {"id":"dart_true","expected":"supported","actual":"unverified","seconds":26.053,"eligible_families":0,"comparison":"not_requested"},
+    {"id":"who_true","expected":"supported","actual":"unverified","seconds":26.280,"eligible_families":1,"comparison":"not_requested"},
+    {"id":"ibge_true","expected":"supported","actual":"supported","seconds":19.314,"eligible_families":2,"comparison":"success"},
+    {"id":"copom_false","expected":"refuted","actual":"refuted","seconds":12.728,"eligible_families":1,"comparison":"literal_typed_rules_v1"},
+    {"id":"copernicus_false","expected":"refuted","actual":"refuted","seconds":13.685,"eligible_families":1,"comparison":"success"},
+    {"id":"lei_false","expected":"refuted","actual":"refuted","seconds":7.644,"eligible_families":1,"comparison":"literal_typed_rules_v1"},
+    {"id":"webb_true","expected":"supported","actual":"supported","seconds":14.249,"eligible_families":2,"comparison":"success"},
+    {"id":"constitution_true","expected":"supported","actual":"supported","seconds":29.322,"eligible_families":2,"comparison":"success"},
+    {"id":"worldcup_false","expected":"refuted","actual":"unverified","seconds":28.139,"eligible_families":1,"comparison":"not_requested"},
+    {"id":"artemis_false","expected":"refuted","actual":"unverified","seconds":21.440,"eligible_families":1,"comparison":"not_requested"}
+  ],
+  "transports": {
+    "total_reservations": 153,
+    "gemini": {"attempts":12,"http_200":10,"http_503":1,"incomplete":1},
+    "openrouter": {"attempts":2,"http_200":0,"incomplete":2},
+    "google_fact_check": {"attempts":12,"http_200":12},
+    "search": {"attempts":59,"http_200":58,"incomplete":1},
+    "public_fetch": {"attempts":68,"http_200":55,"http_301":6,"http_307":2,"http_403":2,"http_401":1,"incomplete":2},
+    "external_http_429_count": 0,
+    "all_caps_respected": true,
+    "paid_media_attempts": 0,
+    "prior_openrouter_reservations_preserved": 40,
+    "conservative_cumulative_openrouter_reservations": 42
+  },
+  "prior_valid_round": {
+    "correct":4,"denominator":12,"inconclusive":8,
+    "gained":["queen_true","lei_false","webb_true","constitution_true"],
+    "lost":["worldcup_false"],"net_correct_delta":3,
+    "manifest_and_transport_references_preserved":true
+  },
+  "posterior_changes_are_not_in_this_measurement": true,
+  "posterior_revision": {
+    "source_sha256": "249b93992305c54ad003fffdd3571d5b6de4ac392cd49c9ce925fffb5e6c9791",
+    "policy_version": "2026-10-23.1",
+    "offline_backend_tests_passed": 1345,
+    "frontend_test_files_passed": 22,
+    "frontend_build_passed": true,
+    "live_accuracy_not_remeasured": true,
+    "offline_captured_document_replays": [
+      {"id":"worldcup_false","document_count":7,"eligible_families":["globo","bbc"],"state":"refuted","evidence_count":2,"comparison_method":"literal_typed_rules_v1","remote_calls":0},
+      {"id":"artemis_false","document_count":7,"eligible_families":["nasa","uol"],"state":"refuted","evidence_count":2,"comparison_method":"literal_typed_rules_v1","remote_calls":0}
+    ],
+    "additional_paid_provider_calls": 0
+  },
+  "media_accuracy_revalidated": false,
+  "production_deployed": false
+}

@@ -91,6 +91,15 @@ _TEAM_ALIASES = {
     "paises bajos": "paises baixos", "japon": "japao", "corea del sur": "coreia do sul",
 }
 
+# Plural Portuguese demonyms identify the same existing national teams.
+# No edition, title count or historical result belongs in this language map.
+_PT_TEAM_DEMONYMS = {
+    "alemaes": "alemanha", "brasileiros": "brasil", "franceses": "franca",
+    "espanhois": "espanha", "ingleses": "inglaterra", "italianos": "italia",
+    "uruguaios": "uruguai", "croatas": "croacia", "neerlandeses": "paises baixos",
+    "holandeses": "paises baixos", "japoneses": "japao", "sul-coreanos": "coreia do sul",
+}
+
 
 _TEAM_PREFIX = re.compile(r"^(?:(?:o|a|the)\s+)?(?:(?:selecao(?: nacional)?(?: d[oae])?|national team of)\s+)?")
 
@@ -156,6 +165,27 @@ _EN_TITLE_RECAP = re.compile(
     + r" against (?:the )?(?P<opponent>" + _NAME + r") at (?:the )?"
     + r"(?P<venue>" + _RECAP_PLACE + r")(?: in (?P<city>" + _NAME + r"))?\.?"
 )
+_PT_TITLE_RECAP = re.compile(
+    r"com gol de (?P<scorer>" + _SCORER + r") no (?:primeiro|segundo) tempo"
+    r"(?: da prorrogacao)?, os (?P<demonym>" + "|".join(_PT_TEAM_DEMONYMS)
+    + r") conquistaram a (?P<competition>" + _PT_COMP + r")\.?"
+)
+_PT_RECAP_CONTEXT = re.compile(
+    r"\b(?:veteran[oa]s?|masters?|lendas|amador[ae]s?|fictici[oa]s?|inventad[oa]s?|"
+    r"imaginari[oa]s?|fantasia|simulad[oa]s?|simulacao|hipotese)\b"
+)
+
+
+def _portuguese_title_recap(quote):
+    text, literal = _text(quote), _case_text(quote)
+    match = _PT_TITLE_RECAP.fullmatch(text)
+    if match is None or _PT_RECAP_CONTEXT.search(text):
+        return None
+    scorer = literal[match.start("scorer"):match.end("scorer")]
+    if not scorer[0].isupper() or _identity(match["scorer"], scorer) is None:
+        return None
+    return _frame(match["competition"], _PT_TEAM_DEMONYMS[match["demonym"]])
+
 
 # A single complete Spanish BODY assertion. Neither a host/year headline nor
 # an ordinal title count alone supplies a winner or competition. Named host
@@ -370,6 +400,9 @@ def _quote_frame(quote):
     spanish_recap = _spanish_title_recap(quote)
     if spanish_recap:
         return spanish_recap
+    portuguese_recap = _portuguese_title_recap(quote)
+    if portuguese_recap:
+        return portuguese_recap
     recap = _EN_TITLE_RECAP.fullmatch(text)
     if recap:
         literal = _case_text(quote)
@@ -462,6 +495,8 @@ def competition_outcome_relation(claim, quote, context="") -> Relation | None:
     if context_text and not _safe(context_text):
         return None
     if _ES_TITLE_RECAP.fullmatch(_text(quote)) and not _spanish_recap_safe(context_text):
+        return None
+    if _PT_TITLE_RECAP.fullmatch(_text(quote)) and _PT_RECAP_CONTEXT.search(context_text):
         return None
     claimed, observed = parse_competition_claim(claim), _quote_frame(quote)
     if not claimed or not observed:

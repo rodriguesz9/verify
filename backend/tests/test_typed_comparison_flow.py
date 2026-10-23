@@ -105,21 +105,18 @@ class TypedComparisonFlowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["state"], "refuted")
         self.assertIn(" ".join(first), [entry["excerpt"] for entry in result["claims"][0]["evidence"]])
 
-    async def test_unknown_but_guard_admissible_relative_passage_falls_back_whole_matrix(self):
+    async def test_revalidated_relative_passage_uses_literal_matrix_without_changing_original_quote(self):
         relative = "A missão Aurora IV foi lançada nesta terça-feira (16)."
         docs = documents(relative, SUPPORT)
         docs[0]["publication_date"] = "2021-11-16"
         result, gemini, router = await self.compare(docs=docs)
-        gemini.assert_awaited_once()
-        router.assert_not_awaited()
+        self.assert_unrequested(result, gemini, router)
         self.assertEqual(result["state"], "corroborated")
-        self.assertEqual(result["coverage"]["comparison_method"], "model_source_review_v2")
-        self.assertNotIn("reviewed_passage_count", result["coverage"])
-        self.assertEqual(result["provider_coverage"]["gemini"]["status"], "success")
-        self.assertEqual(result["provider_coverage"]["openrouter"]["status"], "not_requested")
-        prompt = json.loads(gemini.await_args.args[0])
-        self.assertEqual(len(prompt["sources"]), 2)
-        self.assertIn(relative, [passage["quote"] for source in prompt["sources"] for passage in source["passages"]])
+        self.assertEqual(result["coverage"]["comparison_method"], "literal_typed_rules_v1")
+        self.assertIn(relative, [entry["excerpt"] for entry in result["claims"][0]["evidence"]])
+        self.assertEqual(docs[0]["sentences"], [relative])
+        self.assertTrue(any(entry.get("launch_anchor", {}).get("publication_date") == "2021-11-16"
+                            for entry in result["claims"][0]["evidence"]))
         self.assertEqual({entry["excerpt"] for entry in result["claims"][0]["evidence"]}, {relative, SUPPORT})
 
     async def test_one_untyped_claim_routes_all_claims_to_existing_model_path(self):

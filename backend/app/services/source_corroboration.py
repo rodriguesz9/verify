@@ -19,9 +19,13 @@ from app.services.claim_policy import input_claims, normalize_claim, RELATIVE_TI
 from app.services.source_relations import lexical_text, WORD_GROUPS, opposing_directions, percentage_transition, opposing_measurements, supporting_measurements_bound
 from app.services.launch_relations import is_launch_date_claim, launch_date_relation
 from app.services.monetary_decisions import parse_copom_claim, copom_record_relation, validate_copom_record
-from app.services.launch_body_dates import launch_body_temporal_anchor, launch_date_claim_matches_body
+from app.services.launch_body_dates import launch_body_temporal_anchor, launch_date_claim_matches_body, launch_body_dated_reading
 from app.services.competition_relations import is_competition_outcome_claim, competition_outcome_relation, parse_competition_claim
 from app.services.typed_source_comparison import typed_review_matrix, COMPARISON_METHOD as TYPED_COMPARISON_METHOD
+from app.services.legal_declaration_relations import (
+    parse_legal_declaration_claim, parse_legal_article_declaration,
+    legal_declaration_relation, legal_declaration_has_unsafe_scope,
+)
 
 VERSION = "source_corroboration_v1"
 MAX_INPUT = 5000
@@ -203,12 +207,45 @@ def source_identity(url):
         return None
 
 
-def source_family(url, body=""):
+_PHOTO_CREDIT_START = re.compile(r"(?:©\s*|\b(?:foto|photo|photograph|imagem|image|picture|cr[eé]dito\s+(?:da\s+)?foto)\s*:\s*)", re.I)
+_PHOTO_CREDIT_WORDS = set("de da do das dos e and via by direitos reservados resevados all rights reserved divulgação reprodução handout pool arquivo acervo reuters afp ap associated press agence france presse".split())
+
+
+def _isolated_photo_credit(value):
+    """Narrow credit fragment, never a whole caption or narrative sentence."""
+    if not isinstance(value, str) or not 3 <= len(value) <= 500:
+        return False
+    marker = _PHOTO_CREDIT_START.match(value)
+    if marker is None or re.search(r"\d|[!?;]|\b(?:segundo|conforme|fonte|agência|agencia|por|according|reported|texto|reportagem|redação)\b", value, re.I):
+        return False
+    credit = value[marker.end():]
+    words = re.findall(r"[^\W\d_]+", credit, re.UNICODE)
+    # Names/closed photo-credit vocabulary only. A phrase such as
+    # "Foto: a reportagem foi feita pela Reuters" cannot hide textual origin.
+    return bool(words) and all(word[0].isupper() or word.casefold() in _PHOTO_CREDIT_WORDS for word in words)
+
+
+def _editorial_dependency_body(body, provenance):
+    if (not isinstance(provenance, dict) or set(provenance) != {"version", "media_credit_fragments"}
+            or provenance.get("version") != "visible_media_credits_v1"):
+        return body
+    fragments = provenance.get("media_credit_fragments")
+    if (not isinstance(fragments, list) or len(fragments) > 64
+            or any(not _isolated_photo_credit(item) or body.count(item) != 1 for item in fragments)
+            or sum(map(len, fragments)) > 4000):
+        return body
+    for fragment in fragments:
+        body = body.replace(fragment, " ")
+    return body
+
+
+def source_family(url, body="", *, provenance=None):
     """Pure editorial/dependency family for bounded retrieval prioritization."""
     identity = source_identity(url)
     if not identity:
         return None
     if isinstance(body, str):
+        body = _editorial_dependency_body(body, provenance)
         for pattern, agency in _WIRE:
             if pattern.search(body[:50000]):
                 return agency
@@ -274,8 +311,8 @@ def is_original_record_claim(claim, source):
 
 
 def crosscheck_timeout_seconds():
-    raw = os.getenv("SOURCE_CROSSCHECK_TIMEOUT_SECONDS", "90").strip()
-    return int(raw) if re.fullmatch(r"[0-9]{1,2}", raw) and 10 <= int(raw) <= 90 else 90
+    raw = os.getenv("SOURCE_CROSSCHECK_TIMEOUT_SECONDS", "180").strip()
+    return int(raw) if re.fullmatch(r"[0-9]{1,3}", raw) and 10 <= int(raw) <= 180 else 180
 
 
 def _name_ordinal_spans(text):
@@ -1058,12 +1095,34 @@ def _passage_guard(claim, passage, relation, stamp):
             return "Ligação do lançamento ao dia explícito do corpo inválida."
         if launch["publication_date"] > datetime.fromisoformat(stamp.replace("Z", "+00:00")).date().isoformat():
             return "Data relativa do lançamento é posterior à recuperação."
-        quote = quote.replace(launch["expression"], "em " + launch["publication_date"], 1)
+        if launch["kind"] == "explicit_active_mission_launch_body_date":
+            # Canonicalization owns only this completed mission/date clause.
+            # It cannot erase a fiction label, conditional or adjacent denial
+            # in the actual source context. Unknown scope abstains.
+            launch_context = re.sub(r"\b(?:não|nao)\s+tripulad[oa]s?\b", "sem tripulação", passage["context"], flags=re.I)
+            if (_NEGATION.search(launch_context) or _uncertain_statement(launch_context)
+                    or re.search(r"\b(?:ficção|ficcao|fiction|fict[íi]ci[oa]s?|fictional|simulad[oa]s?|"
+                                 r"simula[çc][ãa]o|hipot[ée]tic[oa]s?|hip[óo]tese|hypothetical|"
+                                 r"inventad[oa]s?|imagin[áa]ri[oa]s?|fantasia|se|caso|if|unless)\b",
+                                 launch_context, re.I)):
+                return "Contexto fictício, condicional, incerto ou negado impede a leitura direta deste lançamento."
+        quote = launch_body_dated_reading(quote, launch)
+        if quote is None:
+            return "O próprio corpo não fornece uma leitura completa e revalidável do lançamento."
     reading_claim = claim
     legal_reading = _legal_article_reading(claim, passage)
     if legal_reading is False:
         return "Referência da lei, artigo, objeto ou escopo de negação diverge da leitura literal delimitada."
     if legal_reading:
+        if parse_legal_declaration_claim(claim) is not None:
+            observed = parse_legal_article_declaration(quote)
+            # Unknown wording is not an unsafe relation by itself. Keep its
+            # ordinary model fallback; only a closed conflicting frame or an
+            # explicit ambiguous scope is rejected before comparison.
+            if ((observed is not None and legal_declaration_relation(
+                    claim, quote, passage.get("legal_article_anchor")) != relation)
+                    or observed is None and legal_declaration_has_unsafe_scope(quote)):
+                return "A declaração deve preservar o objeto completo, os qualificadores e o escopo do artigo, sem condições ou exceções omitidas."
         if passage["legal_article_anchor"]["law_date"] > datetime.fromisoformat(stamp.replace("Z", "+00:00")).date().isoformat():
             return "Diploma apresentado como concluído tem data posterior à recuperação."
         reading_claim = legal_reading
@@ -1255,7 +1314,7 @@ def _prepare_sources(documents, claims, source_url, *, reading_gaps=None):
             continue
         # A wire credit can appear far from the selected quote. Collapse the
         # full bounded body BEFORE deciding whether two sources merit a call.
-        dependency_family = source_family(identity["url"], body)
+        dependency_family = source_family(identity["url"], body, provenance=raw.get("editorial_provenance"))
         if dependency_family != identity["publisher_family"]:
             identity["source_type"] = "editorial"
         identity["publisher_family"] = dependency_family
@@ -1455,7 +1514,7 @@ def _gemini_schema(schema):
     return schema
 
 
-async def _compare(prompt, coverage):
+async def _compare(prompt, coverage, *, timeout_seconds=None):
     # Shared coverage preserves which provider was in flight at whole deadline.
     primary = os.getenv("SOURCE_CROSSCHECK_PRIMARY_PROVIDER", "gemini").strip().lower()
     if primary not in {"gemini", "openrouter"}:
@@ -1467,7 +1526,8 @@ async def _compare(prompt, coverage):
         for source in request["sources"] for passage in source["passages"]}
     expected_pairs = len(requested_claims) * len(request["sources"])
     loop = asyncio.get_running_loop()
-    deadline = loop.time() + crosscheck_timeout_seconds()
+    budget = crosscheck_timeout_seconds() if timeout_seconds is None else timeout_seconds
+    deadline = loop.time() + budget
     status = "error"
     for index, provider in enumerate(providers):
         remaining = deadline - loop.time()
@@ -1475,16 +1535,19 @@ async def _compare(prompt, coverage):
             return None, coverage, "timeout"
         # A stalled primary must not consume the alternate's entire window.
         # Two attempts still share the original whole-request deadline.
-        attempt_timeout = remaining * .65 if index == 0 else remaining
+        # Reserve a real opportunity for the alternate instead of leaving it
+        # a short tail. Immediate failure releases unused time to the next.
+        attempt_timeout = min(90, remaining / (2 - index))
         coverage[provider]["status"] = "pending"
         try:
             if provider == "gemini":
                 operation = gemini_client.generate_text(prompt, system_instruction=SYSTEM_INSTRUCTION,
-                    temperature=0, max_tokens=2048, response_schema=_gemini_schema(SCHEMA))
+                    temperature=0, max_tokens=2048, response_schema=_gemini_schema(SCHEMA),
+                    timeout_seconds=attempt_timeout)
             else:
                 operation = openrouter_service.generate(prompt, system_instruction=SYSTEM_INSTRUCTION,
                     temperature=0, max_tokens=4096, response_format=RESPONSE_FORMAT,
-                    timeout_seconds=min(45, attempt_timeout))
+                    timeout_seconds=attempt_timeout)
             raw = await asyncio.wait_for(operation, timeout=attempt_timeout)
             # A transport success is not a completed examination. Enforce the
             # entire claim × source matrix before accepting this response.
@@ -1604,10 +1667,9 @@ def _assess(claim, candidates, comparison_method="model_source_review_v2"):
     evidence, excluded, fingerprints = [], [], set()
     for candidate, passage in candidates:
         family = passage["publisher_family"]
-        for pattern, agency in _WIRE:
-            if pattern.search(passage["context"]):
-                family = agency
-                break
+        # Server-owned preparation already scans the WHOLE bounded document
+        # and validates photo provenance. A second scan of raw local context
+        # would incorrectly reclassify isolated visual credits as text authors.
         record = {"source_id": passage["source_id"], "excerpt_id": passage["excerpt_id"],
                   "url": passage["url"], "title": passage["title"], "excerpt": passage["quote"],
                   "context": passage["context"], "relation": candidate["relation"],
@@ -1692,7 +1754,7 @@ def _assess(claim, candidates, comparison_method="model_source_review_v2"):
             "supporting_publishers": sorted(supporting), "refuting_publishers": sorted(refuting)}
 
 
-async def corroborate_sources(text, documents, source_url=None):
+async def corroborate_sources(text, documents, source_url=None, *, timeout_seconds=None):
     """Require every claim/source review, with one transport fallback; no fetches.
 
     ``documents`` must come from bounded public body retrieval, not user search
@@ -1728,8 +1790,14 @@ async def corroborate_sources(text, documents, source_url=None):
                 comparison_method = "model_source_review_v2"
                 prompt = json.dumps({"claims": claims, "sources": [{"source_id": source["source_id"], "passages": source["passages"]}
                                                                  for source in sources]}, ensure_ascii=False)
-                async with asyncio.timeout(crosscheck_timeout_seconds()):
-                    raw, provider_coverage, status = await _compare(prompt, provider_coverage)
+                budget = crosscheck_timeout_seconds()
+                if timeout_seconds is not None:
+                    if (isinstance(timeout_seconds, bool) or not isinstance(timeout_seconds, (int, float))
+                            or not 0 <= timeout_seconds <= 330):
+                        raise ValueError("Invalid remaining comparison budget")
+                    budget = min(budget, timeout_seconds)
+                async with asyncio.timeout(budget):
+                    raw, provider_coverage, status = await _compare(prompt, provider_coverage, timeout_seconds=budget)
             if raw is not None and typed is None:
                 decoded = _decode(raw, claims, passages, require_source_reviews=True)
                 reason = None

@@ -94,7 +94,9 @@ class LiteralExtractionBudgetTests(unittest.IsolatedAsyncioTestCase):
         self.assert_no_extra_extraction(result, mocks, text)
         mocks["_retrieve_source_attribution"].assert_awaited_once_with(
             text, [text], None, use_source_crosscheck=True)
-        mocks["corroborate_sources"].assert_awaited_once_with(text, documents, None)
+        mocks["corroborate_sources"].assert_awaited_once()
+        self.assertEqual(mocks["corroborate_sources"].await_args.args, (text, documents, None))
+        self.assertTrue(0 < mocks["corroborate_sources"].await_args.kwargs["timeout_seconds"] <= 330)
         self.assertIn("source_crosscheck", result["report"]["provider_coverage"])
 
     async def test_multiple_sentences_or_paragraphs_keep_router_extraction(self):

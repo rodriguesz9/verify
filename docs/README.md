@@ -1,5 +1,7 @@
 # Documentação do Verify
 
+Continuação de 23/10: [correções centrais e análise dos inconclusivos](CAUSA-CENTRAL-2026-10-22.md), [doze resultados](validation-central-2026-10-22.json). **7/12 corretos (58,3%), cinco inconclusivos, zero conclusões erradas observadas.** Uma submissão visual e onze HTTP; reforços posteriores separados da medição. Ainda não comprova 80%, mídia ou publicação. Registros seguintes são históricos.
+
 Revisão local de 22/10: [recuperação, espera, negação e avaliação](RECUPERACAO-ESPERA-2026-10-22.md), [plano](PLANO-ACERTOS-2026-10-22.md), [primeira execução](validation-recovery-2026-10-22.json) e [rodada corrigida](validation-wait-recheck-2026-10-22.json). Nova conhecida: **4/12 corretos (33,3%), oito inconclusivos**; OpenRouter revalidado, falhas e lacunas persistem. Preserva incidente anterior, 1/8 nos novos daquela versão e piora frente aos 8/12 de 21/10. Não comprova 80% geral nem publicação.
 
 Revisão local de 21/10: [prazos, comparação literal e resultado real](PRAZOS-LEITURA-2026-10-21.md), [doze textos em JSON](validation-waits-typed-2026-10-21.json) e [três controles de mídia pela interface](validation-media-2026-10-21.json). **8/12 acertos (66,7%), quatro inconclusivos; meta de 80% ainda não atingida.** Uma submissão textual pelo formulário e onze HTTP; imagem/voz separadas da precisão textual. Sem publicação presumida.

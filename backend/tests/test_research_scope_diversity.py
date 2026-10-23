@@ -99,7 +99,7 @@ class ResearchScopePipelineTests(unittest.IsolatedAsyncioTestCase):
     async def test_diversified_execution_audits_requested_and_executed_group_inside_original_caps(self):
         result, model, collect, calls = await self.run_retrieval()
         self.assertEqual(len(calls), 5)
-        self.assertIn("site:ibge.gov.br", calls[3])
+        self.assertNotIn("site:", calls[3])
         self.assertIn("site:reuters.com", calls[4])
         self.assertNotIn("site:bcb.gov.br", calls[4])
         model.assert_awaited_once()
