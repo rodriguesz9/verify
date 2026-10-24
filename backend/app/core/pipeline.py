@@ -22,6 +22,7 @@ from app.services.source_decision import apply_source_decision
 from app.services.report_explanation import enrich_grounded_report
 from app.services.source_queries import neutral_source_query, primary_source_query, primary_source_filter, editorial_source_query
 from app.services.source_research import plan_source_research, research_enabled
+from app.services.launch_relations import _frame as _launch_frame
 
 SOURCE_SITE_FILTER = "(site:royal.uk OR site:brasilescola.uol.com.br OR site:mundoeducacao.uol.com.br OR site:nasa.gov OR site:cnnbrasil.com.br OR site:aosfatos.org OR site:bbc.com OR site:theguardian.com OR site:time.com OR site:axios.com)"
 PRIMARY_SITE_FILTER = "(site:royal.uk OR site:nasa.gov OR site:ibge.gov.br OR site:bcb.gov.br OR site:who.int OR site:planalto.gov.br OR site:copernicus.eu)"
@@ -192,6 +193,39 @@ def _research_query_text(query, group, original_text=None):
     return (query + " " + suffix).strip()
 
 
+def _numbered_launch_research_query(text):
+    """Discovery alias for one completely parsed mission, never a new claim.
+
+    An alleged launch date can be wrong. Repeating it in the last recovery
+    query selected another flight whose date happened to match that year.
+    Preserve the complete numbered identity and explicit nondate qualifiers;
+    ask for its launch date instead. Roman/numeric equivalence comes from the
+    existing strict parser, not a catalog of missions or historical answers.
+    Ambiguous claims, recurring vehicles and unknown syntax keep the ordinary
+    whole-input recovery. The original assertion still owns all factual guards.
+    """
+    frame = _launch_frame(text)
+    if frame is None or frame.identity_kind != "mission":
+        return None
+    number, roman = frame.identity[1], ""
+    # Both spellings belong to the same parsed flight identity. A quoted
+    # numeric-only alias would miss bodies/search titles using Roman digits.
+    for value, letters in ((1000, "M"), (900, "CM"), (500, "D"), (400, "CD"),
+                           (100, "C"), (90, "XC"), (50, "L"), (40, "XL"),
+                           (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I")):
+        count, number = divmod(number, value)
+        roman += letters * count
+    identities = f'("{frame.identity[0]} {frame.identity[1]}" OR "{frame.identity[0]} {roman}")'
+    qualifiers = [value for value in (frame.agency, frame.crew,
+                  "successfully" if frame.successful else None, frame.location) if value]
+    if frame.time is not None:
+        hour, minute, zone = frame.time
+        qualifiers.append(f"{hour:02}:{minute:02}" + (f" {zone}" if zone else ""))
+    query = " ".join([identities, *qualifiers,
+                      "mission lançamento launch data date"])
+    return query if 20 <= len(query) <= 240 else None
+
+
 def _research_scope_plan(text, planned_queries, previous_queries):
     """Reserve editorial discovery, not an extra vote or an extra request.
 
@@ -231,11 +265,13 @@ def _research_scope_plan(text, planned_queries, previous_queries):
     # No new query is needed when an already valid editorial plan exists.
     # Otherwise use only one still-free slot; this never plans a third search.
     if len(selected) < 2 and not any(item["source_group"] == "editorial" for item in selected):
-        neutral = neutral_source_query(text, preserve_period=True)
+        mission_query = _numbered_launch_research_query(text)
+        neutral = mission_query or neutral_source_query(text, preserve_period=True)
         if (neutral and 20 <= len(neutral) <= 240
                 and not re.search(r"https?://|www\.|\bsite\s*:|[\x00-\x1f\x7f]", neutral, re.I)):
             desired = _research_query_text(neutral, "editorial")
-            group, reason = "editorial", "original_neutral_editorial_gap"
+            group = "editorial"
+            reason = "original_numbered_mission_editorial_gap" if mission_query else "original_neutral_editorial_gap"
             if key(desired) in seen:
                 duplicates += 1
                 # The same editorial discovery already ran in the base wave.

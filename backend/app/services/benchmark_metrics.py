@@ -37,9 +37,15 @@ def evaluate_predictions(records: list[dict]) -> dict:
         tp, fp = matrix["positive"]["positive"], matrix["negative"]["positive"]
         tn, fn = matrix["negative"]["negative"], matrix["positive"]["negative"]
         positive_count, negative_count = sum(matrix["positive"].values()), sum(matrix["negative"].values())
+        correct = tp + tn
+        wrong = fp + fn
+        abstentions = len(rows) - correct - wrong
         results.append({"modality": modality, "dimension": dimension, "split": split,
             "positive_definition": "refuted_claim" if dimension == "veracity" else "synthetic_or_manipulated_media",
             "n": len(rows), "confusion_matrix_including_abstentions": matrix,
+            "correct_count": correct, "wrong_conclusive_count": wrong, "inconclusive_count": abstentions,
+            "accuracy_including_abstentions": ratio(correct, len(rows)),
+            "abstention_rate": ratio(abstentions, len(rows)),
             "coverage": ratio(tp + fp + tn + fn, len(rows)), "precision": ratio(tp, tp + fp),
             "effective_recall": ratio(tp, positive_count), "false_positive_rate": ratio(fp, negative_count),
             "false_negative_rate": ratio(fn, positive_count),

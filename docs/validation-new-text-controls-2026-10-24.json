@@ -1,0 +1,73 @@
+{
+  "scope": "Public reproduction record; expected labels were declared after code freeze and before requests, never supplied to pipeline. These eight are now known development controls.",
+  "input_sha256": "aa76537870bd09899ba60a99c706eb3dd9ea561f5a584d944dad2156ae5ca418",
+  "label_sha256": "cb4305e7a122f6432c41c778ad864a02ce9d12da0dad4c5073ad73ea5e8383ef",
+  "predeclared_at": "2026-10-24T11:18:46Z",
+  "source_sha256": "26b80e10a8772d9bfd5aceda4fda8c5f2c6b710052d4f6e7f6d62ef5799b01b2",
+  "cases": [
+    {
+      "id": "eca_age",
+      "topic": "direitos e legislação",
+      "text": "Segundo o artigo 2º do Estatuto da Criança e do Adolescente, considera-se criança a pessoa até doze anos de idade incompletos.",
+      "expected": "supported",
+      "reference": "https://www.planalto.gov.br/ccivil_03/leis/l8069.htm",
+      "basis": "Art. 2º define criança até doze anos incompletos; escopo é a definição legal atribuída, não aconselhamento individual."
+    },
+    {
+      "id": "marco_civil_date",
+      "topic": "tecnologia e legislação",
+      "text": "A Lei nº 12.965, conhecida como Marco Civil da Internet, é de 23 de abril de 2015.",
+      "expected": "refuted",
+      "reference": "https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2014/lei/l12965.htm",
+      "basis": "Lei 12.965 é de 23/04/2014, não 2015."
+    },
+    {
+      "id": "ldb_age",
+      "topic": "educação",
+      "text": "O artigo 4º da Lei de Diretrizes e Bases da Educação Nacional prevê educação básica obrigatória e gratuita dos quatro aos dezessete anos de idade.",
+      "expected": "supported",
+      "reference": "https://www.planalto.gov.br/ccivil_03/leis/l9394.htm",
+      "basis": "Art. 4º, I prevê educação básica obrigatória e gratuita dos quatro aos dezessete anos, na redação consultada."
+    },
+    {
+      "id": "apollo_landing",
+      "topic": "ciência e história",
+      "text": "A missão Apollo 11 pousou na Lua em 20 de julho de 1970.",
+      "expected": "refuted",
+      "reference": "https://science.nasa.gov/resource/saturn-apollo-program-2/",
+      "basis": "NASA registra pouso lunar Apollo 11 em 20/07/1969, não 1970; distinto de retorno à Terra."
+    },
+    {
+      "id": "smallpox_assembly",
+      "topic": "saúde e história",
+      "text": "Em 8 de maio de 1980, a Assembleia Mundial da Saúde declarou a erradicação mundial da varíola.",
+      "expected": "supported",
+      "reference": "https://www.who.int/news-room/detail/08-05-2020-commemorating-smallpox-eradication-a-legacy-of-hope-for-covid-19-and-other-diseases",
+      "basis": "OMS identifica declaração da 33ª Assembleia em 08/05/1980."
+    },
+    {
+      "id": "udhr_date",
+      "topic": "direitos humanos e história",
+      "text": "A Declaração Universal dos Direitos Humanos foi adotada pela Assembleia Geral das Nações Unidas em 10 de dezembro de 1949.",
+      "expected": "refuted",
+      "reference": "https://europe.ohchr.org/universal-declaration-human-rights",
+      "basis": "OHCHR registra adoção pela Assembleia Geral em 10/12/1948, não 1949. URL UN original retornou403; referência OHCHR foi lida."
+    },
+    {
+      "id": "beijing_host",
+      "topic": "esporte e cidade-sede",
+      "text": "Pequim sediou os Jogos Olímpicos de Verão de 2008.",
+      "expected": "supported",
+      "reference": "https://www.fei.org/history/olympic-games/2008-beijing-peoples-republic-china",
+      "basis": "Federação participante documenta edição XXIX/2008 em Pequim, datas e cerimônia. Não se afirma que todas provas ocorreram na cidade; equitação foi Hong Kong. URL IOC candidata retornou502."
+    },
+    {
+      "id": "euro_winner",
+      "topic": "esporte e campeão",
+      "text": "A Inglaterra venceu o Campeonato Europeu de futebol masculino de 2024.",
+      "expected": "refuted",
+      "reference": "https://www.uefa.com/uefaeuro/history/seasons/2024/",
+      "basis": "Organizadora identifica Espanha como campeã Euro2024, Inglaterra derrotada na final."
+    }
+  ]
+}

@@ -1,0 +1,1300 @@
+{
+  "date": "2026-10-24",
+  "scope": "Known12 and new8 separate small development controls, not blind/general accuracy",
+  "all_twenty_terminal": true,
+  "http_boundary_counts": {"OPTIONS /api/check-text 200": 1, "POST /api/check-text 200": 20},
+  "one_attempt_each": true,
+  "source_sha256": "26b80e10a8772d9bfd5aceda4fda8c5f2c6b710052d4f6e7f6d62ef5799b01b2",
+  "cohort_input_sha256": {
+    "development_known": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+    "new_text_eight": "aa76537870bd09899ba60a99c706eb3dd9ea561f5a584d944dad2156ae5ca418"
+  },
+  "labels_sha256": "cb4305e7a122f6432c41c778ad864a02ce9d12da0dad4c5073ad73ea5e8383ef",
+  "labels_predeclared_at": "2026-10-24T11:18:46Z",
+  "metrics_by_cohort": {
+    "development_known": {
+      "total": 12,
+      "correct": 6,
+      "wrong_conclusive": 0,
+      "inconclusive": 6,
+      "execution_error": 0,
+      "accuracy_including_abstentions": 0.5,
+      "accuracy_percent_including_abstentions": 50,
+      "wrong_conclusive_percent": 0,
+      "inconclusive_percent": 50,
+      "execution_error_percent": 0,
+      "conclusive_coverage_percent": 50,
+      "conditional_precision_among_conclusive_percent": 100,
+      "target_80_percent_observed_in_this_cohort_only": false,
+      "class_recall_including_abstentions": {
+        "supported": {
+          "expected_count": 6,
+          "correct": 1,
+          "recall_percent": 16.667
+        },
+        "refuted": {
+          "expected_count": 6,
+          "correct": 5,
+          "recall_percent": 83.333
+        }
+      },
+      "wall_time_seconds": {
+        "count": 12,
+        "median": 20.002,
+        "p95_nearest_rank": 33.457,
+        "p95_definition": "nearest rank ceil(.95*n), without interpolation"
+      }
+    },
+    "new_text_eight": {
+      "total": 8,
+      "correct": 0,
+      "wrong_conclusive": 0,
+      "inconclusive": 8,
+      "execution_error": 0,
+      "accuracy_including_abstentions": 0,
+      "accuracy_percent_including_abstentions": 0,
+      "wrong_conclusive_percent": 0,
+      "inconclusive_percent": 100,
+      "execution_error_percent": 0,
+      "conclusive_coverage_percent": 0,
+      "conditional_precision_among_conclusive_percent": null,
+      "target_80_percent_observed_in_this_cohort_only": false,
+      "class_recall_including_abstentions": {
+        "supported": {
+          "expected_count": 4,
+          "correct": 0,
+          "recall_percent": 0
+        },
+        "refuted": {
+          "expected_count": 4,
+          "correct": 0,
+          "recall_percent": 0
+        }
+      },
+      "wall_time_seconds": {
+        "count": 8,
+        "median": 34.038,
+        "p95_nearest_rank": 55.696,
+        "p95_definition": "nearest rank ceil(.95*n), without interpolation"
+      }
+    }
+  },
+  "mixed_twenty_development_only": {
+    "total": 20,
+    "correct": 6,
+    "wrong_conclusive": 0,
+    "inconclusive": 14,
+    "execution_error": 0,
+    "accuracy_including_abstentions": 0.3,
+    "accuracy_percent_including_abstentions": 30,
+    "wrong_conclusive_percent": 0,
+    "inconclusive_percent": 70,
+    "execution_error_percent": 0,
+    "conclusive_coverage_percent": 30,
+    "conditional_precision_among_conclusive_percent": 100,
+    "target_80_percent_observed_in_this_cohort_only": false,
+    "class_recall_including_abstentions": {
+      "supported": {
+        "expected_count": 10,
+        "correct": 1,
+        "recall_percent": 10
+      },
+      "refuted": {
+        "expected_count": 10,
+        "correct": 5,
+        "recall_percent": 50
+      }
+    },
+    "wall_time_seconds": {
+      "count": 20,
+      "median": 25.998,
+      "p95_nearest_rank": 43.59,
+      "p95_definition": "nearest rank ceil(.95*n), without interpolation"
+    }
+  },
+  "submission_counts": {
+    "browser_form_root_attested": 4,
+    "ordinary_local_http": 16
+  },
+  "provider_counts": {
+    "facts": 20,
+    "news": 108,
+    "public_fetch": 126,
+    "gemini": 20,
+    "openrouter": 2
+  },
+  "transport_statuses": {
+    "gemini": {
+      "200": 17,
+      "503": 2,
+      "incomplete": 1
+    },
+    "openrouter": {
+      "200": 1,
+      "404": 1
+    },
+    "facts": {
+      "200": 20
+    },
+    "news": {
+      "200": 108
+    },
+    "public_fetch": {
+      "200": 104,
+      "301": 5,
+      "302": 1,
+      "307": 2,
+      "401": 4,
+      "403": 3,
+      "404": 1,
+      "504": 1,
+      "incomplete": 5
+    },
+    "assemblyai": {},
+    "sightengine": {},
+    "hf": {},
+    "hive": {}
+  },
+  "caps": {
+    "gemini": 25,
+    "openrouter": 2,
+    "facts": 20,
+    "news": 110,
+    "public_fetch": 200,
+    "assemblyai": 0,
+    "sightengine": 0,
+    "hf": 0,
+    "hive": 0
+  },
+  "openrouter_conservative_prior": 46,
+  "openrouter_this_round": 2,
+  "openrouter_conservative_after": 48,
+  "openrouter_ceiling": 48,
+  "model_provider_status_counts_by_role": {
+    "search_hints_only": {
+      "gemini:not_requested": 20,
+      "openrouter:not_requested": 20
+    },
+    "research_planning_only": {
+      "gemini:success": 14,
+      "gemini:timeout": 1,
+      "openrouter:success": 1,
+      "gemini:unavailable": 1,
+      "openrouter:rate_limited": 1
+    },
+    "source_comparison": {
+      "gemini:not_requested": 16,
+      "openrouter:not_requested": 19,
+      "gemini:success": 3,
+      "gemini:unavailable": 1,
+      "openrouter:error": 1
+    }
+  },
+  "observed_models_by_role": {
+    "search_hints_only": [],
+    "research_planning_only": [
+      "gemini:gemini-3.1-flash-lite",
+      "openrouter:liquid/lfm-2.5-2.6b:free"
+    ],
+    "source_comparison": [
+      "gemini:gemini-3.1-flash-lite"
+    ]
+  },
+  "configured_gemini_model": "gemini-3.1-flash-lite",
+  "configured_openrouter_model": "openrouter/free",
+  "media_revalidated": false,
+  "artifact_sha256": {
+    "frozen-source.json": "b0205e592a0d69d39ab62ca58c274ff9fcfc3c7516b1e4896e74c10eb57fb2fb",
+    "new-eight.labels.predeclared.json": "cb4305e7a122f6432c41c778ad864a02ce9d12da0dad4c5073ad73ea5e8383ef",
+    "records/round-manifest.json": "c596098f8ad793ff811e5933cbf1b7b2454ba637e2fffee64b0ad6e9a2745c28",
+    "records/provider-transport.json": "30d3ae90fe991130fdad4273b8a54afc6958961989c81287597a245f364e87ea",
+    "records/http-boundaries.json": "2d664aad0cb757b08982edd741b53b2b62804c3948feb423171bd7f04114e96f"
+  },
+  "record_sha256": {
+    "live-dev12-who_true.json": "0542eb669bccea44aed5f17ef9e773c9b9f27d55338ae9d81646be44468fd03f",
+    "live-dev12-worldcup_false.json": "d151e8ec62d5a2939de2d17624bbccbae2d69d409359dd8ad6e2b64c6dcdf8ae",
+    "live-dev12-copernicus_false.json": "87670840a75e9a37eac7f66ade6ab07408afc702ec6be08ce0f8ff5313324ea6",
+    "live-new8-eca_age.json": "449fe269d60db693f6e495c2931d4ea1018c139e7b9db757884719fa19dbff7b",
+    "live-new8-ldb_age.json": "432c623450a86c8862e5fc188facd409058a57f066f03197a5138ecacbcc03d6",
+    "live-dev12-copom_false.json": "3040734d3409522798a031cd863d03d95b76c0c669f507d72087321bc5c6e635",
+    "live-dev12-lei_false.json": "692f2a00fc01505475fb9c6865574645d2bbc9323a935c3330ad93c3e112a32a",
+    "live-dev12-webb_true.json": "9186138ce058b6dd2c1fef53f6b4eb6ac3271a367f4a19693cbafe158f18b14d",
+    "live-new8-euro_winner.json": "6a15cc7250f69712a2f05c2e7593fb4f9282eb6d4415d614ac4e3e8a1c1526ef",
+    "live-new8-apollo_landing.json": "d6e39c3989a9d768fec56937b34e8ae8879a8dbd033794759c6d611c5ad1c764",
+    "live-dev12-artemis_false.json": "58e38707b17d97ad38ac9ccd4c31a06148fa3d8bce67003fa06ce389fecd2bf9",
+    "live-dev12-queen_true.json": "b33629b5dd05d05a687d3e4ec07bc77806e8e845824c8043b21a3d602c26aa6b",
+    "live-dev12-ibge_true.json": "f188dd967169575b36fa5fbcc3d6c7d23cb7a6574e8a44fd6ed7989f7179980e",
+    "live-new8-udhr_date.json": "b1833c1956d097cae21f21a6311a429395d6d594e73882c4666434fdba6966e0",
+    "live-new8-marco_civil_date.json": "572064c67e6041b1bec065ab05ff99485f2e56784d40ece1c43284c719d961ce",
+    "live-dev12-queen_false.json": "ef1808c16083dad096d111e671b0be81935422ef3704c40742d5dc7b7347430e",
+    "live-dev12-dart_true.json": "d78c3c450fa15f44b989113cfd49d1de1add2cbc21781bd5fabc40ee64c2968f",
+    "live-dev12-constitution_true.json": "8791197ed85cd8b997309902d65e9bdc20007784dc11fba07d7d31b35869161f",
+    "live-new8-smallpox_assembly.json": "9e4085f1c92ea7a8165146f0a5933110c36acb84d462c0a41d67885790c718d5",
+    "live-new8-beijing_host.json": "777272f066012babbbf9f919d340c933af12187643c2270733f70eeaa5dec606"
+  },
+  "cases": [
+    {
+      "id": "dev12-who_true",
+      "cohort": "development_known",
+      "expected": "supported",
+      "actual": "unverified",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 32.972,
+      "submission": "browser_form_root_attested",
+      "http_status": null,
+      "comparison_status": "not_requested",
+      "comparison_method": "not_requested",
+      "eligible_family_count": 1,
+      "research_status": "success",
+      "model_roles": {
+        "search_hints_only": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only",
+            "free_only": true
+          }
+        },
+        "research_planning_only": {
+          "gemini": {
+            "status": "success",
+            "model_used": "gemini-3.1-flash-lite"
+          }
+        },
+        "source_comparison": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant",
+            "free_only": true
+          }
+        }
+      },
+      "accepted_source_urls": [],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 1,
+        "timeout": 0,
+        "blocked_or_unavailable": 3,
+        "error": 0
+      }
+    },
+    {
+      "id": "dev12-worldcup_false",
+      "cohort": "development_known",
+      "expected": "refuted",
+      "actual": "refuted",
+      "outcome": "correct",
+      "elapsed_seconds": 33.457,
+      "submission": "browser_form_root_attested",
+      "http_status": null,
+      "comparison_status": "success",
+      "comparison_method": "literal_typed_rules_v1",
+      "eligible_family_count": 2,
+      "research_status": "success",
+      "model_roles": {
+        "search_hints_only": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only",
+            "free_only": true
+          }
+        },
+        "research_planning_only": {
+          "gemini": {
+            "status": "success",
+            "model_used": "gemini-3.1-flash-lite"
+          }
+        },
+        "source_comparison": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant",
+            "free_only": true
+          }
+        }
+      },
+      "accepted_source_urls": [
+        "https://g1.globo.com/sc/santa-catarina/noticia/2014/07/alemanha-vence-copa-do-mundo-2014-e-e-tetracampea.html",
+        "https://www.bbc.com/mundo/ultimas_noticias/2014/07/140713_ultnot_brasil2014_alemania_campeon_wc2014jgc"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 2,
+        "error": 0
+      }
+    },
+    {
+      "id": "dev12-copernicus_false",
+      "cohort": "development_known",
+      "expected": "refuted",
+      "actual": "refuted",
+      "outcome": "correct",
+      "elapsed_seconds": 19.442,
+      "submission": "browser_form_root_attested",
+      "http_status": null,
+      "comparison_status": "success",
+      "comparison_method": "model_source_review_v2",
+      "eligible_family_count": 1,
+      "research_status": "not_requested",
+      "model_roles": {
+        "search_hints_only": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only",
+            "free_only": true
+          }
+        },
+        "research_planning_only": {},
+        "source_comparison": {
+          "gemini": {
+            "status": "success",
+            "model_used": "gemini-3.1-flash-lite",
+            "decision_role": "grounded_comparison_assistant",
+            "review_protocol": "claim_source_review_v2",
+            "complete_source_review": true,
+            "expected_source_pair_count": 1,
+            "reviewed_source_pair_count": 1
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant",
+            "free_only": true
+          }
+        }
+      },
+      "accepted_source_urls": [
+        "https://climate.copernicus.eu/copernicus-2024-first-year-exceed-15degc-above-pre-industrial-level"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 4,
+        "error": 0
+      }
+    },
+    {
+      "id": "new8-eca_age",
+      "cohort": "new_text_eight",
+      "expected": "supported",
+      "actual": "unverified",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 36.547,
+      "submission": "browser_form_root_attested",
+      "http_status": null,
+      "comparison_status": "not_requested",
+      "comparison_method": "not_requested",
+      "eligible_family_count": 0,
+      "research_status": "success",
+      "model_roles": {
+        "search_hints_only": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only",
+            "free_only": true
+          }
+        },
+        "research_planning_only": {
+          "gemini": {
+            "status": "success",
+            "model_used": "gemini-3.1-flash-lite"
+          }
+        },
+        "source_comparison": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant",
+            "free_only": true
+          }
+        }
+      },
+      "accepted_source_urls": [],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 5,
+        "error": 0
+      }
+    },
+    {
+      "id": "new8-ldb_age",
+      "cohort": "new_text_eight",
+      "expected": "supported",
+      "actual": "unverified",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 31.53,
+      "submission": "ordinary_local_http",
+      "http_status": 200,
+      "comparison_status": "not_requested",
+      "comparison_method": "not_requested",
+      "eligible_family_count": 0,
+      "research_status": "success",
+      "model_roles": {
+        "search_hints_only": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only",
+            "free_only": true
+          }
+        },
+        "research_planning_only": {
+          "gemini": {
+            "status": "success",
+            "model_used": "gemini-3.1-flash-lite"
+          }
+        },
+        "source_comparison": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant",
+            "free_only": true
+          }
+        }
+      },
+      "accepted_source_urls": [],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 5,
+        "error": 0
+      }
+    },
+    {
+      "id": "dev12-copom_false",
+      "cohort": "development_known",
+      "expected": "refuted",
+      "actual": "refuted",
+      "outcome": "correct",
+      "elapsed_seconds": 14.943,
+      "submission": "ordinary_local_http",
+      "http_status": 200,
+      "comparison_status": "success",
+      "comparison_method": "literal_typed_rules_v1",
+      "eligible_family_count": 1,
+      "research_status": "not_requested",
+      "model_roles": {
+        "search_hints_only": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only",
+            "free_only": true
+          }
+        },
+        "research_planning_only": {},
+        "source_comparison": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant",
+            "free_only": true
+          }
+        }
+      },
+      "accepted_source_urls": [
+        "https://www.bcb.gov.br/api/servico/sitebcb/copom/comunicados_detalhes?nro_reuniao=265"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 1,
+        "error": 0
+      }
+    },
+    {
+      "id": "dev12-lei_false",
+      "cohort": "development_known",
+      "expected": "refuted",
+      "actual": "refuted",
+      "outcome": "correct",
+      "elapsed_seconds": 8.029,
+      "submission": "ordinary_local_http",
+      "http_status": 200,
+      "comparison_status": "success",
+      "comparison_method": "literal_typed_rules_v1",
+      "eligible_family_count": 1,
+      "research_status": "not_requested",
+      "model_roles": {
+        "search_hints_only": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only",
+            "free_only": true
+          }
+        },
+        "research_planning_only": {},
+        "source_comparison": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant",
+            "free_only": true
+          }
+        }
+      },
+      "accepted_source_urls": [
+        "https://www2.camara.leg.br/legin/fed/leimp/1824-1899/lei-3353-13-maio-1888-533138-publicacaooriginal-16269-pl.html"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 1,
+        "timeout": 0,
+        "blocked_or_unavailable": 3,
+        "error": 0
+      }
+    },
+    {
+      "id": "dev12-webb_true",
+      "cohort": "development_known",
+      "expected": "supported",
+      "actual": "unverified",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 20.122,
+      "submission": "ordinary_local_http",
+      "http_status": 200,
+      "comparison_status": "not_requested",
+      "comparison_method": "not_requested",
+      "eligible_family_count": 1,
+      "research_status": "success",
+      "model_roles": {
+        "search_hints_only": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only",
+            "free_only": true
+          }
+        },
+        "research_planning_only": {
+          "gemini": {
+            "status": "success",
+            "model_used": "gemini-3.1-flash-lite"
+          }
+        },
+        "source_comparison": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant",
+            "free_only": true
+          }
+        }
+      },
+      "accepted_source_urls": [],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 4,
+        "error": 0
+      }
+    },
+    {
+      "id": "new8-euro_winner",
+      "cohort": "new_text_eight",
+      "expected": "refuted",
+      "actual": "unverified",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 55.696,
+      "submission": "ordinary_local_http",
+      "http_status": 200,
+      "comparison_status": "not_requested",
+      "comparison_method": "not_requested",
+      "eligible_family_count": 0,
+      "research_status": "success",
+      "model_roles": {
+        "search_hints_only": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only",
+            "free_only": true
+          }
+        },
+        "research_planning_only": {
+          "gemini": {
+            "status": "timeout"
+          },
+          "openrouter": {
+            "status": "success",
+            "model_used": "liquid/lfm-2.5-2.6b:free"
+          }
+        },
+        "source_comparison": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant",
+            "free_only": true
+          }
+        }
+      },
+      "accepted_source_urls": [],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 4,
+        "error": 0
+      }
+    },
+    {
+      "id": "new8-apollo_landing",
+      "cohort": "new_text_eight",
+      "expected": "refuted",
+      "actual": "unverified",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 43.59,
+      "submission": "ordinary_local_http",
+      "http_status": 200,
+      "comparison_status": "not_requested",
+      "comparison_method": "not_requested",
+      "eligible_family_count": 0,
+      "research_status": "success",
+      "model_roles": {
+        "search_hints_only": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only",
+            "free_only": true
+          }
+        },
+        "research_planning_only": {
+          "gemini": {
+            "status": "success",
+            "model_used": "gemini-3.1-flash-lite"
+          }
+        },
+        "source_comparison": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant",
+            "free_only": true
+          }
+        }
+      },
+      "accepted_source_urls": [],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 4,
+        "error": 0
+      }
+    },
+    {
+      "id": "dev12-artemis_false",
+      "cohort": "development_known",
+      "expected": "refuted",
+      "actual": "unverified",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 27.778,
+      "submission": "ordinary_local_http",
+      "http_status": 200,
+      "comparison_status": "not_requested",
+      "comparison_method": "not_requested",
+      "eligible_family_count": 0,
+      "research_status": "success",
+      "model_roles": {
+        "search_hints_only": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only",
+            "free_only": true
+          }
+        },
+        "research_planning_only": {
+          "gemini": {
+            "status": "success",
+            "model_used": "gemini-3.1-flash-lite"
+          }
+        },
+        "source_comparison": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant",
+            "free_only": true
+          }
+        }
+      },
+      "accepted_source_urls": [],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 5,
+        "error": 0
+      }
+    },
+    {
+      "id": "dev12-queen_true",
+      "cohort": "development_known",
+      "expected": "supported",
+      "actual": "unverified",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 16.523,
+      "submission": "ordinary_local_http",
+      "http_status": 200,
+      "comparison_status": "not_requested",
+      "comparison_method": "not_requested",
+      "eligible_family_count": 1,
+      "research_status": "success",
+      "model_roles": {
+        "search_hints_only": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only",
+            "free_only": true
+          }
+        },
+        "research_planning_only": {
+          "gemini": {
+            "status": "success",
+            "model_used": "gemini-3.1-flash-lite"
+          }
+        },
+        "source_comparison": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant",
+            "free_only": true
+          }
+        }
+      },
+      "accepted_source_urls": [],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 6,
+        "error": 0
+      }
+    },
+    {
+      "id": "dev12-ibge_true",
+      "cohort": "development_known",
+      "expected": "supported",
+      "actual": "unverified",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 19.881,
+      "submission": "ordinary_local_http",
+      "http_status": 200,
+      "comparison_status": "error",
+      "comparison_method": "model_source_review_v2",
+      "eligible_family_count": 2,
+      "research_status": "not_requested",
+      "model_roles": {
+        "search_hints_only": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only",
+            "free_only": true
+          }
+        },
+        "research_planning_only": {},
+        "source_comparison": {
+          "gemini": {
+            "status": "unavailable",
+            "decision_role": "grounded_comparison_assistant"
+          },
+          "openrouter": {
+            "status": "error",
+            "decision_role": "grounded_comparison_assistant",
+            "free_only": true
+          }
+        }
+      },
+      "accepted_source_urls": [],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 2,
+        "error": 0
+      }
+    },
+    {
+      "id": "new8-udhr_date",
+      "cohort": "new_text_eight",
+      "expected": "refuted",
+      "actual": "unverified",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 39.062,
+      "submission": "ordinary_local_http",
+      "http_status": 200,
+      "comparison_status": "not_requested",
+      "comparison_method": "not_requested",
+      "eligible_family_count": 0,
+      "research_status": "success",
+      "model_roles": {
+        "search_hints_only": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only",
+            "free_only": true
+          }
+        },
+        "research_planning_only": {
+          "gemini": {
+            "status": "success",
+            "model_used": "gemini-3.1-flash-lite"
+          }
+        },
+        "source_comparison": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant",
+            "free_only": true
+          }
+        }
+      },
+      "accepted_source_urls": [],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 4,
+        "error": 0
+      }
+    },
+    {
+      "id": "new8-marco_civil_date",
+      "cohort": "new_text_eight",
+      "expected": "refuted",
+      "actual": "unverified",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 27.209,
+      "submission": "ordinary_local_http",
+      "http_status": 200,
+      "comparison_status": "not_requested",
+      "comparison_method": "not_requested",
+      "eligible_family_count": 0,
+      "research_status": "success",
+      "model_roles": {
+        "search_hints_only": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only",
+            "free_only": true
+          }
+        },
+        "research_planning_only": {
+          "gemini": {
+            "status": "success",
+            "model_used": "gemini-3.1-flash-lite"
+          }
+        },
+        "source_comparison": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant",
+            "free_only": true
+          }
+        }
+      },
+      "accepted_source_urls": [],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 2,
+        "error": 0
+      }
+    },
+    {
+      "id": "dev12-queen_false",
+      "cohort": "development_known",
+      "expected": "refuted",
+      "actual": "refuted",
+      "outcome": "correct",
+      "elapsed_seconds": 15.555,
+      "submission": "ordinary_local_http",
+      "http_status": 200,
+      "comparison_status": "success",
+      "comparison_method": "model_source_review_v2",
+      "eligible_family_count": 2,
+      "research_status": "rate_limited",
+      "model_roles": {
+        "search_hints_only": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only",
+            "free_only": true
+          }
+        },
+        "research_planning_only": {
+          "gemini": {
+            "status": "unavailable"
+          },
+          "openrouter": {
+            "status": "rate_limited"
+          }
+        },
+        "source_comparison": {
+          "gemini": {
+            "status": "success",
+            "model_used": "gemini-3.1-flash-lite",
+            "decision_role": "grounded_comparison_assistant",
+            "review_protocol": "claim_source_review_v2",
+            "complete_source_review": true,
+            "expected_source_pair_count": 2,
+            "reviewed_source_pair_count": 2
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant",
+            "free_only": true
+          }
+        }
+      },
+      "accepted_source_urls": [
+        "https://agenciabrasil.ebc.com.br/internacional/noticia/2022-09/rainha-elizabeth-ii-morre-aos-96-anos-na-escocia",
+        "https://g1.globo.com/mundo/noticia/2022/09/08/rainha-elizabeth-ii-morre-aos-96-anos.ghtml"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 3,
+        "error": 0
+      }
+    },
+    {
+      "id": "dev12-dart_true",
+      "cohort": "development_known",
+      "expected": "supported",
+      "actual": "unverified",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 24.786,
+      "submission": "ordinary_local_http",
+      "http_status": 200,
+      "comparison_status": "not_requested",
+      "comparison_method": "not_requested",
+      "eligible_family_count": 0,
+      "research_status": "success",
+      "model_roles": {
+        "search_hints_only": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only",
+            "free_only": true
+          }
+        },
+        "research_planning_only": {
+          "gemini": {
+            "status": "success",
+            "model_used": "gemini-3.1-flash-lite"
+          }
+        },
+        "source_comparison": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant",
+            "free_only": true
+          }
+        }
+      },
+      "accepted_source_urls": [],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 3,
+        "error": 0
+      }
+    },
+    {
+      "id": "dev12-constitution_true",
+      "cohort": "development_known",
+      "expected": "supported",
+      "actual": "supported",
+      "outcome": "correct",
+      "elapsed_seconds": 30.135,
+      "submission": "ordinary_local_http",
+      "http_status": 200,
+      "comparison_status": "success",
+      "comparison_method": "model_source_review_v2",
+      "eligible_family_count": 2,
+      "research_status": "success",
+      "model_roles": {
+        "search_hints_only": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only",
+            "free_only": true
+          }
+        },
+        "research_planning_only": {
+          "gemini": {
+            "status": "success",
+            "model_used": "gemini-3.1-flash-lite"
+          }
+        },
+        "source_comparison": {
+          "gemini": {
+            "status": "success",
+            "model_used": "gemini-3.1-flash-lite",
+            "decision_role": "grounded_comparison_assistant",
+            "review_protocol": "claim_source_review_v2",
+            "complete_source_review": true,
+            "expected_source_pair_count": 2,
+            "reviewed_source_pair_count": 2
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant",
+            "free_only": true
+          }
+        }
+      },
+      "accepted_source_urls": [
+        "https://agenciabrasil.ebc.com.br/politica/noticia/2023-10/marcada-pela-participacao-popular-constituicao-completa-35-anos",
+        "https://brasilescola.uol.com.br/historiab/constituicao-1988.htm"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 2,
+        "error": 0
+      }
+    },
+    {
+      "id": "new8-smallpox_assembly",
+      "cohort": "new_text_eight",
+      "expected": "supported",
+      "actual": "unverified",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 15.584,
+      "submission": "ordinary_local_http",
+      "http_status": 200,
+      "comparison_status": "not_requested",
+      "comparison_method": "not_requested",
+      "eligible_family_count": 1,
+      "research_status": "partial",
+      "model_roles": {
+        "search_hints_only": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only",
+            "free_only": true
+          }
+        },
+        "research_planning_only": {
+          "gemini": {
+            "status": "success",
+            "model_used": "gemini-3.1-flash-lite"
+          }
+        },
+        "source_comparison": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant",
+            "free_only": true
+          }
+        }
+      },
+      "accepted_source_urls": [],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 1,
+        "timeout": 0,
+        "blocked_or_unavailable": 8,
+        "error": 0
+      }
+    },
+    {
+      "id": "new8-beijing_host",
+      "cohort": "new_text_eight",
+      "expected": "supported",
+      "actual": "unverified",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 23.302,
+      "submission": "ordinary_local_http",
+      "http_status": 200,
+      "comparison_status": "not_requested",
+      "comparison_method": "not_requested",
+      "eligible_family_count": 0,
+      "research_status": "partial",
+      "model_roles": {
+        "search_hints_only": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "search_hints_only",
+            "free_only": true
+          }
+        },
+        "research_planning_only": {
+          "gemini": {
+            "status": "success",
+            "model_used": "gemini-3.1-flash-lite"
+          }
+        },
+        "source_comparison": {
+          "gemini": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant"
+          },
+          "openrouter": {
+            "status": "not_requested",
+            "decision_role": "grounded_comparison_assistant",
+            "free_only": true
+          }
+        }
+      },
+      "accepted_source_urls": [],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 4,
+        "error": 0
+      }
+    }
+  ],
+  "limits": [
+    "Known12 are reused controls, not independent blind holdout.",
+    "New8 were predeclared before outputs, but are small curated development challenges.",
+    "Transport/model success is not an accuracy case.",
+    "Abstentions and execution errors stay in the accuracy denominator.",
+    "No media or production accuracy inferred from textual controls.",
+    "UI labels require root eyewitness declaration, not absence of HTTP marker alone."
+  ]
+}
