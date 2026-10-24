@@ -1,0 +1,118 @@
+{
+  "scope": "Retrospective diagnostic only, not a new accuracy measurement",
+  "common_extracted_body_snapshots": [
+    {"case": "dev12-queen_true", "source": "G1", "same_sentences_roles_title_and_url": true, "sha256": "84979567af066ac80f25e3b832f4b3473852e2d90c04d224c8856c87cf742cc9"},
+    {"case": "dev12-ibge_true", "source": "G1", "same_sentences_roles_title_and_url": true, "sha256": "0c46fc6a6188b5bdbdc71f4e6a2e05befbd9e9277ce3e24fab045940e3fbcdc9"},
+    {"case": "dev12-ibge_true", "source": "CNN Brasil", "same_sentences_roles_title_and_url": true, "sha256": "56cf101ef029038b0b705e15edc517ce1b59bae7b8bf2925e687f2a702d75663"},
+    {"case": "dev12-webb_true", "source": "Brasil Escola", "same_sentences_roles_title_and_url": true, "sha256": "8d3bef7449095596206ef90666bb77a4dbb50f91ef64ab906bdd95f4e46ffd7c"}
+  ],
+  "earlier_measured_commit": "ede5759",
+  "later_measured_commit": "9cfcbe8",
+  "same_twelve": {
+    "before_correct": 9,
+    "after_correct": 6,
+    "lost_correct": 4,
+    "gained_correct": 1,
+    "before_fraction": 0.75,
+    "after_fraction": 0.5
+  },
+  "mixed_twenty_fraction": 0.3,
+  "new_eight_correct": 0,
+  "new_eight_total": 8,
+  "decision_and_reader_modules_between_measured_versions": {
+    "backend/app/services/source_corroboration.py": {
+      "identical_between_measured_commits": true,
+      "sha256": "717f5f8f0f7402ffcb548854009ce1f0868d5369892e921a872cf66153e43da1"
+    },
+    "backend/app/services/source_attribution.py": {
+      "identical_between_measured_commits": true,
+      "sha256": "e8e58956a33f1368eb0fb873f010f17a82bbf6be730819b1e93962d464d690b2"
+    },
+    "backend/app/services/source_decision.py": {
+      "identical_between_measured_commits": true,
+      "sha256": "2b393a2d7d18533bf24b7fec7a2dc3e197b88c362664f9f50a116decbf384115"
+    },
+    "backend/app/services/source_relations.py": {
+      "identical_between_measured_commits": true,
+      "sha256": "3da35e37ff27f38c13fb7401f31e3b7788d5422201e47ee8a750bc974f3601de"
+    }
+  },
+  "changed_controls": [
+    {
+      "id": "dev12-who_true",
+      "before": "supported",
+      "after": "unverified",
+      "eligible_families_after": 1,
+      "comparison_status_after": "not_requested",
+      "provider_sends_after": [
+        {
+          "provider": "gemini",
+          "http_status": 200
+        }
+      ]
+    },
+    {
+      "id": "dev12-worldcup_false",
+      "before": "unverified",
+      "after": "refuted",
+      "eligible_families_after": 2,
+      "comparison_status_after": "success",
+      "provider_sends_after": [
+        {
+          "provider": "gemini",
+          "http_status": 200
+        }
+      ]
+    },
+    {
+      "id": "dev12-webb_true",
+      "before": "supported",
+      "after": "unverified",
+      "eligible_families_after": 1,
+      "comparison_status_after": "not_requested",
+      "provider_sends_after": [
+        {
+          "provider": "gemini",
+          "http_status": 200
+        }
+      ]
+    },
+    {
+      "id": "dev12-queen_true",
+      "before": "supported",
+      "after": "unverified",
+      "eligible_families_after": 1,
+      "comparison_status_after": "not_requested",
+      "provider_sends_after": [
+        {
+          "provider": "gemini",
+          "http_status": 200
+        }
+      ]
+    },
+    {
+      "id": "dev12-ibge_true",
+      "before": "supported",
+      "after": "unverified",
+      "eligible_families_after": 2,
+      "comparison_status_after": "error",
+      "provider_sends_after": [
+        {
+          "provider": "gemini",
+          "http_status": 503
+        },
+        {
+          "provider": "openrouter",
+          "http_status": 404
+        }
+      ]
+    }
+  ],
+  "provider_event_mapping": "Twenty manifest cases in declared submission order, one facts request per case; provider events partitioned at those twenty facts reservations. No cross-case analysis concurrency.",
+  "limits": [
+    "Search/planning changed and public retrieval is nondeterministic; this is not a controlled attribution of every change to code.",
+    "Missing sources in later selection are not proof that they ceased to exist.",
+    "HTTP200 is not proof of a correct factual judgment.",
+    "New local corrections have not been remotely remeasured."
+  ]
+}

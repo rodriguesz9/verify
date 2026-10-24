@@ -17,6 +17,8 @@ from app.services.source_corroboration import (
     source_identity, _gemini_schema, _tokens, _names, _quantities, _dates_covered,
 )
 from app.services.source_relations import lexical_text, WORD_GROUPS
+from app.services.source_readability import known_unsupported_lead, reader_capabilities
+from app.services.provider_diagnostics import http_failure_metadata
 
 MAX_QUERIES = 2
 MAX_LEADS = 24
@@ -45,6 +47,9 @@ INSTRUCTION = (
     "sustentar OU contradizer a afirmação original, incluindo o período correto. "
     "Pesquisas anteriores podem conter a data/valor falso da alegação; não os repita obrigatoriamente. "
     "Priorize documentos originais e notícias retrospectivas com o resultado, não previsões/anúncios prévios. "
+    "reader_capabilities descreve o leitor real: apenas HTML/texto estático, sem JavaScript nem extração de PDF. "
+    "Procure uma página HTML com o corpo completo, não apenas um catálogo que aponta para PDF, vídeo ou áudio. "
+    "Não prometa ler formatos indisponíveis nem use nome do arquivo, título ou data da URL como evidência. "
     "Como ainda faltam fontes por afirmação, diversifique as consultas: reserve ao menos uma para source_group editorial. "
     "Não gaste duas consultas apenas em primary, que podem retornar o mesmo portal dinâmico sem texto. "
     "Grupos diferentes não provam independência: o servidor ainda confere corpos e famílias reais. "
@@ -82,7 +87,8 @@ def _lead_map(leads, source_url):
         if not isinstance(lead, dict):
             continue
         identity = source_identity(lead.get("link") or lead.get("url"))
-        if not identity or identity["url"] in seen or (submitted and identity["publisher_family"] == submitted["publisher_family"]):
+        if (not identity or known_unsupported_lead(identity["url"]) or identity["url"] in seen
+                or (submitted and identity["publisher_family"] == submitted["publisher_family"])):
             continue
         seen.add(identity["url"])
         result[f"l{len(result) + 1}"] = {"link": identity["url"], "title": str(lead.get("title") or "")[:300]}
@@ -199,7 +205,8 @@ async def plan_source_research(text, leads, documents, selection_audit, source_u
                           "near_match_gaps": _near_match_gaps(text, excerpts)})
         if len(summaries) == 3:
             break
-    prompt = json.dumps({"original_claim": text, "candidate_leads": [{"lead_id": key, **value} for key, value in known.items()],
+    prompt = json.dumps({"original_claim": text, "reader_capabilities": reader_capabilities(),
+        "candidate_leads": [{"lead_id": key, **value} for key, value in known.items()],
         "documents_already_read": summaries,
         "selection_limits": {"eligible_family_count": selection_audit.get("eligible_family_count", 0),
                              "claims_needing_more_evidence": selection_audit.get("claims_needing_more_evidence", []),
@@ -225,7 +232,7 @@ async def plan_source_research(text, leads, documents, selection_audit, source_u
             raw = await asyncio.wait_for(operation, timeout=remaining * (2 / 3) if index + 1 < len(providers) else remaining)
             coverage["provider_coverage"][name] = {"status": "success", "model_used": getattr(raw, "model_name", None)}
         except (gemini_client.GeminiError, openrouter_service.OpenRouterError) as exc:
-            coverage["provider_coverage"][name] = {"status": exc.status}
+            coverage["provider_coverage"][name] = {"status": exc.status, **http_failure_metadata(exc)}
             coverage["status"] = exc.status
             continue
         except TimeoutError:

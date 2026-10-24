@@ -10,8 +10,10 @@ from datetime import datetime, timezone
 import hashlib
 import ipaddress
 import json
+import math
 import os
 import re
+import random
 from decimal import Decimal, InvalidOperation
 from urllib.parse import urlsplit, urlunsplit
 
@@ -24,6 +26,7 @@ from app.services.launch_body_dates import launch_body_temporal_anchor, launch_d
 from app.services.competition_relations import is_competition_outcome_claim, competition_outcome_relation, parse_competition_claim
 from app.services.typed_source_comparison import typed_review_matrix, COMPARISON_METHOD as TYPED_COMPARISON_METHOD
 from app.services.classification_body_dates import classification_body_binding
+from app.services.provider_diagnostics import http_failure_metadata
 from app.services.legal_declaration_relations import (
     parse_legal_declaration_claim, parse_legal_article_declaration,
     legal_declaration_relation, legal_declaration_has_unsafe_scope,
@@ -1599,6 +1602,43 @@ def _comparison_request(request):
     return json.dumps(request, ensure_ascii=False, separators=(",", ":")), schema
 
 
+async def _gemini_comparison(prompt, response_schema, coverage, timeout_seconds):
+    """One scoped recovery for an explicit HTTP503, inside the same deadline.
+
+    The core client/other modalities keep their old no-implicit-retry behavior.
+    Each physical send still reserves the normal admission/QA budget. Never
+    repeat 429, auth, ambiguous timeouts, malformed or valid insufficient output.
+    No provider/model rotation and no repaired factual judgment.
+    """
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout_seconds
+    for attempt in range(2):
+        remaining = deadline - loop.time()
+        if remaining <= 0:
+            raise TimeoutError
+        try:
+            return await gemini_client.generate_text(
+                prompt, system_instruction=SYSTEM_INSTRUCTION, temperature=0, max_tokens=2048,
+                response_schema=_gemini_schema(response_schema), timeout_seconds=remaining)
+        except gemini_client.GeminiError as error:
+            retry = (attempt == 0 and error.status == "unavailable"
+                     and type(error.http_status) is int and error.http_status == 503
+                     and not os.getenv("GEMINI_FALLBACK_MODELS", "").strip()
+                     and os.getenv("SOURCE_CROSSCHECK_TRANSIENT_RETRY_ENABLED", "true").strip().lower() == "true")
+            delay = random.uniform(1.0, 2.0) if retry else 0
+            requested_delay = getattr(error, "retry_after_seconds", None)
+            if requested_delay is not None:
+                if (type(requested_delay) not in {int, float} or not math.isfinite(requested_delay)
+                        or not 0 <= requested_delay <= 5):
+                    raise
+                delay = max(delay, requested_delay)
+            if not retry or deadline - loop.time() < delay + 5:
+                raise
+            coverage.update(prior_http_status=503)
+            await asyncio.sleep(delay)
+            coverage.update(transient_retry_count=1)
+
+
 async def _compare(prompt, coverage, *, timeout_seconds=None):
     # Shared coverage preserves which provider was in flight at whole deadline.
     primary = os.getenv("SOURCE_CROSSCHECK_PRIMARY_PROVIDER", "gemini").strip().lower()
@@ -1627,9 +1667,7 @@ async def _compare(prompt, coverage, *, timeout_seconds=None):
         coverage[provider]["status"] = "pending"
         try:
             if provider == "gemini":
-                operation = gemini_client.generate_text(prompt, system_instruction=SYSTEM_INSTRUCTION,
-                    temperature=0, max_tokens=2048, response_schema=_gemini_schema(response_schema),
-                    timeout_seconds=attempt_timeout)
+                operation = _gemini_comparison(prompt, response_schema, coverage[provider], attempt_timeout)
             else:
                 operation = openrouter_service.generate(prompt, system_instruction=SYSTEM_INSTRUCTION,
                     temperature=0, max_tokens=4096, response_format={**RESPONSE_FORMAT,
@@ -1658,7 +1696,7 @@ async def _compare(prompt, coverage, *, timeout_seconds=None):
             coverage[provider]["status"] = status
         except (openrouter_service.OpenRouterError, gemini_client.GeminiError) as exc:
             status = exc.status
-            coverage[provider]["status"] = status
+            coverage[provider].update(status=status, **http_failure_metadata(exc))
             # Only unavailable transport/configuration presence can switch
             # provider. Malformed output/configuration never gets a repair or
             # repeated attempt to achieve a desired relation/verdict.

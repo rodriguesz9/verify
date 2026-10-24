@@ -28,8 +28,9 @@ _cooldown_until = 0.0
 
 
 class OpenRouterError(RuntimeError):
-    def __init__(self, status, reason):
+    def __init__(self, status, reason, http_status=None):
         self.status = status
+        self.http_status = http_status if type(http_status) is int and 400 <= http_status <= 599 else None
         super().__init__(reason)
 
 
@@ -144,11 +145,11 @@ async def _generate_with_models(models, messages, headers, temperature, max_toke
             if response.status_code in {402, 429}:
                 with _budget_lock:
                     _cooldown_until = time.monotonic() + 60
-                raise OpenRouterError("rate_limited", f"OpenRouter indisponível por saldo/quota (HTTP {response.status_code}).")
+                raise OpenRouterError("rate_limited", f"OpenRouter indisponível por saldo/quota (HTTP {response.status_code}).", response.status_code)
             if response.status_code in {404, 500, 502, 503, 504} and index + 1 < len(models):
                 continue
             if response.status_code != 200:
-                raise OpenRouterError("error", f"OpenRouter indisponível (HTTP {response.status_code}).")
+                raise OpenRouterError("error", f"OpenRouter indisponível (HTTP {response.status_code}).", response.status_code)
             try:
                 data = response.json()
                 choice = data["choices"][0]

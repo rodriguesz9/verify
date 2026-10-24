@@ -2,6 +2,8 @@
 import asyncio
 import base64
 from collections import deque
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 import json
 import math
 import os
@@ -19,8 +21,9 @@ class GeneratedText(str):
 
 
 class GeminiError(RuntimeError):
-    def __init__(self, reason, status="error", http_status=None):
+    def __init__(self, reason, status="error", http_status=None, retry_after_seconds=None):
         self.status, self.http_status = status, http_status
+        self.retry_after_seconds = retry_after_seconds
         super().__init__(reason)
 
 
@@ -230,6 +233,25 @@ async def generate_text(contents, *, system_instruction=None, temperature=.1, js
         raise GeminiError("Tempo limite do Gemini atingido.", "timeout") from None
 
 
+def _transient_retry_after(response):
+    """Internal 503 delay only. Invalid/unbounded hints prohibit early retry."""
+    value = response.headers.get("retry-after")
+    if value is None:
+        return None
+    value = value.strip()
+    if not value or len(value) > 128:
+        return math.inf
+    if re.fullmatch(r"[0-9]{1,9}", value):
+        return float(value)
+    try:
+        stamp = parsedate_to_datetime(value)
+        if stamp.tzinfo is not None:
+            return max(0.0, (stamp - datetime.now(timezone.utc)).total_seconds())
+    except (ValueError, TypeError, OverflowError, IndexError):
+        pass
+    return math.inf  # Internal sentinel, never report/log the raw header.
+
+
 async def _generate_text(contents, *, system_instruction=None, temperature=.1, json_output=True, max_tokens=2048, model_name=None, response_schema=None, deadline=60):
     loop = asyncio.get_running_loop()
     expires_at = loop.time() + deadline
@@ -293,7 +315,8 @@ async def _generate_text(contents, *, system_instruction=None, temperature=.1, j
                 if response.status_code == 429:
                     _pause_after_rate_limit(model, response)
                 status = "rate_limited" if response.status_code == 429 else "unavailable" if response.status_code == 503 else "error"
-                raise GeminiError(f"Gemini indisponível (HTTP {response.status_code}).", status, response.status_code)
+                raise GeminiError(f"Gemini indisponível (HTTP {response.status_code}).", status, response.status_code,
+                                  _transient_retry_after(response) if response.status_code == 503 else None)
             try:
                 candidates = response.json().get("candidates", [])
                 if not candidates or candidates[0].get("finishReason") not in {None, "STOP"}:

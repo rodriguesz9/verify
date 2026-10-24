@@ -17,6 +17,7 @@ import httpx
 
 from app.services.claim_policy import input_claims, normalize_claim
 from app.services.public_fetch import fetch_public_resource
+from app.services.source_readability import STATIC_CONTENT_TYPES, known_unsupported_lead
 
 ATTRIBUTION_VERSION = "literal_source_attribution_v1"
 MAX_SOURCES = 3
@@ -29,7 +30,7 @@ MAX_SOURCE_BYTES = 2 * 1024 * 1024
 MAX_REFERENCE_ANCHORS = 200
 MAX_REFERENCE_LEADS = 12
 FETCH_TIMEOUT_SECONDS = 8.0
-_ALLOWED_TYPES = {"text/html", "application/xhtml+xml", "text/plain"}
+_ALLOWED_TYPES = set(STATIC_CONTENT_TYPES)
 _HIDDEN_STYLE = re.compile(
     r"(?:^|;)\s*(?:display\s*:\s*none|visibility\s*:\s*(?:hidden|collapse))"
     r"\s*(?:!\s*important\s*)?(?:;|$)", re.I,
@@ -1181,13 +1182,15 @@ async def collect_source_attribution(text, queries, source_url=None, *, search_r
         families = usable_source_families(text, list(cache.values()), submitted)
         if submitted:
             families.add(source_family(submitted))
-        ranked_urls = sorted(urls, key=lambda url: (url not in cited_urls, *_retrieval_priority(text, urls[url], url)))
+        ranked_urls = sorted(urls, key=lambda url: (
+            known_unsupported_lead(url), url not in cited_urls, *_retrieval_priority(text, urls[url], url)))
         # Diversity must not promote an unrelated/unsupported lead ahead of
         # a readable subject match. Diversify within each quality band first,
         # then retain the other ranked candidates in that same band.
         bands = {}
         for candidate in ranked_urls:
-            band = (candidate not in cited_urls, _retrieval_priority(text, urls[candidate], candidate)[0])
+            band = (known_unsupported_lead(candidate), candidate not in cited_urls,
+                    _retrieval_priority(text, urls[candidate], candidate)[0])
             bands.setdefault(band, []).append(candidate)
         for band in sorted(bands):
             fresh = [candidate for candidate in bands[band] if candidate not in cache]
@@ -1272,6 +1275,8 @@ async def collect_source_attribution(text, queries, source_url=None, *, search_r
         "max_sources": source_limit, "max_source_bytes": MAX_SOURCE_BYTES, "candidate_url_count": len(urls),
         "selected_url_count": len(selected_urls), "omitted_url_count": len(urls) - len(selected_urls),
         "new_fetch_count": len(missing), "reused_fetch_count": len(selected_urls) - len(missing),
+        "known_unsupported_lead_count": sum(known_unsupported_lead(url) for url in urls),
+        "known_unsupported_selected_count": sum(known_unsupported_lead(url) for url in selected_urls),
         "cumulative_fetch_attempt_count": len(cache),
         "invalid_url_count": invalid_urls, "fetched_count": fetched_count,
         "discovery_only_resource_count": discovery_only_count,
