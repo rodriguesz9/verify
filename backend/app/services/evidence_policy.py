@@ -1,7 +1,7 @@
 """Conservative, reproducible decisions. Scores are NOT calibrated accuracy."""
 import math
 
-POLICY_VERSION = "2026-10-03.2"
+POLICY_VERSION = "2026-10-23.1"
 MEDIA_SIGNAL_VERSION = "1"
 DETECTOR_FIELDS = {"sightengine": "genai_probability", "huggingface": "ai_probability", "hive": "ai_generated_score"}
 AUDIO_DETECTOR_FIELDS = {"sightengine_audio": "ai_speech_score", "hive": "ai_generated_score"}
@@ -27,6 +27,12 @@ def _signal_score(result: dict, field: str) -> float | None:
             or result.get("decision_role") == "experimental_signal"):
         return None
     return detector_score(result, field)
+
+
+def _voting_eligible(result: dict) -> bool:
+    """Eligibility applies to both AI-generation and facial heads."""
+    return (isinstance(result, dict) and result.get("voting_eligible") is not False
+            and result.get("decision_role") != "experimental_signal")
 
 
 def media_signal(forensics: dict, kind: str = "image") -> dict:
@@ -100,27 +106,38 @@ def media_signal_explanation(signal: dict, kind: str = "image") -> str | None:
 def media_report(forensics: dict, kind: str = "image") -> dict:
     fields = AUDIO_DETECTOR_FIELDS if kind == "audio" else DETECTOR_FIELDS
     scores = {name: detector_score(forensics.get(name, {}), field) for name, field in fields.items()}
-    observed = {name: value for name, value in scores.items() if value is not None and forensics.get(name, {}).get("voting_eligible", True) is not False}
+    observed = {name: value for name, value in scores.items()
+                if value is not None and _voting_eligible(forensics.get(name, {}))}
     high = [name for name, value in observed.items() if value >= .8]
     low = [name for name, value in observed.items() if value <= .2]
     c2pa = forensics.get("c2pa", {})
     signed_ai = c2pa.get("validation_state") == "valid" and c2pa.get("generative_ai_flag") is True and kind != "audio"
     consensus_ai = len(high) >= 2 and not low
     ai = consensus_ai or signed_ai
-    dedicated_deep = detector_score(forensics.get("hive_deepfake", {}), "deepfake_score")
-    deep_name = "hive_deepfake" if dedicated_deep is not None else "hive"
     deep_scores = {"sightengine": detector_score(forensics.get("sightengine", {}), "deepfake_probability"),
-                   deep_name: dedicated_deep if dedicated_deep is not None else detector_score(forensics.get("hive", {}), "deepfake_score")}
+                   "hive": detector_score(forensics.get("hive", {}), "deepfake_score"),
+                   "hive_deepfake": detector_score(forensics.get("hive_deepfake", {}), "deepfake_score")}
     if kind == "audio":
         deep_scores = {}
-    deep_high = [name for name, value in deep_scores.items() if value is not None and value >= .8]
-    deep_low = [name for name, value in deep_scores.items() if value is not None and value <= .2]
+    # Pick the eligible facial head, not merely the first numeric response.
+    # A disabled/experimental dedicated head must not mask the usable base
+    # head. Both Hive heads remain ONE provider, even when both are usable.
+    hive_deep_name = next((name for name in ("hive_deepfake", "hive")
+                           if deep_scores.get(name) is not None
+                           and _voting_eligible(forensics.get(name, {}))), None)
+    deep_observed = {name: deep_scores[name] for name in ("sightengine", hive_deep_name)
+                     if name is not None and deep_scores.get(name) is not None
+                     and _voting_eligible(forensics.get(name, {}))}
+    deep_high = [name for name, value in deep_observed.items() if value >= .8]
+    deep_low = [name for name, value in deep_observed.items() if value <= .2]
     deepfake = len(deep_high) >= 2 and not deep_low
     coverage = {name: {"status": "success" if scores.get(name) is not None or deep_scores.get(name) is not None else result.get("status", "unavailable"),
                        "ai_score": scores.get(name), "deepfake_score": deep_scores.get(name),
-                       "reason": result.get("reason") or result.get("error"),
+                       "reason": result.get("reason") or result.get("error") or (
+                           "Camada experimental ou não habilitada para participar do veredito."
+                           if not _voting_eligible(result) else None),
                        "api_version": result.get("api_version"), "model_used": result.get("model_used"),
-                       "decision_role": result.get("decision_role"), "voting_eligible": result.get("voting_eligible", True),
+                       "decision_role": result.get("decision_role"), "voting_eligible": _voting_eligible(result),
                        "shared_request": result.get("shared_request")}
                 for name in [*fields, *(["hive_deepfake"] if kind != "audio" and "hive_deepfake" in forensics else [])]
                 for result in [forensics.get(name, {})]}
@@ -150,7 +167,7 @@ def media_report(forensics: dict, kind: str = "image") -> dict:
     disagreement = bool((low and high) or (deep_low and deep_high))
     if disagreement:
         limitations.append("Detectores discordaram: revisão humana necessária.")
-    if any(result.get("voting_eligible") is False for result in forensics.values() if isinstance(result, dict)):
+    if any(not _voting_eligible(result) for result in forensics.values() if isinstance(result, dict)):
         limitations.append("Detectores experimentais são exibidos para inspeção, mas não participam do veredito sem validação em conjunto independente.")
     if deepfake:
         explanation = "Há indícios concordantes de possível manipulação facial nos detectores disponíveis. Isso requer confirmação humana."

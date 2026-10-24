@@ -5,11 +5,40 @@ without requiring a disputed amount, day or polarity to appear in a result.
 No model, network, fixed answer or per-example URL is used here.
 """
 import re
+import unicodedata
 from app.services.source_relations import lexical_text, WORD_GROUPS
 
 _STOP = set("a o as os um uma uns umas de da do das dos em no na nos nas e ou que se ao aos com como para por foi são era é ser tem teve segundo informou disse sobre até após entre ainda já mais menos seu sua seus suas ele ela eles elas este esta isso isto divulgação relatório relação the of in on at and was is were has had to by her his it its an as from".split())
 _CALENDAR = set("janeiro fevereiro março abril maio junho julho agosto setembro outubro novembro dezembro january february march april may june july august september october november december jan feb mar apr jun jul aug sep sept oct nov dec".split())
 _DISPUTED = set("não nao nunca jamais nem not never abaixo acima above below aumentou reduziu elevou diminuiu subiu caiu cresceu diminuição aumento redução higher lower increased decreased raised lowered".split())
+
+
+def discovery_topic_tokens(text):
+    """Known bilingual topic aliases for ranking discovery leads only.
+
+    The evidence reader already knows these lexical bindings. Comparing raw
+    Portuguese words against an English title discarded them at the queue
+    boundary and could prefer a generic dashboard from the same publisher.
+    Do not add dates, translate unknown entities, or decide factual relations.
+    Dates/polarity are deliberately not topic-ranking anchors; the original
+    assertion still reaches the unchanged body/date/negation guards.
+    """
+    if not isinstance(text, str):
+        return set()
+    canonical = lexical_text(text)
+    for group in WORD_GROUPS:
+        canonical = re.sub(r"\b(?:" + "|".join(map(re.escape, group[1:])) + r")\b",
+                           group[0], canonical, flags=re.I)
+    fold = lambda value: "".join(char for char in unicodedata.normalize("NFD", value.casefold())
+                                 if not unicodedata.combining(char))
+    excluded = {fold(word) for word in _STOP | _DISPUTED | _CALENDAR}
+    # URL paths commonly use hyphens for spaces. Do not combine a whole slug
+    # into one identity, but retain numbered names (Zeta-31, not Zeta + 31)
+    # and the two internal event aliases. Numeric ranges are not topic words.
+    words = re.findall(r"event-(?:impact|classification)\b|[^\W_]+(?:-[^\W_]*\d[^\W_]*)?",
+                       canonical, re.UNICODE | re.I)
+    return {fold(word) for word in words
+            if len(word) >= 3 and any(char.isalpha() for char in word) and fold(word) not in excluded}
 
 
 def _discovery_subject(text):

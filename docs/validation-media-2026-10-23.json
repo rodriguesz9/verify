@@ -1,0 +1,502 @@
+{
+  "scope": "four fixed development controls; NOT representative accuracy",
+  "timezone": "America/Sao_Paulo",
+  "application_sha256": "677c555256541416797111f2e7b01b04542546d4ebb833f2135019b188e7b4af",
+  "one_ui_submission_each": true,
+  "attempts": [
+    {
+      "id": "nasa_real_plant",
+      "kind": "image",
+      "sha256": "0263876f57ff9cf1ee94e27335b7e68af592e3f7f3fbff76fa97f374a31cbb2d",
+      "reference_origin": "real_public_nasa_photo",
+      "status": "completed",
+      "elapsed_seconds": 3.242,
+      "verdict": "Suspicious",
+      "analysis_status": "inconclusive",
+      "authenticity_status": "undetermined",
+      "signal_state": "no_high_signal",
+      "provider_coverage": {
+        "sightengine": {
+          "status": "success",
+          "ai_score": 0.001,
+          "deepfake_score": 0.001,
+          "reason": null,
+          "api_version": null,
+          "model_used": null,
+          "decision_role": null,
+          "voting_eligible": true,
+          "shared_request": null
+        },
+        "huggingface": {
+          "status": "disabled",
+          "ai_score": null,
+          "deepfake_score": null,
+          "reason": "Detector Hugging Face desativado pela configuração do projeto.",
+          "api_version": null,
+          "model_used": null,
+          "decision_role": null,
+          "voting_eligible": true,
+          "shared_request": null
+        },
+        "hive": {
+          "status": "success",
+          "ai_score": 0.0001245901455752061,
+          "deepfake_score": 0,
+          "reason": null,
+          "api_version": "v3",
+          "model_used": "hive/ai-generated-and-deepfake-content-detection",
+          "decision_role": "media_detector",
+          "voting_eligible": true,
+          "shared_request": null
+        },
+        "hive_deepfake": {
+          "status": "success",
+          "ai_score": null,
+          "deepfake_score": 0,
+          "reason": null,
+          "api_version": "v3",
+          "model_used": "hive/ai-generated-and-deepfake-content-detection",
+          "decision_role": "media_detector",
+          "voting_eligible": true,
+          "shared_request": "hive"
+        },
+        "ocr": {
+          "status": "success",
+          "decision_role": "ocr_only",
+          "provider": "gemini",
+          "model_used": "gemini-3.1-flash-lite",
+          "reason": null,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "gemini_vision": {
+          "status": "success",
+          "decision_role": "inspection_only",
+          "provider": "gemini",
+          "model_used": "gemini-3.1-flash-lite",
+          "reason": null,
+          "ai_score": null,
+          "deepfake_score": null
+        }
+      },
+      "transcription": null,
+      "transcription_confidence": null,
+      "transcription_requires_human_review": false,
+      "hive_segments": [],
+      "video_timestamps_seconds": null,
+      "video_frame_scores": null,
+      "content_analysis_status": "inconclusive"
+    },
+    {
+      "id": "generated_plant",
+      "kind": "image",
+      "sha256": "5a8dbdf2e0c69a7ca57420fd50032f62b11163685c280951a1bf988b06db8b21",
+      "reference_origin": "known_generated_image",
+      "status": "completed",
+      "elapsed_seconds": 79.593,
+      "verdict": "AI_Generated",
+      "analysis_status": "partial",
+      "authenticity_status": "ai_indications",
+      "signal_state": "consensus_ai",
+      "provider_coverage": {
+        "sightengine": {
+          "status": "success",
+          "ai_score": 0.99,
+          "deepfake_score": 0.001,
+          "reason": null,
+          "api_version": null,
+          "model_used": null,
+          "decision_role": null,
+          "voting_eligible": true,
+          "shared_request": null
+        },
+        "huggingface": {
+          "status": "disabled",
+          "ai_score": null,
+          "deepfake_score": null,
+          "reason": "Detector Hugging Face desativado pela configuração do projeto.",
+          "api_version": null,
+          "model_used": null,
+          "decision_role": null,
+          "voting_eligible": true,
+          "shared_request": null
+        },
+        "hive": {
+          "status": "success",
+          "ai_score": 0.9999999188492892,
+          "deepfake_score": 0,
+          "reason": null,
+          "api_version": "v3",
+          "model_used": "hive/ai-generated-and-deepfake-content-detection",
+          "decision_role": "media_detector",
+          "voting_eligible": true,
+          "shared_request": null
+        },
+        "hive_deepfake": {
+          "status": "success",
+          "ai_score": null,
+          "deepfake_score": 0,
+          "reason": null,
+          "api_version": "v3",
+          "model_used": "hive/ai-generated-and-deepfake-content-detection",
+          "decision_role": "media_detector",
+          "voting_eligible": true,
+          "shared_request": "hive"
+        },
+        "ocr": {
+          "status": "no_text",
+          "decision_role": "ocr_only",
+          "provider": "gemini",
+          "model_used": "gemini-3.1-flash-lite",
+          "reason": null,
+          "ai_score": null,
+          "deepfake_score": null
+        },
+        "gemini_vision": {
+          "status": "unavailable",
+          "decision_role": "inspection_only",
+          "provider": "gemini",
+          "model_used": "fallback",
+          "reason": "Gemini indisponível (HTTP 503).",
+          "ai_score": null,
+          "deepfake_score": null
+        }
+      },
+      "transcription": null,
+      "transcription_confidence": null,
+      "transcription_requires_human_review": false,
+      "hive_segments": [],
+      "video_timestamps_seconds": null,
+      "video_frame_scores": null,
+      "content_analysis_status": "inconclusive"
+    },
+    {
+      "id": "synthetic_voice_5s",
+      "kind": "audio",
+      "sha256": "81a2829aab87fadf826d88416a07777b91b877b0d9bc260a1417e84a154dac1d",
+      "reference_origin": "known_synthetic_voice",
+      "status": "completed",
+      "elapsed_seconds": 4.212,
+      "verdict": "Suspicious",
+      "analysis_status": "inconclusive",
+      "authenticity_status": "undetermined",
+      "signal_state": "isolated_ai",
+      "provider_coverage": {
+        "sightengine_audio": {
+          "status": "disabled",
+          "ai_score": null,
+          "deepfake_score": null,
+          "reason": "Detector acústico Sightengine não habilitado; exige acesso ao modelo ai_speech.",
+          "api_version": null,
+          "model_used": null,
+          "decision_role": null,
+          "voting_eligible": true,
+          "shared_request": null
+        },
+        "hive": {
+          "status": "success",
+          "ai_score": 0.990826917954101,
+          "deepfake_score": null,
+          "reason": null,
+          "api_version": "v3",
+          "model_used": "hive/ai-generated-and-deepfake-content-detection",
+          "decision_role": "media_detector",
+          "voting_eligible": true,
+          "shared_request": null
+        },
+        "transcription": {
+          "status": "success",
+          "decision_role": "transcription_only",
+          "provider": "assemblyai",
+          "reason": null,
+          "model_used": "universal-2",
+          "ai_score": null,
+          "deepfake_score": null
+        }
+      },
+      "transcription": "Mãe, caí na rua e perdi meu celular. Faz um pixu da gente, tá bom?",
+      "transcription_confidence": 0.6928584,
+      "transcription_requires_human_review": true,
+      "hive_segments": [],
+      "video_timestamps_seconds": null,
+      "video_frame_scores": null,
+      "content_analysis_status": "pending_user_review"
+    },
+    {
+      "id": "synthetic_cafe_video",
+      "kind": "video",
+      "sha256": "55475f1b0e562ab4b4bad2911936b7be749aef97ce4400bbb114c37ee3f45199",
+      "reference_origin": "synthetic_test_fixture_not_natural_real_video",
+      "status": "completed",
+      "elapsed_seconds": 3.819,
+      "verdict": "Suspicious",
+      "analysis_status": "inconclusive",
+      "authenticity_status": "undetermined",
+      "signal_state": "isolated_ai",
+      "provider_coverage": {
+        "sightengine": {
+          "status": "success",
+          "ai_score": null,
+          "deepfake_score": null,
+          "reason": "Decisão baseada em concordância no mesmo quadro; médias são apenas descritivas.",
+          "api_version": null,
+          "model_used": null,
+          "decision_role": null,
+          "voting_eligible": true,
+          "shared_request": null,
+          "analyzed_frames": 3,
+          "sampled_frames": 3,
+          "frame_status_counts": {
+            "success": 3
+          },
+          "failure_reasons": [],
+          "ai_analyzed_frames": 3
+        },
+        "huggingface": {
+          "status": "disabled",
+          "ai_score": null,
+          "deepfake_score": null,
+          "reason": "Detector Hugging Face desativado pela configuração do projeto.",
+          "api_version": null,
+          "model_used": null,
+          "decision_role": null,
+          "voting_eligible": true,
+          "shared_request": null,
+          "analyzed_frames": 0,
+          "sampled_frames": 3,
+          "frame_status_counts": {
+            "disabled": 3
+          },
+          "failure_reasons": [
+            "Detector Hugging Face desativado pela configuração do projeto."
+          ],
+          "ai_analyzed_frames": 0
+        },
+        "hive": {
+          "status": "disabled",
+          "ai_score": null,
+          "deepfake_score": null,
+          "reason": "Hive QA limited to the explicitly approved two images and one five-second audio, never video.",
+          "api_version": null,
+          "model_used": null,
+          "decision_role": null,
+          "voting_eligible": true,
+          "shared_request": null,
+          "analyzed_frames": 0,
+          "sampled_frames": 3,
+          "frame_status_counts": {
+            "disabled": 3
+          },
+          "failure_reasons": [
+            "Hive QA limited to the explicitly approved two images and one five-second audio, never video."
+          ],
+          "ai_analyzed_frames": 0
+        },
+        "hive_deepfake": {
+          "status": "disabled",
+          "ai_score": null,
+          "deepfake_score": null,
+          "reason": "Hive QA limited to the explicitly approved two images and one five-second audio, never video.",
+          "api_version": null,
+          "model_used": null,
+          "decision_role": null,
+          "voting_eligible": true,
+          "shared_request": null,
+          "analyzed_frames": 0,
+          "sampled_frames": 3,
+          "frame_status_counts": {
+            "disabled": 3
+          },
+          "failure_reasons": [
+            "Hive QA limited to the explicitly approved two images and one five-second audio, never video."
+          ]
+        }
+      },
+      "transcription": null,
+      "transcription_confidence": null,
+      "transcription_requires_human_review": false,
+      "hive_segments": null,
+      "video_timestamps_seconds": [
+        0.3,
+        1.5,
+        2.7
+      ],
+      "video_frame_scores": [
+        {
+          "at": 0.3,
+          "sightengine_ai": 0.99
+        },
+        {
+          "at": 1.5,
+          "sightengine_ai": 0.99
+        },
+        {
+          "at": 2.7,
+          "sightengine_ai": 0.99
+        }
+      ],
+      "content_analysis_status": null
+    }
+  ],
+  "transport": {
+    "scope": "transport, NOT accuracy",
+    "events": [
+      {
+        "provider": "sightengine",
+        "request_number": 1,
+        "method": "POST",
+        "http_status": 200
+      },
+      {
+        "provider": "hive",
+        "request_number": 1,
+        "method": "POST",
+        "http_status": 200
+      },
+      {
+        "provider": "gemini",
+        "request_number": 1,
+        "method": "POST",
+        "http_status": 200
+      },
+      {
+        "provider": "gemini",
+        "request_number": 2,
+        "method": "POST",
+        "http_status": 200
+      },
+      {
+        "provider": "sightengine",
+        "request_number": 2,
+        "method": "POST",
+        "http_status": 200
+      },
+      {
+        "provider": "hive",
+        "request_number": 2,
+        "method": "POST",
+        "http_status": 200
+      },
+      {
+        "provider": "gemini",
+        "request_number": 3,
+        "method": "POST",
+        "http_status": 503
+      },
+      {
+        "provider": "gemini",
+        "request_number": 4,
+        "method": "POST",
+        "http_status": 200
+      },
+      {
+        "provider": "assemblyai",
+        "request_number": 1,
+        "method": "POST",
+        "http_status": 200
+      },
+      {
+        "provider": "hive",
+        "request_number": 3,
+        "method": "POST",
+        "http_status": 200
+      },
+      {
+        "provider": "assemblyai",
+        "request_number": 2,
+        "method": "POST",
+        "http_status": 200
+      },
+      {
+        "provider": "assemblyai",
+        "request_number": 3,
+        "method": "GET",
+        "http_status": 200
+      },
+      {
+        "provider": "assemblyai",
+        "request_number": 4,
+        "method": "GET",
+        "http_status": 200
+      },
+      {
+        "provider": "assemblyai",
+        "request_number": 5,
+        "method": "GET",
+        "http_status": 200
+      },
+      {
+        "provider": "sightengine",
+        "request_number": 3,
+        "method": "POST",
+        "http_status": 200
+      },
+      {
+        "provider": "sightengine",
+        "request_number": 4,
+        "method": "POST",
+        "http_status": 200
+      },
+      {
+        "provider": "sightengine",
+        "request_number": 5,
+        "method": "POST",
+        "http_status": 200
+      }
+    ],
+    "counts": {
+      "sightengine": 5,
+      "hive": 3,
+      "gemini": 4,
+      "assemblyai": 5
+    },
+    "caps": {
+      "gemini": 6,
+      "openrouter": 0,
+      "facts": 0,
+      "news": 0,
+      "assemblyai": 40,
+      "sightengine": 5,
+      "hf": 0,
+      "public_fetch": 0,
+      "hive": 3
+    },
+    "asr_jobs": {
+      "upload": 1,
+      "job": 1
+    },
+    "hive_reservations": {
+      "image_requests": 2,
+      "audio_seconds": 5,
+      "audio_jobs": 1
+    },
+    "hive_paid_caps": {
+      "image_requests": 2,
+      "audio_seconds": 5,
+      "audio_jobs": 1
+    }
+  },
+  "hive_approval": {
+    "approved_on": "2026-10-23",
+    "source": "new human reply in this chat, confirmed by root operator",
+    "maximum_existing_balance_usd": 0.03,
+    "no_refill_or_subscription": true,
+    "image_requests": 2,
+    "audio_jobs": 1,
+    "rounded_audio_seconds": 5,
+    "video_calls": 0,
+    "price_reference": "https://thehive.ai/models/hive/ai-generated-and-deepfake-content-detection",
+    "price_checked_on_by_root": "2026-10-23",
+    "usd_per_thousand_images": 6,
+    "usd_per_audio_hour": 10,
+    "nominal_maximum_usd": 0.02588888888888889,
+    "nominal_estimate_not_provider_balance_or_billing_statement": true
+  },
+  "no_media_accuracy_percentage_computed": true,
+  "record_sha256": {
+    "frozen-source.json": "d078933ed1512f144db75fe8e57b6bf6ce328128a077a9daf4ecb67a115f2f44",
+    "records/media-attempts.json": "4ea6e58a5e75f9757431051a56563742e43d4c104fe0ca1a8f332c4d5fb9e28a",
+    "records/provider-transport.json": "a0409120eefce079184dd2eb5bbf8bb538e96e5bdd737e327f835fa9a573c87f",
+    "records/http-boundaries.json": "f5ef1ca2542dc9eb4db5c6914a21db829fc1edcd20ccbf3b8de3170cb5f6c48d"
+  }
+}

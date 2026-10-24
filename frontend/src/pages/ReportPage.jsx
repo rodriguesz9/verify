@@ -274,7 +274,8 @@ export default function ReportPage() {
             <AnimatedScore value={inconclusive || diagnosisHeadline?.diagnostic ? null : result.score} color={badge.color}
               label={groundedConclusion ? "Resultado com fontes citadas"
                 : inconclusive || diagnosisHeadline?.diagnostic ? "Resultado da análise" : undefined}
-              unavailableText={groundedConclusion ? "Veja as evidências" : "Não determinado"} />
+              unavailableText={groundedConclusion ? "Veja as evidências"
+                : mediaHeadline ? "Veja os sinais e os limites" : "Não determinado"} />
           </div>
           <p className="text-base text-[#CDE8F0] leading-relaxed mt-2">{badge.headline}</p>
 

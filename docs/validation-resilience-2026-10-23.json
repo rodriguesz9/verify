@@ -1,0 +1,183 @@
+{
+  "scope": "Known twelve development controls, not blind/general accuracy; one attempt each",
+  "measured_on": "2026-10-23",
+  "source_sha256": "d47bc65a1a8ccd4346f735652f5048aeb8cb2a5a77fcf345bd233bec254f364c",
+  "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+  "freeze_contract_sha256": "fb1010d8088704b11bc4d09640023f92cd0fc981e055345efb1e13b9424d5dbd",
+  "denominator": 12,
+  "correct": 6,
+  "inconclusive": 6,
+  "wrong_conclusive": 0,
+  "execution_errors": 0,
+  "target_fraction": 0.8,
+  "target_met": false,
+  "inconclusives_in_denominator": true,
+  "ui": {
+    "observed_form_submissions": 1,
+    "case_id": "queen_false",
+    "observed_result": "Verificada como falsa nas fontes consultadas",
+    "ordinary_http_submissions_not_ui": 11
+  },
+  "cases": [
+    {
+      "id": "queen_true",
+      "expected": "supported",
+      "actual": "unverified",
+      "seconds": 21.457,
+      "eligible_families": 1,
+      "comparison_status": "not_requested",
+      "comparison_method": "not_requested"
+    },
+    {
+      "id": "queen_false",
+      "expected": "refuted",
+      "actual": "refuted",
+      "seconds": 21.377,
+      "eligible_families": 2,
+      "comparison_status": "success",
+      "comparison_method": "model_source_review_v2"
+    },
+    {
+      "id": "dart_true",
+      "expected": "supported",
+      "actual": "unverified",
+      "seconds": 20.933,
+      "eligible_families": 0,
+      "comparison_status": "not_requested",
+      "comparison_method": "not_requested"
+    },
+    {
+      "id": "who_true",
+      "expected": "supported",
+      "actual": "unverified",
+      "seconds": 31.202,
+      "eligible_families": 0,
+      "comparison_status": "not_requested",
+      "comparison_method": "not_requested"
+    },
+    {
+      "id": "ibge_true",
+      "expected": "supported",
+      "actual": "supported",
+      "seconds": 16.096,
+      "eligible_families": 2,
+      "comparison_status": "success",
+      "comparison_method": "model_source_review_v2"
+    },
+    {
+      "id": "copom_false",
+      "expected": "refuted",
+      "actual": "refuted",
+      "seconds": 14.838,
+      "eligible_families": 1,
+      "comparison_status": "success",
+      "comparison_method": "literal_typed_rules_v1"
+    },
+    {
+      "id": "copernicus_false",
+      "expected": "refuted",
+      "actual": "refuted",
+      "seconds": 21.404,
+      "eligible_families": 1,
+      "comparison_status": "success",
+      "comparison_method": "model_source_review_v2"
+    },
+    {
+      "id": "lei_false",
+      "expected": "refuted",
+      "actual": "refuted",
+      "seconds": 8.741,
+      "eligible_families": 1,
+      "comparison_status": "success",
+      "comparison_method": "literal_typed_rules_v1"
+    },
+    {
+      "id": "webb_true",
+      "expected": "supported",
+      "actual": "unverified",
+      "seconds": 18.124,
+      "eligible_families": 1,
+      "comparison_status": "not_requested",
+      "comparison_method": "not_requested"
+    },
+    {
+      "id": "constitution_true",
+      "expected": "supported",
+      "actual": "supported",
+      "seconds": 46.943,
+      "eligible_families": 2,
+      "comparison_status": "success",
+      "comparison_method": "model_source_review_v2"
+    },
+    {
+      "id": "worldcup_false",
+      "expected": "refuted",
+      "actual": "unverified",
+      "seconds": 22.113,
+      "eligible_families": 0,
+      "comparison_status": "not_requested",
+      "comparison_method": "not_requested"
+    },
+    {
+      "id": "artemis_false",
+      "expected": "refuted",
+      "actual": "unverified",
+      "seconds": 25.197,
+      "eligible_families": 1,
+      "comparison_status": "not_requested",
+      "comparison_method": "not_requested"
+    }
+  ],
+  "transports": {
+    "attempts": {
+      "facts": 12,
+      "news": 66,
+      "public_fetch": 75,
+      "gemini": 13
+    },
+    "total": 166,
+    "caps": {
+      "gemini": 30,
+      "openrouter": 6,
+      "facts": 20,
+      "news": 70,
+      "public_fetch": 120,
+      "assemblyai": 0,
+      "sightengine": 0,
+      "hf": 0,
+      "hive": 0
+    },
+    "http_status_counts": {
+      "facts": {
+        "200": 12
+      },
+      "news": {
+        "200": 66
+      },
+      "public_fetch": {
+        "200": 61,
+        "401": 4,
+        "307": 3,
+        "301": 2,
+        "incomplete": 2,
+        "403": 3
+      },
+      "gemini": {
+        "200": 13
+      }
+    },
+    "prior_openrouter_reservations_preserved": 42,
+    "conservative_cumulative_openrouter_reservations": 42,
+    "paid_media_calls": 0
+  },
+  "prior_round": {
+    "measured_on": "2026-10-22",
+    "correct": 7,
+    "denominator": 12,
+    "inconclusive": 5,
+    "preserved": true
+  },
+  "posterior_changes_not_measured_here": true,
+  "production_deployed": false,
+  "correct_fraction": 0.5
+}

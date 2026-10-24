@@ -231,6 +231,8 @@ async def generate_text(contents, *, system_instruction=None, temperature=.1, js
 
 
 async def _generate_text(contents, *, system_instruction=None, temperature=.1, json_output=True, max_tokens=2048, model_name=None, response_schema=None, deadline=60):
+    loop = asyncio.get_running_loop()
+    expires_at = loop.time() + deadline
     key = os.getenv("GEMINI_API_KEY", "").strip()
     if not key:
         raise GeminiError("Gemini não configurado.", "not_configured")
@@ -264,16 +266,28 @@ async def _generate_text(contents, *, system_instruction=None, temperature=.1, j
             body["generationConfig"] = {**config, **({"thinkingConfig": {"thinkingLevel": "LOW"}} if model.startswith("gemini-3") else {})}
             _validate_request_size(body)
             await _reserve_request(model)
+            remaining = expires_at - loop.time()
+            if remaining <= 0:
+                raise GeminiError("Tempo limite do Gemini atingido.", "timeout")
+            # An explicit alternate gets a genuine opportunity after a stuck
+            # transport, within the SAME outer deadline. Admission remains
+            # outside this slice: a local queue/quota never rotates models.
+            attempt_expires_at = loop.time() + remaining / (len(models) - index)
             try:
-                response = await client.post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
-                                             headers={"x-goog-api-key": key}, json=body)
-            except httpx.TimeoutException:
+                async with asyncio.timeout_at(attempt_expires_at):
+                    response = await client.post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+                                                 headers={"x-goog-api-key": key}, json=body)
+            except (httpx.TimeoutException, TimeoutError):
                 if index + 1 < len(models):
                     continue
                 raise GeminiError("Tempo limite do Gemini atingido.", "timeout") from None
+            except httpx.TransportError:
+                if index + 1 < len(models):
+                    continue
+                raise GeminiError("Conexão Gemini indisponível.") from None
             except httpx.HTTPError:
                 raise GeminiError("Conexão Gemini indisponível.") from None
-            if response.status_code in {404, 503} and index + 1 < len(models):
+            if response.status_code in {404, 500, 502, 503, 504} and index + 1 < len(models):
                 continue
             if response.status_code != 200:
                 if response.status_code == 429:

@@ -31,6 +31,27 @@ PIPELINE_BUDGET_SECONDS = 330
 INITIAL_QUERY_BUDGET_SECONDS = 110
 
 
+def _search_can_continue(status):
+    # A single timed-out query does not prove a provider-wide quota or auth
+    # failure. Continue only the remaining DIFFERENT planned queries, within
+    # the same count/deadline. Keep its timeout in coverage; never retry it.
+    # Generic errors remain fail-closed because legacy status may hide 401.
+    return status in {"success", "no_results", "timeout"}
+
+
+def _search_plan_can_continue(plan):
+    return all(_search_can_continue(item["status"]) for item in plan)
+
+
+def _recovery_search_language(original, method):
+    if method == "literal_topic_anchors_bilingual_editorial_sources":
+        return "en"
+    if (method == "literal_topic_anchors_primary_sources"
+            and editorial_source_query(original)[1] == "en"):
+        return "en"
+    return "pt-br"
+
+
 def _task_failed(task):
     return task.cancelled() or task.exception() is not None
 
@@ -311,13 +332,13 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
             limit = (int(configured) if configured in {"1", "2", "3"} else 3) if crosscheck_enabled else 1
             if (crosscheck_enabled and limit >= 2 and query
                     and len(families) < 2
-                    and getattr(leads, "status", "success" if leads else "no_results") in {"success", "no_results"}):
+                    and _search_can_continue(getattr(leads, "status", "success" if leads else "no_results"))):
                 for qualified, recovery_method in _source_recovery_queries(query, limit):
                     if not 20 <= len(qualified) <= 500:
                         continue
                     # The same existing slot may use a declared English
                     # locale; never add a second request or retry a quota.
-                    language = "en" if recovery_method == "literal_topic_anchors_bilingual_editorial_sources" else "pt-br"
+                    language = _recovery_search_language(query, recovery_method)
                     extra = await search_web(qualified, language="en") if language == "en" else await search_web(qualified)
                     previous_queries.append(qualified)
                     extra_status = getattr(extra, "status", "success" if extra else "no_results")
@@ -328,7 +349,7 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
                     # Already attempted URLs remain in the cumulative budget;
                     # this order never retries or refunds a failed request.
                     leads = NewsSearch([*extra, *leads], status="success" if leads or extra else extra_status)
-                    if extra_status not in {"success", "no_results"}:
+                    if not _search_can_continue(extra_status):
                         break  # Never work around a quota/credential failure.
                 # Follow only primary documents actually cited inline by a
                 # first-wave article, with a literal named-topic match. These
@@ -347,7 +368,7 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
                 families = usable_source_families(text, attribution.get("_documents", []), source_url)
             missing_claims = claims_needing_research(text, attribution.get("_documents", []), source_url) if ai_research else []
             if (ai_research and missing_claims and len(fetched_cache) < 10
-                    and all(item["status"] in {"success", "no_results"} for item in plan)):
+                    and _search_plan_can_continue(plan)):
                 if await follow_primary_references("late_reference"):
                     # Spend only the already-authorized remaining read slots,
                     # before asking a model for another plan. Keep all known
@@ -355,7 +376,7 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
                     # only the direct links and retains previous attempts.
                     families = usable_source_families(text, attribution.get("_documents", []), source_url)
                     missing_claims = claims_needing_research(text, attribution.get("_documents", []), source_url)
-            if ai_research and missing_claims and all(item["status"] in {"success", "no_results"} for item in plan):
+            if ai_research and missing_claims and _search_plan_can_continue(plan):
                 # Give the model a real bounded search tool. Returned queries
                 # and known lead IDs can guide retrieval, never the verdict.
                 # Failure/empty plans preserve the complete deterministic read.
@@ -400,7 +421,7 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
                     research["scope_diversified_query_executed_count"] += int(not deterministic_gap_query
                         and search["requested_source_group"] != search["source_group"])
                     additions.extend(extra)
-                    if extra_status not in {"success", "no_results"}:
+                    if not _search_can_continue(extra_status):
                         break  # A real quota failure is not retried or bypassed.
                 if additions:
                     leads = NewsSearch([*additions, *leads], status="success")
@@ -408,7 +429,7 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
                     # reference. Reserve the remaining direct-link slots before
                     # spending all ten reads on search results; if no useful
                     # link exists, release those slots back to the same queue.
-                    can_follow = all(item["status"] in {"success", "no_results"} for item in plan)
+                    can_follow = _search_plan_can_continue(plan)
                     reserve = max(0, 2 - len(cited_leads)) if can_follow else 0
                     attribution = await collect_source_attribution(text, queries, source_url, search_results=leads,
                         include_documents=True, max_sources=max(len(fetched_cache), 10 - reserve), fetched_cache=fetched_cache)

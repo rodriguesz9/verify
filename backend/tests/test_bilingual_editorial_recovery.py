@@ -81,7 +81,7 @@ class BilingualEditorialTransportTests(unittest.IsolatedAsyncioTestCase):
              patch("app.core.pipeline.search_web", new=AsyncMock(return_value=NewsSearch())) as search:
             result = await _retrieve_source_attribution(TEXT, [TEXT], None)
         self.assertEqual(search.await_count, 3)
-        self.assertEqual([call.kwargs for call in search.await_args_list], [{}, {}, {"language": "en"}])
+        self.assertEqual([call.kwargs for call in search.await_args_list], [{}, {"language": "en"}, {"language": "en"}])
         self.assertTrue(all(call.args[0] == TEXT for call in collect.await_args_list))
         self.assertEqual(result["coverage"]["max_search_queries"], 3)
         self.assertEqual(result["coverage"]["search_queries"][-1]["search_language"], "en")

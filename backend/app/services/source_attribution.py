@@ -204,6 +204,62 @@ def _liveblog_region(soup):
     return max(regions, key=lambda item: (len(item[0].find_all("p")), len(_visible_text(item[0])))) if regions else (None, [])
 
 
+def _contact_card_prose_root(soup, articles):
+    """A utility contact card is not the editorial body merely by its tag.
+
+    Narrow fallback: one semantic main landmark, only explicit contact-card
+    articles, and exactly one substantial paragraph block outside those cards.
+    Nothing is deleted. Main remains the scope so headings, captions and
+    surrounding qualifiers retain their context roles. Ambiguous page/card
+    collections keep the existing conservative selection.
+    """
+    def contact_card(article):
+        identifiers = " ".join([str(article.get("id", "")), *article.get("class", [])])
+        heading = article.find(["h2", "h3", "h4", "h5", "h6"])
+        title = _visible_text(heading) if heading is not None else ""
+        links = article.find_all("a", href=True)
+        return (bool(re.search(r"(?:^|[-_\s])card(?:$|[-_\s])", identifiers, re.I))
+                and not article.find(["h1", "time", "article"])
+                and not any("articlebody" in str(tag.get("itemprop", "")).casefold().split()
+                            for tag in [article, *article.find_all(True)])
+                and bool(re.fullmatch(r"(?:(?:media|press|imprensa|m[ií]dia)\s+)?(?:contacts?|contatos?)", title, re.I))
+                and 1 <= len(article.find_all("p")) <= 2
+                and len(_visible_text(article)) <= 1200
+                and bool(links)
+                and all(re.match(r"^(?:mailto|tel):", str(link.get("href", "")).strip(), re.I) for link in links))
+
+    if not articles or not all(contact_card(article) for article in articles):
+        return None
+    mains = [tag for tag in soup.find_all(True)
+             if (tag.name == "main" or "main" in str(tag.get("role", "")).casefold().split())
+             and _visible_text(tag)]
+    if len(mains) != 1:
+        return None
+    main, prose = mains[0], []
+    for tag in [main, *main.find_all(["div", "section"])]:
+        paragraphs = tag.find_all("p", recursive=False)
+        if (len(paragraphs) < 3 or sum(len(_visible_text(p)) for p in paragraphs) < 400
+                or tag.find("article") is not None or tag.find_parent("article") is not None):
+            continue
+        contextual = False
+        for node in [tag, *tag.parents]:
+            if not isinstance(node, Tag):
+                break
+            identifiers = " ".join([str(node.get("id", "")), *node.get("class", [])])
+            properties = str(node.get("itemprop", "")).casefold().split()
+            if (node.name in _CONTEXT_TAGS | {"table", "nav", "aside", "address"}
+                    or _AUTHOR_UI.search(identifiers) or _HEADING_UI.search(identifiers)
+                    or _CAPTION_UI.search(identifiers) or "author" in properties
+                    or re.search(r"(?:^|[-_\s])(?:cards?|related|navigation)(?:$|[-_\s])", identifiers, re.I)):
+                contextual = True
+                break
+            if node is main:
+                break
+        if not contextual:
+            prose.append(tag)
+    return (prose[0], main) if len(prose) == 1 else None
+
+
 def _body_root(soup):
     def paragraph_size(tag):
         return sum(len(_visible_text(paragraph)) for paragraph in tag.find_all("p"))
@@ -220,6 +276,9 @@ def _body_root(soup):
         root = max(explicit, key=lambda tag: (paragraph_size(tag), len(_visible_text(tag))))
     else:
         articles = [tag for tag in soup.find_all("article") if _visible_text(tag)]
+        contact_prose = _contact_card_prose_root(soup, articles)
+        if contact_prose is not None:
+            return contact_prose
         root = max(articles, key=lambda tag: (paragraph_size(tag), len(_visible_text(tag)))) if articles else (
             soup.find("main") or soup.find(attrs={"role": "main"}) or soup.body or soup)
     # Keep nearby headings and author/wire credits as context, not selectable
@@ -751,7 +810,9 @@ def _retrieval_priority(text, title, url):
     2025 merely because both came from the same institution. Titles and URL
     words remain untrusted hints; every factual/date/value guard runs on body.
     """
-    from app.services.source_queries import _discovery_subject, neutral_source_query, discovery_target_years
+    from app.services.source_queries import (
+        _discovery_subject, neutral_source_query, discovery_target_years, discovery_topic_tokens,
+    )
     from app.services.source_corroboration import source_identity
     from app.services.launch_relations import launch_lead_identity_priority
     from app.services.competition_relations import competition_lead_priority
@@ -778,8 +839,10 @@ def _retrieval_priority(text, title, url):
     unrelated_period = bool(subject_years and lead_years and not year_matches)
     subperiod = r"\b(?:trimestre|trimestral|quarter|quarterly|semestre|semestral|q[1-4])\b"
     narrower_period = bool(re.search(subperiod, lead, re.I) and not re.search(subperiod, subject, re.I))
-    words = lambda value: {word.casefold() for word in re.findall(r"[^\W\d_]{3,}", value, re.UNICODE)}
-    shared_topics = len(words(subject) & words(lead))
+    # Use the same closed lexical aliases as the reader: a Portuguese claim
+    # must not lose a bounded read slot merely because the lead is in English.
+    # Titles/path words remain discovery hints, never evidence or truth votes.
+    shared_topics = len(discovery_topic_tokens(subject) & discovery_topic_tokens(lead))
     primary = (source_identity(url) or {}).get("source_type") == "primary"
     # Identity bands precede the three month bands, preserving the existing
     # tuple contract/month ordering for all non-launch or unparsed claims.

@@ -1,0 +1,68 @@
+{
+  "scope": "single free captured-body diagnostic, NOT end-to-end accuracy",
+  "application_sha256": "677c555256541416797111f2e7b01b04542546d4ebb833f2135019b188e7b4af",
+  "input_case": "queen_false",
+  "raw_html_reconstructed_offline": true,
+  "expected_labels_passed": false,
+  "preflight_eligible_family_count": 2,
+  "transport": {
+    "scope": "one free diagnostic; NOT accuracy",
+    "reserved_count": 1,
+    "prior_count": 43,
+    "maximum_cumulative_count": 44,
+    "actual_transport_sends": 1,
+    "status": "completed",
+    "contract_sha256": "e3ca74cc50836eb8227c07f19aa4a67d64fa4c37d3910ce0faab5a31e67ff03a",
+    "http_status": 200,
+    "comparison_status": "invalid_response",
+    "openrouter_status": "invalid_response",
+    "elapsed_seconds": 13.527
+  },
+  "result": {
+    "scope": "single captured-body comparison diagnostic; NOT end-to-end accuracy",
+    "status": "invalid_response",
+    "state": "insufficient",
+    "coverage": {
+      "literal_claim_count": 1,
+      "selected_claim_count": 1,
+      "selected_source_count": 2,
+      "eligible_family_count": 2,
+      "complete_claim_coverage": false,
+      "assessed_claim_count": 1,
+      "grounded_evidence_count": 0,
+      "source_review_protocol": "claim_source_review_v2",
+      "comparison_method": "model_source_review_v2",
+      "expected_source_pair_count": 2,
+      "complete_source_review": false
+    },
+    "openrouter": {
+      "status": "invalid_response",
+      "review_protocol": "claim_source_review_v2",
+      "complete_source_review": false,
+      "expected_source_pair_count": 2,
+      "reviewed_source_pair_count": 1
+    },
+    "gemini_transport_disabled": true,
+    "claims": [
+      {
+        "claim_id": "c1",
+        "state": "insufficient",
+        "evidence": []
+      }
+    ]
+  },
+  "preserved_previous_probe": {
+    "reserved_count": 1,
+    "actual_transport_sends": 0,
+    "status": "not_requested_due_to_omitted_publication_metadata_in_QA_capture",
+    "retry_of_previous_provider_call": false
+  },
+  "max_price": 0,
+  "model": "openrouter/free",
+  "other_provider_sends": 0,
+  "record_sha256": {
+    "frozen.json": "64241f4e5fce03ed99de20f1163a0ae3d4131d1354e3ad7f6092228c2cd86bdb",
+    "transport.json": "3df782e5b5da1ae84bf095c69e552b252b57e69aa5db2e2884124335e834cf53",
+    "result.json": "75430a33530be7e8c8b2d0c6b87b9fa445a07e0d82a554e46ad2e9d6434ab077"
+  }
+}

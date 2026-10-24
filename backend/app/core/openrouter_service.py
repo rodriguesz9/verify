@@ -111,8 +111,13 @@ async def _generate(prompt, system_instruction, temperature, max_tokens, json_ou
 async def _generate_with_models(models, messages, headers, temperature, max_tokens,
                                 json_output, response_format, timeout_seconds):
     global _cooldown_until
+    loop = asyncio.get_running_loop()
+    expires_at = loop.time() + timeout_seconds
     async with httpx.AsyncClient(timeout=timeout_seconds, trust_env=False, follow_redirects=False) as client:
         for index, model in enumerate(models):
+            remaining = expires_at - loop.time()
+            if remaining <= 0:
+                raise OpenRouterError("timeout", "Tempo limite do OpenRouter atingido.")
             _reserve_request()
             payload = {"model": model, "messages": messages, "temperature": temperature,
                        "max_tokens": max(64, min(4096, max_tokens)),
@@ -120,17 +125,27 @@ async def _generate_with_models(models, messages, headers, temperature, max_toke
             if json_output:
                 payload["response_format"] = response_format or {"type": "json_object"}
                 payload["provider"]["require_parameters"] = True
+            # Reserve a share for the explicit free alternate. A hanging
+            # primary must not consume the entire outer wall-clock budget.
+            attempt_expires_at = loop.time() + remaining / (len(models) - index)
             try:
-                response = await client.post(OPENROUTER_API_URL, headers=headers, json=payload)
-            except httpx.TimeoutException:
+                async with asyncio.timeout_at(attempt_expires_at):
+                    response = await client.post(OPENROUTER_API_URL, headers=headers, json=payload)
+            except (httpx.TimeoutException, TimeoutError):
+                if index + 1 < len(models):
+                    continue
                 raise OpenRouterError("timeout", "Tempo limite do OpenRouter atingido.") from None
+            except httpx.TransportError:
+                if index + 1 < len(models):
+                    continue
+                raise OpenRouterError("error", "OpenRouter indisponível.") from None
             except httpx.HTTPError:
                 raise OpenRouterError("error", "OpenRouter indisponível.") from None
             if response.status_code in {402, 429}:
                 with _budget_lock:
                     _cooldown_until = time.monotonic() + 60
                 raise OpenRouterError("rate_limited", f"OpenRouter indisponível por saldo/quota (HTTP {response.status_code}).")
-            if response.status_code in {404, 502, 503} and index + 1 < len(models):
+            if response.status_code in {404, 500, 502, 503, 504} and index + 1 < len(models):
                 continue
             if response.status_code != 200:
                 raise OpenRouterError("error", f"OpenRouter indisponível (HTTP {response.status_code}).")

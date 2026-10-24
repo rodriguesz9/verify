@@ -1,5 +1,9 @@
 # Documentação do Verify
 
+Última rodada de 23/10: [resiliência, recuperação e mídia](RESILIENCIA-RECUPERACAO-MIDIA-2026-10-23.md), [resultados](validation-resilience-2026-10-23.json). **6/12 corretos (50%), seis inconclusivos**, abaixo dos 7/12 anteriores. Gemini respondeu; OpenRouter não solicitado. Causas de extração/recuperação e correções posteriores são separadas da medição; não comprova 80% nem implantação.
+
+Posteriormente: [quatro controles de mídia pela interface](validation-media-2026-10-23.json) e [diagnóstico OpenRouter gratuito](validation-openrouter-2026-10-23.json). Mídias concluídas, cobertura limitada; OpenRouter HTTP 200 com matriz incompleta, não uma nova taxa de precisão. Raiz editorial e rótulo público corrigidos; contexto de ficção protegido antes dos atalhos factuais.
+
 Continuação de 23/10: [correções centrais e análise dos inconclusivos](CAUSA-CENTRAL-2026-10-22.md), [doze resultados](validation-central-2026-10-22.json). **7/12 corretos (58,3%), cinco inconclusivos, zero conclusões erradas observadas.** Uma submissão visual e onze HTTP; reforços posteriores separados da medição. Ainda não comprova 80%, mídia ou publicação. Registros seguintes são históricos.
 
 Revisão local de 22/10: [recuperação, espera, negação e avaliação](RECUPERACAO-ESPERA-2026-10-22.md), [plano](PLANO-ACERTOS-2026-10-22.md), [primeira execução](validation-recovery-2026-10-22.json) e [rodada corrigida](validation-wait-recheck-2026-10-22.json). Nova conhecida: **4/12 corretos (33,3%), oito inconclusivos**; OpenRouter revalidado, falhas e lacunas persistem. Preserva incidente anterior, 1/8 nos novos daquela versão e piora frente aos 8/12 de 21/10. Não comprova 80% geral nem publicação.
@@ -32,6 +36,7 @@ Atualizada em 08/10/2026. Código publicado e ensaiado no SHA `cba8d3f77cb60ae19
 
 ## Comece aqui
 
+- [Revisão de 23/10](RESILIENCIA-RECUPERACAO-MIDIA-2026-10-23.md): estado atual, medição textual, testes reais de mídia, resposta incompleta OpenRouter e próximas prioridades.
 - [Rodada completa de 18–19/10](RODADA-COMPLETA-2026-10-19.md): doze resultados, porcentagens com inconclusivos, fronteiras observadas e causas que ainda impedem a meta de 80%.
 - [Recuperação de fontes — última continuação de 18/10](RECUPERACAO-FONTES-2026-10-18.md): implementação atual, diagnósticos reais, limites e trabalho restante.
 - [Recuperação contextual de 18/10](RECUPERACAO-CONTEXTUAL-2026-10-18.md): implementação mais recente, segurança, testes e pendências, sem somar simulação com precisão real.

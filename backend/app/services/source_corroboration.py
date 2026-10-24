@@ -81,6 +81,27 @@ _ALIASES.update({"extincta": "extinta", "extincto": "extinto",
                  "declarado": "event-classification"})
 _NEGATION = re.compile(r"\b(não|nao|nunca|jamais|nem|not|never|didn't|wasn't|no\s+(?:humans?|man|men|astronauts?|persons?|people))\b", re.I)
 _UNASSERTED = re.compile(r"\b(boato|rumor|alegou|alega|supostamente|mensagem não confirmada|postagem|satírico|sátira|fictional|allegedly)\b", re.I)
+_NONFACTUAL_CONTEXT = re.compile(
+    r"\b(?:fic[çc][ãa]o|fict[íi]ci[oa]s?|hipot[ée]tic[oa]s?|simulad[oa]s?|"
+    r"simula[çc][ãa]o|fiction(?:al)?|hypothetical|simulated|simulation|"
+    r"(?:exemplo|hist[óo]ria|texto|narrativa|relato|evento)\s+inventad[oa]s?|"
+    r"invented\s+(?:example|story|account|scenario|event))\b", re.I,
+)
+_NONFACTUAL_REASON = "Contexto de ficção, hipótese ou simulação não comprova a ocorrência factual alegada."
+_SCOPED_NONFACTUAL_SUFFIX = re.compile(
+    r"\b(?:(?:est[ea]|ess[ea]|aquel[ea]|presente)\s+"
+    r"(?:texto|exemplo|relato|registro|evento|lan[çc]amento|decis[ãa]o|artigo|reprodu[çc][ãa]o|narrativa)"
+    r"\s+(?:[ée]|foi|era)\s+(?:(?:um|uma)\s+)?"
+    r"(?:fic[çc][ãa]o|fict[íi]ci[oa]|hipot[ée]tic[oa]|simulad[oa]|simula[çc][ãa]o|inventad[oa])"
+    r"|(?:this|that|the\s+above)\s+(?:text|story|example|account|record|event|decision|launch|passage)"
+    r"\s+(?:is|was)\s+(?:(?:a|an)\s+)?(?:fiction(?:al)?|hypothetical|simulated|simulation|invented)"
+    r"|(?:est[ea]|ess[ea])\s+(?:[ée]|foi|era)\s+(?:(?:um|uma)\s+)?"
+    r"(?:texto|exemplo|relato|registro|evento|narrativa)\s+"
+    r"(?:fict[íi]ci[oa]|hipot[ée]tic[oa]|simulad[oa]|inventad[oa])"
+    r"|(?:isto|isso)\s+[ée]\s+(?:fic[çc][ãa]o|(?:uma\s+)?simula[çc][ãa]o)"
+    r"|(?:this|that)\s+(?:is|was)\s+(?:(?:a|an)\s+)?"
+    r"(?:fiction(?:al)?|hypothetical|simulated|simulation|invented))\b", re.I,
+)
 _UNCERTAIN = re.compile(r"\b(?:pode|poderia|teria|talvez|provável|possível|may|might|could|possibly|alleged)\b", re.I)
 _PLANNED = re.compile(r"\b(?:será|serão|vai|vão|irá|irão|planeja|previsto|prevista|agendado|agendada|will|scheduled|planned|plans)\b", re.I)
 _PAST_EVENT = re.compile(r"\b(?:recebeu|morreu|faleceu|nasceu|lançou|lançada|lançado|pisou|pisaram|pagou|enviou|inaugurou|cancelou|colidiu|declarou|classificou|caracterizou|decretou|elevou|aumentou|reduziu|diminuiu|manteve|died|received|launched|walked|paid|sent|born|impacted|crashed|smashed|declared|classified|characterized|characterised)\b", re.I)
@@ -585,7 +606,25 @@ def _opposite_statement_scope(claim, quote):
     return matched_polarities == {not claimed[1]}
 
 
+def _nonfactual_context(quote, context):
+    """Scope a label to the current passage, not an unrelated later example.
+
+    A preceding heading or the quote itself can mark its narrative as fiction.
+    After the quote, require an explicit statement about THIS text/event. A
+    later discussion of another hypothetical, or 'this text is not
+    hypothetical', must not disavow a genuine original legal publication.
+    Unknown/ambiguous quote placement stays conservative.
+    """
+    if context.count(quote) != 1:
+        return bool(_NONFACTUAL_CONTEXT.search(context))
+    before, _quote, after = context.partition(quote)
+    return bool(_NONFACTUAL_CONTEXT.search(before + quote)
+                or _SCOPED_NONFACTUAL_SUFFIX.search(after))
+
+
 def _relation_guard(claim, quote, context, relation, retrieved_at, *, bound_negative_declaration=False):
+    if _nonfactual_context(quote, context):
+        return _NONFACTUAL_REASON
     if (RELATIVE_TIME.search(claim) or any(c in claim for c in ('?', '"', '“', '”', '«', '»'))
             or (_UNASSERTED.search(context) and not (relation == "refutes" and _FALSE_PREFIX.match(quote))) or _INSTRUCTION.search(context)):
         return "Contexto relativo, citação, instrução ou alegação não endossada exige revisão humana."
@@ -1057,6 +1096,11 @@ def _legal_article_reading(claim, passage):
 
 
 def _passage_guard(claim, passage, relation, stamp):
+    # This veto also precedes official/typed record shortcuts. The ordinary
+    # false-prefix exception for an actual fact check cannot turn a fictional
+    # denial or simulated decision into a real-world support/refutation.
+    if _nonfactual_context(passage["quote"], passage["context"]):
+        return _NONFACTUAL_REASON
     quote = passage["quote"]
     if passage.get("official_record"):
         # This is a narrowly typed publication of the institution's OWN

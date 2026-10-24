@@ -119,7 +119,7 @@ class ResearchScopePipelineTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("verdict", result)
 
     async def test_extra_search_rate_quota_or_error_stops_before_reserved_editorial_call(self):
-        for failure in ("rate_limited", "timeout", "error", "not_configured"):
+        for failure in ("rate_limited", "error", "not_configured"):
             with self.subTest(failure=failure):
                 result, model, _, calls = await self.run_retrieval(failure=failure)
                 self.assertEqual(len(calls), 4)
@@ -128,6 +128,16 @@ class ResearchScopePipelineTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(audit["scope_diversified_query_planned_count"], 1)
                 self.assertEqual(audit["scope_diversified_query_executed_count"], 0)
                 self.assertEqual(audit["executed_query_count"], 1)
+
+    async def test_one_query_timeout_keeps_different_reserved_editorial_query(self):
+        result, model, _, calls = await self.run_retrieval(failure="timeout")
+        self.assertEqual(len(calls), 5)
+        self.assertEqual(len(set(calls)), 5)
+        model.assert_awaited_once()
+        audit = result["coverage"]["online_research"]
+        self.assertEqual(audit["scope_diversified_query_executed_count"], 1)
+        self.assertEqual(audit["executed_query_count"], 2)
+        self.assertEqual(result["coverage"]["search_queries"][-2]["status"], "timeout")
 
     async def test_sufficient_bodies_skip_research_and_source_groups_are_not_evidence_votes(self):
         result, model, _, calls = await self.run_retrieval(sufficient=True)

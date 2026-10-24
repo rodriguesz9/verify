@@ -1,5 +1,7 @@
 # Reduzir inconclusivos sem aumentar conclusões erradas
 
+Última medição de 23/10: [6/12 corretos (50%)](RESILIENCIA-RECUPERACAO-MIDIA-2026-10-23.md), seis inconclusivos. Modelos responderam; insuficiência de famílias impediu comparação nesses seis. Raiz WHO/Europe corrigida posteriormente, sem apagar contexto; vínculo de evento/data ainda insuficiente. Quatro mídias revalidadas na UI com cota própria, sem homologar precisão geral. OpenRouter respondeu, mas omitiu um dos dois pares de fonte no diagnóstico separado. Recuperação EBC/Webb, corpos completos DART/OMS e matriz completa dos modelos são prioridades. Meta 80% não alcançada; registros seguintes são históricos.
+
 Atualização de 23/10: [implementação central e resultado](CAUSA-CENTRAL-2026-10-22.md). A rodada completa mais recente foi **7/12 corretos (58,3%), cinco inconclusivos**, não 80%. Equivalências delimitadas de relatos de competição e lançamento foram implementadas depois, com testes offline. Próximas prioridades são falha dos modelos com duas fontes já prontas, leitura completa de intenção/data do DART, recuperação acessível da OMS e avaliação independente da versão final, incluindo mídias. Não corrigir esses casos apagando qualificadores, promovendo legenda a prova ou reduzindo o denominador. Toda alteração posterior exige nova avaliação separada. O estado inicial abaixo é histórico.
 
 Implementação e medição desta etapa: [recuperação, espera e diagnóstico](RECUPERACAO-ESPERA-2026-10-22.md).

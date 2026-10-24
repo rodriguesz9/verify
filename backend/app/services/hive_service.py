@@ -73,7 +73,7 @@ def hive_v3_enabled():
     return os.getenv("HIVE_API_VERSION", "v2").strip().lower() == "v3"
 
 
-def parse_hive_v3_scores(data: dict, media_type="image") -> dict:
+def parse_hive_v3_scores(data: dict, media_type="image", *, duration_seconds=None) -> dict:
     """v3 uses output[].classes[].value, and a DISTINCT audio head."""
     if not isinstance(data, dict) or data.get("model") != HIVE_V3_MODEL or not isinstance(data.get("output"), list):
         return {"available": False, "status": "invalid_response", "api_version": "v3"}
@@ -93,8 +93,14 @@ def parse_hive_v3_scores(data: dict, media_type="image") -> dict:
             elif label not in {"ai_generated", "deepfake"}:
                 continue
             classes.append({"class": label, "score": item.get("value")})
-        outputs.append({"classes": classes})
-    result = parse_hive_scores({"status": [{"status": {"code": "0"}, "response": {"output": outputs}}]})
+        # Preserve optional segment coordinates. The common parser validates
+        # their type, finiteness and range before publishing them. Dropping
+        # these here turned a segment maximum into an observation with no
+        # inspectable time scope, even when Hive supplied that scope.
+        outputs.append({"classes": classes, "time": output.get("time"),
+                        "end_time": output.get("end_time")})
+    result = parse_hive_scores({"status": [{"status": {"code": "0"}, "response": {"output": outputs}}]},
+                               duration_seconds=duration_seconds)
     return {**result, "api_version": "v3", "model_used": HIVE_V3_MODEL,
             "model_version": str(data.get("version", ""))[:50], "decision_role": "media_detector"}
 
@@ -123,7 +129,7 @@ async def _request_hive_v3(file_bytes, filename, media_type, mime_type, duration
                       429: "rate_limited", 503: "unavailable"}.get(response.status_code, "error")
             return {"available": False, "status": status,
                     "api_version": "v3", "reason": f"Hive v3 indisponível (HTTP {response.status_code})."}
-        return parse_hive_v3_scores(response.json(), media_type)
+        return parse_hive_v3_scores(response.json(), media_type, duration_seconds=duration_seconds)
     except (asyncio.TimeoutError, httpx.TimeoutException):
         return {"available": False, "status": "timeout", "api_version": "v3",
                 "reason": "Tempo limite do detector Hive v3 atingido; não houve reenvio."}
@@ -132,9 +138,19 @@ async def _request_hive_v3(file_bytes, filename, media_type, mime_type, duration
                 "reason": "Não foi possível obter resposta válida do Hive v3."}
 
 
-def parse_hive_scores(data: dict) -> dict:
+def parse_hive_scores(data: dict, *, duration_seconds=None) -> dict:
+    """Keep provider scores separate from bounded temporal observations.
+
+    Callers with validated media duration bound coordinates by that duration;
+    malformed/out-of-file coordinates are omitted, never clipped or expanded
+    into a whole-file observation. Legacy parser callers retain the 120 s cap.
+    """
     classes = {}
     segments = []
+    segment_limit = 120.0 if duration_seconds is None else (
+        float(duration_seconds) if isinstance(duration_seconds, (int, float))
+        and not isinstance(duration_seconds, bool) and math.isfinite(duration_seconds)
+        and 0 < duration_seconds <= 120 else None)
     task_errors = 0
     if not isinstance(data, dict) or not isinstance(data.get("status"), list):
         return {"available": False, "status": "invalid_response"}
@@ -166,8 +182,9 @@ def parse_hive_scores(data: dict) -> dict:
                         observations[label.lower()] = max(observations.get(label.lower(), 0), float(score))
                         classes[label.lower()] = max(classes.get(label.lower(), 0), float(score))
             start, end = output.get("time"), output.get("end_time")
-            if (all(isinstance(t, (int, float)) and not isinstance(t, bool) and math.isfinite(t) for t in (start, end))
-                    and 0 <= start <= end <= 120 and "ai_generated" in observations):
+            if (segment_limit is not None
+                    and all(isinstance(t, (int, float)) and not isinstance(t, bool) and math.isfinite(t) for t in (start, end))
+                    and 0 <= start <= end <= segment_limit and "ai_generated" in observations):
                 segments.append({"start_seconds": start, "end_seconds": end,
                                  "ai_generated_score": observations["ai_generated"]})
     # Never match substrings: not_ai_generated and not_deepfake are negative classes.

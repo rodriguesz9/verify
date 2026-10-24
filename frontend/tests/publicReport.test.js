@@ -24,7 +24,7 @@ function component(source, resolve, result) {
 const EvidenceExplanation = component(evidenceSource, (name) =>
   name === "../../utils/reportEvidence" ? reportHelpers : require(name));
 
-function renderPage(result) {
+function renderPage(result, {captureScore} = {}) {
   const source = pageSource
     .replace("const [result, setResult] = useState(null);", "const [result, setResult] = useState(__TEST_RESULT__);")
     .replace("const [loading, setLoading] = useState(true);", "const [loading, setLoading] = useState(false);");
@@ -37,7 +37,9 @@ function renderPage(result) {
       get: () => () => {throw new Error("Rendering must not access APIs or storage");},
     });
     if (name === "../components/report/EvidenceExplanation") return {__esModule: true, default: EvidenceExplanation};
-    if (name === "../components/Footer" || name === "../components/report/AnimatedScore") return {__esModule: true, default: () => null};
+    if (name === "../components/report/AnimatedScore") return {__esModule: true,
+      default: (props) => { captureScore?.(props); return null; }};
+    if (name === "../components/Footer") return {__esModule: true, default: () => null};
     return require(name);
   };
   return renderToStaticMarkup(createElement(component(source, resolve, result)));
@@ -86,6 +88,27 @@ function screenshotControl() {
       gemini_vision: {status: "timeout", decision_role: "inspection_only", reason: "Tempo limite da chamada atingido."},
     }};
 }
+
+test("media findings invite reading the signals without a fake percentage or blanket unknown label", () => {
+  for (const [content_type, state, scope] of [
+    ["image", "consensus_ai", "image"], ["image", "no_high_signal", "image"],
+    ["audio", "isolated_ai", "audio"], ["video", "isolated_ai", "sampled_video_frames"],
+  ]) {
+    const result = {...screenshotControl(), content_type, score: 50,
+      media_signal: {version: "1", state, scope}};
+    const before = structuredClone(result);
+    let props;
+    renderPage(result, {captureScore: (value) => { props = value; }});
+    assert.equal(props.value, null);
+    assert.equal(props.unavailableText, "Veja os sinais e os limites");
+    assert.deepEqual(result, before);
+  }
+  let props;
+  renderPage({content_type: "text", verdict: "Suspicious", analysis_status: "inconclusive",
+    veracity_status: "unverified", score: 50}, {captureScore: (value) => { props = value; }});
+  assert.equal(props.value, null);
+  assert.equal(props.unavailableText, "Não determinado");
+});
 
 test("public report keeps the inconclusive result without provider cards, scores or configuration errors", () => {
   const result = screenshotControl();
