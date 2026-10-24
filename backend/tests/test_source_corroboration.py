@@ -749,7 +749,7 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
             result = await corroborate_sources(CLAIM, documents())
         self.assertEqual(result["status"], "timeout")
         self.assertEqual(result["state"], "insufficient")
-        timeout.assert_called_once_with(180)
+        timeout.assert_called_once_with(240)
         router.assert_not_awaited()
         gemini.assert_not_awaited()
 
@@ -1026,7 +1026,7 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
         gemini.assert_not_awaited()
 
     def test_timeout_configuration_is_bounded_and_family_is_pure(self):
-        for configured, expected in (("10", 10), ("60", 60), ("90", 90), ("9", 180), ("61", 61), ("91", 91), ("180", 180), ("181", 180), ("garbage", 180)):
+        for configured, expected in (("10", 10), ("60", 60), ("90", 90), ("9", 240), ("61", 61), ("91", 91), ("180", 180), ("181", 181), ("240", 240), ("241", 240), ("garbage", 240)):
             with patch.dict(os.environ, {"SOURCE_CROSSCHECK_TIMEOUT_SECONDS": configured}):
                 self.assertEqual(crosscheck_timeout_seconds(), expected)
         self.assertEqual(source_family("https://g1.globo.com/story"), "globo")

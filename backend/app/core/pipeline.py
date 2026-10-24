@@ -1,5 +1,11 @@
 import asyncio
 from app.core.gemini_client import gemini_timeout_seconds
+from app.core.analysis_timing import (
+    TEXT_PIPELINE_WAIT_SECONDS as PIPELINE_BUDGET_SECONDS,
+    TEXT_PARALLEL_WAIT_SECONDS as INITIAL_QUERY_BUDGET_SECONDS,
+    SOURCE_RETRIEVAL_WAIT_SECONDS, RESEARCH_PLAN_WAIT_SECONDS,
+    RESEARCH_FOLLOWUP_RESERVE_SECONDS,
+)
 from datetime import datetime, timezone
 import re
 import os
@@ -28,8 +34,6 @@ SOURCE_SITE_FILTER = "(site:royal.uk OR site:brasilescola.uol.com.br OR site:mun
 PRIMARY_SITE_FILTER = "(site:royal.uk OR site:nasa.gov OR site:ibge.gov.br OR site:bcb.gov.br OR site:who.int OR site:planalto.gov.br OR site:copernicus.eu)"
 EDITORIAL_SITE_FILTER = "(site:bbc.com OR site:reuters.com OR site:apnews.com OR site:ebc.com.br OR site:cnnbrasil.com.br OR site:theguardian.com OR site:g1.globo.com OR site:brasilescola.uol.com.br OR site:aosfatos.org)"
 EXPLAINER_SITE_FILTER = "(site:brasilescola.uol.com.br OR site:mundoeducacao.uol.com.br OR site:cnnbrasil.com.br OR site:g1.globo.com OR site:aosfatos.org)"
-PIPELINE_BUDGET_SECONDS = 330
-INITIAL_QUERY_BUDGET_SECONDS = 110
 
 
 def _search_can_continue(status):
@@ -322,7 +326,7 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
     """
     crosscheck_enabled = use_source_crosscheck and os.getenv("SOURCE_CROSSCHECK_ENABLED", "true").strip().lower() == "true"
     ai_research = crosscheck_enabled and research_enabled()
-    deadline = 105 if ai_research else 45 if crosscheck_enabled else 20
+    deadline = SOURCE_RETRIEVAL_WAIT_SECONDS if ai_research else 45 if crosscheck_enabled else 20
     started = asyncio.get_running_loop().time()
     attribution, plan, cited_leads = None, [], []
     fetched_cache, reference_waves = {}, []
@@ -422,12 +426,14 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
                           and (item.get("link") or item.get("url")) not in fetched_cache]
                 # Do not let a slow planner consume the entire retrieval
                 # deadline. Preserve time for real search and page reads.
-                planning_budget = min(45, max(0, deadline - (asyncio.get_running_loop().time() - started) - 20))
+                planning_budget = min(RESEARCH_PLAN_WAIT_SECONDS,
+                    max(0, deadline - (asyncio.get_running_loop().time() - started) - RESEARCH_FOLLOWUP_RESERVE_SECONDS))
                 try:
                     if planning_budget <= 0:
                         raise TimeoutError
                     requested = await asyncio.wait_for(plan_source_research(
-                        text, unread, attribution.get("_documents", []), audit, source_url), planning_budget)
+                        text, unread, attribution.get("_documents", []), audit, source_url,
+                        timeout_seconds=planning_budget), planning_budget)
                 except TimeoutError:
                     requested = {"queries": [], "leads": [], "coverage": {
                         "status": "timeout" if planning_budget > 0 else "not_requested",

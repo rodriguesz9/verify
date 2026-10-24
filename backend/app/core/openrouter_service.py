@@ -10,6 +10,7 @@ import time
 from datetime import datetime, timezone
 
 import httpx
+from app.core.analysis_timing import MAX_MODEL_WAIT_SECONDS
 
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 DEFAULT_MODEL = "openrouter/free"
@@ -97,7 +98,7 @@ async def _generate(prompt, system_instruction, temperature, max_tokens, json_ou
     headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json",
                "HTTP-Referer": "https://verifybr.vercel.app", "X-OpenRouter-Title": "Verify"}
     if (isinstance(timeout_seconds, bool) or not isinstance(timeout_seconds, (int, float))
-            or not math.isfinite(timeout_seconds) or not 0 < timeout_seconds <= 90):
+            or not 0 < timeout_seconds <= MAX_MODEL_WAIT_SECONDS or not math.isfinite(timeout_seconds)):
         raise OpenRouterError("invalid_configuration", "Prazo OpenRouter fora do limite permitido.")
     try:
         # One wall-clock budget includes client setup/cleanup and every
@@ -126,11 +127,17 @@ async def _generate_with_models(models, messages, headers, temperature, max_toke
             if json_output:
                 payload["response_format"] = response_format or {"type": "json_object"}
                 payload["provider"]["require_parameters"] = True
-            # Reserve a share for the explicit free alternate. A hanging
-            # primary must not consume the entire outer wall-clock budget.
-            attempt_expires_at = loop.time() + remaining / (len(models) - index)
             try:
-                async with asyncio.timeout_at(attempt_expires_at):
+                if index + 1 < len(models):
+                    # Reserve a share for the explicit free alternate. A
+                    # hanging primary must not consume the entire deadline.
+                    attempt_expires_at = loop.time() + remaining / (len(models) - index)
+                    async with asyncio.timeout_at(attempt_expires_at):
+                        response = await client.post(OPENROUTER_API_URL, headers=headers, json=payload)
+                else:
+                    # The outer deadline already bounds the last attempt and
+                    # client setup/close. A coincident second timeout can cancel
+                    # async transport cleanup while the first is unwinding.
                     response = await client.post(OPENROUTER_API_URL, headers=headers, json=payload)
             except (httpx.TimeoutException, TimeoutError):
                 if index + 1 < len(models):

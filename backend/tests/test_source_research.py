@@ -148,5 +148,5 @@ class ResearchPlanTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(coverage["status"], "timeout" if timed_out else "success")
             self.assertEqual(coverage["executed_query_count"], 0)
             self.assertEqual(coverage["deterministic_gap_query_executed_count"], 1)
-            self.assertLessEqual(coverage["planning_budget_seconds"], 45)
+            self.assertLessEqual(coverage["planning_budget_seconds"], 60)
             self.assertEqual(result["coverage"]["max_search_queries"], 5)

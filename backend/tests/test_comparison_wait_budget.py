@@ -30,7 +30,7 @@ class ComparisonWaitBudgetTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(all(value == 0 for value in payload["provider"]["max_price"].values()))
 
     async def test_invalid_timeout_never_reserves_or_sends(self):
-        for timeout in (True, 0, -1, 91, float("nan"), float("inf"), "45", None):
+        for timeout in (True, 0, -1, 121, float("nan"), float("inf"), "45", None):
             with self.subTest(timeout=timeout), patch.dict(os.environ, {
                     "OPENROUTER_API_KEY": "unit-test-not-secret", "OPENROUTER_ENABLED": "true",
                     "OPENROUTER_MODEL": "openrouter/free", "OPENROUTER_FALLBACK_MODELS": ""}), \
@@ -42,10 +42,10 @@ class ComparisonWaitBudgetTests(unittest.IsolatedAsyncioTestCase):
                 reserve.assert_not_called()
                 factory.assert_not_called()
 
-    def test_crosscheck_shared_default_and_upper_bound_are_180_seconds(self):
+    def test_crosscheck_shared_default_and_upper_bound_are_240_seconds(self):
         with patch.dict(os.environ):
             os.environ.pop("SOURCE_CROSSCHECK_TIMEOUT_SECONDS", None)
-            self.assertEqual(crosscheck_timeout_seconds(), 180)
-        for configured, expected in (("10", 10), ("45", 45), ("60", 60), ("90", 90), ("91", 91), ("180", 180), ("181", 180), ("0", 180)):
+            self.assertEqual(crosscheck_timeout_seconds(), 240)
+        for configured, expected in (("10", 10), ("45", 45), ("60", 60), ("90", 90), ("91", 91), ("180", 180), ("181", 181), ("240", 240), ("241", 240), ("0", 240)):
             with self.subTest(configured=configured), patch.dict(os.environ, {"SOURCE_CROSSCHECK_TIMEOUT_SECONDS": configured}):
                 self.assertEqual(crosscheck_timeout_seconds(), expected)

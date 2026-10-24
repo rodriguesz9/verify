@@ -37,7 +37,7 @@ class TransientSearchRecoveryTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(result["coverage"]["search_queries"][0]["status"], statuses[0])
                 self.assertTrue(any(row["status"] == "timeout" for row in result["coverage"]["search_queries"]))
                 self.assertEqual(result["coverage"]["max_search_queries"], 5)
-                self.assertEqual(result["coverage"]["retrieval_deadline_seconds"], 105)
+                self.assertEqual(result["coverage"]["retrieval_deadline_seconds"], 145)
 
     async def test_quota_credentials_configuration_and_unclassified_errors_still_stop_search(self):
         for failure in ("rate_limited", "not_configured", "invalid_configuration", "error", "invalid_response"):

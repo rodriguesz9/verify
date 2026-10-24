@@ -107,7 +107,7 @@ class ResearchScopePipelineTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(collect.await_args.kwargs["max_sources"], 10)
         coverage = result["coverage"]
         self.assertEqual(coverage["max_search_queries"], 5)
-        self.assertEqual(coverage["retrieval_deadline_seconds"], 105)
+        self.assertEqual(coverage["retrieval_deadline_seconds"], 145)
         self.assertEqual(coverage["online_research"]["executed_query_count"], 2)
         self.assertEqual(coverage["online_research"]["scope_diversified_query_executed_count"], 1)
         second = coverage["search_queries"][-1]

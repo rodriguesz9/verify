@@ -53,7 +53,7 @@ class OpenRouterDeadlineTests(unittest.IsolatedAsyncioTestCase):
             factory.assert_called_once_with(timeout=25, trust_env=False, follow_redirects=False)
 
     async def test_invalid_deadline_never_opens_client_or_charges_attempt(self):
-        for value in (True, False, 0, -1, 91, float("inf"), float("nan"), "90", None):
+        for value in (True, False, 0, -1, 121, 10 ** 400, float("inf"), float("nan"), "90", None):
             with self.subTest(value=value), patch.object(router, "_reserve_request") as reserve, \
                  patch.object(router.httpx, "AsyncClient") as factory:
                 with self.assertRaises(router.OpenRouterError) as raised:

@@ -57,7 +57,7 @@ class DetailedPipelineTests(unittest.IsolatedAsyncioTestCase):
             for report in (baseline, detailed):
                 elapsed = report["provider_coverage"]["analysis_budget"].pop("elapsed_seconds")
                 self.assertGreaterEqual(elapsed, 0)
-                self.assertLessEqual(elapsed, 330)
+                self.assertLessEqual(elapsed, 420)
             self.assertEqual({k: v for k, v in detailed.items() if k not in {"plain_explanation", "report_explanation"}},
                              {k: v for k, v in baseline.items() if k != "plain_explanation"})
             self.assertEqual(detailed["report_explanation"]["decision_role"], "explanation_only")

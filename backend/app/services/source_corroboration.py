@@ -27,6 +27,7 @@ from app.services.competition_relations import is_competition_outcome_claim, com
 from app.services.typed_source_comparison import typed_review_matrix, COMPARISON_METHOD as TYPED_COMPARISON_METHOD
 from app.services.classification_body_dates import classification_body_binding
 from app.services.provider_diagnostics import http_failure_metadata
+from app.core.analysis_timing import COMPARISON_WAIT_SECONDS, MAX_MODEL_WAIT_SECONDS, TEXT_PIPELINE_WAIT_SECONDS
 from app.services.legal_declaration_relations import (
     parse_legal_declaration_claim, parse_legal_article_declaration,
     legal_declaration_relation, legal_declaration_has_unsafe_scope,
@@ -339,8 +340,8 @@ def is_original_record_claim(claim, source):
 
 
 def crosscheck_timeout_seconds():
-    raw = os.getenv("SOURCE_CROSSCHECK_TIMEOUT_SECONDS", "180").strip()
-    return int(raw) if re.fullmatch(r"[0-9]{1,3}", raw) and 10 <= int(raw) <= 180 else 180
+    raw = os.getenv("SOURCE_CROSSCHECK_TIMEOUT_SECONDS", str(COMPARISON_WAIT_SECONDS)).strip()
+    return int(raw) if re.fullmatch(r"[0-9]{1,3}", raw) and 10 <= int(raw) <= COMPARISON_WAIT_SECONDS else COMPARISON_WAIT_SECONDS
 
 
 def _name_ordinal_spans(text):
@@ -1663,8 +1664,9 @@ async def _compare(prompt, coverage, *, timeout_seconds=None):
         # Two attempts still share the original whole-request deadline.
         # Reserve a real opportunity for the alternate instead of leaving it
         # a short tail. Immediate failure releases unused time to the next.
-        attempt_timeout = min(90, remaining / (2 - index))
-        coverage[provider]["status"] = "pending"
+        attempt_timeout = min(MAX_MODEL_WAIT_SECONDS, remaining / (2 - index))
+        attempt_started = loop.time()
+        coverage[provider].update(status="pending", attempt_wait_seconds=round(attempt_timeout, 3))
         try:
             if provider == "gemini":
                 operation = _gemini_comparison(prompt, response_schema, coverage[provider], attempt_timeout)
@@ -1705,6 +1707,8 @@ async def _compare(prompt, coverage, *, timeout_seconds=None):
         except Exception:
             status = "error"
             coverage[provider]["status"] = status
+        finally:
+            coverage[provider]["elapsed_seconds"] = round(max(0, loop.time() - attempt_started), 3)
     return None, coverage, status
 
 
@@ -1924,7 +1928,7 @@ async def corroborate_sources(text, documents, source_url=None, *, timeout_secon
                 budget = crosscheck_timeout_seconds()
                 if timeout_seconds is not None:
                     if (isinstance(timeout_seconds, bool) or not isinstance(timeout_seconds, (int, float))
-                            or not 0 <= timeout_seconds <= 330):
+                            or not 0 <= timeout_seconds <= TEXT_PIPELINE_WAIT_SECONDS or not math.isfinite(timeout_seconds)):
                         raise ValueError("Invalid remaining comparison budget")
                     budget = min(budget, timeout_seconds)
                 async with asyncio.timeout(budget):

@@ -24,9 +24,9 @@ test("analysis deadlines cover bounded server stages; auth and PDF remain short"
     await login({ email: "test@example.test", password: "test-only" });
     await downloadPdfReport("vpdf1.control");
     assert.deepEqual(observed, [
-      ["/check-text", 360000], ["/check-text-batch", 360000], ["/check-url", 360000], ["/check-extracted-text", 360000],
+      ["/check-text", 480000], ["/check-text-batch", 480000], ["/check-url", 480000], ["/check-extracted-text", 480000],
       ["/upload", 360000], ["/verificar/audio-rapido", 360000], ["/verificar/completo", 360000],
-      ["/whatsapp/simulate", 360000], ["/auth/login", 60000], ["/verificar/relatorio-pdf", 30000],
+      ["/whatsapp/simulate", 480000], ["/auth/login", 60000], ["/verificar/relatorio-pdf", 30000],
     ]);
   } finally {
     api.defaults.adapter = previous;
@@ -37,5 +37,6 @@ test("waiting feedback is accessible and does not fabricate percentage progress"
   const source = readFileSync(new URL("../src/pages/Home.jsx", import.meta.url), "utf8");
   assert.match(source, /role="status" aria-live="polite"/);
   assert.match(source, /Aguarde sem enviar novamente/);
-  assert.match(source, /A análise pode levar até seis minutos/);
+  assert.match(source, /Texto e links: até oito minutos/);
+  assert.match(source, /Imagens, áudios e vídeos: até seis minutos/);
 });

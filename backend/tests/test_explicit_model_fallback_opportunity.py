@@ -96,20 +96,52 @@ class ExplicitFallbackOpportunityTests(unittest.IsolatedAsyncioTestCase):
                             httpx.Response(500), httpx.Response(502), httpx.Response(503), httpx.Response(504)):
                 with self.subTest(provider=provider, failure=type(failure).__name__), ExitStack() as stack:
                     client, reserve, operation, _error = self.setup_provider(provider, stack)
-                    original = asyncio.timeout_at
-                    deadlines = []
+                    original_timeout, original_timeout_at = asyncio.timeout, asyncio.timeout_at
+                    outer_deadlines, slices, post_times = [], [], []
+
+                    def timeout(value):
+                        context = original_timeout(value)
+                        outer_deadlines.append(context.when())
+                        return context
 
                     def timeout_at(value):
-                        deadlines.append(value)
-                        return original(value)
+                        slices.append(value)
+                        return original_timeout_at(value)
 
+                    async def post(*_args, **_kwargs):
+                        post_times.append(asyncio.get_running_loop().time())
+                        if len(post_times) == 1:
+                            if isinstance(failure, Exception):
+                                raise failure
+                            return failure
+                        return response(provider)
+
+                    stack.enter_context(patch.object(asyncio, "timeout", side_effect=timeout))
                     stack.enter_context(patch.object(asyncio, "timeout_at", side_effect=timeout_at))
-                    client.post.side_effect = [failure, response(provider)]
+                    client.post.side_effect = post
                     value = await operation("fixed input", timeout_seconds=90)
                     self.assertEqual(str(value), '{"answer":"insufficient"}')
                     self.assertEqual(reserve.call_count, 2)
-                    self.assertEqual(len(deadlines), 2)
-                    self.assertTrue(44 < deadlines[1] - deadlines[0] <= 45.1)
+                    self.assertEqual(client.post.await_count, 2)
+                    self.assertEqual(len(outer_deadlines), 1)
+                    self.assertEqual(len(slices), 1, "Only the attempt reserving an alternate has an inner timer.")
+                    self.assertTrue(44 < outer_deadlines[0] - slices[0] <= 45.1)
+                    # A quick failure spends almost none of the total budget;
+                    # its alternate inherits the unspent outer deadline, not
+                    # a new 45-second slice or a restarted 90-second timer.
+                    self.assertTrue(89 < outer_deadlines[0] - post_times[1] <= 90)
+                    calls = client.post.await_args_list
+                    if provider == "gemini":
+                        self.assertEqual([call.args[0].rsplit("/", 1)[-1] for call in calls],
+                            ["primary-test:generateContent", "alternate-test:generateContent"])
+                        self.assertTrue(all(call.kwargs["json"]["contents"][0]["parts"] == [
+                            {"text": "fixed input"}] for call in calls))
+                    else:
+                        self.assertEqual([call.kwargs["json"]["model"] for call in calls],
+                            ["vendor/primary:free", "vendor/alternate:free"])
+                        self.assertTrue(all(call.kwargs["json"]["messages"] == [
+                            {"role": "user", "content": "fixed input"}] for call in calls))
+                    self.assertEqual(value.model_name, "alternate-test" if provider == "gemini" else "vendor/alternate:free")
 
     async def test_auth_permission_payment_quota_and_request_errors_never_rotate(self):
         for provider in ("gemini", "openrouter"):
@@ -143,18 +175,26 @@ class ExplicitFallbackOpportunityTests(unittest.IsolatedAsyncioTestCase):
                 stack.enter_context(patch.dict(os.environ, {"GEMINI_FALLBACK_MODELS": "", "OPENROUTER_FALLBACK_MODELS": ""}))
                 client, reserve, operation, _error = self.setup_provider(provider, stack)
                 client.post.return_value = response(provider)
-                original = asyncio.timeout_at
-                deadlines = []
+                original_timeout, original_timeout_at = asyncio.timeout, asyncio.timeout_at
+                outer_deadlines, slices = [], []
                 started = asyncio.get_running_loop().time()
 
-                def timeout_at(value):
-                    deadlines.append(value)
-                    return original(value)
+                def timeout(value):
+                    context = original_timeout(value)
+                    outer_deadlines.append(context.when())
+                    return context
 
+                def timeout_at(value):
+                    slices.append(value)
+                    return original_timeout_at(value)
+
+                stack.enter_context(patch.object(asyncio, "timeout", side_effect=timeout))
                 stack.enter_context(patch.object(asyncio, "timeout_at", side_effect=timeout_at))
-                await operation("fixed input", timeout_seconds=90)
-                self.assertEqual(len(deadlines), 1)
-                self.assertTrue(89 < deadlines[0] - started < 90.1)
+                value = await operation("fixed input", timeout_seconds=90)
+                self.assertEqual(len(outer_deadlines), 1)
+                self.assertEqual(slices, [], "A sole attempt uses the complete outer deadline without a second cancellation timer.")
+                self.assertTrue(89 < outer_deadlines[0] - started < 90.1)
+                self.assertEqual(value.model_name, "primary-test" if provider == "gemini" else "vendor/primary:free")
                 reserve.assert_called_once()
                 client.post.assert_awaited_once()
 

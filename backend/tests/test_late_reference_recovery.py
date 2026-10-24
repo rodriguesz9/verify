@@ -82,7 +82,7 @@ class LateReferenceRecoveryTests(unittest.IsolatedAsyncioTestCase):
         planner.assert_not_awaited()
         self.assertEqual(result["coverage"]["usable_source_family_count"], 2)
         self.assertEqual(result["coverage"]["cumulative_fetch_attempt_count"], 8)
-        self.assertEqual(result["coverage"]["retrieval_deadline_seconds"], 105)
+        self.assertEqual(result["coverage"]["retrieval_deadline_seconds"], 145)
         self.assertEqual(result["coverage"]["direct_reference_recovery"]["max_leads"], 2)
         self.assertEqual(result["coverage"]["direct_reference_recovery"]["waves"], [
             {"stage": "late_reference", "selected_lead_count": 2, "status": "completed"}])

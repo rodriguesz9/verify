@@ -11,6 +11,7 @@ import re
 import threading
 import time
 import httpx
+from app.core.analysis_timing import MAX_MODEL_WAIT_SECONDS
 
 
 MAX_GEMINI_REQUEST_BYTES = 19_000_000  # Below Google's 20 MB inline request cap.
@@ -221,7 +222,7 @@ def gemini_timeout_seconds() -> int:
 async def generate_text(contents, *, system_instruction=None, temperature=.1, json_output=True, max_tokens=2048, model_name=None, response_schema=None, timeout_seconds=None):
     deadline = gemini_timeout_seconds() if timeout_seconds is None else timeout_seconds
     if (isinstance(deadline, bool) or not isinstance(deadline, (int, float))
-            or not math.isfinite(deadline) or not 0 < deadline <= 90):
+            or not 0 < deadline <= MAX_MODEL_WAIT_SECONDS or not math.isfinite(deadline)):
         raise GeminiError("Prazo da solicitação de leitura inválido.", "invalid_configuration")
     try:
         # The explicit fallback shares the deadline, not a second full budget.
@@ -291,12 +292,19 @@ async def _generate_text(contents, *, system_instruction=None, temperature=.1, j
             remaining = expires_at - loop.time()
             if remaining <= 0:
                 raise GeminiError("Tempo limite do Gemini atingido.", "timeout")
-            # An explicit alternate gets a genuine opportunity after a stuck
-            # transport, within the SAME outer deadline. Admission remains
-            # outside this slice: a local queue/quota never rotates models.
-            attempt_expires_at = loop.time() + remaining / (len(models) - index)
             try:
-                async with asyncio.timeout_at(attempt_expires_at):
+                if index + 1 < len(models):
+                    # An explicit alternate retains a share of the SAME outer
+                    # deadline. Admission stays outside this transport slice:
+                    # a local queue/quota never rotates models.
+                    attempt_expires_at = loop.time() + remaining / (len(models) - index)
+                    async with asyncio.timeout_at(attempt_expires_at):
+                        response = await client.post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+                                                     headers={"x-goog-api-key": key}, json=body)
+                else:
+                    # The outer timer already bounds this final attempt and
+                    # setup/close. A second coincident cancellation can abort
+                    # async transport cleanup while the first is unwinding.
                     response = await client.post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
                                                  headers={"x-goog-api-key": key}, json=body)
             except (httpx.TimeoutException, TimeoutError):

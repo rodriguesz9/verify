@@ -106,7 +106,7 @@ class GeminiComparisonDeadlineTests(unittest.IsolatedAsyncioTestCase):
         deadline.assert_called_once_with(90)
 
     async def test_invalid_per_call_budget_is_rejected_before_transport(self):
-        for value in (True, False, 0, -1, 91, float("nan"), float("inf"), "90"):
+        for value in (True, False, 0, -1, 121, 10 ** 400, float("nan"), float("inf"), "90"):
             with self.subTest(value=value), \
                  patch.object(gemini_client, "_generate_text", new=AsyncMock()) as transport:
                 with self.assertRaises(gemini_client.GeminiError) as raised:

@@ -20,14 +20,14 @@ def coverage():
 
 
 class FairComparisonDeadlineTests(unittest.IsolatedAsyncioTestCase):
-    async def test_default_providers_each_receive_up_to_90_without_extending_whole_deadline(self):
+    async def test_default_providers_each_receive_up_to_120_without_extending_whole_deadline(self):
         with patch.object(sources.gemini_client, "generate_text", new=AsyncMock(side_effect=GeminiError("Unavailable", "unavailable"))) as first, \
              patch.object(sources.openrouter_service, "generate", new=AsyncMock(return_value=ANSWER)) as second:
-            raw, result, status = await sources._compare(PROMPT, coverage(), timeout_seconds=180)
+            raw, result, status = await sources._compare(PROMPT, coverage(), timeout_seconds=240)
         self.assertEqual(raw, ANSWER)
         self.assertEqual(status, "success")
-        self.assertTrue(89 < first.await_args.kwargs["timeout_seconds"] <= 90)
-        self.assertEqual(second.await_args.kwargs["timeout_seconds"], 90)
+        self.assertTrue(119 < first.await_args.kwargs["timeout_seconds"] <= 120)
+        self.assertEqual(second.await_args.kwargs["timeout_seconds"], 120)
         self.assertEqual(result["gemini"]["status"], "unavailable")
 
     async def test_hanging_primary_is_joined_and_remaining_half_reaches_alternate(self):

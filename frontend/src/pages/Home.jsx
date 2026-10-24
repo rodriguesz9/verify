@@ -405,7 +405,7 @@ export default function Home() {
 
         {(loading || batchLoading || reviewBusy) && (
           <p role="status" aria-live="polite" className="mt-4 text-base leading-relaxed text-[#9CC3D8] text-center">
-            A análise pode levar até seis minutos. Aguarde sem enviar novamente.
+            Texto e links: até oito minutos. Imagens, áudios e vídeos: até seis minutos. Estamos aguardando as respostas. Aguarde sem enviar novamente.
           </p>
         )}
 

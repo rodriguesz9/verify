@@ -9,7 +9,7 @@ export const api = axios.create({ baseURL, timeout: 60000, withCredentials: true
 // extraction + retrieval + grounded document comparison. This is a bounded
 // wait, not a retry. Media also covers validation, bounded Hive/ASR and the
 // legacy content check; authentication and PDF keep their shorter limits.
-const ANALYSIS_TIMEOUT = 360000;
+const ANALYSIS_TIMEOUT = 480000;
 const MEDIA_TIMEOUT = 360000;
 
 // Compare epochs even before getMe initializes the account. The report storage

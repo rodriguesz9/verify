@@ -7,11 +7,13 @@ No provider-native search plugin (which may charge for free models) is enabled.
 """
 import asyncio
 import json
+import math
 import os
 import re
 import unicodedata
 
 from app.core import gemini_client, openrouter_service
+from app.core.analysis_timing import RESEARCH_PLAN_WAIT_SECONDS
 from app.services.claim_policy import input_claims
 from app.services.source_corroboration import (
     source_identity, _gemini_schema, _tokens, _names, _quantities, _dates_covered,
@@ -22,7 +24,7 @@ from app.services.provider_diagnostics import http_failure_metadata
 
 MAX_QUERIES = 2
 MAX_LEADS = 24
-TIMEOUT = 45
+TIMEOUT = RESEARCH_PLAN_WAIT_SECONDS
 SCHEMA = {"type": "object", "properties": {
     "queries": {"type": "array", "maxItems": MAX_QUERIES, "items": {
         "type": "object", "properties": {"query": {"type": "string", "maxLength": 180},
@@ -173,17 +175,37 @@ def _decode(raw, text, lead_map):
     return validated, selected, rejected
 
 
-async def plan_source_research(text, leads, documents, selection_audit, source_url=None):
+async def plan_source_research(text, leads, documents, selection_audit, source_url=None, *, timeout_seconds=None):
+    # Context preparation and every configured fallback share the caller's
+    # original budget. Never create a fresh deadline after building the prompt.
+    clock = asyncio.get_running_loop().time
+    started = clock()
+    budget = TIMEOUT if timeout_seconds is None else timeout_seconds
     coverage = {"version": "bounded_ai_research_v1", "status": "not_configured",
         "decision_role": "online_research_planning_only", "max_queries": MAX_QUERIES,
-        "planned_query_count": 0, "selected_lead_count": 0, "provider_coverage": {}}
+        "planned_query_count": 0, "selected_lead_count": 0, "provider_coverage": {},
+        "wait_budget_seconds": None}
     result = {"queries": [], "leads": [], "coverage": coverage}
+
+    def finished():
+        coverage["elapsed_seconds"] = round(max(0, clock() - started), 3)
+        return result
+
+    if (isinstance(budget, bool) or not isinstance(budget, (int, float))
+            or not 0 <= budget <= TIMEOUT or not math.isfinite(budget)):
+        coverage["status"] = "invalid_configuration"
+        return finished()
+    coverage["wait_budget_seconds"] = float(budget)
+    if budget == 0:
+        coverage["status"] = "timeout"
+        return finished()
+    deadline = started + budget
     if not research_enabled():
         coverage["status"] = "disabled" if os.getenv("SOURCE_RESEARCH_ENABLED", "true").strip().lower() != "true" else "not_configured"
-        return result
+        return finished()
     if not isinstance(text, str) or not 20 <= len(text) <= 5000:
         coverage["status"] = "not_requested"
-        return result
+        return finished()
     known = _lead_map(leads, source_url)
     summaries = []
     for doc in documents if isinstance(documents, list) else []:
@@ -214,38 +236,45 @@ async def plan_source_research(text, leads, documents, selection_audit, source_u
                              "excluded_source_count": len(selection_audit.get("excluded_sources", []))}}, ensure_ascii=False)
     if len(prompt) > 20000:
         coverage["status"] = "not_requested"
-        return result
+        return finished()
     # One plan, bounded provider fallback for transport failures only. A valid
     # empty/invalid plan is not sent repeatedly until a desired answer appears.
     providers = [name for name, configured in (("gemini", bool(os.getenv("GEMINI_API_KEY", "").strip())),
         ("openrouter", bool(os.getenv("OPENROUTER_API_KEY", "").strip()) and os.getenv("OPENROUTER_ENABLED", "true").lower() == "true")) if configured]
-    deadline = asyncio.get_running_loop().time() + TIMEOUT
+    gemini_schema = _gemini_schema(SCHEMA) if "gemini" in providers else None
     for index, name in enumerate(providers):
-        remaining = deadline - asyncio.get_running_loop().time()
+        remaining = deadline - clock()
         if remaining <= 0:
             coverage["status"] = "timeout"
             break
+        attempt_timeout = remaining / (len(providers) - index)
+        attempt_started = clock()
+        provider_coverage = coverage["provider_coverage"][name] = {
+            "attempt_wait_seconds": attempt_timeout}
         try:
             operation = gemini_client.generate_text(prompt, system_instruction=INSTRUCTION, temperature=0,
-                max_tokens=1024, response_schema=_gemini_schema(SCHEMA)) if name == "gemini" else openrouter_service.generate(
-                    prompt, system_instruction=INSTRUCTION, temperature=0, max_tokens=1024, response_format=FORMAT)
-            raw = await asyncio.wait_for(operation, timeout=remaining * (2 / 3) if index + 1 < len(providers) else remaining)
-            coverage["provider_coverage"][name] = {"status": "success", "model_used": getattr(raw, "model_name", None)}
+                max_tokens=1024, response_schema=gemini_schema, timeout_seconds=attempt_timeout) if name == "gemini" else openrouter_service.generate(
+                    prompt, system_instruction=INSTRUCTION, temperature=0, max_tokens=1024,
+                    response_format=FORMAT, timeout_seconds=attempt_timeout)
+            raw = await asyncio.wait_for(operation, timeout=attempt_timeout)
+            provider_coverage.update(status="success", model_used=getattr(raw, "model_name", None))
         except (gemini_client.GeminiError, openrouter_service.OpenRouterError) as exc:
-            coverage["provider_coverage"][name] = {"status": exc.status, **http_failure_metadata(exc)}
+            provider_coverage.update(status=exc.status, **http_failure_metadata(exc))
             coverage["status"] = exc.status
             continue
         except TimeoutError:
-            coverage["provider_coverage"][name] = {"status": "timeout"}
+            provider_coverage["status"] = "timeout"
             coverage["status"] = "timeout"
             continue
+        finally:
+            provider_coverage["elapsed_seconds"] = round(max(0, clock() - attempt_started), 3)
         try:
             queries, selected, rejected = _decode(raw, text, known)
         except (ValueError, TypeError):
             coverage["status"] = "invalid_response"
-            return result
+            return finished()
         result.update(queries=queries, leads=selected)
         coverage.update(status="partial" if rejected else "success", rejected_operation_count=rejected,
                         planned_query_count=len(queries), selected_lead_count=len(selected))
-        return result
-    return result
+        return finished()
+    return finished()
