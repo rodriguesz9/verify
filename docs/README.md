@@ -1,5 +1,7 @@
 # Documentação do Verify
 
+**Atualização de 24/10:** [correções e limites](VINCULOS-E-REVISAO-2026-10-24.md), [resultados sanitizados](validation-bindings-2026-10-24.json). **9/12 corretos (75%), três inconclusivos, zero conclusões erradas observadas**, contra 6/12 na rodada anterior. Uma submissão visual e onze HTTP; mídia não revalidada. 1.430 testes backend e 22 arquivos de testes frontend passaram, com build concluído. Recuperação/leitura ainda bloqueia DART, Copa e Artemis; 80% gerais não demonstrados. Registros anteriores abaixo são históricos, não o estado mais recente.
+
 Última rodada de 23/10: [resiliência, recuperação e mídia](RESILIENCIA-RECUPERACAO-MIDIA-2026-10-23.md), [resultados](validation-resilience-2026-10-23.json). **6/12 corretos (50%), seis inconclusivos**, abaixo dos 7/12 anteriores. Gemini respondeu; OpenRouter não solicitado. Causas de extração/recuperação e correções posteriores são separadas da medição; não comprova 80% nem implantação.
 
 Posteriormente: [quatro controles de mídia pela interface](validation-media-2026-10-23.json) e [diagnóstico OpenRouter gratuito](validation-openrouter-2026-10-23.json). Mídias concluídas, cobertura limitada; OpenRouter HTTP 200 com matriz incompleta, não uma nova taxa de precisão. Raiz editorial e rótulo público corrigidos; contexto de ficção protegido antes dos atalhos factuais.

@@ -6,6 +6,7 @@ not establish accuracy, independence, authorship or agreement with the article.
 """
 import asyncio
 from datetime import datetime, timezone
+import json
 import re
 from urllib.parse import unquote, urljoin, urlsplit
 from xml.etree import ElementTree
@@ -93,8 +94,8 @@ _BLOCK_TAGS = {"p", "li", "dd", "dt", "blockquote", "figcaption", "caption",
 # These containers establish DOM boundaries even without a paragraph below
 # them. Flattening a header/div can otherwise swallow a nested explicit
 # byline and join its publication date to the first body sentence.
-_FLOW_CONTAINERS = {"article", "main", "section", "div", "header", "address"}
-_CONTEXT_TAGS = {"blockquote", "figcaption", "caption", "dt", "h1", "h2", "h3", "h4", "h5", "h6"}
+_FLOW_CONTAINERS = {"article", "main", "section", "div", "header", "address", "figure"}
+_CONTEXT_TAGS = {"blockquote", "figure", "figcaption", "caption", "dt", "h1", "h2", "h3", "h4", "h5", "h6"}
 _LIVEBLOG_BODY_UI = {"liveblog-body", "js-liveblog-body", "live-blog-body",
                     "liveblog-updates", "live-blog-updates"}
 _UNFINISHED_CONTEXT = re.compile(
@@ -313,6 +314,19 @@ def _append_article_block(blocks, text, role):
         blocks.append((text, role))
 
 
+def _explicit_visual_credit(tag):
+    """A styled image credit inside an explicit media unit is not BODY.
+
+    Do not infer this from a person's name, publisher token or arbitrary prose
+    containing 'credit'. Preserve the complete visible credit as context.
+    """
+    identifiers = " ".join(tag.get("class", []))
+    return (tag.name in {"span", "div"}
+            and re.search(r"(?:^|\s)(?:Image|Figure)-styles__CreditStyled(?:-|$)", identifiers)
+            and (tag.find_parent("figure") is not None
+                 or tag.find_parent(attrs={"data-testid": "hero-image"}) is not None))
+
+
 def _article_blocks(root, scope):
     blocks = []
     liveblog, liveblog_headers = _liveblog_region(scope)
@@ -334,7 +348,7 @@ def _article_blocks(root, scope):
         contextual = (inherited_context or id(tag) in entry_header_ids
                       or tag.name in _CONTEXT_TAGS or tag.name == "table"
                       or bool(_AUTHOR_UI.search(identifiers)) or bool(_HEADING_UI.search(identifiers))
-                      or bool(_CAPTION_UI.search(identifiers))
+                      or bool(_CAPTION_UI.search(identifiers)) or bool(_explicit_visual_credit(tag))
                       or tag.name in _BLOCK_TAGS and tag.find(class_=_CAPTION_UI) is not None
                       or "author" in properties)
         if tag.name in _BLOCK_TAGS or contextual:
@@ -368,6 +382,7 @@ def _article_blocks(root, scope):
                         _AUTHOR_UI.search(" ".join([str(child.get("id", "")), *child.get("class", [])]))
                         or _HEADING_UI.search(" ".join([str(child.get("id", "")), *child.get("class", [])]))
                         or _CAPTION_UI.search(" ".join([str(child.get("id", "")), *child.get("class", [])]))
+                        or _explicit_visual_credit(child)
                         or "author" in str(child.get("itemprop", "")).casefold().split())):
                     text = child.get_text("", strip=False)
                     if text:
@@ -863,6 +878,77 @@ def _retrieval_priority(text, title, url):
             narrower_period, -shared_topics, not primary)
 
 
+def _article_jsonld_dates(soup, resource_url, visible_date):
+    """Publication metadata for the SAME visible article, never hidden prose.
+
+    Only bounded top-level/graph Article nodes in head qualify. Matching URL
+    and visible h1 are both required; related stories, videos and arbitrary
+    nested articleBody cannot lend a date. No scripts or remote contexts run.
+    """
+    if not soup.head:
+        return []
+    target = _canonical_url(resource_url)
+    headings = set()
+    for heading in soup.find_all("h1"):
+        if not visible_date(heading) or heading.find_parent(["figure", "figcaption", "blockquote"]):
+            continue
+        if any(tag.has_attr("hidden") or str(tag.get("aria-hidden", "")).lower() == "true"
+               or _HIDDEN_STYLE.search(str(tag.get("style", "")))
+               or tag.name in {"script", "style", "template", "noscript"} for tag in heading.find_all(True)):
+            continue
+        text = normalize_claim(_visible_text(heading))
+        if 5 <= len(text) <= 500:
+            headings.add(text)
+    if not target or not headings:
+        return []
+    article_types = {"Article", "NewsArticle", "ReportageNewsArticle", "AnalysisNewsArticle"}
+    values = []
+
+    def unique_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("Ambiguous JSON-LD key")
+            result[key] = value
+        return result
+
+    for script in soup.head.find_all("script", attrs={"type": "application/ld+json"})[:8]:
+        text = script.string
+        if not isinstance(text, str) or len(text) > 65536:
+            continue
+        try:
+            data = json.loads(text, object_pairs_hook=unique_object)
+        except (ValueError, TypeError, RecursionError):
+            continue
+        nodes = data if isinstance(data, list) else [data]
+        if len(nodes) > 16:
+            continue
+        if isinstance(data, dict) and "@graph" in data:
+            graph = data["@graph"]
+            if not isinstance(graph, list) or len(graph) > 16:
+                continue
+            nodes = [data, *graph]
+        for node in nodes:
+            if not isinstance(node, dict):
+                continue
+            types = node.get("@type", [])
+            types = [types] if isinstance(types, str) else types
+            if (not isinstance(types, list) or not types
+                    or any(not isinstance(t, str) or t not in article_types for t in types)):
+                continue
+            headline = node.get("headline")
+            if not isinstance(headline, str) or normalize_claim(headline) not in headings:
+                continue
+            page = node.get("mainEntityOfPage")
+            page = page.get("@id") if isinstance(page, dict) else page
+            urls = [value for value in (node.get("url"), page) if value is not None]
+            if not urls or any(_canonical_url(value) != target for value in urls):
+                continue
+            if "datePublished" in node:
+                values.append(node["datePublished"] if isinstance(node["datePublished"], str) else "invalid")
+    return values
+
+
 def _publication_date(resource):
     """Explicit publication metadata only, never update/retrieval/URL dates.
 
@@ -904,6 +990,9 @@ def _publication_date(resource):
             # preferred override of conflicting dates from other providers.
             if key in {"article:published_time", "datepublished", "parsely-pub-date"}:
                 values.append(str(tag.get("content", "")))
+    # JSON-LD datePublished is metadata only. Never use dateModified, a hidden
+    # article body or an unrelated graph node, nor prefer it over a conflict.
+    values.extend(_article_jsonld_dates(soup, resource.final_url, eligible_visible_date))
     # Some pages expose a semantic article time without a global head value.
     if not values:
         for tag in soup.find_all("time", attrs={"itemprop": "datePublished"}):
