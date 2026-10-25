@@ -92,8 +92,12 @@ class LiteralExtractionBudgetTests(unittest.IsolatedAsyncioTestCase):
         text = "O relatório não confirmou a mudança em 21/10/2026."
         result, mocks, documents = await self.run_control(text)
         self.assert_no_extra_extraction(result, mocks, text)
-        mocks["_retrieve_source_attribution"].assert_awaited_once_with(
-            text, [text], None, use_source_crosscheck=True)
+        mocks["_retrieve_source_attribution"].assert_awaited_once()
+        call = mocks["_retrieve_source_attribution"].await_args
+        self.assertEqual(call.args, (text, [text], None))
+        self.assertTrue(call.kwargs["use_source_crosscheck"])
+        self.assertEqual(len(call.kwargs["context_news_tasks"]), 1)
+        self.assertTrue(all(task.done() for task in call.kwargs["context_news_tasks"]))
         mocks["corroborate_sources"].assert_awaited_once()
         self.assertEqual(mocks["corroborate_sources"].await_args.args, (text, documents, None))
         self.assertTrue(0 < mocks["corroborate_sources"].await_args.kwargs["timeout_seconds"] <= 420)

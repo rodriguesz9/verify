@@ -21,7 +21,7 @@ from app.services.news_relevance import filter_context_news
 from app.services.factual_queries import build_fact_check_queries
 from app.services.source_attribution import collect_source_attribution, primary_reference_leads, collect_official_copom_record
 from app.services.source_corroboration import corroborate_sources
-from app.services.source_corroboration import select_comparison_documents, usable_source_families
+from app.services.source_corroboration import select_comparison_documents, usable_source_families, source_identity
 from app.services.source_corroboration import document_selection_audit
 from app.services.source_corroboration import claims_needing_research
 from app.services.source_decision import apply_source_decision
@@ -59,6 +59,28 @@ def _recovery_search_language(original, method):
 
 def _task_failed(task):
     return task.cancelled() or task.exception() is not None
+
+
+def _context_news_reference_leads(results):
+    """Reuse only curated URLs/titles from existing completed news searches.
+
+    Snippets, dates, source labels and arbitrary returned fields never become
+    body evidence or model-selected citations. Actual reading/selection still
+    uses the same SSRF checks, cumulative attempt ceiling and factual guards.
+    """
+    leads, seen = [], set()
+    for batch in results[:3] if isinstance(results, (list, tuple)) else []:
+        if not isinstance(batch, (list, tuple)) or getattr(batch, "status", None) not in {"success", "no_results"}:
+            continue
+        for item in batch[:5]:
+            identity = source_identity(item.get("link")) if isinstance(item, dict) else None
+            if not identity or identity["url"] in seen:
+                continue
+            seen.add(identity["url"])
+            title = item.get("title")
+            leads.append({"link": identity["url"], "title": title[:300] if isinstance(title, str) else "",
+                          "retrieval_method": "context_news_reference"})
+    return leads
 
 
 async def _await_pipeline_tasks(tasks, timeout):
@@ -318,7 +340,7 @@ def _unread_primary_reference_leads(text, documents, source_url, fetched_cache, 
 
 
 async def _retrieve_source_attribution(text: str, queries: list[str], source_url: str | None,
-                                      *, use_source_crosscheck: bool = True) -> dict:
+                                      *, use_source_crosscheck: bool = True, context_news_tasks=()) -> dict:
     """One base search, optionally one qualified search, and bounded retrieval.
 
     Source attribution cannot vote on the factual decision. Search snippets
@@ -332,6 +354,13 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
     fetched_cache, reference_waves = {}, []
     official_record_recovery = {"status": "not_requested", "decision_role": "official_record_retrieval_only"}
     research = {"status": "not_requested", "decision_role": "online_research_planning_only"}
+    context_recovery = {"status": "not_requested", "awaited_query_count": 0,
+                        "candidate_url_count": 0, "decision_role": "retrieval_leads_only"}
+    # These tasks belong to run_pipeline, which also joins them on deadline or
+    # caller cancellation. Shield only shared ownership; never start a search
+    # from this path or detach a new operation from the request lifecycle.
+    context_tasks = [task for task in context_news_tasks[:3] if isinstance(task, asyncio.Task)] \
+        if isinstance(context_news_tasks, (list, tuple)) else []
 
     async def follow_primary_references(stage):
         nonlocal attribution, leads
@@ -357,6 +386,18 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
             leads = (await search_web(query) if query else NewsSearch(
                 status="no_results", reason="Nenhuma frase completa cabe no limite da busca; nenhum texto foi cortado."))
             plan = [{"method": "whole_literal_claim", "status": getattr(leads, "status", "success" if leads else "no_results")}] if query else []
+            if crosscheck_enabled and context_tasks:
+                context_recovery.update(status="pending", awaited_query_count=len(context_tasks))
+                batches = await asyncio.gather(*(asyncio.shield(task) for task in context_tasks), return_exceptions=True)
+                context_leads = _context_news_reference_leads(batches)
+                failed_context = any(not isinstance(batch, (list, tuple))
+                    or getattr(batch, "status", None) not in {"success", "no_results"} for batch in batches)
+                context_recovery.update(status="partial" if failed_context else "success" if context_leads else "no_results",
+                                        candidate_url_count=len(context_leads))
+                # Preserve the web transport status. Existing news results do
+                # not erase a failed/quota-limited search or permit retries.
+                leads = NewsSearch([*leads, *context_leads], status=getattr(leads, "status", "success" if leads else "no_results"),
+                                   reason=getattr(leads, "reason", None))
             if crosscheck_enabled:
                 official_record_recovery = await collect_official_copom_record(text, fetched_cache, max_sources=3)
                 # Keep charged official resources inside the ordinary handoff.
@@ -495,9 +536,12 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
                 "max_leads": 2, "max_depth": 1, "selected_lead_count": len(cited_leads),
                 "waves": reference_waves, "decision_role": "retrieval_only_no_truth_vote"}
             attribution["coverage"]["online_research"] = research
+            attribution["coverage"]["context_news_recovery"] = context_recovery
             attribution["coverage"]["official_record_recovery"] = official_record_recovery
             return attribution
     except Exception:
+        if context_recovery["status"] == "pending":
+            context_recovery["status"] = "incomplete"
         if isinstance(attribution, dict):
             # Preserve successfully read first-wave evidence if recovery fails;
             # never hide the missing wave or treat it as additional support.
@@ -508,6 +552,7 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
             attribution.setdefault("coverage", {}).update(
                 search_queries=plan, retrieval_deadline_seconds=deadline,
                 online_research={**research, "incomplete": True},
+                context_news_recovery=context_recovery,
                 cumulative_fetch_attempt_count=len(fetched_cache),
                 official_record_recovery=official_record_recovery,
                 direct_reference_recovery={"max_leads": 2, "max_depth": 1, "selected_lead_count": len(cited_leads),
@@ -521,6 +566,7 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
                 "reason": "A leitura das referências não foi concluída no prazo ou com segurança.",
                 "limitations": ["Referências não confirmam automaticamente verdade, falsidade ou a página inteira."],
                 "coverage": {"status": "error", "decision_role": "source_attribution_only",
+                    "context_news_recovery": context_recovery,
                     "cumulative_fetch_attempt_count": len(fetched_cache),
                     "official_record_recovery": official_record_recovery}}
 
@@ -661,7 +707,8 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
         for query in serper_news_queries
     ]
     attribution_task = asyncio.create_task(_retrieve_source_attribution(
-        analysis_text, fact_check_queries, source_url, use_source_crosscheck=use_source_crosscheck))
+        analysis_text, fact_check_queries, source_url, use_source_crosscheck=use_source_crosscheck,
+        context_news_tasks=tuple(serper_news_tasks)))
     tasks = [*fact_tasks, *serper_news_tasks, ai_task, attribution_task]
     if domain_task:
         tasks.append(domain_task)

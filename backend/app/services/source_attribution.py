@@ -1182,24 +1182,42 @@ async def collect_source_attribution(text, queries, source_url=None, *, search_r
         families = usable_source_families(text, list(cache.values()), submitted)
         if submitted:
             families.add(source_family(submitted))
+        priorities = {url: _retrieval_priority(text, urls[url], url) for url in urls}
+
+        def quality_band(url):
+            priority = priorities[url]
+            # A citation is only a discovery hint. It must not put a known
+            # unreadable, unrelated, wrong-period or narrower-period lead in
+            # front of a candidate without those known quality gaps. Exact
+            # year/topic overlap still breaks ties inside these broad bands;
+            # an undated directly cited body remains a useful recovery lead.
+            return (known_unsupported_lead(url), priority[0], priority[2], priority[3])
+
         ranked_urls = sorted(urls, key=lambda url: (
-            known_unsupported_lead(url), url not in cited_urls, *_retrieval_priority(text, urls[url], url)))
+            *quality_band(url), url not in cited_urls, *priorities[url][1:]))
         # Diversity must not promote an unrelated/unsupported lead ahead of
         # a readable subject match. Diversify within each quality band first,
         # then retain the other ranked candidates in that same band.
         bands = {}
         for candidate in ranked_urls:
-            band = (known_unsupported_lead(candidate), candidate not in cited_urls,
-                    _retrieval_priority(text, urls[candidate], candidate)[0])
+            band = quality_band(candidate)
             bands.setdefault(band, []).append(candidate)
         for band in sorted(bands):
             fresh = [candidate for candidate in bands[band] if candidate not in cache]
+            distinct, repeated = [], []
             for candidate in fresh:
                 family = source_family(candidate)
                 if family and family not in families:
-                    preferred.append(candidate)
+                    distinct.append(candidate)
                     families.add(family)
-            preferred.extend(fresh)
+                else:
+                    repeated.append(candidate)
+            # Give each not-yet-usable publisher one opportunity inside the
+            # SAME quality band before spending the remaining slots on an
+            # already covered family. Cited/model-selected duplicates cannot
+            # monopolize the last reads; they keep their ordinary priority
+            # among the remaining candidates. Failed bodies reserve no family.
+            preferred.extend([*distinct, *repeated])
         # Recovery keeps every previous attempt (including failures) inside the
         # cumulative ceiling. No failed page is retried or silently refunded.
         attempted = [url for url in cache if url in urls]
