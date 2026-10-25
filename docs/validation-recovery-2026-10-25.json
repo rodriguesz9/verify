@@ -1,0 +1,751 @@
+{
+  "date": "2026-10-25",
+  "scope": "Twelve previously known development texts, not general accuracy or media validation",
+  "source_commit": "c6b8712",
+  "source_sha256": "383cf9b24cff299b297fa2712ca1a161e8a7190c02811dd6d5abe2e87c12f475",
+  "frontend_distribution_sha256": "a1906b8fd88fea1c01f0214a917a05195eba818069d8af18e56aa7e38960f7dd",
+  "all_twelve_terminal": true,
+  "one_attempt_each": true,
+  "labels_not_passed_to_pipeline": true,
+  "metrics": {
+    "total": 12,
+    "correct": 5,
+    "wrong": 0,
+    "inconclusive": 7,
+    "correct_fraction_including_inconclusive": 0.4166666666666667,
+    "by_expected_class": {
+      "supported": {
+        "total": 6,
+        "correct": 2
+      },
+      "refuted": {
+        "total": 6,
+        "correct": 3
+      }
+    }
+  },
+  "previous_same_twelve": {
+    "correct": 6,
+    "fraction": 0.5,
+    "source_commit": "9cfcbe8"
+  },
+  "submission_counts": {
+    "browser_ui": 1,
+    "ordinary_local_http": 11
+  },
+  "http_boundary_counts": {
+    "POST:200": 12
+  },
+  "provider_counts": {
+    "facts": 12,
+    "news": 60,
+    "public_fetch": 63,
+    "gemini": 13,
+    "openrouter": 1
+  },
+  "caps": {
+    "gemini": 16,
+    "openrouter": 12,
+    "facts": 12,
+    "news": 60,
+    "public_fetch": 120,
+    "assemblyai": 0,
+    "sightengine": 0,
+    "hf": 0,
+    "hive": 0
+  },
+  "transport_statuses": {
+    "facts": {
+      "200": 12
+    },
+    "news": {
+      "200": 60
+    },
+    "public_fetch": {
+      "200": 51,
+      "403": 4,
+      "404": 1,
+      "401": 3,
+      "307": 1,
+      "301": 2,
+      "incomplete": 1
+    },
+    "gemini": {
+      "200": 11,
+      "503": 2
+    },
+    "openrouter": {
+      "200": 1
+    }
+  },
+  "openrouter_conservative_prior": 48,
+  "openrouter_this_round": 1,
+  "openrouter_conservative_after": 49,
+  "openrouter_authorized_cumulative_ceiling": 60,
+  "configured_gemini_model": "gemini-3.1-flash-lite",
+  "configured_openrouter_model": "openrouter/free",
+  "median_elapsed_seconds": 24.169,
+  "p95_nearest_rank_seconds": 55.248,
+  "media_revalidated": false,
+  "cases": [
+    {
+      "id": "dev12-who_true",
+      "expected": "supported",
+      "actual": "supported",
+      "previous_actual": "unverified",
+      "outcome": "correct",
+      "elapsed_seconds": 36.54,
+      "submission": "browser_ui",
+      "http_status": 200,
+      "eligible_family_count": 2,
+      "accepted_source_urls": [
+        "https://www.who.int/news-room/speeches/item/who-director-general-s-opening-remarks-at-the-media-briefing-on-covid-19---11-march-2020",
+        "https://www.cnnbrasil.com.br/saude/5-anos-da-covid-19-relembre-o-historico-desde-1o-caso-ate-fim-da-emergencia/"
+      ],
+      "comparison_status": "success",
+      "comparison_provider_coverage": {
+        "openrouter": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant",
+          "free_only": true
+        },
+        "gemini": {
+          "status": "success",
+          "decision_role": "grounded_comparison_assistant",
+          "attempt_wait_seconds": 120,
+          "model_used": "gemini-3.1-flash-lite",
+          "review_protocol": "claim_source_review_v2",
+          "complete_source_review": true,
+          "expected_source_pair_count": 2,
+          "reviewed_source_pair_count": 2,
+          "elapsed_seconds": 13.514
+        }
+      },
+      "context_news_recovery": {
+        "status": "no_results",
+        "awaited_query_count": 1,
+        "candidate_url_count": 0,
+        "decision_role": "retrieval_leads_only"
+      },
+      "research_provider_coverage": {
+        "gemini": {
+          "attempt_wait_seconds": 29.976499999999987,
+          "status": "success",
+          "model_used": "gemini-3.1-flash-lite",
+          "elapsed_seconds": 2.596
+        }
+      },
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 2,
+        "error": 0
+      },
+      "record_sha256": "42d25d98a4a6291a0a26572783bcbc77eb6847e50c22ed77172107d830328ac7"
+    },
+    {
+      "id": "dev12-worldcup_false",
+      "expected": "refuted",
+      "actual": "unverified",
+      "previous_actual": "refuted",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 27.941,
+      "submission": "ordinary_local_http",
+      "http_status": 200,
+      "eligible_family_count": 1,
+      "accepted_source_urls": [
+        "https://g1.globo.com/sc/santa-catarina/noticia/2014/07/alemanha-vence-copa-do-mundo-2014-e-e-tetracampea.html"
+      ],
+      "comparison_status": "not_requested",
+      "comparison_provider_coverage": {
+        "openrouter": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant",
+          "free_only": true
+        },
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "context_news_recovery": {
+        "status": "no_results",
+        "awaited_query_count": 1,
+        "candidate_url_count": 0,
+        "decision_role": "retrieval_leads_only"
+      },
+      "research_provider_coverage": {
+        "gemini": {
+          "attempt_wait_seconds": 29.98350000000005,
+          "status": "success",
+          "model_used": "gemini-3.1-flash-lite",
+          "elapsed_seconds": 3.026
+        }
+      },
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 3,
+        "error": 0
+      },
+      "record_sha256": "612d567a74ad080554b8ee54c2d59a7e2e2209073199f938924f222816cb67ac"
+    },
+    {
+      "id": "dev12-copernicus_false",
+      "expected": "refuted",
+      "actual": "unverified",
+      "previous_actual": "refuted",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 23.407,
+      "submission": "ordinary_local_http",
+      "http_status": 200,
+      "eligible_family_count": 0,
+      "accepted_source_urls": [],
+      "comparison_status": "not_requested",
+      "comparison_provider_coverage": {
+        "openrouter": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant",
+          "free_only": true
+        },
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "context_news_recovery": {
+        "status": "no_results",
+        "awaited_query_count": 1,
+        "candidate_url_count": 0,
+        "decision_role": "retrieval_leads_only"
+      },
+      "research_provider_coverage": {
+        "gemini": {
+          "attempt_wait_seconds": 29.977499999999964,
+          "status": "success",
+          "model_used": "gemini-3.1-flash-lite",
+          "elapsed_seconds": 2.366
+        }
+      },
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 7,
+        "error": 0
+      },
+      "record_sha256": "e9c926cbe1686ea13ba47832ce193b24950410853b9d500e8ba7edfe75e048a7"
+    },
+    {
+      "id": "dev12-copom_false",
+      "expected": "refuted",
+      "actual": "refuted",
+      "previous_actual": "refuted",
+      "outcome": "correct",
+      "elapsed_seconds": 11.736,
+      "submission": "ordinary_local_http",
+      "http_status": 200,
+      "eligible_family_count": 1,
+      "accepted_source_urls": [
+        "https://www.bcb.gov.br/api/servico/sitebcb/copom/comunicados_detalhes?nro_reuniao=265"
+      ],
+      "comparison_status": "success",
+      "comparison_provider_coverage": {
+        "openrouter": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant",
+          "free_only": true
+        },
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "context_news_recovery": {
+        "status": "no_results",
+        "awaited_query_count": 1,
+        "candidate_url_count": 0,
+        "decision_role": "retrieval_leads_only"
+      },
+      "research_provider_coverage": null,
+      "search_statuses": [
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 3,
+        "error": 0
+      },
+      "record_sha256": "67a76bcb63d968bab66861e79271c99ef38712bd22da6b2605a269a96eeec2fb"
+    },
+    {
+      "id": "dev12-lei_false",
+      "expected": "refuted",
+      "actual": "refuted",
+      "previous_actual": "refuted",
+      "outcome": "correct",
+      "elapsed_seconds": 11.091,
+      "submission": "ordinary_local_http",
+      "http_status": 200,
+      "eligible_family_count": 1,
+      "accepted_source_urls": [
+        "https://www2.camara.leg.br/legin/fed/leimp/1824-1899/lei-3353-13-maio-1888-533138-publicacaooriginal-16269-pl.html"
+      ],
+      "comparison_status": "success",
+      "comparison_provider_coverage": {
+        "openrouter": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant",
+          "free_only": true
+        },
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "context_news_recovery": {
+        "status": "no_results",
+        "awaited_query_count": 1,
+        "candidate_url_count": 0,
+        "decision_role": "retrieval_leads_only"
+      },
+      "research_provider_coverage": null,
+      "search_statuses": [
+        "success",
+        "success",
+        "no_results"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 1,
+        "timeout": 0,
+        "blocked_or_unavailable": 3,
+        "error": 0
+      },
+      "record_sha256": "5d7b562145bb1b6550218bc6715e7d1786a08407e874c1f3ad8a031015ad62e2"
+    },
+    {
+      "id": "dev12-webb_true",
+      "expected": "supported",
+      "actual": "unverified",
+      "previous_actual": "unverified",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 30.815,
+      "submission": "ordinary_local_http",
+      "http_status": 200,
+      "eligible_family_count": 1,
+      "accepted_source_urls": [
+        "https://brasilescola.uol.com.br/fisica/james-webb-sucessor-hubble.htm"
+      ],
+      "comparison_status": "not_requested",
+      "comparison_provider_coverage": {
+        "openrouter": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant",
+          "free_only": true
+        },
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "context_news_recovery": {
+        "status": "success",
+        "awaited_query_count": 1,
+        "candidate_url_count": 1,
+        "decision_role": "retrieval_leads_only"
+      },
+      "research_provider_coverage": {
+        "gemini": {
+          "attempt_wait_seconds": 29.975000000000136,
+          "status": "success",
+          "model_used": "gemini-3.1-flash-lite",
+          "elapsed_seconds": 7.165
+        }
+      },
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 4,
+        "error": 0
+      },
+      "record_sha256": "aa66af14ffc0820e3dcb8d44ff12bf873cc5d52f88628fb875fb81fe83509042"
+    },
+    {
+      "id": "dev12-artemis_false",
+      "expected": "refuted",
+      "actual": "unverified",
+      "previous_actual": "unverified",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 24.93,
+      "submission": "ordinary_local_http",
+      "http_status": 200,
+      "eligible_family_count": 1,
+      "accepted_source_urls": [
+        "https://www.nasa.gov/mission/artemis-i/"
+      ],
+      "comparison_status": "not_requested",
+      "comparison_provider_coverage": {
+        "openrouter": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant",
+          "free_only": true
+        },
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "context_news_recovery": {
+        "status": "no_results",
+        "awaited_query_count": 1,
+        "candidate_url_count": 0,
+        "decision_role": "retrieval_leads_only"
+      },
+      "research_provider_coverage": {
+        "gemini": {
+          "attempt_wait_seconds": 29.983999999999924,
+          "status": "success",
+          "model_used": "gemini-3.1-flash-lite",
+          "elapsed_seconds": 6.417
+        }
+      },
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 7,
+        "error": 0
+      },
+      "record_sha256": "392ccf082be51b4db724715c7c9b62a36d2fe6afe3cd8ee9b20ee27b16f89e30"
+    },
+    {
+      "id": "dev12-queen_true",
+      "expected": "supported",
+      "actual": "unverified",
+      "previous_actual": "unverified",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 16.971,
+      "submission": "ordinary_local_http",
+      "http_status": 200,
+      "eligible_family_count": 1,
+      "accepted_source_urls": [
+        "https://g1.globo.com/mundo/noticia/2022/09/08/rainha-elizabeth-ii-morre-aos-96-anos.ghtml"
+      ],
+      "comparison_status": "not_requested",
+      "comparison_provider_coverage": {
+        "openrouter": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant",
+          "free_only": true
+        },
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "context_news_recovery": {
+        "status": "no_results",
+        "awaited_query_count": 1,
+        "candidate_url_count": 0,
+        "decision_role": "retrieval_leads_only"
+      },
+      "research_provider_coverage": {
+        "gemini": {
+          "attempt_wait_seconds": 29.988000000000056,
+          "status": "success",
+          "model_used": "gemini-3.1-flash-lite",
+          "elapsed_seconds": 2.964
+        }
+      },
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 6,
+        "error": 0
+      },
+      "record_sha256": "3950e2031556d7e7c6894be90d9205efe01bc7f2699bd371bb83b6633c0fd2e0"
+    },
+    {
+      "id": "dev12-ibge_true",
+      "expected": "supported",
+      "actual": "supported",
+      "previous_actual": "unverified",
+      "outcome": "correct",
+      "elapsed_seconds": 19.485,
+      "submission": "ordinary_local_http",
+      "http_status": 200,
+      "eligible_family_count": 2,
+      "accepted_source_urls": [
+        "https://g1.globo.com/economia/noticia/2025/03/07/pib-do-brasil-cresce-34percent-em-2024-diz-ibge.ghtml",
+        "https://www.cnnbrasil.com.br/agro/economia-brasileira-cresce-34-em-2024-diz-ibge/"
+      ],
+      "comparison_status": "success",
+      "comparison_provider_coverage": {
+        "openrouter": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant",
+          "free_only": true
+        },
+        "gemini": {
+          "status": "success",
+          "decision_role": "grounded_comparison_assistant",
+          "attempt_wait_seconds": 120,
+          "model_used": "gemini-3.1-flash-lite",
+          "review_protocol": "claim_source_review_v2",
+          "complete_source_review": true,
+          "expected_source_pair_count": 2,
+          "reviewed_source_pair_count": 2,
+          "elapsed_seconds": 7.767
+        }
+      },
+      "context_news_recovery": {
+        "status": "no_results",
+        "awaited_query_count": 1,
+        "candidate_url_count": 0,
+        "decision_role": "retrieval_leads_only"
+      },
+      "research_provider_coverage": null,
+      "search_statuses": [
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 3,
+        "error": 0
+      },
+      "record_sha256": "e7bc3fbe22b24cd3fb3e5ae3e64fa58d7abcdd23f0a38eff1f0638bd21493da8"
+    },
+    {
+      "id": "dev12-queen_false",
+      "expected": "refuted",
+      "actual": "refuted",
+      "previous_actual": "refuted",
+      "outcome": "correct",
+      "elapsed_seconds": 11.039,
+      "submission": "ordinary_local_http",
+      "http_status": 200,
+      "eligible_family_count": 2,
+      "accepted_source_urls": [
+        "https://g1.globo.com/mundo/noticia/2022/09/08/rainha-elizabeth-ii-morre-aos-96-anos.ghtml",
+        "https://www1.folha.uol.com.br/mundo/2022/09/rainha-elizabeth-2a-morre-aos-96-apos-reinado-mais-duradouro-da-inglaterra.shtml"
+      ],
+      "comparison_status": "success",
+      "comparison_provider_coverage": {
+        "openrouter": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant",
+          "free_only": true
+        },
+        "gemini": {
+          "status": "success",
+          "decision_role": "grounded_comparison_assistant",
+          "attempt_wait_seconds": 120,
+          "model_used": "gemini-3.1-flash-lite",
+          "review_protocol": "claim_source_review_v2",
+          "complete_source_review": true,
+          "expected_source_pair_count": 2,
+          "reviewed_source_pair_count": 2,
+          "elapsed_seconds": 6.228
+        }
+      },
+      "context_news_recovery": {
+        "status": "no_results",
+        "awaited_query_count": 1,
+        "candidate_url_count": 0,
+        "decision_role": "retrieval_leads_only"
+      },
+      "research_provider_coverage": null,
+      "search_statuses": [
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 1,
+        "error": 0
+      },
+      "record_sha256": "fa0cedd2ff1a1f0701bf8103340440bd45eda95e7984d60e594df82973e5041b"
+    },
+    {
+      "id": "dev12-dart_true",
+      "expected": "supported",
+      "actual": "unverified",
+      "previous_actual": "unverified",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 25.418,
+      "submission": "ordinary_local_http",
+      "http_status": 200,
+      "eligible_family_count": 0,
+      "accepted_source_urls": [],
+      "comparison_status": "not_requested",
+      "comparison_provider_coverage": {
+        "openrouter": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant",
+          "free_only": true
+        },
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "context_news_recovery": {
+        "status": "no_results",
+        "awaited_query_count": 1,
+        "candidate_url_count": 0,
+        "decision_role": "retrieval_leads_only"
+      },
+      "research_provider_coverage": {
+        "gemini": {
+          "attempt_wait_seconds": 29.980999999999995,
+          "status": "success",
+          "model_used": "gemini-3.1-flash-lite",
+          "elapsed_seconds": 4.549
+        }
+      },
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 5,
+        "error": 0
+      },
+      "record_sha256": "bbe7926422d1f3a3b70946ea4925f5bab8d4716f555cb052d1276fbb253e3ba7"
+    },
+    {
+      "id": "dev12-constitution_true",
+      "expected": "supported",
+      "actual": "unverified",
+      "previous_actual": "supported",
+      "outcome": "inconclusive",
+      "elapsed_seconds": 55.248,
+      "submission": "ordinary_local_http",
+      "http_status": 200,
+      "eligible_family_count": 2,
+      "accepted_source_urls": [
+        "https://brasilescola.uol.com.br/historiab/constituicao-1988.htm",
+        "https://www.cnnbrasil.com.br/nacional/brasil/38-anos-da-constituicao-federal-relembre-o-que-mudou-na-carta-magna/"
+      ],
+      "comparison_status": "invalid_response",
+      "comparison_provider_coverage": {
+        "openrouter": {
+          "status": "invalid_response",
+          "decision_role": "grounded_comparison_assistant",
+          "free_only": true,
+          "attempt_wait_seconds": 120,
+          "elapsed_seconds": 7.322
+        },
+        "gemini": {
+          "status": "unavailable",
+          "decision_role": "grounded_comparison_assistant",
+          "attempt_wait_seconds": 120,
+          "prior_http_status": 503,
+          "transient_retry_count": 1,
+          "http_status": 503,
+          "transport_failure": "provider_unavailable",
+          "elapsed_seconds": 12.981
+        }
+      },
+      "context_news_recovery": {
+        "status": "no_results",
+        "awaited_query_count": 1,
+        "candidate_url_count": 0,
+        "decision_role": "retrieval_leads_only"
+      },
+      "research_provider_coverage": {
+        "gemini": {
+          "attempt_wait_seconds": 29.913999999999987,
+          "status": "success",
+          "model_used": "gemini-3.1-flash-lite",
+          "elapsed_seconds": 9.125
+        }
+      },
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "error"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 4,
+        "error": 0
+      },
+      "record_sha256": "6586d96781d912aff2af8ce11f5b4f064ef98a2d60c2fd4012ffad908dab0615"
+    }
+  ],
+  "limits": [
+    "Search cap60 was reached during final constitution case; code effect cannot be isolated from search variability and budget.",
+    "Constitution already had two eligible families but Gemini503 twice and OpenRouter200 invalid_response blocked comparison.",
+    "Six inconclusives preceded comparison; one failed during comparison.",
+    "Known reused controls are neither blind nor representative general accuracy.",
+    "No paid detector, recharge, key rotation or retry-until-correct. Unused limits do not authorize extra texts."
+  ],
+  "provider_journal_sha256": "3412dc66ad39e12a0068e04fd86b8e1ecaab6ce30a114265270d51c9d4a6135d",
+  "boundary_journal_sha256": "2aaca346d72c03f4dc01090254346ab492cb0426b2ad878cb78f919ca589c424"
+}
