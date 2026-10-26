@@ -1,5 +1,7 @@
 # Verify — estrutura e arquitetura
 
+**Checagem real das IAs, 26/10:** [resultados e orientação](CHECAGEM-REAL-IAS-2026-10-26.md). OpenRouter passou em três dos quatro controles; Gemini retornou quatro HTTP 503. Janela completa de oito envios, sem buscas, UI ou detectores pagos. Decodificação aceita somente um envelope completo de JSON em Markdown, mantendo schema/IDs/limites; 1.616 testes backend passaram após essa melhoria, ainda sem revalidação remota. Precisão factual permanece 41,7%.
+
 **Recuperação das IAs, 26/10:** [correção e limites](CORRECAO-FALHAS-IAS-2026-10-26.md). Falha técnica de saída pode usar o segundo provedor no mesmo prazo; revisão válida inconclusiva não é repetida. Gemini exige conclusão explícita, usa amostragem padrão nos modelos 3+ e até 4.096 tokens somente na comparação. Diagnósticos preservados em texto/OCR/áudio; 1.605 testes backend passaram offline. Sem nova taxa factual ou deploy.
 
 **Correção controlada, 26/10:** [diagnóstico e mudanças](DIAGNOSTICO-CONTROLADO-2026-10-26.md). Cabeçalho semântico separado do corpo, sigla vinculada a definição literal com contexto completo, diagnósticos específicos de resposta OpenRouter e captura local de data/créditos. 1.563 testes backend passaram, sem novas chamadas remotas. Última precisão factual permanece **5/12 (41,7%)**; replay não é nova taxa de acerto nem homologação de mídia/interface/deploy.

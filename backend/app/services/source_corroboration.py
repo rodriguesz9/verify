@@ -1717,11 +1717,16 @@ async def _compare(prompt, coverage, *, timeout_seconds=None):
             status = "invalid_response"
             coverage[provider].update(status="invalid_response", review_protocol=SOURCE_REVIEW_PROTOCOL,
                 complete_source_review=False, expected_source_pair_count=expected_pairs,
-                reviewed_source_pair_count=exc.reviewed_pairs, failure_kind="incomplete_or_invalid_source_review")
+                reviewed_source_pair_count=exc.reviewed_pairs, failure_kind="incomplete_or_invalid_source_review",
+                response_issue="invalid_schema")
+        except json.JSONDecodeError:
+            status = "invalid_response"
+            coverage[provider].update(status=status, complete_source_review=False,
+                                     failure_kind="invalid_source_response", response_issue="invalid_json")
         except (ValueError, TypeError, KeyError):
             status = "invalid_response"
             coverage[provider].update(status=status, complete_source_review=False,
-                                     failure_kind="invalid_source_response")
+                                     failure_kind="invalid_source_response", response_issue="invalid_schema")
         except TimeoutError:
             status = "timeout"
             coverage[provider]["status"] = status
@@ -1755,8 +1760,12 @@ class SourceReviewError(ValueError):
 def _decode(raw, claims, passages, *, require_source_reviews=False):
     if not isinstance(raw, str) or len(raw) > 30000:
         raise ValueError("invalid_response")
-    # No scanning/repair of partial JSON or Markdown; schema is a whole response.
-    data = json.loads(raw)
+    # Some endpoints wrap otherwise complete JSON in one Markdown fence. Strip
+    # only that WHOLE format envelope; never scan prose, repair JSON, or fill
+    # missing reviews. The original length cap and every schema check remain.
+    value = raw.strip()
+    fenced = re.fullmatch(r"```(?:json)?[ \t]*\r?\n([\s\S]*?)\r?\n```", value, re.I)
+    data = json.loads(fenced.group(1) if fenced else value)
     if not isinstance(data, dict) or set(data) != {"claims"} or not isinstance(data["claims"], list):
         raise ValueError("invalid_response")
     expected_sources = {source_id for source_id, _ in passages}

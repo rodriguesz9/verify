@@ -1,0 +1,228 @@
+{
+  "scope": "limited_synthetic_application_client_API_controls_NOT_factual_accuracy_UI_or_media_authenticity",
+  "client_date": "2026-10-26",
+  "client_timezone": "America/Sao_Paulo",
+  "app_commit": "a7796363ee1ee53ad4f396aff87cf957b08bab21",
+  "approval": "call_23bcd53a2b964a65808ebef650ec0bd9: human approved 4 Gemini + 4 OpenRouter free-only",
+  "started_at": "2026-10-26T20:24:54.320616+00:00",
+  "completed_at": "2026-10-26T20:25:57.912925+00:00",
+  "frozen_manifest_sha256": "12fd80f1fbdfeaac9655b806066290eccc96859539fa6d6b9d3e933e43a72a02",
+  "frozen_file_count": 102,
+  "frozen_files_unchanged_at_completion": true,
+  "model_profile": {
+    "gemini": "gemini-3.1-flash-lite",
+    "openrouter": "openrouter/free",
+    "openrouter_max_prices": {
+      "prompt": 0,
+      "completion": 0,
+      "request": 0,
+      "image": 0
+    }
+  },
+  "physical_request_caps": {
+    "gemini": 4,
+    "openrouter": 4,
+    "facts": 0,
+    "news": 0,
+    "assemblyai": 0,
+    "sightengine": 0,
+    "hf": 0,
+    "public_fetch": 0,
+    "hive": 0
+  },
+  "physical_request_counts": {
+    "gemini": 4,
+    "openrouter": 4
+  },
+  "provider_summary": {
+    "gemini": {
+      "planned_controls": 4,
+      "passed_controls": 0,
+      "http_status_counts": {
+        "503": 4
+      }
+    },
+    "openrouter": {
+      "planned_controls": 4,
+      "passed_controls": 3,
+      "http_status_counts": {
+        "200": 4
+      }
+    }
+  },
+  "cases": [
+    {
+      "provider": "gemini",
+      "case": "literal",
+      "scope": "synthetic_contract_NOT_real_news_or_media_accuracy",
+      "status": "unavailable",
+      "available": false,
+      "exact_literal_match": false,
+      "control_passed": false,
+      "http_status": 503,
+      "transport_failure": "provider_unavailable",
+      "elapsed_seconds": 1.54
+    },
+    {
+      "provider": "gemini",
+      "case": "support",
+      "scope": "synthetic_contract_NOT_real_news_or_media_accuracy",
+      "status": "unavailable",
+      "available": false,
+      "control_passed": false,
+      "http_status": 503,
+      "transport_failure": "provider_unavailable",
+      "elapsed_seconds": 2.128
+    },
+    {
+      "provider": "gemini",
+      "case": "refute",
+      "scope": "synthetic_contract_NOT_real_news_or_media_accuracy",
+      "status": "unavailable",
+      "available": false,
+      "control_passed": false,
+      "http_status": 503,
+      "transport_failure": "provider_unavailable",
+      "elapsed_seconds": 0.876
+    },
+    {
+      "provider": "gemini",
+      "case": "ocr",
+      "scope": "synthetic_contract_NOT_real_news_or_media_accuracy",
+      "status": "unavailable",
+      "available": false,
+      "control_passed": false,
+      "http_status": 503,
+      "transport_failure": "provider_unavailable",
+      "elapsed_seconds": 58.902
+    },
+    {
+      "provider": "openrouter",
+      "case": "literal",
+      "scope": "synthetic_contract_NOT_real_news_or_media_accuracy",
+      "status": "success",
+      "available": true,
+      "exact_literal_match": true,
+      "control_passed": true,
+      "elapsed_seconds": 3.187
+    },
+    {
+      "provider": "openrouter",
+      "case": "support",
+      "scope": "synthetic_contract_NOT_real_news_or_media_accuracy",
+      "status": "invalid_response",
+      "available": false,
+      "control_passed": false,
+      "expected_source_pairs": 2,
+      "failure_kind": "invalid_source_response",
+      "model_used": "dots-studio/dots-3-note-preview:free",
+      "elapsed_seconds": 10.062
+    },
+    {
+      "provider": "openrouter",
+      "case": "refute",
+      "scope": "synthetic_contract_NOT_real_news_or_media_accuracy",
+      "status": "success",
+      "available": true,
+      "control_passed": true,
+      "expected_source_pairs": 2,
+      "reviewed_source_pairs": 2,
+      "assessment_state": "refuted",
+      "evidence_count": 2,
+      "model_used": "nvidia/nemotron-3.5-super-vl:free",
+      "elapsed_seconds": 14.571
+    },
+    {
+      "provider": "openrouter",
+      "case": "ocr",
+      "scope": "synthetic_contract_NOT_real_news_or_media_accuracy",
+      "status": "success",
+      "available": true,
+      "control_passed": true,
+      "exact_reference_match": true,
+      "casefold_reference_match": true,
+      "negation_literal_preserved": true,
+      "amount_preserved": true,
+      "date_preserved": true,
+      "model_used": "dots-studio/dots-3-note-preview:free",
+      "elapsed_seconds": 8.546
+    }
+  ],
+  "transport_events": [
+    {
+      "provider": "gemini",
+      "request_number": 1,
+      "method": "POST",
+      "transport_status": "reserved",
+      "http_status": 503
+    },
+    {
+      "provider": "openrouter",
+      "request_number": 1,
+      "method": "POST",
+      "transport_status": "reserved",
+      "http_status": 200
+    },
+    {
+      "provider": "gemini",
+      "request_number": 2,
+      "method": "POST",
+      "transport_status": "reserved",
+      "http_status": 503
+    },
+    {
+      "provider": "gemini",
+      "request_number": 3,
+      "method": "POST",
+      "transport_status": "reserved",
+      "http_status": 503
+    },
+    {
+      "provider": "openrouter",
+      "request_number": 2,
+      "method": "POST",
+      "transport_status": "reserved",
+      "http_status": 200
+    },
+    {
+      "provider": "gemini",
+      "request_number": 4,
+      "method": "POST",
+      "transport_status": "reserved",
+      "http_status": 503
+    },
+    {
+      "provider": "openrouter",
+      "request_number": 3,
+      "method": "POST",
+      "transport_status": "reserved",
+      "http_status": 200
+    },
+    {
+      "provider": "openrouter",
+      "request_number": 4,
+      "method": "POST",
+      "transport_status": "reserved",
+      "http_status": 200
+    }
+  ],
+  "same_case_retries": 0,
+  "provider_model_rotations": 0,
+  "prior_openrouter_conservative_count": 49,
+  "new_openrouter_conservative_count": 53,
+  "last_real_news_measurement_preserved": {
+    "correct": 5,
+    "planned": 12,
+    "inconclusive": 7,
+    "accuracy_percent": 41.666666666666664
+  },
+  "limitations": [
+    "Four synthetic controls per provider, not a general accuracy estimate.",
+    "No searches, public-page fetches, Hive, other media detectors, UI or deployment.",
+    "Source documents were injected test fixtures, not fetched pages.",
+    "Provider stages were isolated; live cross-provider recovery was not measured here.",
+    "OpenRouter support response failed strict source decoding; raw response was not retained, so exact formatting/schema cause is unknown.",
+    "All Gemini requests returned HTTP503; this does not establish invalid credentials or a specific cause inside Google.",
+    "Current code improvements after this frozen run cannot be credited as remotely validated by it."
+  ]
+}

@@ -1,6 +1,8 @@
 # Verify
 
-**Recuperação das IAs, 26/10:** [correção e limites](docs/CORRECAO-FALHAS-IAS-2026-10-26.md). Saída tecnicamente inválida pode usar o outro provedor no mesmo prazo; uma revisão válida inconclusiva continua final. Compatibilidade Gemini e diagnósticos de texto/OCR/áudio corrigidos. **1.605 testes backend passaram**, sem rede. Confirmação dos serviços reais aguarda nova autorização limitada; última precisão factual continua 41,7%.
+**Checagem real das IAs, 26/10:** [resultados e orientação](docs/CHECAGEM-REAL-IAS-2026-10-26.md), [oito controles sanitizados](docs/validation-ai-contract-2026-10-26.json). OpenRouter passou em 3/4 controles, incluindo refutação e OCR exato; apoio retornou resposta inválida. Gemini devolveu quatro HTTP 503. Todos os limites preservados; sem buscas, mídia forense ou UI. Compatibilidade de JSON completo melhorada depois da rodada; **1.616 testes backend passaram**, sem nova validação remota dessa alteração. Precisão factual permanece 41,7%.
+
+**Recuperação das IAs, 26/10:** [correção e limites](docs/CORRECAO-FALHAS-IAS-2026-10-26.md). Saída tecnicamente inválida pode usar o outro provedor no mesmo prazo; uma revisão válida inconclusiva continua final. Compatibilidade Gemini e diagnósticos de texto/OCR/áudio corrigidos. **1.605 testes backend passaram**, sem rede, antes da checagem real registrada acima; última precisão factual continua 41,7%.
 
 **Correção controlada, 26/10:** [diagnóstico e mudanças](docs/DIAGNOSTICO-CONTROLADO-2026-10-26.md). Leitura separa cabeçalho/autoria do corpo e vincula siglas somente por definições literais da própria página; OpenRouter distingue erros em HTTP 200, conteúdo vazio e truncamento. 1.563 testes backend passaram sem rede. Replay de fontes salvas é separado de precisão factual: a última medição real continua **5/12 (41,7%)**, sem nova validação de mídia/interface ou deploy.
 
