@@ -39,10 +39,15 @@ class ResponseValidationTests(unittest.TestCase):
             self.rejected(data, "token_limit")
 
     def test_abnormal_finish_never_accepts_valid_looking_content(self):
-        for reason in (None, "content_filter", "tool_calls", "error", "private-control"):
+        for reason in (None, "tool_calls", "error", "private-control"):
             data = envelope()
             data["choices"][0]["finish_reason"] = reason
             self.rejected(data, "unexpected_finish")
+
+    def test_explicit_content_filter_is_identified_as_a_protection_block(self):
+        data = envelope()
+        data["choices"][0]["finish_reason"] = "content_filter"
+        self.rejected(data, "content_blocked")
 
     def test_empty_visible_content_does_not_fall_back_to_reasoning(self):
         for value in (None, "", " \n\t"):
@@ -171,20 +176,24 @@ class ResponseTransportTests(unittest.IsolatedAsyncioTestCase):
         self.assertGreater(alternate.await_args.kwargs["timeout_seconds"], 0)
         self.assertLessEqual(alternate.await_args.kwargs["timeout_seconds"], 120)
 
-    async def test_primary_partial_output_never_requests_an_alternate_verdict(self):
+    async def test_primary_partial_output_cannot_override_valid_insufficient_alternate(self):
         from app.core import gemini_client
+        def insufficient(prompt, **_kwargs):
+            return json.dumps(controls.answer(json.loads(prompt), insufficient=True))
         body = envelope()
         body["choices"][0].update(finish_reason="length", message={"content": "{}"})
         with patch.dict(os.environ, {"SOURCE_CROSSCHECK_PRIMARY_PROVIDER": "openrouter",
                  "GEMINI_API_KEY": "offline-control"}), \
              patch.object(sources, "typed_review_matrix", return_value=None), \
              patch.object(router, "_reserve_request"), \
-             patch.object(gemini_client, "generate_text", new=AsyncMock()) as alternate, \
+             patch.object(gemini_client, "generate_text", new=AsyncMock(side_effect=insufficient)) as alternate, \
              patch("httpx.AsyncClient", side_effect=self.mocked_client(body)):
             result = await sources.corroborate_sources(controls.CLAIM, controls.documents())
         self.assertEqual(result["state"], "insufficient")
+        self.assertEqual(result["status"], "partial")
+        self.assertEqual(result["claims"][0]["evidence"], [])
         self.assertEqual(result["provider_coverage"]["openrouter"]["response_issue"], "token_limit")
-        alternate.assert_not_awaited()
+        alternate.assert_awaited_once()
         self.assertEqual(len(self.sent), 1)
 
     async def test_research_retains_provider_error_without_query_or_raw_body(self):

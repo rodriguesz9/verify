@@ -8,6 +8,7 @@ import time
 from typing import Dict, Any
 from app.services.assemblyai_jobs import assemblyai_jobs
 from app.services.transcription_scope import current_transcription_scope
+from app.services.provider_diagnostics import provider_failure_metadata, provider_result_failure_metadata
 
 # Key markers for phone scams
 SCAM_PHRASES_PATTERNS = [
@@ -96,13 +97,17 @@ async def analyze_audio_quick_for_demonstration(file_bytes: bytes, filename: str
                 except Exception as exc:
                     from app.core.gemini_client import GeminiError
                     result = {"available": False, "status": getattr(exc, "status", "timeout" if isinstance(exc, asyncio.TimeoutError) else "error"),
+                              **provider_failure_metadata(exc),
                               "reason": str(exc) if isinstance(exc, GeminiError) else "Transcrição Gemini não concluída no prazo."}
-            attempts.append({"provider": provider, "status": result.get("status"), "reason": result.get("reason")})
+            attempts.append({"provider": provider, "status": result.get("status"), "reason": result.get("reason"),
+                             **provider_result_failure_metadata(result)})
             if result.get("status") == "not_configured" and len(attempts) > 1:
                 # An absent fallback must not hide a real pending/error reason.
                 continue
             transcription_detail = {**{key: value for key, value in result.items() if key not in {"transcription", "words"}},
                                     "provider": provider}
+            if result.get("status") == "input_too_large" or attempts[-1].get("response_issue") in {"content_blocked", "unexpected_cost"}:
+                break  # A content/input restriction is not an ASR outage.
             if provider == "assemblyai" and result.get("status") in {
                 "pending", "in_progress", "blocked_uncertain", "blocked_expired", "capacity_exceeded",
             }:

@@ -1,5 +1,7 @@
 # Verify — estrutura e arquitetura
 
+**Recuperação das IAs, 26/10:** [correção e limites](CORRECAO-FALHAS-IAS-2026-10-26.md). Falha técnica de saída pode usar o segundo provedor no mesmo prazo; revisão válida inconclusiva não é repetida. Gemini exige conclusão explícita, usa amostragem padrão nos modelos 3+ e até 4.096 tokens somente na comparação. Diagnósticos preservados em texto/OCR/áudio; 1.605 testes backend passaram offline. Sem nova taxa factual ou deploy.
+
 **Correção controlada, 26/10:** [diagnóstico e mudanças](DIAGNOSTICO-CONTROLADO-2026-10-26.md). Cabeçalho semântico separado do corpo, sigla vinculada a definição literal com contexto completo, diagnósticos específicos de resposta OpenRouter e captura local de data/créditos. 1.563 testes backend passaram, sem novas chamadas remotas. Última precisão factual permanece **5/12 (41,7%)**; replay não é nova taxa de acerto nem homologação de mídia/interface/deploy.
 
 **Última medição, 25/10:** [recuperação e limites](RECUPERACAO-E-TESTES-2026-10-25.md), [doze resultados sanitizados](validation-recovery-2026-10-25.json). **5/12 corretos (41,7%), sete inconclusivos, nenhuma conclusão errada observada**, contra 6/12 anteriores. Uma submissão visual e onze HTTP; seis bloqueios antes da comparação, uma falha nos modelos. Teto de 60 buscas interferiu no último caso. 1.515 testes backend e 205 frontend/build passaram; sem demonstrar ganho de precisão, 80%, mídia ou deploy. Registros abaixo são históricos.

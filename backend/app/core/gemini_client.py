@@ -22,10 +22,79 @@ class GeneratedText(str):
 
 
 class GeminiError(RuntimeError):
-    def __init__(self, reason, status="error", http_status=None, retry_after_seconds=None):
+    def __init__(self, reason, status="error", http_status=None, retry_after_seconds=None, *, response_issue=None):
         self.status, self.http_status = status, http_status
         self.retry_after_seconds = retry_after_seconds
+        self.response_issue = response_issue
         super().__init__(reason)
+
+
+_CONTENT_BLOCK_FINISHES = frozenset({"SAFETY", "RECITATION", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII",
+    "IMAGE_SAFETY", "IMAGE_PROHIBITED_CONTENT", "IMAGE_RECITATION", "ESCALATION", "PUP_LIMITED_DISABLED"})
+
+
+def _complete_response(data, model):
+    """Only a stopped, complete visible text response may reach a decoder."""
+    def invalid(issue, reason="Gemini não retornou uma resposta completa e válida."):
+        raise GeminiError(reason, "invalid_response", response_issue=issue)
+
+    if not isinstance(data, dict):
+        invalid("malformed_envelope")
+    feedback = data.get("promptFeedback")
+    if feedback is not None:
+        if not isinstance(feedback, dict):
+            invalid("malformed_envelope")
+        block = feedback.get("blockReason")
+        if block is not None and block != "BLOCK_REASON_UNSPECIFIED":
+            if not isinstance(block, str):
+                invalid("malformed_envelope")
+            invalid("content_blocked", "Gemini bloqueou a solicitação; conteúdo não utilizado.")
+    if "error" in data:
+        invalid("malformed_envelope")  # Never accept an inconsistent error + candidate envelope.
+    candidates = data.get("candidates")
+    if not isinstance(candidates, list):
+        invalid("malformed_envelope")
+    if not candidates:
+        invalid("empty_content")
+    candidate = candidates[0]
+    if not isinstance(candidate, dict):
+        invalid("malformed_envelope")
+    finish = candidate.get("finishReason")
+    if isinstance(finish, str) and finish in _CONTENT_BLOCK_FINISHES:
+        invalid("content_blocked", "Gemini interrompeu a geração por uma restrição de conteúdo; resposta descartada.")
+    ratings = candidate.get("safetyRatings", [])
+    if isinstance(ratings, list) and any(isinstance(row, dict) and row.get("blocked") is True for row in ratings):
+        invalid("content_blocked", "Gemini bloqueou o conteúdo gerado; resposta descartada.")
+    if not isinstance(ratings, list) or any(not isinstance(row, dict) for row in ratings):
+        invalid("malformed_envelope")
+    if finish == "MAX_TOKENS":
+        invalid("token_limit", "A resposta Gemini atingiu o limite de tokens; nenhum trecho parcial foi utilizado.")
+    if finish != "STOP":
+        invalid("unexpected_finish", "Gemini não confirmou a conclusão da resposta; conteúdo descartado.")
+    content = candidate.get("content")
+    if not isinstance(content, dict) or not isinstance(content.get("parts"), list):
+        invalid("malformed_envelope")
+    texts = []
+    for part in content["parts"]:
+        if not isinstance(part, dict):
+            invalid("malformed_envelope")
+        thought = part.get("thought")
+        if thought is True:
+            continue  # Reasoning text never substitutes for visible output.
+        if thought is not None and thought is not False:
+            invalid("invalid_content")
+        if "text" in part:
+            if not isinstance(part["text"], str):
+                invalid("invalid_content")
+            texts.append(part["text"])
+    value = "".join(texts)
+    if not value.strip():
+        invalid("empty_content")
+    if len(value) > 30000:
+        invalid("content_limit")
+    text = GeneratedText(value)
+    text.model_name = model
+    return text
 
 
 def _bounded_integer(name, default, lower, upper):
@@ -273,7 +342,10 @@ async def _generate_text(contents, *, system_instruction=None, temperature=.1, j
             parts.append({"inlineData": {"mimeType": inline["mime_type"], "data": base64.b64encode(inline["data"]).decode()}})
         else:
             parts.append(part)
-    config = {"temperature": temperature, "maxOutputTokens": max(64, min(4096, max_tokens))}
+    if (isinstance(temperature, bool) or not isinstance(temperature, (int, float))
+            or not 0 <= temperature <= 2 or not math.isfinite(temperature)):
+        raise GeminiError("Configuração de geração Gemini inválida.", "invalid_configuration")
+    config = {"maxOutputTokens": max(64, min(4096, max_tokens))}
     if json_output:
         config["responseMimeType"] = "application/json"
         if response_schema:
@@ -284,9 +356,15 @@ async def _generate_text(contents, *, system_instruction=None, temperature=.1, j
     transport_timeout = httpx.Timeout(deadline, connect=min(10, deadline), write=min(15, deadline), pool=5)
     async with httpx.AsyncClient(timeout=transport_timeout, trust_env=False, follow_redirects=False) as client:
         for index, model in enumerate(models):
+            version = re.match(r"gemini-([0-9]+)(?:[.-]|$)", model)
+            # Gemini 3 should use its default sampling; 3.6+ ignores custom
+            # temperature and may reject it in future API revisions. Keep the
+            # caller's explicit sampling only for legacy/non-Gemini models.
+            sampling = {} if version and int(version[1]) >= 3 else {"temperature": temperature}
             # Simple extraction/OCR needs low latency, not default deep reasoning.
             # thinkingLevel is documented only for Gemini 3+; no legacy breakage.
-            body["generationConfig"] = {**config, **({"thinkingConfig": {"thinkingLevel": "LOW"}} if model.startswith("gemini-3") else {})}
+            body["generationConfig"] = {**config, **sampling,
+                **({"thinkingConfig": {"thinkingLevel": "LOW"}} if model.startswith("gemini-3") else {})}
             _validate_request_size(body)
             await _reserve_request(model)
             remaining = expires_at - loop.time()
@@ -326,14 +404,8 @@ async def _generate_text(contents, *, system_instruction=None, temperature=.1, j
                 raise GeminiError(f"Gemini indisponível (HTTP {response.status_code}).", status, response.status_code,
                                   _transient_retry_after(response) if response.status_code == 503 else None)
             try:
-                candidates = response.json().get("candidates", [])
-                if not candidates or candidates[0].get("finishReason") not in {None, "STOP"}:
-                    raise ValueError("incomplete")
-                value = "".join(p.get("text", "") for p in candidates[0].get("content", {}).get("parts", []) if not p.get("thought"))
-                if not value or len(value) > 30000:
-                    raise ValueError("empty or oversized")
-            except (ValueError, TypeError, KeyError, IndexError, AttributeError):
-                raise GeminiError("Gemini não retornou uma resposta completa e válida.", "invalid_response") from None
-            text = GeneratedText(value)
-            text.model_name = model
-            return text
+                data = response.json()
+            except ValueError:
+                raise GeminiError("Gemini não retornou JSON válido.", "invalid_response",
+                                  response_issue="malformed_envelope") from None
+            return _complete_response(data, model)

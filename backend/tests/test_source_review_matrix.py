@@ -163,7 +163,7 @@ class MatrixLiveBoundaryTests(unittest.IsolatedAsyncioTestCase):
         gemini.assert_awaited_once()
         router.assert_not_awaited()
 
-    async def test_incomplete_matrix_is_invalid_not_silent_success_or_semantic_retry(self):
+    async def test_incomplete_matrices_from_both_providers_never_supply_partial_evidence(self):
         def omit(value, request):
             value["claims"][0]["source_reviews"].pop()
         result, gemini, router = await self.run_result(mutate=omit)
@@ -174,9 +174,12 @@ class MatrixLiveBoundaryTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(result["coverage"]["complete_source_review"])
         self.assertEqual(result["claims"][0]["evidence"], [])
         gemini.assert_awaited_once()
-        router.assert_not_awaited()
+        router.assert_awaited_once()
+        self.assertEqual(result["provider_coverage"]["openrouter"]["status"], "invalid_response")
+        self.assertEqual(result["provider_coverage"]["openrouter"]["reviewed_source_pair_count"], 1)
+        self.assertEqual(gemini.await_args.args[0], router.await_args.args[0])
 
-    async def test_unhashable_assessment_type_is_handled_as_invalid_response_no_retry(self):
+    async def test_unhashable_assessments_from_both_providers_remain_invalid(self):
         for bad in ([], {}, 7, None):
             def malformed(value, request):
                 value["claims"][0]["source_reviews"][0]["assessment"] = bad
@@ -184,7 +187,9 @@ class MatrixLiveBoundaryTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(result["status"], "invalid_response")
             self.assertEqual(result["claims"][0]["evidence"], [])
             gemini.assert_awaited_once()
-            router.assert_not_awaited()
+            router.assert_awaited_once()
+            self.assertEqual(result["provider_coverage"]["openrouter"]["status"], "invalid_response")
+            self.assertEqual(gemini.await_args.args[0], router.await_args.args[0])
 
     async def test_transport_failure_only_allows_one_alternate_with_same_strict_protocol(self):
         result, gemini, router = await self.run_result(primary_error=GeminiError("PRIVATE-CREDENTIAL", "unavailable"))

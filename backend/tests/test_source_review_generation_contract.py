@@ -118,9 +118,16 @@ class SourceReviewGenerationTransportTests(unittest.IsolatedAsyncioTestCase):
              patch.object(sources.gemini_client, "_reserve_request", new=AsyncMock()) as gemini_reservation, \
              patch("httpx.AsyncClient", side_effect=client_factory):
             result = await sources.corroborate_sources(text, documents())
-        self.assertEqual(len(sent), 1, "Malformed or insufficient output must never cause another model call.")
+        technical_failure = mutate is not None or provider == "openrouter" and finish_reason != "stop"
+        self.assertEqual(len(sent), 2 if technical_failure else 1,
+                         "Only a technical failure may use the existing alternate once.")
         (router_reservation if provider == "openrouter" else gemini_reservation).assert_called_once()
-        (gemini_reservation if provider == "openrouter" else router_reservation).assert_not_called()
+        alternate_reservation = gemini_reservation if provider == "openrouter" else router_reservation
+        if technical_failure:
+            alternate_reservation.assert_called_once()
+            self.assertEqual(sent[0]["request"], sent[1]["request"])
+        else:
+            alternate_reservation.assert_not_called()
         return result, sent[0]
 
     async def test_both_rest_transports_receive_exact_matrix_and_keep_literal_body_values(self):
@@ -185,11 +192,12 @@ class SourceReviewGenerationTransportTests(unittest.IsolatedAsyncioTestCase):
                 self.assertFalse(result["coverage"]["complete_source_review"])
                 self.assertEqual(result["claims"][0]["evidence"], [])
 
-    async def test_transport_truncation_discards_even_structurally_complete_matrix(self):
+    async def test_transport_truncation_discards_primary_and_uses_complete_alternate(self):
         result, _ = await self.run_http(finish_reason="length")
-        self.assertEqual(result["status"], "invalid_response")
-        self.assertFalse(result["coverage"]["complete_source_review"])
-        self.assertEqual(result["claims"][0]["evidence"], [])
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["provider_coverage"]["openrouter"]["status"], "invalid_response")
+        self.assertTrue(result["provider_coverage"]["gemini"]["complete_source_review"])
+        self.assertEqual(result["state"], "corroborated")
 
 
 if __name__ == "__main__":

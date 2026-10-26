@@ -63,6 +63,9 @@ def _complete_response(data, model):
         if finish == "length":
             raise OpenRouterError("invalid_response", "A resposta OpenRouter atingiu o limite de tokens e foi descartada; nenhum trecho parcial virou evidência.",
                                   response_issue="token_limit")
+        if finish == "content_filter":
+            raise OpenRouterError("invalid_response", "OpenRouter interrompeu a geração por uma restrição de conteúdo; resposta descartada.",
+                                  response_issue="content_blocked")
         if finish != "stop":
             raise OpenRouterError("invalid_response", "OpenRouter não concluiu a resposta normalmente.",
                                   response_issue="unexpected_finish")

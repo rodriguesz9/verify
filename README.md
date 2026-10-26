@@ -1,5 +1,7 @@
 # Verify
 
+**Recuperação das IAs, 26/10:** [correção e limites](docs/CORRECAO-FALHAS-IAS-2026-10-26.md). Saída tecnicamente inválida pode usar o outro provedor no mesmo prazo; uma revisão válida inconclusiva continua final. Compatibilidade Gemini e diagnósticos de texto/OCR/áudio corrigidos. **1.605 testes backend passaram**, sem rede. Confirmação dos serviços reais aguarda nova autorização limitada; última precisão factual continua 41,7%.
+
 **Correção controlada, 26/10:** [diagnóstico e mudanças](docs/DIAGNOSTICO-CONTROLADO-2026-10-26.md). Leitura separa cabeçalho/autoria do corpo e vincula siglas somente por definições literais da própria página; OpenRouter distingue erros em HTTP 200, conteúdo vazio e truncamento. 1.563 testes backend passaram sem rede. Replay de fontes salvas é separado de precisão factual: a última medição real continua **5/12 (41,7%)**, sem nova validação de mídia/interface ou deploy.
 
 **Última medição, 25/10:** [recuperação e limites](docs/RECUPERACAO-E-TESTES-2026-10-25.md), [doze resultados sanitizados](docs/validation-recovery-2026-10-25.json). **5/12 corretos (41,7%), sete inconclusivos, nenhuma conclusão errada observada**, contra 6/12 anteriores. Uma submissão visual e onze HTTP; seis bloqueios antes da comparação, uma falha nos modelos. O teto de 60 buscas também interferiu no último caso. Notícias já consultadas podem fornecer URLs para leitura; referências do mesmo grupo não monopolizam os últimos espaços. 1.515 testes backend e 205 frontend/build passaram, sem demonstrar ganho de precisão, 80%, mídia ou deploy.

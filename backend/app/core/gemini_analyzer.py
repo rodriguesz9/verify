@@ -4,6 +4,7 @@ import math
 from datetime import datetime
 import os
 from app.core.gemini_client import generate_text, GeminiError, gemini_timeout_seconds
+from app.services.provider_diagnostics import provider_failure_metadata, provider_result_failure_metadata
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -14,11 +15,12 @@ async def _generate_with_rotation(prompt: str, system_instruction: str = None, t
 
 class ClaimsExtraction(list):
     """Literal search hints plus observable non-voting provider coverage."""
-    def __init__(self, claims=(), *, status="success", reason=None, model_used=None):
+    def __init__(self, claims=(), *, status="success", reason=None, model_used=None, error=None):
         super().__init__(claims)
         self.coverage = {"available": status == "success", "status": status,
                          "reason": reason, "model_used": model_used,
                          "decision_role": "search_hints_only"}
+        self.coverage.update(provider_failure_metadata(error))
 
 
 async def extract_claims_with_ai(content: str) -> list[str]:
@@ -60,7 +62,7 @@ TEXTO:
         claims = [claim for claim in _clean_claims(data["claims"]) if claim in content][:5]
         return ClaimsExtraction(claims, model_used=getattr(response_text, "model_name", None))
     except GeminiError as exc:
-        return ClaimsExtraction(status=exc.status, reason=str(exc))
+        return ClaimsExtraction(status=exc.status, reason=str(exc), error=exc)
     except Exception:
         return ClaimsExtraction(status="invalid_response", reason="Gemini não retornou extração literal válida.")
 
@@ -196,21 +198,35 @@ Se não houver texto legível, use {"text": ""}.
         from app.core.openrouter_service import extract_image_text
         from app.core.gemini_client import GeminiError
         primary_status = getattr(exc, "status", "timeout" if isinstance(exc, asyncio.TimeoutError) else "error")
-        if primary_status == "input_too_large":
-            # Do not relay an already oversized image to another provider.
+        primary_failure = provider_failure_metadata(exc)
+        primary_coverage = {"gemini_status": primary_status}
+        if primary_failure:
+            primary_coverage["gemini_failure"] = primary_failure
+        if primary_status == "input_too_large" or primary_failure.get("response_issue") in {"content_blocked", "unexpected_cost"}:
+            # An input/content restriction is not a technical failure that
+            # warrants forwarding the same image to another service.
             return {"available": False, "status": primary_status, "gemini_status": primary_status,
-                    "provider": "gemini", "decision_role": "ocr_only", "text": "", "reason": str(exc)}
+                    "provider": "gemini", "decision_role": "ocr_only", "text": "", "reason": str(exc),
+                    **primary_failure, **primary_coverage}
         try:
             alternate = await asyncio.wait_for(extract_image_text(image_bytes, mime_type), timeout=27)
             if alternate.get("available"):
-                return {**alternate, "fallback_from": "gemini_unavailable", "gemini_status": primary_status}
-            return {**alternate, "status": primary_status, "gemini_status": primary_status,
+                return {**alternate, "fallback_from": "gemini_unavailable", **primary_coverage}
+            alternate_failure = provider_result_failure_metadata(alternate)
+            # Top-level status/diagnostics describe Gemini. The alternate's
+            # failure stays separate, including when both failed differently.
+            alternate_detail = {key: value for key, value in alternate.items() if key not in {
+                "http_status", "transport_failure", "response_issue", "provider_error_code", "provider_failure"}}
+            return {**alternate_detail, "status": primary_status, **primary_failure, **primary_coverage,
                     "provider": "gemini", "fallback_provider": "openrouter", "fallback_status": alternate.get("status"),
+                    "fallback_failure": alternate_failure,
                     "reason": str(exc) if isinstance(exc, GeminiError) else "OCR Gemini não concluído no prazo; fallback gratuito indisponível."}
         except Exception as fallback_exc:
             return {"available": False, "status": primary_status, "gemini_status": primary_status,
+                    **primary_failure, **primary_coverage,
                     "provider": "gemini", "fallback_provider": "openrouter",
                     "fallback_status": "timeout" if isinstance(fallback_exc, asyncio.TimeoutError) else "error",
+                    "fallback_failure": provider_failure_metadata(fallback_exc),
                     "text": "", "reason": str(exc) if isinstance(exc, GeminiError) else "Nenhum provedor de OCR retornou texto válido."}
 
 
@@ -316,8 +332,9 @@ Retorne APENAMENTE um JSON válido com:
         return result
     except Exception as exc:
         from app.core.gemini_client import GeminiError
-        return _fallback_forensic_report(str(exc) if isinstance(exc, GeminiError) else "Análise visual auxiliar indisponível ou inválida.",
-                                        getattr(exc, "status", "invalid_response" if isinstance(exc, (ValueError, TypeError, AttributeError)) else "unavailable"))
+        return {**_fallback_forensic_report(str(exc) if isinstance(exc, GeminiError) else "Análise visual auxiliar indisponível ou inválida.",
+                                        getattr(exc, "status", "invalid_response" if isinstance(exc, (ValueError, TypeError, AttributeError)) else "unavailable")),
+                **provider_failure_metadata(exc)}
 
 
 def _fallback_forensic_report(reason: str, status: str = "unavailable") -> dict:

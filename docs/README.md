@@ -1,5 +1,7 @@
 # Documentação do Verify
 
+**Recuperação das IAs, 26/10:** [correção e limites](CORRECAO-FALHAS-IAS-2026-10-26.md). Alternativa para falha técnica de saída, sem repetir resultado inconclusivo válido; compatibilidade Gemini e diagnósticos de OCR/áudio. 1.605 testes backend passaram offline; sem nova precisão remota ou implantação.
+
 **Correção controlada, 26/10:** [diagnóstico e mudanças](DIAGNOSTICO-CONTROLADO-2026-10-26.md), [comparação das versões com fontes fixas](diagnostic-controlled-replay-2026-10-26.json). Cabeçalhos e siglas do corpo corrigidos; falhas OpenRouter recebem motivos específicos sem respostas privadas. 1.563 testes backend passaram. Sem nova precisão remota: **41,7% (5/12)** permanece a última medição, com mídia/interface e implantação não revalidadas nesta etapa.
 
 **Última medição, 25/10:** [recuperação e limites](RECUPERACAO-E-TESTES-2026-10-25.md), [doze resultados sanitizados](validation-recovery-2026-10-25.json). **5/12 corretos (41,7%), sete inconclusivos, nenhuma conclusão errada observada**, contra 6/12 anteriores. Uma submissão visual e onze HTTP; seis bloqueios antes da comparação, uma falha nos modelos. Teto de 60 buscas interferiu no último caso. 1.515 testes backend e 205 frontend/build passaram; sem demonstrar ganho de precisão, 80%, mídia ou deploy. Registros abaixo são históricos.

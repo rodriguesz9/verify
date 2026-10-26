@@ -1645,7 +1645,7 @@ async def _gemini_comparison(prompt, response_schema, coverage, timeout_seconds)
             raise TimeoutError
         try:
             return await gemini_client.generate_text(
-                prompt, system_instruction=SYSTEM_INSTRUCTION, temperature=0, max_tokens=2048,
+                prompt, system_instruction=SYSTEM_INSTRUCTION, temperature=0, max_tokens=4096,
                 response_schema=_gemini_schema(response_schema), timeout_seconds=remaining)
         except gemini_client.GeminiError as error:
             retry = (attempt == 0 and error.status == "unavailable"
@@ -1667,7 +1667,9 @@ async def _gemini_comparison(prompt, response_schema, coverage, timeout_seconds)
 
 
 async def _compare(prompt, coverage, *, timeout_seconds=None):
-    # Shared coverage preserves which provider was in flight at whole deadline.
+    # Two distinct providers share one deadline. A technically unusable first
+    # response may use the existing alternate; a complete insufficient review
+    # is a valid result and never triggers another factual judgment.
     primary = os.getenv("SOURCE_CROSSCHECK_PRIMARY_PROVIDER", "gemini").strip().lower()
     if primary not in {"gemini", "openrouter"}:
         return None, coverage, "invalid_configuration"
@@ -1712,24 +1714,30 @@ async def _compare(prompt, coverage, *, timeout_seconds=None):
                 expected_source_pair_count=expected_pairs, reviewed_source_pair_count=expected_pairs)
             return raw, coverage, "success"
         except SourceReviewError as exc:
+            status = "invalid_response"
             coverage[provider].update(status="invalid_response", review_protocol=SOURCE_REVIEW_PROTOCOL,
                 complete_source_review=False, expected_source_pair_count=expected_pairs,
                 reviewed_source_pair_count=exc.reviewed_pairs, failure_kind="incomplete_or_invalid_source_review")
-            return None, coverage, "invalid_response"
         except (ValueError, TypeError, KeyError):
-            coverage[provider].update(status="invalid_response", complete_source_review=False)
-            return None, coverage, "invalid_response"
+            status = "invalid_response"
+            coverage[provider].update(status=status, complete_source_review=False,
+                                     failure_kind="invalid_source_response")
         except TimeoutError:
             status = "timeout"
             coverage[provider]["status"] = status
         except (openrouter_service.OpenRouterError, gemini_client.GeminiError) as exc:
-            status = exc.status
-            coverage[provider].update(status=status, **provider_failure_metadata(exc))
-            # Only unavailable transport/configuration presence can switch
-            # provider. Malformed output/configuration never gets a repair or
-            # repeated attempt to achieve a desired relation/verdict.
-            if status not in {"error", "timeout", "rate_limited", "not_configured", "unavailable"}:
-                return None, coverage, status
+            # An absent alternate must not erase a useful primary diagnosis.
+            # Its own coverage still reports not_configured explicitly.
+            if exc.status != "not_configured" or status != "invalid_response":
+                status = exc.status
+            metadata = provider_failure_metadata(exc)
+            coverage[provider].update(status=exc.status, **metadata)
+            # Never bypass an explicit content/protection or cost-policy block.
+            # Technical invalid output is discarded in full; the alternate
+            # receives only the SAME original prompt/schema, not that output.
+            if (metadata.get("response_issue") in {"content_blocked", "unexpected_cost"}
+                    or exc.status not in {"error", "timeout", "rate_limited", "not_configured", "unavailable", "invalid_response"}):
+                return None, coverage, exc.status
         except Exception:
             status = "error"
             coverage[provider]["status"] = status
@@ -1919,7 +1927,7 @@ def _assess(claim, candidates, comparison_method="model_source_review_v2"):
 
 
 async def corroborate_sources(text, documents, source_url=None, *, timeout_seconds=None):
-    """Require every claim/source review, with one transport fallback; no fetches.
+    """Require every claim/source review, with one bounded alternate; no fetches.
 
     ``documents`` must come from bounded public body retrieval, not user search
     snippets. Passing a key or arbitrary host cannot create independent support.

@@ -1,4 +1,5 @@
 """Positive-list failure diagnostics; never provider bodies or credentials."""
+from types import SimpleNamespace
 
 _HTTP_FAILURES = {
     400: "request_rejected", 401: "authentication_rejected", 402: "credits_required",
@@ -9,6 +10,8 @@ _HTTP_FAILURES = {
 _RESPONSE_ISSUES = frozenset({
     "malformed_envelope", "token_limit", "unexpected_finish", "empty_content",
     "invalid_content", "content_limit", "unexpected_cost", "provider_error",
+    "content_blocked",
+    "invalid_json", "invalid_schema",
 })
 
 
@@ -30,3 +33,11 @@ def provider_failure_metadata(error):
         if issue == "provider_error" and type(code) is int and code in _HTTP_FAILURES:
             metadata.update(provider_error_code=code, provider_failure=_HTTP_FAILURES[code])
     return metadata
+
+
+def provider_result_failure_metadata(value):
+    """Revalidate returned diagnostics; ignore supplied categories/raw fields."""
+    if not isinstance(value, dict):
+        return {}
+    return provider_failure_metadata(SimpleNamespace(**{
+        key: value.get(key) for key in ("http_status", "response_issue", "provider_error_code")}))

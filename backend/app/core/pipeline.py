@@ -28,6 +28,7 @@ from app.services.source_decision import apply_source_decision
 from app.services.report_explanation import enrich_grounded_report
 from app.services.source_queries import neutral_source_query, primary_source_query, primary_source_filter, editorial_source_query
 from app.services.source_research import plan_source_research, research_enabled
+from app.services.provider_diagnostics import provider_result_failure_metadata
 from app.services.launch_relations import _frame as _launch_frame
 
 SOURCE_SITE_FILTER = "(site:royal.uk OR site:brasilescola.uol.com.br OR site:mundoeducacao.uol.com.br OR site:nasa.gov OR site:cnnbrasil.com.br OR site:aosfatos.org OR site:bbc.com OR site:theguardian.com OR site:time.com OR site:axios.com)"
@@ -671,9 +672,11 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
     if (use_ai_extraction and not skip_literal_extraction and os.getenv("OPENROUTER_API_KEY", "").strip()
             and os.getenv("OPENROUTER_ENABLED", "true").lower() == "true"):
         openrouter_result = await _run_openrouter_check(analysis_text)
+    openrouter_failure = provider_result_failure_metadata(openrouter_result)
     if openrouter_result.get("available"):
         claims = openrouter_result["claims"]
-    elif use_ai_extraction and not skip_literal_extraction:
+    elif (use_ai_extraction and not skip_literal_extraction
+          and openrouter_failure.get("response_issue") not in {"content_blocked", "unexpected_cost"}):
         try:
             claims = await asyncio.wait_for(extract_claims_with_ai(analysis_text), gemini_timeout_seconds() + 2)
             gemini_coverage = getattr(claims, "coverage", {"status": "success", "decision_role": "search_hints_only"})
@@ -817,7 +820,10 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
         }
     if use_ai_extraction:
         ai["provider_coverage"]["openrouter"] = {key: value for key, value in openrouter_result.items()
-            if key in {"available", "status", "reason", "model_used", "decision_role", "free_only", "response_issue"}}
+            if key in {"available", "status", "reason", "model_used", "decision_role", "free_only"}}
+        # Recompute categories from allowed values, never trust arbitrary
+        # provider-returned diagnostics or expose private response fields.
+        ai["provider_coverage"]["openrouter"].update(openrouter_failure)
         if gemini_coverage is not None:
             ai["provider_coverage"]["gemini"] = gemini_coverage
     ai["provider_coverage"]["analysis_budget"] = {

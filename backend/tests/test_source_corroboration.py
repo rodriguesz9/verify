@@ -893,11 +893,11 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(result["state"], "insufficient")
             self.assertEqual(result["claims"][0]["evidence"], [])
             self.assertEqual(router.await_count, 1)
-            gemini.assert_not_awaited()
+            gemini.assert_awaited_once()
         for raw in ('{"claims":[', 'prose {"claims":[]}', '```json\n{"claims":[]}\n```', '[]'):
             result, _, gemini = await self.run_comparison(raw=raw)
             self.assertEqual(result["status"], "invalid_response")
-            gemini.assert_not_awaited()
+            gemini.assert_awaited_once()
 
     async def test_free_quota_failure_falls_back_to_existing_gemini_once_and_sanitizes(self):
         async def gemini_answer(prompt, **kwargs):
@@ -930,7 +930,7 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
         gemini.assert_awaited_once()
         router.assert_not_awaited()
         self.assertEqual(gemini.await_args.kwargs["response_schema"]["type"], "OBJECT")
-        self.assertEqual(gemini.await_args.kwargs["max_tokens"], 2048)
+        self.assertEqual(gemini.await_args.kwargs["max_tokens"], 4096)
         self.assertNotIn("model_name", gemini.await_args.kwargs)
 
     async def test_gemini_transport_failure_falls_back_to_free_router_without_truth_voting(self):
@@ -949,8 +949,8 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
             router.assert_awaited_once()
             self.assertNotIn("PRIVATE", json.dumps(result))
 
-    async def test_gemini_invalid_configuration_or_output_is_not_repaired_by_router(self):
-        for failure in ("invalid_configuration", "invalid_response", "input_too_large"):
+    async def test_gemini_invalid_configuration_or_input_is_not_repaired_by_router(self):
+        for failure in ("invalid_configuration", "input_too_large"):
             with patch.dict(os.environ, {"SOURCE_CROSSCHECK_PRIMARY_PROVIDER": "gemini"}), \
                  patch("app.services.source_corroboration.gemini_client.generate_text", new=AsyncMock(
                      side_effect=GeminiError("PRIVATE-CREDENTIAL", failure))) as gemini, \
@@ -966,7 +966,7 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
             result = await corroborate_sources(CLAIM, documents())
         self.assertEqual(result["status"], "invalid_response")
         gemini.assert_awaited_once()
-        router.assert_not_awaited()
+        router.assert_awaited_once()
 
     async def test_invalid_primary_provider_configuration_never_calls_either_provider(self):
         for provider in ("", "random", "gemini,openrouter"):
@@ -990,7 +990,7 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["state"], "insufficient")
         self.assertNotIn("PRIVATE", json.dumps(result))
 
-    async def test_truncated_provider_output_never_repairs_or_falls_back(self):
+    async def test_truncated_provider_output_never_votes_even_when_alternate_also_invalid(self):
         with patch.dict(os.environ, {"SOURCE_CROSSCHECK_PRIMARY_PROVIDER": "openrouter"}), \
              patch("app.services.source_corroboration.openrouter_service.generate", new=AsyncMock(
                 side_effect=OpenRouterError("invalid_response", "length"))) as router, \
@@ -999,7 +999,7 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["status"], "invalid_response")
         self.assertEqual(result["state"], "insufficient")
         self.assertEqual(router.await_count, 1)
-        gemini.assert_not_awaited()
+        gemini.assert_awaited_once()
 
     async def test_missing_timezone_future_retrieval_and_oversize_body_omit_source(self):
         for kwargs in ({"retrieved_at": "2026-10-01T12:00:00"}, {"retrieved_at": "2999-01-01T00:00:00+00:00"},

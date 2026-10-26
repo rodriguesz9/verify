@@ -3,6 +3,7 @@ import json
 import os
 import unittest
 from unittest.mock import AsyncMock, patch
+from app.core.openrouter_service import OpenRouterError
 
 from app.services import source_corroboration as sources
 import test_classification_body_dates as controls
@@ -33,9 +34,17 @@ class ClassificationBindingFlowTests(unittest.IsolatedAsyncioTestCase):
             return json.dumps({"claims": [{"claim_id": "c1", "source_reviews": rows[:1] if incomplete else rows}]})
         with patch.dict(os.environ, {"SOURCE_CROSSCHECK_ENABLED": "true", "SOURCE_CROSSCHECK_PRIMARY_PROVIDER": "gemini"}), \
              patch.object(sources.gemini_client, "generate_text", new=AsyncMock(side_effect=answer)) as model, \
-             patch.object(sources.openrouter_service, "generate", new=AsyncMock()) as alternate:
+             patch.object(sources.openrouter_service, "generate", new=AsyncMock(side_effect=
+                 OpenRouterError("not_configured", "Alternativa ausente no controle offline."))) as alternate:
             result = await sources.corroborate_sources(CLAIM, docs)
-        alternate.assert_not_awaited()
+        if incomplete:
+            alternate.assert_awaited_once()
+            self.assertEqual(result["provider_coverage"]["gemini"]["status"], "invalid_response")
+            self.assertEqual(result["provider_coverage"]["openrouter"]["status"], "not_configured")
+            self.assertEqual(result["status"], "invalid_response")
+            self.assertEqual(model.await_args.args[0], alternate.await_args.args[0])
+        else:
+            alternate.assert_not_awaited()
         return result, model
 
     async def test_two_independent_complete_bodies_are_reviewed_and_quotes_stay_literal(self):
@@ -54,7 +63,7 @@ class ClassificationBindingFlowTests(unittest.IsolatedAsyncioTestCase):
         model.assert_not_awaited()
         self.assertEqual(result["state"], "insufficient")
 
-    async def test_model_insufficiency_and_incomplete_review_are_not_repaired_into_agreement(self):
+    async def test_valid_insufficiency_stops_and_failed_review_with_absent_alternate_adds_no_evidence(self):
         for options in ({"insufficient": True}, {"incomplete": True}):
             with self.subTest(options=options):
                 result, model = await self.compare(documents(), **options)
