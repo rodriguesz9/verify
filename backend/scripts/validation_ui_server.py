@@ -10,7 +10,7 @@ import argparse
 import asyncio
 from collections import Counter
 from contextvars import ContextVar
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 import fcntl
 import hashlib
 import json
@@ -270,8 +270,36 @@ def diagnostic_document(value):
             return None
     except ValueError:
         return None
-    return {"url": url, "title": title, "sentences": sentences, "sentence_roles": roles,
-            "truncated": truncated, "retrieved_at": retrieved}
+    document = {"url": url, "title": title, "sentences": sentences, "sentence_roles": roles,
+                "truncated": truncated, "retrieved_at": retrieved}
+    # Replay must retain the SAME explicit temporal/provenance inputs as the
+    # reader. Missing old fields stay missing; never reconstruct a date from
+    # the title/URL or turn an omitted credit into independent authorship.
+    if "publication_date" in value:
+        published = value["publication_date"]
+        if published is not None:
+            if not isinstance(published, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", published):
+                return None
+            try:
+                date.fromisoformat(published)
+            except ValueError:
+                return None
+        document["publication_date"] = published
+    if "editorial_provenance" in value:
+        provenance = value["editorial_provenance"]
+        if not isinstance(provenance, dict):
+            return None
+        if provenance:
+            fragments = provenance.get("media_credit_fragments")
+            if (set(provenance) != {"version", "media_credit_fragments"}
+                    or provenance["version"] != "visible_media_credits_v1"
+                    or not isinstance(fragments, list) or len(fragments) > 64
+                    or any(not isinstance(item, str) for item in fragments)
+                    or sum(map(len, fragments)) > 4000):
+                return None
+            provenance = {"version": provenance["version"], "media_credit_fragments": list(fragments)}
+        document["editorial_provenance"] = provenance
+    return document
 
 
 class PublicSourceDiagnostics:

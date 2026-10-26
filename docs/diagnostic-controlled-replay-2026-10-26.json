@@ -1,0 +1,631 @@
+{
+  "scope": "Offline replay before the acronym repair, on 36 saved public document snapshots; not factual accuracy, full verdicts or exact retrieval-queue replay",
+  "historical_modules": [
+    "ede5759",
+    "9cfcbe8",
+    "d7ba408",
+    "c6b8712"
+  ],
+  "snapshot_count": 36,
+  "all_prepare_outputs_equal_across_versions": true,
+  "reparsed_core_mismatch_count": 0,
+  "unmatched_saved_body_count": 0,
+  "limitations": [
+    "Captured document projection lacks publication_date/editorial_provenance; these were reconstructed from exactly matched saved HTML by unchanged _article_parts/_publication_date.",
+    "Core title/sentences/roles/truncated all matched the stored projection exactly.",
+    "Official Copom special record proof is not retained in this regular-article diagnostic projection, so this does not replay its full verdict path.",
+    "All recorded unique successful document URLs are used in recorded first-occurrence order; captures do not preserve exact complete final pipeline selection or search lead titles.",
+    "This isolates same-body eligibility behavior. It does not establish whether retrieval ranking changes caused a different set of pages to be read.",
+    "No API calls or factual accuracy update."
+  ],
+  "results": [
+    {
+      "snapshot": "bindings",
+      "case": "dev12-artemis_false",
+      "unique_document_count": 6,
+      "input_documents_sha256": "383b10294af9800b2a1308e1db407c7e7b6b3c47e54c87cc6c089cea8ade3b8b",
+      "eligible_families": [
+        "nasa"
+      ],
+      "passage_count": 1,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "bindings",
+      "case": "dev12-constitution_true",
+      "unique_document_count": 5,
+      "input_documents_sha256": "853e6edb3ff52d40857b2cf6ed08a303d8f0fbd3cb36822ad8aa20bfd7f20a80",
+      "eligible_families": [
+        "ebc",
+        "uol"
+      ],
+      "passage_count": 6,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "bindings",
+      "case": "dev12-copernicus_false",
+      "unique_document_count": 2,
+      "input_documents_sha256": "9a73d95bcb14e6fd6af39e55116b78702478fecc78dd3bba18734edf0a619be1",
+      "eligible_families": [
+        "copernicus"
+      ],
+      "passage_count": 1,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "bindings",
+      "case": "dev12-copom_false",
+      "unique_document_count": 4,
+      "input_documents_sha256": "067f2762d9721496cf3897f608768c81e5530de59471c0f7b113ff22d913fa42",
+      "eligible_families": [],
+      "passage_count": 0,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "bindings",
+      "case": "dev12-dart_true",
+      "unique_document_count": 6,
+      "input_documents_sha256": "266412a94557380892e3ebec91ae4a8dce90907e820379833d8713e256b2c78a",
+      "eligible_families": [],
+      "passage_count": 0,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "bindings",
+      "case": "dev12-ibge_true",
+      "unique_document_count": 4,
+      "input_documents_sha256": "4f4ed246cebcc43dd84a8e26fbe7fa3e925a80aac391b90e3e808f331a23ad25",
+      "eligible_families": [
+        "cnn",
+        "globo"
+      ],
+      "passage_count": 2,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "bindings",
+      "case": "dev12-lei_false",
+      "unique_document_count": 3,
+      "input_documents_sha256": "e4a39bbd1c3a2ad3dce14637e2980ac913b2ac6a5dbde9097df12fc7e7f63dd3",
+      "eligible_families": [
+        "legislativo-br"
+      ],
+      "passage_count": 1,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "bindings",
+      "case": "dev12-queen_false",
+      "unique_document_count": 5,
+      "input_documents_sha256": "ee92305c7b176ac123a7f9da73d49bbb901c2677c142f9ecd03e0afdee143cc8",
+      "eligible_families": [
+        "bbc",
+        "globo"
+      ],
+      "passage_count": 2,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "bindings",
+      "case": "dev12-queen_true",
+      "unique_document_count": 6,
+      "input_documents_sha256": "59df3a5d6956103ef46dd9cde1476125126c90bfacf9b061e747f3c1beac519d",
+      "eligible_families": [
+        "ebc",
+        "globo"
+      ],
+      "passage_count": 2,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "bindings",
+      "case": "dev12-webb_true",
+      "unique_document_count": 5,
+      "input_documents_sha256": "8ca6e016ee5c4b67dba5df760acd69771dc6d143e5fe2abf5033f049dc6d83d4",
+      "eligible_families": [
+        "globo",
+        "uol"
+      ],
+      "passage_count": 2,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "bindings",
+      "case": "dev12-who_true",
+      "unique_document_count": 5,
+      "input_documents_sha256": "ed2dafb030c0caa3cc7f0b1255fae99b4e984f3a6a629fe665a903f016f5edd2",
+      "eligible_families": [
+        "who"
+      ],
+      "passage_count": 1,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "bindings",
+      "case": "dev12-worldcup_false",
+      "unique_document_count": 4,
+      "input_documents_sha256": "e8e3b62b929263f11d90d010fa9512f168642f946297b17c3d7e1fc1e287f374",
+      "eligible_families": [],
+      "passage_count": 0,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "next",
+      "case": "dev12-artemis_false",
+      "unique_document_count": 5,
+      "input_documents_sha256": "bec9d8156e60effddb6701385ee269d814fa42a4ee7c4cbf0f80ffb70d337937",
+      "eligible_families": [],
+      "passage_count": 0,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "next",
+      "case": "dev12-constitution_true",
+      "unique_document_count": 6,
+      "input_documents_sha256": "68211a3299022dc758e8ba18e7be690afefc871d7b0d7dc09aa02f7adac11e00",
+      "eligible_families": [
+        "ebc",
+        "uol"
+      ],
+      "passage_count": 6,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "next",
+      "case": "dev12-copernicus_false",
+      "unique_document_count": 2,
+      "input_documents_sha256": "028bc2fad20020af675f59e848dd70d998d10745fecafbe46c2e9979edc30b25",
+      "eligible_families": [
+        "copernicus"
+      ],
+      "passage_count": 1,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "next",
+      "case": "dev12-copom_false",
+      "unique_document_count": 3,
+      "input_documents_sha256": "3f1b4a6ef377de04591c65b14acfe506213260a0b2108109538e6a1a1b15365c",
+      "eligible_families": [],
+      "passage_count": 0,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "next",
+      "case": "dev12-dart_true",
+      "unique_document_count": 7,
+      "input_documents_sha256": "910402a1bbb777ddf98613a8f4fa942392f1d55f7c45d769f614210a6cf8374b",
+      "eligible_families": [],
+      "passage_count": 0,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "next",
+      "case": "dev12-ibge_true",
+      "unique_document_count": 4,
+      "input_documents_sha256": "8c43f5b2d6385cce0f93bb5dc4388ab8efbced9e7f6aff138f1a67d15e14df94",
+      "eligible_families": [
+        "cnn",
+        "globo"
+      ],
+      "passage_count": 2,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "next",
+      "case": "dev12-lei_false",
+      "unique_document_count": 2,
+      "input_documents_sha256": "20cb65f1fb824030d2e670ed2d6b4a9fd70917361a4eabf34142f04a3b1fd5ae",
+      "eligible_families": [
+        "legislativo-br"
+      ],
+      "passage_count": 1,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "next",
+      "case": "dev12-queen_false",
+      "unique_document_count": 5,
+      "input_documents_sha256": "ad2a3fb3ae58906b65f125f21a0e320a7252f9abbfacf5e29e2de3b6619cb92b",
+      "eligible_families": [
+        "ebc",
+        "globo"
+      ],
+      "passage_count": 2,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "next",
+      "case": "dev12-queen_true",
+      "unique_document_count": 4,
+      "input_documents_sha256": "9f0de9d673d260bb234d4070c98260498c8716a6e6da1450987bff14a31f32db",
+      "eligible_families": [
+        "globo"
+      ],
+      "passage_count": 1,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "next",
+      "case": "dev12-webb_true",
+      "unique_document_count": 6,
+      "input_documents_sha256": "78af10417bca0211ee79d5c72a6682dffd39ad2a6fcd5f35fa6f5ae21e336924",
+      "eligible_families": [
+        "uol"
+      ],
+      "passage_count": 1,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "next",
+      "case": "dev12-who_true",
+      "unique_document_count": 6,
+      "input_documents_sha256": "0cb19793d20f05e28a70f19025c9f211556aa0a573bec463d12a2e7a0337dce9",
+      "eligible_families": [
+        "who"
+      ],
+      "passage_count": 1,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "next",
+      "case": "dev12-worldcup_false",
+      "unique_document_count": 6,
+      "input_documents_sha256": "c508a7491536cdfbfff470d108ea360e04c5fe6ee187df568705578102ed643d",
+      "eligible_families": [
+        "bbc",
+        "globo"
+      ],
+      "passage_count": 2,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "latest",
+      "case": "dev12-artemis_false",
+      "unique_document_count": 3,
+      "input_documents_sha256": "23ea18c37c670c354775592408d00e888c55441e84b17da8da2cfbb83e269938",
+      "eligible_families": [
+        "nasa"
+      ],
+      "passage_count": 1,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "latest",
+      "case": "dev12-constitution_true",
+      "unique_document_count": 6,
+      "input_documents_sha256": "681c58e5e6f802e5297acce9355d8cc976e4e4408dd179d7b7a16dd4a39e861d",
+      "eligible_families": [
+        "cnn",
+        "uol"
+      ],
+      "passage_count": 7,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "latest",
+      "case": "dev12-copernicus_false",
+      "unique_document_count": 3,
+      "input_documents_sha256": "c260d2c63754997c77f4352e274a5196a85645549a423fdf438a27051d485382",
+      "eligible_families": [],
+      "passage_count": 0,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "latest",
+      "case": "dev12-copom_false",
+      "unique_document_count": 1,
+      "input_documents_sha256": "76afd495332519130c81d33f6d0ec4826bbf7161055f6ac1b03ca5b37202aa87",
+      "eligible_families": [],
+      "passage_count": 0,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "latest",
+      "case": "dev12-dart_true",
+      "unique_document_count": 5,
+      "input_documents_sha256": "d2e8565347facea91d1b8ba3c001b8d4ff01590afcee377eeb85ec0362119280",
+      "eligible_families": [],
+      "passage_count": 0,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "latest",
+      "case": "dev12-ibge_true",
+      "unique_document_count": 3,
+      "input_documents_sha256": "a202759fcd5d39045a9af774253dda8d3861c5cf92f29363aece3208682aaa3d",
+      "eligible_families": [
+        "cnn",
+        "globo"
+      ],
+      "passage_count": 2,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "latest",
+      "case": "dev12-lei_false",
+      "unique_document_count": 2,
+      "input_documents_sha256": "dbef2cd1ad085b226e569b78dc1d791f4f91a8d606824b6a0d5c2705d63a4b7e",
+      "eligible_families": [
+        "legislativo-br"
+      ],
+      "passage_count": 1,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "latest",
+      "case": "dev12-queen_false",
+      "unique_document_count": 2,
+      "input_documents_sha256": "333d84d20396b69e089f6b52c67c6182bc043f4d896061b6c02580846faa75f1",
+      "eligible_families": [
+        "globo",
+        "uol"
+      ],
+      "passage_count": 2,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "latest",
+      "case": "dev12-queen_true",
+      "unique_document_count": 4,
+      "input_documents_sha256": "470ff8faae1f45d60b8b248bbf230f34d2d674afe13be2851560c6cc813b87b5",
+      "eligible_families": [
+        "globo"
+      ],
+      "passage_count": 1,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "latest",
+      "case": "dev12-webb_true",
+      "unique_document_count": 6,
+      "input_documents_sha256": "10aad5f7002662533f61cb1795b723c8861447b0a18753dc0c9b7c032dfc786d",
+      "eligible_families": [
+        "uol"
+      ],
+      "passage_count": 1,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "latest",
+      "case": "dev12-who_true",
+      "unique_document_count": 6,
+      "input_documents_sha256": "5c6f172e450652aea4e8223ab2e9a336313076c8b217db09bc2f03d41c21c88e",
+      "eligible_families": [
+        "cnn",
+        "who"
+      ],
+      "passage_count": 3,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    },
+    {
+      "snapshot": "latest",
+      "case": "dev12-worldcup_false",
+      "unique_document_count": 7,
+      "input_documents_sha256": "e2f448ed3ee062443db173f10d014e1cce64c8663d39557aa4537246389b3401",
+      "eligible_families": [
+        "globo"
+      ],
+      "passage_count": 1,
+      "equal_prepare_output_by_version": {
+        "current": true,
+        "9cfcbe8": true,
+        "c6b8712": true,
+        "d7ba408": true,
+        "ede5759": true
+      }
+    }
+  ],
+  "baseline_commit": "94681e6"
+}

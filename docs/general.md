@@ -1,5 +1,7 @@
 # Verify — estrutura e arquitetura
 
+**Correção controlada, 26/10:** [diagnóstico e mudanças](DIAGNOSTICO-CONTROLADO-2026-10-26.md). Cabeçalho semântico separado do corpo, sigla vinculada a definição literal com contexto completo, diagnósticos específicos de resposta OpenRouter e captura local de data/créditos. 1.563 testes backend passaram, sem novas chamadas remotas. Última precisão factual permanece **5/12 (41,7%)**; replay não é nova taxa de acerto nem homologação de mídia/interface/deploy.
+
 **Última medição, 25/10:** [recuperação e limites](RECUPERACAO-E-TESTES-2026-10-25.md), [doze resultados sanitizados](validation-recovery-2026-10-25.json). **5/12 corretos (41,7%), sete inconclusivos, nenhuma conclusão errada observada**, contra 6/12 anteriores. Uma submissão visual e onze HTTP; seis bloqueios antes da comparação, uma falha nos modelos. Teto de 60 buscas interferiu no último caso. 1.515 testes backend e 205 frontend/build passaram; sem demonstrar ganho de precisão, 80%, mídia ou deploy. Registros abaixo são históricos.
 
 **Espera e conclusão, 24/10:** [correções e configuração](ESPERA-E-CONCLUSAO-2026-10-24.md). Planejamento recebe prazo explícito no transporte, comparação até 120 s por provedor/240 s compartilhados, texto até 420 s e cliente 480 s. Temporizadores coincidentes corrigidos nos dois clientes, sem repetir julgamentos ou aumentar quotas. 1.493 testes backend e 205 frontend passaram; build concluído. UI pendente até o relatório; sem nova precisão remota, mídia ou deploy validados. Valores históricos abaixo permanecem identificados por revisão.
@@ -117,6 +119,7 @@ Todos os routers ficam sob `/api`.
 Os clientes Hive, Sightengine e Hugging Face não são intercambiáveis. Hive v2 exige projetos apropriados; Hive v3 usa Secret Key Bearer e `classes[].value`, com cabeça de áudio distinta. Imagem/facial v3 compartilham uma chamada e um fornecedor; ativação de chamadas pagas exige `HIVE_V3_MEDIA_TYPES`. Token HF exige endpoint hospedado oficial explícito e classe positiva documentada. Erros diminuem cobertura, não viram evidência de falsidade.
 
 - `services/launch_relations.py` e `competition_relations.py`: vínculos literais delimitados de missão/data e competição/edição/categoria/vencedor. Escopo amplo impede perder qualificadores por fallback genérico; parser estrito abstém em ambiguidades. Não criam votos de fonte, não usam tabelas de datas/campeões e não substituem procedência, contexto ou validação de futuro.
+- `services/body_acronym_binding.py`: uma definição explícita no corpo pode ligar o sujeito completo à sigla usada em uma sentença posterior. Preserva todo o contexto intermediário, até 24 sentenças/3.600 caracteres, e revalida a definição após a revisão do modelo. Não fornece datas, ações ou votos; nome em título/legenda, definição ambígua, réplica e qualificadores ausentes continuam impeditivos.
 
 ## Persistência e privacidade
 

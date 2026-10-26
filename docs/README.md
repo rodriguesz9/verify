@@ -1,5 +1,7 @@
 # Documentação do Verify
 
+**Correção controlada, 26/10:** [diagnóstico e mudanças](DIAGNOSTICO-CONTROLADO-2026-10-26.md), [comparação das versões com fontes fixas](diagnostic-controlled-replay-2026-10-26.json). Cabeçalhos e siglas do corpo corrigidos; falhas OpenRouter recebem motivos específicos sem respostas privadas. 1.563 testes backend passaram. Sem nova precisão remota: **41,7% (5/12)** permanece a última medição, com mídia/interface e implantação não revalidadas nesta etapa.
+
 **Última medição, 25/10:** [recuperação e limites](RECUPERACAO-E-TESTES-2026-10-25.md), [doze resultados sanitizados](validation-recovery-2026-10-25.json). **5/12 corretos (41,7%), sete inconclusivos, nenhuma conclusão errada observada**, contra 6/12 anteriores. Uma submissão visual e onze HTTP; seis bloqueios antes da comparação, uma falha nos modelos. Teto de 60 buscas interferiu no último caso. 1.515 testes backend e 205 frontend/build passaram; sem demonstrar ganho de precisão, 80%, mídia ou deploy. Registros abaixo são históricos.
 
 **Espera e conclusão, 24/10:** [correções e configuração](ESPERA-E-CONCLUSAO-2026-10-24.md). Planejamento recebe prazo explícito no transporte, comparação até 120 s por provedor/240 s compartilhados, texto até 420 s e cliente 480 s. Temporizadores coincidentes corrigidos nos dois clientes, sem repetir julgamentos ou aumentar quotas. 1.493 testes backend e 205 frontend passaram; build concluído. UI pendente até o relatório; sem nova precisão remota, mídia ou deploy validados.

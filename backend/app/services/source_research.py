@@ -20,7 +20,7 @@ from app.services.source_corroboration import (
 )
 from app.services.source_relations import lexical_text, WORD_GROUPS
 from app.services.source_readability import known_unsupported_lead, reader_capabilities
-from app.services.provider_diagnostics import http_failure_metadata
+from app.services.provider_diagnostics import provider_failure_metadata
 
 MAX_QUERIES = 2
 MAX_LEADS = 24
@@ -259,7 +259,7 @@ async def plan_source_research(text, leads, documents, selection_audit, source_u
             raw = await asyncio.wait_for(operation, timeout=attempt_timeout)
             provider_coverage.update(status="success", model_used=getattr(raw, "model_name", None))
         except (gemini_client.GeminiError, openrouter_service.OpenRouterError) as exc:
-            provider_coverage.update(status=exc.status, **http_failure_metadata(exc))
+            provider_coverage.update(status=exc.status, **provider_failure_metadata(exc))
             coverage["status"] = exc.status
             continue
         except TimeoutError:

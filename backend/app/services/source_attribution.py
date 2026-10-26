@@ -343,16 +343,26 @@ def _article_blocks(root, scope):
                          and not any(id(node) in entry_ids for node in [tag, *tag.parents]))
         return "context" if contextual or not _inside(tag, root) or outside_entry else "body"
 
-    def visit(tag, inherited_context=False):
+    def visit(tag, inherited_context=False, header_context=False):
         identifiers = " ".join([str(tag.get("id", "")), *tag.get("class", [])])
         properties = {value.casefold() for value in str(tag.get("itemprop", "")).split()}
-        contextual = (inherited_context or id(tag) in entry_header_ids
+        # A semantic article header with a heading and a separate following
+        # prose region contains introductory/author UI, not a fragment of the
+        # first body paragraph. Keep its DOM block boundaries and every word
+        # as context. Do not infer this when header wraps the articleBody.
+        article_header = (tag.name == "header" and isinstance(tag.parent, Tag)
+                          and tag.parent.name == "article" and not _inside(root, tag)
+                          and tag.find(["h1", "h2", "h3", "h4", "h5", "h6"]) is not None
+                          and any(isinstance(sibling, Tag) and (sibling.name == "p" or sibling.find("p"))
+                                  for sibling in tag.next_siblings))
+        header_context = header_context or article_header
+        contextual = (inherited_context or article_header or id(tag) in entry_header_ids
                       or tag.name in _CONTEXT_TAGS or tag.name == "table"
                       or bool(_AUTHOR_UI.search(identifiers)) or bool(_HEADING_UI.search(identifiers))
                       or bool(_CAPTION_UI.search(identifiers)) or bool(_explicit_visual_credit(tag))
                       or tag.name in _BLOCK_TAGS and tag.find(class_=_CAPTION_UI) is not None
                       or "author" in properties)
-        if tag.name in _BLOCK_TAGS or contextual:
+        if tag.name in _BLOCK_TAGS or contextual and not (header_context and tag.name in _FLOW_CONTAINERS):
             text = _visible_text(tag)
             if text:
                 role = block_role(tag, contextual or bool(_AUTHOR_TEXT.fullmatch(text)))
@@ -390,7 +400,7 @@ def _article_blocks(root, scope):
                         pending.append(text)
                 else:
                     flush()
-                    visit(child, contextual)
+                    visit(child, contextual, header_context)
         flush()
 
     visit(scope)

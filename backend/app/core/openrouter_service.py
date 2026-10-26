@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 
 import httpx
 from app.core.analysis_timing import MAX_MODEL_WAIT_SECONDS
+from app.services.provider_diagnostics import provider_failure_metadata
 
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 DEFAULT_MODEL = "openrouter/free"
@@ -29,15 +30,62 @@ _cooldown_until = 0.0
 
 
 class OpenRouterError(RuntimeError):
-    def __init__(self, status, reason, http_status=None):
+    def __init__(self, status, reason, http_status=None, *, response_issue=None, provider_error_code=None):
         self.status = status
         self.http_status = http_status if type(http_status) is int and 400 <= http_status <= 599 else None
+        self.response_issue = response_issue
+        self.provider_error_code = provider_error_code
         super().__init__(reason)
 
 
 class GeneratedText(str):
     model_name: str
     provider_name = "openrouter"
+
+
+def _complete_response(data, model):
+    """Validate the complete envelope, including documented HTTP-200 errors."""
+    if not isinstance(data, dict):
+        raise OpenRouterError("invalid_response", "Resposta OpenRouter fora do formato esperado.",
+                              response_issue="malformed_envelope")
+    if "error" in data:
+        error = data["error"]
+        code = error.get("code") if isinstance(error, dict) else None
+        if type(code) is not int or not 400 <= code <= 599:
+            raise OpenRouterError("invalid_response", "Erro OpenRouter fora do formato esperado.",
+                                  response_issue="malformed_envelope")
+        status = "rate_limited" if type(code) is int and code in {402, 429} else "error"
+        raise OpenRouterError(status, "OpenRouter retornou um erro no corpo da resposta; análise descartada.",
+                              response_issue="provider_error", provider_error_code=code)
+    try:
+        choice = data["choices"][0]
+        finish = choice.get("finish_reason")
+        if finish == "length":
+            raise OpenRouterError("invalid_response", "A resposta OpenRouter atingiu o limite de tokens e foi descartada; nenhum trecho parcial virou evidência.",
+                                  response_issue="token_limit")
+        if finish != "stop":
+            raise OpenRouterError("invalid_response", "OpenRouter não concluiu a resposta normalmente.",
+                                  response_issue="unexpected_finish")
+        value = choice["message"]["content"]
+        if value is None or isinstance(value, str) and not value.strip():
+            raise OpenRouterError("invalid_response", "OpenRouter não retornou conteúdo utilizável.",
+                                  response_issue="empty_content")
+        if not isinstance(value, str):
+            raise OpenRouterError("invalid_response", "Conteúdo OpenRouter fora do formato esperado.",
+                                  response_issue="invalid_content")
+        if len(value) > 30000:
+            raise OpenRouterError("invalid_response", "Resposta OpenRouter acima do limite permitido.",
+                                  response_issue="content_limit")
+        cost = data.get("usage", {}).get("cost")
+        if cost is not None and (isinstance(cost, bool) or not isinstance(cost, (int, float)) or not math.isfinite(cost) or cost != 0):
+            raise OpenRouterError("invalid_response", "Resposta OpenRouter incompatível com a política gratuita.",
+                                  response_issue="unexpected_cost")
+        text = GeneratedText(value)
+        text.model_name = str(data.get("model") or model)[:160]
+        return text
+    except (ValueError, TypeError, KeyError, IndexError, AttributeError):
+        raise OpenRouterError("invalid_response", "OpenRouter não retornou uma resposta completa e válida.",
+                              response_issue="malformed_envelope") from None
 
 
 def free_model_allowed(model: str) -> bool:
@@ -159,21 +207,18 @@ async def _generate_with_models(models, messages, headers, temperature, max_toke
                 raise OpenRouterError("error", f"OpenRouter indisponível (HTTP {response.status_code}).", response.status_code)
             try:
                 data = response.json()
-                choice = data["choices"][0]
-                value = choice["message"]["content"]
-                if choice.get("finish_reason") == "length":
-                    raise OpenRouterError("invalid_response", "A resposta OpenRouter atingiu o limite de tokens e foi descartada; nenhum trecho parcial virou evidência.")
-                if choice.get("finish_reason") != "stop" or not isinstance(value, str) or not value.strip() or len(value) > 30000:
-                    raise ValueError("incomplete")
-                usage = data.get("usage", {})
-                cost = usage.get("cost")
-                if cost is not None and (isinstance(cost, bool) or not isinstance(cost, (int, float)) or not math.isfinite(cost) or cost != 0):
-                    raise ValueError("unexpected cost")
-                text = GeneratedText(value)
-                text.model_name = str(data.get("model") or model)[:160]
-                return text
-            except (ValueError, TypeError, KeyError, IndexError, AttributeError):
-                raise OpenRouterError("invalid_response", "OpenRouter não retornou uma resposta completa e válida.") from None
+            except ValueError:
+                raise OpenRouterError("invalid_response", "OpenRouter não retornou JSON válido.",
+                                      response_issue="malformed_envelope") from None
+            try:
+                return _complete_response(data, model)
+            except OpenRouterError as error:
+                if error.status == "rate_limited":
+                    with _budget_lock:
+                        _cooldown_until = time.monotonic() + 60
+                # No retries/model rotation for an HTTP-200 error or partial
+                # output. The owning pipeline may use its existing alternate.
+                raise
 
 
 async def generate(prompt, system_instruction=None, temperature=.1, max_tokens=1024, response_format=None, timeout_seconds=25):
@@ -214,6 +259,7 @@ async def analyze_with_openrouter(text: str) -> dict:
                 "model_used": raw.model_name, "decision_role": "search_hints_only", "free_only": True}
     except OpenRouterError as exc:
         return {"available": False, "status": exc.status, "claims": [], "reason": str(exc),
+                **provider_failure_metadata(exc),
                 "decision_role": "search_hints_only", "free_only": True}
     except Exception as exc:
         return {"available": False, "status": "invalid_response", "claims": [],
@@ -237,6 +283,7 @@ async def extract_image_text(image_bytes: bytes, mime_type: str) -> dict:
                 "model_used": raw.model_name, "provider": "openrouter", "decision_role": "ocr_only", "free_only": True}
     except OpenRouterError as exc:
         return {"available": False, "status": exc.status, "text": "", "reason": str(exc),
+                **provider_failure_metadata(exc),
                 "provider": "openrouter", "decision_role": "ocr_only", "free_only": True}
     except Exception:
         return {"available": False, "status": "invalid_response", "text": "", "reason": "OCR auxiliar OpenRouter indisponível ou inválido.",

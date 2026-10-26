@@ -260,6 +260,36 @@ class SourceDiagnosticTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(diagnostic_document(public_document(sentences=["a" * 50001])))
         self.assertIsNone(diagnostic_document(public_document(retrieved_at="private-marker")))
 
+    def test_publication_date_retained_without_inventing_missing_legacy_metadata(self):
+        for published in (None, "2021-12-25"):
+            document = public_document(publication_date=published)
+            self.assertEqual(diagnostic_document(document), document)
+        self.assertNotIn("publication_date", diagnostic_document(public_document()))
+        for published in (True, {}, "2021-02-30", "2021-1-1", "private-marker", "2021-12-25T12:00:00"):
+            self.assertIsNone(diagnostic_document(public_document(publication_date=published)))
+
+    def test_public_media_provenance_retained_bounded_and_without_unknown_fields(self):
+        for provenance in ({}, {"version": "visible_media_credits_v1", "media_credit_fragments": ["Foto: Reuters"]}):
+            document = public_document(editorial_provenance=provenance)
+            self.assertEqual(diagnostic_document(document), document)
+        for provenance in (None, [], {"version": "private-marker", "media_credit_fragments": []},
+                {"version": "visible_media_credits_v1", "media_credit_fragments": [False]},
+                {"version": "visible_media_credits_v1", "media_credit_fragments": ["x" * 4001]},
+                {"version": "visible_media_credits_v1", "media_credit_fragments": [""] * 65},
+                {"version": "visible_media_credits_v1", "media_credit_fragments": [], "token": "private-marker"}):
+            self.assertIsNone(diagnostic_document(public_document(editorial_provenance=provenance)))
+
+    async def test_temporal_and_provenance_fields_survive_fixed_scope_restart(self):
+        document = public_document(publication_date="2021-12-25", editorial_provenance={
+            "version": "visible_media_credits_v1", "media_credit_fragments": ["Foto: Reuters"]})
+        with tempfile.TemporaryDirectory() as directory:
+            diagnostics = PublicSourceDiagnostics(directory)
+            async def capture():
+                diagnostics.record_article(PUBLIC_URL, document)
+            await diagnostics.run_scoped(capture, "queen_true")
+            resumed = PublicSourceDiagnostics(directory)
+            self.assertEqual(resumed.records["documents"][0]["document"], document)
+
     async def test_unscoped_private_inputs_produce_no_diagnostic_file(self):
         with tempfile.TemporaryDirectory() as directory:
             value = PublicSourceDiagnostics(directory)

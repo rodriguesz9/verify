@@ -26,7 +26,8 @@ from app.services.launch_body_dates import launch_body_temporal_anchor, launch_d
 from app.services.competition_relations import is_competition_outcome_claim, competition_outcome_relation, parse_competition_claim
 from app.services.typed_source_comparison import typed_review_matrix, COMPARISON_METHOD as TYPED_COMPARISON_METHOD
 from app.services.classification_body_dates import classification_body_binding
-from app.services.provider_diagnostics import http_failure_metadata
+from app.services.provider_diagnostics import provider_failure_metadata
+from app.services.body_acronym_binding import explicit_body_acronym_candidate, body_acronym_claim_reading
 from app.core.analysis_timing import COMPARISON_WAIT_SECONDS, MAX_MODEL_WAIT_SECONDS, TEXT_PIPELINE_WAIT_SECONDS
 from app.services.legal_declaration_relations import (
     parse_legal_declaration_claim, parse_legal_article_declaration,
@@ -119,7 +120,7 @@ _COMPOUND = re.compile(r"\b(?:e|também|além disso|mas|porém|and|also|but)\b",
 _FALSE_CONTEXT = re.compile(r"\b(?:é falso|é falsa|afirmação falsa|afirmação é falsa|mensagem falsa|mensagem é falsa|desmentid[oa]|false claim|not true|não é verdade)\b", re.I)
 _FALSE_PREFIX = re.compile(r"^\s*(?:é fals[oa] que|não é verdade que|it is false that|it is not true that)\s+", re.I)
 _CORRECTION = re.compile(r"\b(?:e não|mas não|ao contrário|na verdade|é falso|é falsa|não é verdade|instead of|rather than|not true)\b", re.I)
-_INSTRUCTION = re.compile(r"\b(?:ignore (?:as |todas |previous |all )?(?:instruções|instructions)|system prompt|retorne (?:apenas )?json|classifique .*verdadeir[oa])\b", re.I)
+_INSTRUCTION = re.compile(r"\b(?:ignore\s+(?:(?:todas|as|all|the|previous|anteriores)\s+){0,3}(?:instruções|instrucoes|instructions)|system prompt|retorne (?:apenas )?json|classifique .*verdadeir[oa])\b", re.I)
 _HIGH_STAKES = re.compile(r"\b(?:pix|pagamento|investimento|medicamento|vacina|tratamento|lei|judicial)\b", re.I)
 _PRESCRIPTIVE = re.compile(r"\b(?:transfira|pague|envie dinheiro|invista|tome|pare de tomar|suspenda|abandone o tratamento)\b", re.I)
 _WIRE = ((re.compile(r"\b(?:segundo|conforme|via|fonte|agência|agencia|por|according to|reported by)[\s:/-]+(?:a |the )?Reuters\b|\bReuters\s*[:/]", re.I), "reuters"),
@@ -1167,6 +1168,11 @@ def _passage_guard(claim, passage, relation, stamp):
         if quote is None:
             return "O próprio corpo não fornece uma leitura completa e revalidável do lançamento."
     reading_claim = claim
+    acronym_reading = body_acronym_claim_reading(claim, passage)
+    if acronym_reading is False:
+        return "A definição literal da sigla não cobre o sujeito completo desta afirmação."
+    if acronym_reading:
+        reading_claim = acronym_reading
     legal_reading = _legal_article_reading(claim, passage)
     if legal_reading is False:
         return "Referência da lei, artigo, objeto ou escopo de negação diverge da leitura literal delimitada."
@@ -1448,6 +1454,24 @@ def _prepare_sources(documents, claims, source_url, *, reading_gaps=None):
                     break
             if len(source["candidates"]) >= MAX_PASSAGES:
                 break
+        covered = {claim for claim in claims if any(_passage_guard(claim, candidate, relation, stamp) is None
+                    for _, candidate in source["candidates"] for relation in ("supports", "refutes"))}
+        # Explicit BODY definitions can bind a later acronym without joining
+        # distant sentences into a fabricated quote. Keep ALL intervening
+        # context and revalidate the identity proof again after model review.
+        normalized = {"sentences": sentences, "sentence_roles": sentence_roles}
+        for claim in (claim for claim in claims if claim not in covered):
+            for index in ranked[:64]:
+                if len(source["candidates"]) >= MAX_PASSAGES:
+                    break
+                bound = explicit_body_acronym_candidate(claim, normalized, index,
+                    leading_context_indices=leading_context_indices)
+                if bound is None:
+                    continue
+                candidate = _candidate_passage(bound["quote"], bound["context"], raw, identity,
+                    body_acronym_anchor=bound["body_acronym_anchor"])
+                if admits(candidate, [claim], stamp):
+                    source["candidates"].append(((index, index), candidate))
         if source["candidates"]:
             candidates.append(source)
         else:
@@ -1476,6 +1500,8 @@ def _prepare_sources(documents, claims, source_url, *, reading_gaps=None):
                 cost += len(json.dumps(candidate["original_legal_publication"], ensure_ascii=False))
             if candidate.get("official_record"):
                 cost += len(json.dumps(candidate["official_record"], ensure_ascii=False))
+            if candidate.get("body_acronym_anchor"):
+                cost += len(json.dumps(candidate["body_acronym_anchor"], ensure_ascii=False))
             if budget + cost > MAX_PROMPT_BODY or source_budget + cost > MAX_SOURCE_PROMPT_BODY:
                 continue
             selected.append((index, candidate, fingerprint))
@@ -1698,7 +1724,7 @@ async def _compare(prompt, coverage, *, timeout_seconds=None):
             coverage[provider]["status"] = status
         except (openrouter_service.OpenRouterError, gemini_client.GeminiError) as exc:
             status = exc.status
-            coverage[provider].update(status=status, **http_failure_metadata(exc))
+            coverage[provider].update(status=status, **provider_failure_metadata(exc))
             # Only unavailable transport/configuration presence can switch
             # provider. Malformed output/configuration never gets a repair or
             # repeated attempt to achieve a desired relation/verdict.
@@ -1829,6 +1855,9 @@ def _assess(claim, candidates, comparison_method="model_source_review_v2"):
         if passage.get("launch_anchor"):
             record["launch_anchor"] = dict(passage["launch_anchor"])
             record["reason"] += " O dia e a semana explícitos do lançamento foram conferidos com a publicação, sem reescrever o trecho nem inferir agência, local ou horário alegados."
+        if passage.get("body_acronym_anchor"):
+            record["body_acronym_anchor"] = dict(passage["body_acronym_anchor"])
+            record["reason"] += " A própria página define a sigla usada no trecho; o nome completo e todo o contexto intermediário foram preservados, sem alterar a citação."
         if passage.get("reporting_anchor"):
             record["reporting_anchor"] = dict(passage["reporting_anchor"])
             record["reason"] += " A data de divulgação explicitada no corpo foi conferida contra a publicação; não foi atribuída ao período econômico."
