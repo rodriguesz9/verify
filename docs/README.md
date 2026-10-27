@@ -1,5 +1,7 @@
 # Documentação do Verify
 
+**Gemini local, 27/10:** [diagnóstico, configuração e ambiente revisado](GEMINI-LOCAL-2026-10-27.md), [três controles reais](validation-gemini-local-2026-10-27.json). Cópia antiga usava 15 s e ignorava configuração nova. 3.5 Flash-Lite respondeu ao texto e OCR; transcrição integral ainda divergente. 1.616 testes backend e 205 frontend passaram novamente; sem nova precisão factual ou deploy.
+
 **Checagem real das IAs, 26/10:** [resultados e orientação](CHECAGEM-REAL-IAS-2026-10-26.md), [oito controles sanitizados](validation-ai-contract-2026-10-26.json). OpenRouter 3/4 controles; Gemini quatro HTTP 503. Sem nova taxa factual, busca ou UI. Ajuste posterior de formato completo com 1.616 testes backend, sem novas chamadas remotas.
 
 **Recuperação das IAs, 26/10:** [correção e limites](CORRECAO-FALHAS-IAS-2026-10-26.md). Alternativa para falha técnica de saída, sem repetir resultado inconclusivo válido; compatibilidade Gemini e diagnósticos de OCR/áudio. 1.605 testes backend passaram offline; sem nova precisão remota ou implantação.

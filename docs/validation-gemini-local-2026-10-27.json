@@ -1,0 +1,52 @@
+{
+  "date_local": "2026-10-27",
+  "timezone": "America/Sao_Paulo",
+  "completed_at": "2026-10-27T14:16:31.127444+00:00",
+  "base_application_commit": "b1a7a8bf9bab1ac01326b178de14e92edeacb270",
+  "frozen_backend_files": 82,
+  "manifest_sha256": "9669a45ee4f83057b022d1c4f9612cab942b670dd740c5680530843b08bd037c",
+  "frozen_files_unchanged": true,
+  "scope": "Direct real application Gemini client; synthetic literal and known OCR controls. Not factual news accuracy, source comparison, UI submission or media authenticity.",
+  "authorized_gemini_limit": 3,
+  "physical_sends": {"gemini": 3, "openrouter": 0, "searches": 0, "paid_detectors": 0},
+  "same_case_retries": 0,
+  "fallback_models_enabled": false,
+  "results": [
+    {
+      "case": "literal-original",
+      "model": "gemini-3.7-flash",
+      "deadline_seconds": 90,
+      "http_status": 503,
+      "status": "unavailable",
+      "control_passed": false,
+      "elapsed_seconds": 1.258
+    },
+    {
+      "case": "literal-current",
+      "model": "gemini-3.5-flash-lite",
+      "deadline_seconds": 90,
+      "http_status": 200,
+      "status": "success",
+      "control_passed": true,
+      "exact_reference_match": true,
+      "elapsed_seconds": 26.593
+    },
+    {
+      "case": "ocr",
+      "model": "gemini-3.5-flash-lite",
+      "deadline_seconds": 90,
+      "http_status": 200,
+      "status": "success",
+      "control_passed": false,
+      "exact_reference_match": false,
+      "negation_preserved": true,
+      "amount_preserved": true,
+      "date_preserved": true,
+      "elapsed_seconds": 26.39
+    }
+  ],
+  "offline_tests": {"backend_passed": 1616, "frontend_passed": 205, "skipped": 0},
+  "previous_factual_measurement_unchanged": {"correct": 5, "total": 12, "inconclusive": 7},
+  "openrouter_previous_conservative_cumulative_sends_unchanged": 53,
+  "no_raw_responses_or_credentials_retained": true
+}

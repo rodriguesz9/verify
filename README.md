@@ -1,5 +1,7 @@
 # Verify
 
+**Gemini local, 27/10:** [ambiente corrigido e configuração](docs/GEMINI-LOCAL-2026-10-27.md), [três controles reais](docs/validation-gemini-local-2026-10-27.json). Docker anterior montava código antigo com prazo de 15 s. Ambiente revisado separado usa Gemini 3.5 Flash-Lite, que respondeu a texto e imagem; OCR integral ainda divergente. 1.616 testes backend e 205 frontend passaram novamente. Sem nova precisão factual ou deploy.
+
 **Checagem real das IAs, 26/10:** [resultados e orientação](docs/CHECAGEM-REAL-IAS-2026-10-26.md), [oito controles sanitizados](docs/validation-ai-contract-2026-10-26.json). OpenRouter passou em 3/4 controles, incluindo refutação e OCR exato; apoio retornou resposta inválida. Gemini devolveu quatro HTTP 503. Todos os limites preservados; sem buscas, mídia forense ou UI. Compatibilidade de JSON completo melhorada depois da rodada; **1.616 testes backend passaram**, sem nova validação remota dessa alteração. Precisão factual permanece 41,7%.
 
 **Recuperação das IAs, 26/10:** [correção e limites](docs/CORRECAO-FALHAS-IAS-2026-10-26.md). Saída tecnicamente inválida pode usar o outro provedor no mesmo prazo; uma revisão válida inconclusiva continua final. Compatibilidade Gemini e diagnósticos de texto/OCR/áudio corrigidos. **1.605 testes backend passaram**, sem rede, antes da checagem real registrada acima; última precisão factual continua 41,7%.

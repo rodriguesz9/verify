@@ -1,5 +1,7 @@
 # Verify — estrutura e arquitetura
 
+**Gemini local, 27/10:** [diagnóstico e configuração](GEMINI-LOCAL-2026-10-27.md). Novo Compose local separado em 5176/8016, banco próprio, versão revisada e modelo 3.5 Flash-Lite que respondeu a texto e imagem. OCR integral ainda divergente; 1.616 testes backend e 205 frontend repetidos com sucesso. Sem nova precisão factual ou deploy.
+
 **Checagem real das IAs, 26/10:** [resultados e orientação](CHECAGEM-REAL-IAS-2026-10-26.md). OpenRouter passou em três dos quatro controles; Gemini retornou quatro HTTP 503. Janela completa de oito envios, sem buscas, UI ou detectores pagos. Decodificação aceita somente um envelope completo de JSON em Markdown, mantendo schema/IDs/limites; 1.616 testes backend passaram após essa melhoria, ainda sem revalidação remota. Precisão factual permanece 41,7%.
 
 **Recuperação das IAs, 26/10:** [correção e limites](CORRECAO-FALHAS-IAS-2026-10-26.md). Falha técnica de saída pode usar o segundo provedor no mesmo prazo; revisão válida inconclusiva não é repetida. Gemini exige conclusão explícita, usa amostragem padrão nos modelos 3+ e até 4.096 tokens somente na comparação. Diagnósticos preservados em texto/OCR/áudio; 1.605 testes backend passaram offline. Sem nova taxa factual ou deploy.
