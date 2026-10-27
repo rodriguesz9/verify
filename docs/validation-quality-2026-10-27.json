@@ -1,0 +1,1319 @@
+{
+  "date": "2026-10-27",
+  "scope": "Twelve previously known development texts, not blind or representative general accuracy; local synthetic OCR reported separately",
+  "source_commit": "a658ef0",
+  "source_sha256": "b67b886d23d793e48418ca013b75ad22cd961b1d5a4974373af9dc5c68bdda4d",
+  "frontend_distribution_sha256": "a1906b8fd88fea1c01f0214a917a05195eba818069d8af18e56aa7e38960f7dd",
+  "freeze_contract_sha256": "973fdf26d64a4f904db312bb6f2a6f7c0e01a576471c155acfaf96a41bf632d1",
+  "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+  "freeze_verified_after_all_twelve": true,
+  "freeze_verification_evidence": "Parent operator reported verify_freeze passed after all twelve terminal cases, before the post-measurement ordinal-date correction.",
+  "all_twelve_terminal": true,
+  "one_attempt_each": true,
+  "labels_not_passed_to_pipeline": true,
+  "metrics": {
+    "total": 12,
+    "correct": 7,
+    "wrong": 0,
+    "inconclusive": 5,
+    "terminal_errors": 0,
+    "correct_fraction_including_inconclusive_and_errors": 0.5833333333333334,
+    "by_expected_class": {
+      "supported": {
+        "total": 6,
+        "correct": 5,
+        "inconclusive": 1,
+        "wrong": 0
+      },
+      "refuted": {
+        "total": 6,
+        "correct": 2,
+        "inconclusive": 4,
+        "wrong": 0
+      }
+    }
+  },
+  "previous_same_twelve": {
+    "date": "2026-10-25",
+    "correct": 5,
+    "total": 12,
+    "fraction": 0.4166666666666667,
+    "source_commit": "c6b8712",
+    "source_file": "validation-recovery-2026-10-25.json",
+    "source_file_sha256": "a1a463aa5c0eb24807471eb296ddede6e76f5cbba2790caa32722948d2bb8c39",
+    "gained_correct": [
+      "dev12-webb_true",
+      "dev12-queen_true",
+      "dev12-constitution_true"
+    ],
+    "lost_correct": [
+      "dev12-queen_false"
+    ],
+    "unchanged_count": 8,
+    "net_correct_change": 2,
+    "code_effect_isolated": false
+  },
+  "submission_counts": {
+    "browser_ui": 12,
+    "ordinary_local_http": 0
+  },
+  "ui_observation_evidence": "Twelve form submissions and terminal reports were observed by the parent operator in browser tool history; screenshot hashes identify the preserved images. The instrumentation label alone is not proof of UI use.",
+  "http_boundary_counts": {
+    "POST:200": 12
+  },
+  "configured_gemini_model": "gemini-3.5-flash-lite",
+  "gemini_general_request_timeout_seconds": 90,
+  "configured_openrouter_model": "openrouter/free",
+  "observed_openrouter_model": "nvidia/nemotron-3.5-super-vl:free",
+  "comparison_primary_provider": "openrouter",
+  "comparison_total_seconds": 240,
+  "comparison_per_provider_max_seconds": 120,
+  "openrouter_max_price": 0,
+  "provider_counts": {
+    "facts": 12,
+    "news": 60,
+    "public_fetch": 72,
+    "openrouter": 5,
+    "gemini": 8
+  },
+  "caps": {
+    "gemini": 16,
+    "openrouter": 12,
+    "facts": 12,
+    "news": 60,
+    "public_fetch": 120,
+    "assemblyai": 0,
+    "sightengine": 0,
+    "hf": 0,
+    "hive": 0
+  },
+  "transport_statuses": {
+    "facts": {
+      "200": 12
+    },
+    "news": {
+      "200": 60
+    },
+    "public_fetch": {
+      "incomplete": 2,
+      "200": 57,
+      "403": 5,
+      "401": 3,
+      "301": 3,
+      "307": 2
+    },
+    "openrouter": {
+      "200": 5
+    },
+    "gemini": {
+      "200": 8
+    }
+  },
+  "provider_response_validity": {
+    "openrouter": {
+      "http_200": 5,
+      "accepted_complete_comparisons": 5,
+      "review_protocol": "claim_source_review_v2",
+      "expected_and_reviewed_source_pairs": 10,
+      "invalid_comparison_responses": 0
+    },
+    "gemini": {
+      "http_200": 8,
+      "accepted_research_planning_responses": 8
+    },
+    "typed_rule_comparisons_without_model": 2,
+    "inconclusive_before_comparison": 5,
+    "inconclusive_during_comparison": 0
+  },
+  "openrouter_conservative_prior": 53,
+  "openrouter_this_round": 5,
+  "openrouter_conservative_after": 58,
+  "openrouter_authorized_cumulative_ceiling": 65,
+  "news_cap_observation": {
+    "cap": 60,
+    "sent": 60,
+    "case_id": "dev12-constitution_true",
+    "additional_assisted_search_status": "error",
+    "terminal_case_actual": "supported",
+    "interpretation": "The final assisted search records error with the physical news cap already reached, consistent with a locally blocked operation. The stored search record does not preserve the exact exception; no additional remote request is counted."
+  },
+  "restart": {
+    "completed_cases_before_restart": 9,
+    "remaining_cases_after_restart": 3,
+    "in_flight_case_replayed": false,
+    "one_window_preserved": true,
+    "caps_reset": false,
+    "same_frozen_source_sha256": "b67b886d23d793e48418ca013b75ad22cd961b1d5a4974373af9dc5c68bdda4d",
+    "provider_request_sequences": {
+      "facts": {
+        "count": 12,
+        "unique_count": 12,
+        "gapless_from_one": true
+      },
+      "news": {
+        "count": 60,
+        "unique_count": 60,
+        "gapless_from_one": true
+      },
+      "public_fetch": {
+        "count": 72,
+        "unique_count": 72,
+        "gapless_from_one": true
+      },
+      "openrouter": {
+        "count": 5,
+        "unique_count": 5,
+        "gapless_from_one": true
+      },
+      "gemini": {
+        "count": 8,
+        "unique_count": 8,
+        "gapless_from_one": true
+      }
+    },
+    "qualification": "One frozen evaluation across two server sessions; nine terminal records were preserved and only the three unreserved cases continued."
+  },
+  "median_elapsed_seconds": 26.438,
+  "p95_nearest_rank_seconds": 40.22,
+  "local_verification_before_post_measurement_correction": {
+    "backend_tests_passed": 1651,
+    "frontend_tests_passed": 205,
+    "frontend_build_passed": true,
+    "scope": "Offline automated verification reported by the parent operator; not factual accuracy or deployment evidence."
+  },
+  "ocr_synthetic_local": {
+    "total": 5,
+    "correct": 5,
+    "scope": "Synthetic local OCR controls only; no remote-media or authenticity validation. No unseen input texts, timings or dates are reconstructed.",
+    "controls": [
+      {
+        "id": "impresso-base",
+        "result": "exact_text"
+      },
+      {
+        "id": "afirmativo",
+        "result": "exact_text"
+      },
+      {
+        "id": "numeros",
+        "result": "exact_text"
+      },
+      {
+        "id": "datas",
+        "result": "exact_text"
+      },
+      {
+        "id": "sem-texto",
+        "result": "no_text"
+      }
+    ],
+    "authenticity_validated": false,
+    "remote_media_validated": false
+  },
+  "post_measurement_correction": {
+    "topic": "Ordinal single-date parsing: 10th January 2025",
+    "measured_in_this_round": false,
+    "offline_validation_status": "passed",
+    "new_real_accuracy_measured": false,
+    "qualification": "Implemented only after all twelve frozen cases and the passing freeze verification. The 7/12 belongs to the original frozen code; no new real accuracy has been measured.",
+    "implementation_status": "implemented_after_freeze_verification",
+    "scope": "English ordinal day/month and month/day date lines are context, including Sept. kept in one context block; no publication_date inference.",
+    "added_offline_tests": 4,
+    "full_backend_tests_passed": 1655
+  },
+  "media_revalidated": false,
+  "production_deployment_validated": false,
+  "copied_ui_evidence": [
+    {
+      "case_id": "dev12-constitution_true",
+      "file": "evidencias-2026-10-27/constituicao-verdadeira.jpg",
+      "sha256": "b24e6485cbdf60ecb963706a782151d6c10024564ccc7e8e10622de8f10e9d92"
+    },
+    {
+      "case_id": "dev12-copom_false",
+      "file": "evidencias-2026-10-27/copom-falsa.jpg",
+      "sha256": "eefc016183d5afcd7d4d1e8f49eedbf8ad0bbd10c93f24823a8f697a8940ab82"
+    }
+  ],
+  "limits": [
+    "Known reused controls are not a blind benchmark and do not establish 80% general accuracy.",
+    "Five inconclusives remain in the denominator; zero observed wrong conclusions does not mean 100% accuracy.",
+    "Searches, public pages, models and configuration changed since the previous measurement; the causal effect of code was not isolated.",
+    "Candidate rejection counts describe bounded candidate windows/directions, not independent source counts or an exhaustive semantic audit.",
+    "Public-fetch blocked_or_unavailable includes local safety blocks as well as remote unavailability; these counts are not all remote HTTP failures.",
+    "The authorized news cap was reached; the final case still concluded using three eligible families.",
+    "No retry-until-correct, paid models, recharge, key rotation or remote-media validation. Unused caps do not authorize extra cases.",
+    "Synthetic OCR fidelity does not establish authenticity, general OCR accuracy or the behavior of remote media detectors."
+  ],
+  "cases": [
+    {
+      "id": "dev12-who_true",
+      "original_case_id": "who_true",
+      "expected": "supported",
+      "actual": "supported",
+      "previous_actual": "supported",
+      "outcome": "correct",
+      "status": "completed",
+      "elapsed_seconds": 34.402,
+      "submission": "browser_ui",
+      "http_status": 200,
+      "source_sha256": "b67b886d23d793e48418ca013b75ad22cd961b1d5a4974373af9dc5c68bdda4d",
+      "freeze_contract_sha256": "973fdf26d64a4f904db312bb6f2a6f7c0e01a576471c155acfaf96a41bf632d1",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "c97736679f36fc45e7c677c7b237fc430d4eec9805513a86fc80c7303264080c",
+      "screenshot_file": "ui-who_true.jpg",
+      "screenshot_sha256": "3c541e35d7e67b57651e8ef663cc28b2bef9812b3d923724d7a40e1789ed20fe",
+      "comparison_status": "success",
+      "comparison_coverage": {
+        "literal_claim_count": 1,
+        "selected_claim_count": 1,
+        "omitted_claim_count": 0,
+        "selected_source_count": 1,
+        "eligible_family_count": 1,
+        "complete_claim_coverage": true,
+        "assessed_claim_count": 1,
+        "grounded_evidence_count": 1,
+        "source_review_protocol": "claim_source_review_v2",
+        "comparison_method": "model_source_review_v2",
+        "expected_source_pair_count": 1,
+        "complete_source_review": true,
+        "max_sources": 3,
+        "max_claims": 5,
+        "max_prompt_body_characters": 18000
+      },
+      "comparison_provider_coverage": {
+        "openrouter": {
+          "status": "success",
+          "decision_role": "grounded_comparison_assistant",
+          "free_only": true,
+          "attempt_wait_seconds": 120,
+          "model_used": "nvidia/nemotron-3.5-super-vl:free",
+          "review_protocol": "claim_source_review_v2",
+          "complete_source_review": true,
+          "expected_source_pair_count": 1,
+          "reviewed_source_pair_count": 1,
+          "elapsed_seconds": 15.223
+        },
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "eligible_source_urls": [
+        "https://www.who.int/pt/news-room/speeches/item/who-director-general-s-opening-remarks-at-the-media-briefing-on-covid-19---11-march-2020"
+      ],
+      "accepted_source_urls": [
+        "https://www.who.int/pt/news-room/speeches/item/who-director-general-s-opening-remarks-at-the-media-briefing-on-covid-19---11-march-2020"
+      ],
+      "research_provider_coverage": null,
+      "search_statuses": [
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 1,
+        "blocked_or_unavailable": 2,
+        "error": 0
+      },
+      "cumulative_fetch_attempt_count": 6
+    },
+    {
+      "id": "dev12-worldcup_false",
+      "original_case_id": "worldcup_false",
+      "expected": "refuted",
+      "actual": "unverified",
+      "previous_actual": "unverified",
+      "outcome": "inconclusive",
+      "status": "completed",
+      "elapsed_seconds": 25.48,
+      "submission": "browser_ui",
+      "http_status": 200,
+      "source_sha256": "b67b886d23d793e48418ca013b75ad22cd961b1d5a4974373af9dc5c68bdda4d",
+      "freeze_contract_sha256": "973fdf26d64a4f904db312bb6f2a6f7c0e01a576471c155acfaf96a41bf632d1",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "f650d26bb34cb3cbbeb01274dfe30a43977465ed2ed6949eb9c03ca8628f4dd3",
+      "screenshot_file": "ui-worldcup_false.jpg",
+      "screenshot_sha256": "610c673e87164b3f9f433431a011e60edf30968b058a4053df7f22b70bc7b02d",
+      "comparison_status": "not_requested",
+      "comparison_coverage": {
+        "literal_claim_count": 1,
+        "selected_claim_count": 1,
+        "omitted_claim_count": 0,
+        "selected_source_count": 1,
+        "eligible_family_count": 1,
+        "complete_claim_coverage": false,
+        "assessed_claim_count": 1,
+        "grounded_evidence_count": 0,
+        "source_review_protocol": "claim_source_review_v2",
+        "comparison_method": "not_requested",
+        "expected_source_pair_count": 1,
+        "complete_source_review": false,
+        "max_sources": 3,
+        "max_claims": 5,
+        "max_prompt_body_characters": 18000
+      },
+      "comparison_provider_coverage": {
+        "openrouter": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant",
+          "free_only": true
+        },
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "eligible_source_urls": [
+        "https://g1.globo.com/sc/santa-catarina/noticia/2014/07/alemanha-vence-copa-do-mundo-2014-e-e-tetracampea.html"
+      ],
+      "accepted_source_urls": [],
+      "research_provider_coverage": {
+        "gemini": {
+          "attempt_wait_seconds": 29.98350000000005,
+          "status": "success",
+          "model_used": "gemini-3.5-flash-lite",
+          "elapsed_seconds": 1.256
+        }
+      },
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 5,
+        "error": 0
+      },
+      "cumulative_fetch_attempt_count": 10,
+      "inconclusive_reason": "Uma família elegível: duas páginas G1 pertencem ao mesmo grupo; o hub GE e a retrospectiva EBC não dão o vínculo completo de campeão, e a construção indireta do Brasil Escola não foi aceita pela relação esportiva delimitada.",
+      "reading_gaps": {
+        "scope": "bounded_rejected_candidates_not_exhaustive_not_evidence",
+        "claims": [
+          {
+            "claim_id": "c1",
+            "reasons": [
+              {
+                "reason": "O próprio trecho não vincula integralmente a relação tipada de lançamento ou título esportivo à afirmação.",
+                "rejected_candidate_count": 262
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "dev12-copernicus_false",
+      "original_case_id": "copernicus_false",
+      "expected": "refuted",
+      "actual": "unverified",
+      "previous_actual": "unverified",
+      "outcome": "inconclusive",
+      "status": "completed",
+      "elapsed_seconds": 24.759,
+      "submission": "browser_ui",
+      "http_status": 200,
+      "source_sha256": "b67b886d23d793e48418ca013b75ad22cd961b1d5a4974373af9dc5c68bdda4d",
+      "freeze_contract_sha256": "973fdf26d64a4f904db312bb6f2a6f7c0e01a576471c155acfaf96a41bf632d1",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "59d0ea45ab9fc641ce8596fcc5465534c6538c861c9c49bd8ba2923426276638",
+      "screenshot_file": "ui-copernicus_false.jpg",
+      "screenshot_sha256": "9182735824404d5098e037f3a0d6e829ca6440860676245aed5747fafce0bfa7",
+      "comparison_status": "not_requested",
+      "comparison_coverage": {
+        "literal_claim_count": 1,
+        "selected_claim_count": 1,
+        "omitted_claim_count": 0,
+        "selected_source_count": 0,
+        "eligible_family_count": 0,
+        "complete_claim_coverage": false,
+        "assessed_claim_count": 1,
+        "grounded_evidence_count": 0,
+        "source_review_protocol": "claim_source_review_v2",
+        "comparison_method": "not_requested",
+        "expected_source_pair_count": 0,
+        "complete_source_review": false,
+        "max_sources": 3,
+        "max_claims": 5,
+        "max_prompt_body_characters": 18000
+      },
+      "comparison_provider_coverage": {
+        "openrouter": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant",
+          "free_only": true
+        },
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "eligible_source_urls": [],
+      "accepted_source_urls": [],
+      "research_provider_coverage": {
+        "gemini": {
+          "attempt_wait_seconds": 29.978000000000065,
+          "status": "success",
+          "model_used": "gemini-3.5-flash-lite",
+          "elapsed_seconds": 1.128
+        }
+      },
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 6,
+        "error": 0
+      },
+      "cumulative_fetch_attempt_count": 10,
+      "inconclusive_reason": "Zero famílias elegíveis. O relatório original foi lido e contém 1.60°C warmer than, mas a publicação ficou sem data estruturada apesar do cabeçalho 10th January 2025; o vínculo completo de relatório, data, referência e direção não passou pelas guardas anteriores à comparação.",
+      "reading_gaps": {
+        "scope": "bounded_rejected_candidates_not_exhaustive_not_evidence",
+        "claims": [
+          {
+            "claim_id": "c1",
+            "reasons": [
+              {
+                "reason": "Entidades e âncoras do mesmo evento não foram preservadas.",
+                "rejected_candidate_count": 818
+              },
+              {
+                "reason": "Moeda ou unidade não foi preservada; mesma quantidade numérica não basta.",
+                "rejected_candidate_count": 2
+              },
+              {
+                "reason": "Fonte expressa possibilidade ou condição, não confirmação categórica da afirmação.",
+                "rejected_candidate_count": 1
+              },
+              {
+                "reason": "Negação, data ou valor diverge da afirmação; não convertido em apoio.",
+                "rejected_candidate_count": 1
+              },
+              {
+                "reason": "Não há contradição explícita verificável do mesmo evento; ausência ou outro dado não refuta.",
+                "rejected_candidate_count": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "dev12-copom_false",
+      "original_case_id": "copom_false",
+      "expected": "refuted",
+      "actual": "refuted",
+      "previous_actual": "refuted",
+      "outcome": "correct",
+      "status": "completed",
+      "elapsed_seconds": 11.149,
+      "submission": "browser_ui",
+      "http_status": 200,
+      "source_sha256": "b67b886d23d793e48418ca013b75ad22cd961b1d5a4974373af9dc5c68bdda4d",
+      "freeze_contract_sha256": "973fdf26d64a4f904db312bb6f2a6f7c0e01a576471c155acfaf96a41bf632d1",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "3ce91d7496c594fff444bbec244951e19c03504d93e28aee1682eb09c7c6e48c",
+      "screenshot_file": "ui-copom_false.jpg",
+      "screenshot_sha256": "eefc016183d5afcd7d4d1e8f49eedbf8ad0bbd10c93f24823a8f697a8940ab82",
+      "comparison_status": "success",
+      "comparison_coverage": {
+        "literal_claim_count": 1,
+        "selected_claim_count": 1,
+        "omitted_claim_count": 0,
+        "selected_source_count": 1,
+        "eligible_family_count": 1,
+        "complete_claim_coverage": true,
+        "assessed_claim_count": 1,
+        "grounded_evidence_count": 1,
+        "source_review_protocol": "claim_source_review_v2",
+        "comparison_method": "literal_typed_rules_v1",
+        "expected_source_pair_count": 1,
+        "complete_source_review": true,
+        "max_sources": 3,
+        "max_claims": 5,
+        "max_prompt_body_characters": 18000,
+        "reviewed_source_pair_count": 1,
+        "expected_passage_count": 1,
+        "reviewed_passage_count": 1,
+        "guard_rejected_passage_count": 0,
+        "selected_evidence_count": 1
+      },
+      "comparison_provider_coverage": {
+        "openrouter": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant",
+          "free_only": true
+        },
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "eligible_source_urls": [
+        "https://www.bcb.gov.br/api/servico/sitebcb/copom/comunicados_detalhes?nro_reuniao=265"
+      ],
+      "accepted_source_urls": [
+        "https://www.bcb.gov.br/api/servico/sitebcb/copom/comunicados_detalhes?nro_reuniao=265"
+      ],
+      "research_provider_coverage": null,
+      "search_statuses": [
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 2,
+        "error": 0
+      },
+      "cumulative_fetch_attempt_count": 6
+    },
+    {
+      "id": "dev12-lei_false",
+      "original_case_id": "lei_false",
+      "expected": "refuted",
+      "actual": "refuted",
+      "previous_actual": "refuted",
+      "outcome": "correct",
+      "status": "completed",
+      "elapsed_seconds": 9.886,
+      "submission": "browser_ui",
+      "http_status": 200,
+      "source_sha256": "b67b886d23d793e48418ca013b75ad22cd961b1d5a4974373af9dc5c68bdda4d",
+      "freeze_contract_sha256": "973fdf26d64a4f904db312bb6f2a6f7c0e01a576471c155acfaf96a41bf632d1",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "5d71865d5f933be8c4937b6f89337d9b105a16fa3c087f6477554e4619aa6ef6",
+      "screenshot_file": "ui-lei_false.jpg",
+      "screenshot_sha256": "64899335eee48a0943ed21f251d83dd12b403745165158d0b5a49e41002b282a",
+      "comparison_status": "success",
+      "comparison_coverage": {
+        "literal_claim_count": 1,
+        "selected_claim_count": 1,
+        "omitted_claim_count": 0,
+        "selected_source_count": 1,
+        "eligible_family_count": 1,
+        "complete_claim_coverage": true,
+        "assessed_claim_count": 1,
+        "grounded_evidence_count": 1,
+        "source_review_protocol": "claim_source_review_v2",
+        "comparison_method": "literal_typed_rules_v1",
+        "expected_source_pair_count": 1,
+        "complete_source_review": true,
+        "max_sources": 3,
+        "max_claims": 5,
+        "max_prompt_body_characters": 18000,
+        "reviewed_source_pair_count": 1,
+        "expected_passage_count": 1,
+        "reviewed_passage_count": 1,
+        "guard_rejected_passage_count": 0,
+        "selected_evidence_count": 1
+      },
+      "comparison_provider_coverage": {
+        "openrouter": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant",
+          "free_only": true
+        },
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "eligible_source_urls": [
+        "https://www2.camara.leg.br/legin/fed/leimp/1824-1899/lei-3353-13-maio-1888-533138-publicacaooriginal-16269-pl.html"
+      ],
+      "accepted_source_urls": [
+        "https://www2.camara.leg.br/legin/fed/leimp/1824-1899/lei-3353-13-maio-1888-533138-publicacaooriginal-16269-pl.html"
+      ],
+      "research_provider_coverage": null,
+      "search_statuses": [
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 1,
+        "timeout": 0,
+        "blocked_or_unavailable": 2,
+        "error": 0
+      },
+      "cumulative_fetch_attempt_count": 6
+    },
+    {
+      "id": "dev12-webb_true",
+      "original_case_id": "webb_true",
+      "expected": "supported",
+      "actual": "supported",
+      "previous_actual": "unverified",
+      "outcome": "correct",
+      "status": "completed",
+      "elapsed_seconds": 29.79,
+      "submission": "browser_ui",
+      "http_status": 200,
+      "source_sha256": "b67b886d23d793e48418ca013b75ad22cd961b1d5a4974373af9dc5c68bdda4d",
+      "freeze_contract_sha256": "973fdf26d64a4f904db312bb6f2a6f7c0e01a576471c155acfaf96a41bf632d1",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "43c72aa2bd27e7507ede9bf698b1f92367804b4d942954205b62965f5fef8f8b",
+      "screenshot_file": "ui-webb_true.jpg",
+      "screenshot_sha256": "918b18f0ae2e8bc8fc43ef06de571bffb0dbf30b94621342e99c6a87db1b1e66",
+      "comparison_status": "success",
+      "comparison_coverage": {
+        "literal_claim_count": 1,
+        "selected_claim_count": 1,
+        "omitted_claim_count": 0,
+        "selected_source_count": 2,
+        "eligible_family_count": 2,
+        "complete_claim_coverage": true,
+        "assessed_claim_count": 1,
+        "grounded_evidence_count": 2,
+        "source_review_protocol": "claim_source_review_v2",
+        "comparison_method": "model_source_review_v2",
+        "expected_source_pair_count": 2,
+        "complete_source_review": true,
+        "max_sources": 3,
+        "max_claims": 5,
+        "max_prompt_body_characters": 18000
+      },
+      "comparison_provider_coverage": {
+        "openrouter": {
+          "status": "success",
+          "decision_role": "grounded_comparison_assistant",
+          "free_only": true,
+          "attempt_wait_seconds": 120,
+          "model_used": "nvidia/nemotron-3.5-super-vl:free",
+          "review_protocol": "claim_source_review_v2",
+          "complete_source_review": true,
+          "expected_source_pair_count": 2,
+          "reviewed_source_pair_count": 2,
+          "elapsed_seconds": 6.911
+        },
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "eligible_source_urls": [
+        "https://brasilescola.uol.com.br/fisica/james-webb-sucessor-hubble.htm",
+        "https://g1.globo.com/mundo/noticia/2021/12/25/nasa-lanca-com-sucesso-novo-telescopio-espacial-james-webb.ghtml"
+      ],
+      "accepted_source_urls": [
+        "https://brasilescola.uol.com.br/fisica/james-webb-sucessor-hubble.htm",
+        "https://g1.globo.com/mundo/noticia/2021/12/25/nasa-lanca-com-sucesso-novo-telescopio-espacial-james-webb.ghtml"
+      ],
+      "research_provider_coverage": {
+        "gemini": {
+          "attempt_wait_seconds": 29.97550000000001,
+          "status": "success",
+          "model_used": "gemini-3.5-flash-lite",
+          "elapsed_seconds": 1.128
+        }
+      },
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 1,
+        "timeout": 0,
+        "blocked_or_unavailable": 3,
+        "error": 0
+      },
+      "cumulative_fetch_attempt_count": 9
+    },
+    {
+      "id": "dev12-artemis_false",
+      "original_case_id": "artemis_false",
+      "expected": "refuted",
+      "actual": "unverified",
+      "previous_actual": "unverified",
+      "outcome": "inconclusive",
+      "status": "completed",
+      "elapsed_seconds": 21.073,
+      "submission": "browser_ui",
+      "http_status": 200,
+      "source_sha256": "b67b886d23d793e48418ca013b75ad22cd961b1d5a4974373af9dc5c68bdda4d",
+      "freeze_contract_sha256": "973fdf26d64a4f904db312bb6f2a6f7c0e01a576471c155acfaf96a41bf632d1",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "508920162d404577900440f826c33c38b171e14990f5b4bc040026bb7b695dc8",
+      "screenshot_file": "ui-artemis_false.jpg",
+      "screenshot_sha256": "1e8557324221e03fc4330d0dc78d7b9cf7b2e0720c54d444bcdedf8267e4ef76",
+      "comparison_status": "not_requested",
+      "comparison_coverage": {
+        "literal_claim_count": 1,
+        "selected_claim_count": 1,
+        "omitted_claim_count": 0,
+        "selected_source_count": 1,
+        "eligible_family_count": 1,
+        "complete_claim_coverage": false,
+        "assessed_claim_count": 1,
+        "grounded_evidence_count": 0,
+        "source_review_protocol": "claim_source_review_v2",
+        "comparison_method": "not_requested",
+        "expected_source_pair_count": 1,
+        "complete_source_review": false,
+        "max_sources": 3,
+        "max_claims": 5,
+        "max_prompt_body_characters": 18000
+      },
+      "comparison_provider_coverage": {
+        "openrouter": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant",
+          "free_only": true
+        },
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "eligible_source_urls": [
+        "https://www.nasa.gov/mission/artemis-i/"
+      ],
+      "accepted_source_urls": [],
+      "research_provider_coverage": {
+        "gemini": {
+          "attempt_wait_seconds": 29.977499999999964,
+          "status": "success",
+          "model_used": "gemini-3.5-flash-lite",
+          "elapsed_seconds": 1.166
+        }
+      },
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 2,
+        "error": 0
+      },
+      "cumulative_fetch_attempt_count": 10,
+      "inconclusive_reason": "Uma família elegível: NASA Artemis I dá 16 de novembro de 2022; outras páginas recuperadas tratam de hub, outras missões, tentativas futuras ou não ligam explicitamente missão e data no corpo.",
+      "reading_gaps": {
+        "scope": "bounded_rejected_candidates_not_exhaustive_not_evidence",
+        "claims": [
+          {
+            "claim_id": "c1",
+            "reasons": [
+              {
+                "reason": "O próprio trecho não vincula integralmente a relação tipada de lançamento ou título esportivo à afirmação.",
+                "rejected_candidate_count": 274
+              },
+              {
+                "reason": "Contexto de ficção, hipótese ou simulação não comprova a ocorrência factual alegada.",
+                "rejected_candidate_count": 2
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "dev12-queen_true",
+      "original_case_id": "queen_true",
+      "expected": "supported",
+      "actual": "supported",
+      "previous_actual": "unverified",
+      "outcome": "correct",
+      "status": "completed",
+      "elapsed_seconds": 28.17,
+      "submission": "browser_ui",
+      "http_status": 200,
+      "source_sha256": "b67b886d23d793e48418ca013b75ad22cd961b1d5a4974373af9dc5c68bdda4d",
+      "freeze_contract_sha256": "973fdf26d64a4f904db312bb6f2a6f7c0e01a576471c155acfaf96a41bf632d1",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "0eb2dfb037033225fe21defe9396e2c0bd6659c3e897e92a03afda8ec3d68fe6",
+      "screenshot_file": "ui-queen_true.jpg",
+      "screenshot_sha256": "918b18f0ae2e8bc8fc43ef06de571bffb0dbf30b94621342e99c6a87db1b1e66",
+      "comparison_status": "success",
+      "comparison_coverage": {
+        "literal_claim_count": 1,
+        "selected_claim_count": 1,
+        "omitted_claim_count": 0,
+        "selected_source_count": 2,
+        "eligible_family_count": 2,
+        "complete_claim_coverage": true,
+        "assessed_claim_count": 1,
+        "grounded_evidence_count": 2,
+        "source_review_protocol": "claim_source_review_v2",
+        "comparison_method": "model_source_review_v2",
+        "expected_source_pair_count": 2,
+        "complete_source_review": true,
+        "max_sources": 3,
+        "max_claims": 5,
+        "max_prompt_body_characters": 18000
+      },
+      "comparison_provider_coverage": {
+        "openrouter": {
+          "status": "success",
+          "decision_role": "grounded_comparison_assistant",
+          "free_only": true,
+          "attempt_wait_seconds": 120,
+          "model_used": "nvidia/nemotron-3.5-super-vl:free",
+          "review_protocol": "claim_source_review_v2",
+          "complete_source_review": true,
+          "expected_source_pair_count": 2,
+          "reviewed_source_pair_count": 2,
+          "elapsed_seconds": 15.26
+        },
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "eligible_source_urls": [
+        "https://g1.globo.com/mundo/noticia/2022/09/08/rainha-elizabeth-ii-morre-aos-96-anos.ghtml",
+        "https://agenciabrasil.ebc.com.br/internacional/noticia/2022-09/rainha-elizabeth-ii-morre-aos-96-anos-na-escocia"
+      ],
+      "accepted_source_urls": [
+        "https://g1.globo.com/mundo/noticia/2022/09/08/rainha-elizabeth-ii-morre-aos-96-anos.ghtml",
+        "https://agenciabrasil.ebc.com.br/internacional/noticia/2022-09/rainha-elizabeth-ii-morre-aos-96-anos-na-escocia"
+      ],
+      "research_provider_coverage": {
+        "gemini": {
+          "attempt_wait_seconds": 29.987500000000182,
+          "status": "success",
+          "model_used": "gemini-3.5-flash-lite",
+          "elapsed_seconds": 0.999
+        }
+      },
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 4,
+        "error": 0
+      },
+      "cumulative_fetch_attempt_count": 8
+    },
+    {
+      "id": "dev12-ibge_true",
+      "original_case_id": "ibge_true",
+      "expected": "supported",
+      "actual": "supported",
+      "previous_actual": "supported",
+      "outcome": "correct",
+      "status": "completed",
+      "elapsed_seconds": 40.22,
+      "submission": "browser_ui",
+      "http_status": 200,
+      "source_sha256": "b67b886d23d793e48418ca013b75ad22cd961b1d5a4974373af9dc5c68bdda4d",
+      "freeze_contract_sha256": "973fdf26d64a4f904db312bb6f2a6f7c0e01a576471c155acfaf96a41bf632d1",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "7784afe62d480f7dfbe96fa40ed90fd535970ec4070cd46f29aa8462dd13dd55",
+      "screenshot_file": "ui-ibge_true.jpg",
+      "screenshot_sha256": "6b18c71b31a5f02f1e5de0c4eabf1a6bab310542d7b3cd8fff0796b0c97ecccf",
+      "comparison_status": "success",
+      "comparison_coverage": {
+        "literal_claim_count": 1,
+        "selected_claim_count": 1,
+        "omitted_claim_count": 0,
+        "selected_source_count": 2,
+        "eligible_family_count": 2,
+        "complete_claim_coverage": true,
+        "assessed_claim_count": 1,
+        "grounded_evidence_count": 2,
+        "source_review_protocol": "claim_source_review_v2",
+        "comparison_method": "model_source_review_v2",
+        "expected_source_pair_count": 2,
+        "complete_source_review": true,
+        "max_sources": 3,
+        "max_claims": 5,
+        "max_prompt_body_characters": 18000
+      },
+      "comparison_provider_coverage": {
+        "openrouter": {
+          "status": "success",
+          "decision_role": "grounded_comparison_assistant",
+          "free_only": true,
+          "attempt_wait_seconds": 120,
+          "model_used": "nvidia/nemotron-3.5-super-vl:free",
+          "review_protocol": "claim_source_review_v2",
+          "complete_source_review": true,
+          "expected_source_pair_count": 2,
+          "reviewed_source_pair_count": 2,
+          "elapsed_seconds": 29.868
+        },
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "eligible_source_urls": [
+        "https://g1.globo.com/economia/noticia/2025/03/07/pib-do-brasil-cresce-34percent-em-2024-diz-ibge.ghtml",
+        "https://www.cnnbrasil.com.br/agro/economia-brasileira-cresce-34-em-2024-diz-ibge/"
+      ],
+      "accepted_source_urls": [
+        "https://g1.globo.com/economia/noticia/2025/03/07/pib-do-brasil-cresce-34percent-em-2024-diz-ibge.ghtml",
+        "https://www.cnnbrasil.com.br/agro/economia-brasileira-cresce-34-em-2024-diz-ibge/"
+      ],
+      "research_provider_coverage": null,
+      "search_statuses": [
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 3,
+        "error": 0
+      },
+      "cumulative_fetch_attempt_count": 6
+    },
+    {
+      "id": "dev12-queen_false",
+      "original_case_id": "queen_false",
+      "expected": "refuted",
+      "actual": "unverified",
+      "previous_actual": "refuted",
+      "outcome": "inconclusive",
+      "status": "completed",
+      "elapsed_seconds": 19.161,
+      "submission": "browser_ui",
+      "http_status": 200,
+      "source_sha256": "b67b886d23d793e48418ca013b75ad22cd961b1d5a4974373af9dc5c68bdda4d",
+      "freeze_contract_sha256": "973fdf26d64a4f904db312bb6f2a6f7c0e01a576471c155acfaf96a41bf632d1",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "6cdf5655986a4be24d00178ad08760d62fffd3af927ab28a29a51d82b335c73c",
+      "screenshot_file": "ui-queen_false.jpg",
+      "screenshot_sha256": "1e8557324221e03fc4330d0dc78d7b9cf7b2e0720c54d444bcdedf8267e4ef76",
+      "comparison_status": "not_requested",
+      "comparison_coverage": {
+        "literal_claim_count": 1,
+        "selected_claim_count": 1,
+        "omitted_claim_count": 0,
+        "selected_source_count": 1,
+        "eligible_family_count": 1,
+        "complete_claim_coverage": false,
+        "assessed_claim_count": 1,
+        "grounded_evidence_count": 0,
+        "source_review_protocol": "claim_source_review_v2",
+        "comparison_method": "not_requested",
+        "expected_source_pair_count": 1,
+        "complete_source_review": false,
+        "max_sources": 3,
+        "max_claims": 5,
+        "max_prompt_body_characters": 18000
+      },
+      "comparison_provider_coverage": {
+        "openrouter": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant",
+          "free_only": true
+        },
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "eligible_source_urls": [
+        "https://g1.globo.com/mundo/noticia/2022/09/08/rainha-elizabeth-ii-morre-aos-96-anos.ghtml"
+      ],
+      "accepted_source_urls": [],
+      "research_provider_coverage": {
+        "gemini": {
+          "attempt_wait_seconds": 29.974500000000035,
+          "status": "success",
+          "model_used": "gemini-3.5-flash-lite",
+          "elapsed_seconds": 3.694
+        }
+      },
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 6,
+        "error": 0
+      },
+      "cumulative_fetch_attempt_count": 10,
+      "inconclusive_reason": "Uma família elegível: G1. Outros corpos usam data relativa ou indireta e contextos com mais de uma pessoa; seis leituras falharam. Não chegou uma segunda família elegível à comparação.",
+      "reading_gaps": {
+        "scope": "bounded_rejected_candidates_not_exhaustive_not_evidence",
+        "claims": [
+          {
+            "claim_id": "c1",
+            "reasons": [
+              {
+                "reason": "Janela do corpo contém sujeito ambíguo; não é evidência da pessoa alegada.",
+                "rejected_candidate_count": 205
+              },
+              {
+                "reason": "Entidades e âncoras do mesmo evento não foram preservadas.",
+                "rejected_candidate_count": 175
+              },
+              {
+                "reason": "Nascimento e falecimento não são o mesmo evento; comparação descartada.",
+                "rejected_candidate_count": 8
+              },
+              {
+                "reason": "Data não está ligada explicitamente ao predicado de morte/nascimento; outro evento ou construção indireta exige revisão humana.",
+                "rejected_candidate_count": 4
+              },
+              {
+                "reason": "Fonte descreve evento previsto ou planejado, não ocorrência já concluída.",
+                "rejected_candidate_count": 2
+              },
+              {
+                "reason": "Negação, data ou valor diverge da afirmação; não convertido em apoio.",
+                "rejected_candidate_count": 2
+              },
+              {
+                "reason": "Não há contradição explícita verificável do mesmo evento; ausência ou outro dado não refuta.",
+                "rejected_candidate_count": 2
+              },
+              {
+                "reason": "Trecho mistura ocorrência e anúncio/registro de outro evento; ligação da data exige revisão humana.",
+                "rejected_candidate_count": 2
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "dev12-dart_true",
+      "original_case_id": "dart_true",
+      "expected": "supported",
+      "actual": "unverified",
+      "previous_actual": "unverified",
+      "outcome": "inconclusive",
+      "status": "completed",
+      "elapsed_seconds": 27.396,
+      "submission": "browser_ui",
+      "http_status": 200,
+      "source_sha256": "b67b886d23d793e48418ca013b75ad22cd961b1d5a4974373af9dc5c68bdda4d",
+      "freeze_contract_sha256": "973fdf26d64a4f904db312bb6f2a6f7c0e01a576471c155acfaf96a41bf632d1",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "23e9a23b0a4d4f3252dd693aa4c1f80df960b5f2193125e03cfe67a362b366d5",
+      "screenshot_file": "ui-dart_true.jpg",
+      "screenshot_sha256": "1e8557324221e03fc4330d0dc78d7b9cf7b2e0720c54d444bcdedf8267e4ef76",
+      "comparison_status": "not_requested",
+      "comparison_coverage": {
+        "literal_claim_count": 1,
+        "selected_claim_count": 1,
+        "omitted_claim_count": 0,
+        "selected_source_count": 0,
+        "eligible_family_count": 0,
+        "complete_claim_coverage": false,
+        "assessed_claim_count": 1,
+        "grounded_evidence_count": 0,
+        "source_review_protocol": "claim_source_review_v2",
+        "comparison_method": "not_requested",
+        "expected_source_pair_count": 0,
+        "complete_source_review": false,
+        "max_sources": 3,
+        "max_claims": 5,
+        "max_prompt_body_characters": 18000
+      },
+      "comparison_provider_coverage": {
+        "openrouter": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant",
+          "free_only": true
+        },
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "eligible_source_urls": [],
+      "accepted_source_urls": [],
+      "research_provider_coverage": {
+        "gemini": {
+          "attempt_wait_seconds": 29.971000000000004,
+          "status": "success",
+          "model_used": "gemini-3.5-flash-lite",
+          "elapsed_seconds": 5.746
+        }
+      },
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 5,
+        "error": 0
+      },
+      "cumulative_fetch_attempt_count": 10,
+      "inconclusive_reason": "Zero famílias elegíveis. CNN descreve impacto intencional em setembro de 2022 sem dia; Guardian separa 26 de setembro do trecho explícito de intenção/Dimorphos; G1 e BBC não preservaram todos os vínculos exigidos nos trechos delimitados. Cinco leituras falharam.",
+      "reading_gaps": {
+        "scope": "bounded_rejected_candidates_not_exhaustive_not_evidence",
+        "claims": [
+          {
+            "claim_id": "c1",
+            "reasons": [
+              {
+                "reason": "Entidades e âncoras do mesmo evento não foram preservadas.",
+                "rejected_candidate_count": 363
+              },
+              {
+                "reason": "Não há contradição explícita verificável do mesmo evento; ausência ou outro dado não refuta.",
+                "rejected_candidate_count": 18
+              },
+              {
+                "reason": "Negação, data ou valor diverge da afirmação; não convertido em apoio.",
+                "rejected_candidate_count": 12
+              },
+              {
+                "reason": "Intencionalidade alegada não está explícita no próprio trecho; ocorrência de impacto não comprova intenção.",
+                "rejected_candidate_count": 8
+              },
+              {
+                "reason": "Fonte expressa possibilidade ou condição, não confirmação categórica da afirmação.",
+                "rejected_candidate_count": 4
+              },
+              {
+                "reason": "Fonte descreve evento previsto ou planejado, não ocorrência já concluída.",
+                "rejected_candidate_count": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "dev12-constitution_true",
+      "original_case_id": "constitution_true",
+      "expected": "supported",
+      "actual": "supported",
+      "previous_actual": "unverified",
+      "outcome": "correct",
+      "status": "completed",
+      "elapsed_seconds": 31.692,
+      "submission": "browser_ui",
+      "http_status": 200,
+      "source_sha256": "b67b886d23d793e48418ca013b75ad22cd961b1d5a4974373af9dc5c68bdda4d",
+      "freeze_contract_sha256": "973fdf26d64a4f904db312bb6f2a6f7c0e01a576471c155acfaf96a41bf632d1",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "5dd60a7c6c72899e7ec37ee140de1bd376f9ac6285fd9ebd82bdd9a44600d711",
+      "screenshot_file": "ui-constitution_true.jpg",
+      "screenshot_sha256": "b24e6485cbdf60ecb963706a782151d6c10024564ccc7e8e10622de8f10e9d92",
+      "comparison_status": "success",
+      "comparison_coverage": {
+        "literal_claim_count": 1,
+        "selected_claim_count": 1,
+        "omitted_claim_count": 0,
+        "selected_source_count": 3,
+        "eligible_family_count": 3,
+        "complete_claim_coverage": true,
+        "assessed_claim_count": 1,
+        "grounded_evidence_count": 5,
+        "source_review_protocol": "claim_source_review_v2",
+        "comparison_method": "model_source_review_v2",
+        "expected_source_pair_count": 3,
+        "complete_source_review": true,
+        "max_sources": 3,
+        "max_claims": 5,
+        "max_prompt_body_characters": 18000
+      },
+      "comparison_provider_coverage": {
+        "openrouter": {
+          "status": "success",
+          "decision_role": "grounded_comparison_assistant",
+          "free_only": true,
+          "attempt_wait_seconds": 120,
+          "model_used": "nvidia/nemotron-3.5-super-vl:free",
+          "review_protocol": "claim_source_review_v2",
+          "complete_source_review": true,
+          "expected_source_pair_count": 3,
+          "reviewed_source_pair_count": 3,
+          "elapsed_seconds": 11.765
+        },
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "eligible_source_urls": [
+        "https://datas-historicas.tcu.gov.br/05-constituicao-da-republica-federativa-do-brasil/",
+        "https://brasilescola.uol.com.br/historiab/constituicao-1988.htm",
+        "https://www.cnnbrasil.com.br/nacional/brasil/38-anos-da-constituicao-federal-relembre-o-que-mudou-na-carta-magna/"
+      ],
+      "accepted_source_urls": [
+        "https://datas-historicas.tcu.gov.br/05-constituicao-da-republica-federativa-do-brasil/",
+        "https://brasilescola.uol.com.br/historiab/constituicao-1988.htm",
+        "https://www.cnnbrasil.com.br/nacional/brasil/38-anos-da-constituicao-federal-relembre-o-que-mudou-na-carta-magna/"
+      ],
+      "research_provider_coverage": {
+        "gemini": {
+          "attempt_wait_seconds": 29.92100000000005,
+          "status": "success",
+          "model_used": "gemini-3.5-flash-lite",
+          "elapsed_seconds": 3.31
+        }
+      },
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "error"
+      ],
+      "fetch_failure_counts": {
+        "oversize": 0,
+        "unsupported_content": 0,
+        "timeout": 0,
+        "blocked_or_unavailable": 3,
+        "error": 0
+      },
+      "cumulative_fetch_attempt_count": 10
+    }
+  ],
+  "provider_journal_sha256": "7a9fe212af43947b8cf128d937f7cbf341d0dca7786dd673dcf77dea35a50fad",
+  "boundary_journal_sha256": "2aaca346d72c03f4dc01090254346ab492cb0426b2ad878cb78f919ca589c424",
+  "round_manifest_sha256": "0a128f61fec42a92e90d59666506aa78089ae4cfad54c75bd25f62e28b29fead",
+  "post_measurement_offline_tests": {
+    "backend_tests_passed": 1655,
+    "new_backend_controls": 4,
+    "frontend_tests_passed_previously_unchanged": 205,
+    "frontend_build_passed_previously_unchanged": true,
+    "new_live_accuracy_measured": false,
+    "measured_live_source_commit_remains": "a658ef0",
+    "measured_live_correct_fraction_remains": 0.5833333333333334
+  }
+}

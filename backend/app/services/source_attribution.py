@@ -79,6 +79,8 @@ _EDITORIAL_GENERIC_TOPICS = set(
 )
 _AUTHOR_TEXT = re.compile(r"^(?:por|by)\s+[^.!?]{1,200}$", re.I)
 _CALENDAR_NAMES = r"janeiro|fevereiro|março|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec"
+_ENGLISH_DATE_MONTHS = r"january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec"
+_ENGLISH_ORDINAL_DAY = r"(?:0?1st|0?2nd|0?3rd|(?:0?[4-9]|1[0-9]|20|2[4-9]|30)th|21st|22nd|23rd|31st)"
 _DISCOVERY_MONTHS = {name: index for index, names in enumerate((
     "janeiro january jan", "fevereiro february fev feb", "março marco march mar",
     "abril april abr apr", "maio may", "junho june jun", "julho july jul",
@@ -87,6 +89,8 @@ _DISCOVERY_MONTHS = {name: index for index, names in enumerate((
 ), 1) for name in names.split()}
 _STANDALONE_DATE = re.compile(
     r"^(?:\d{1,2}\s+(?:de\s+)?(?:" + _CALENDAR_NAMES + r")\.?\s+(?:de\s+)?\d{4}"
+    r"|" + _ENGLISH_ORDINAL_DAY + r"\s+(?:" + _ENGLISH_DATE_MONTHS + r")\.?\s+\d{4}"
+    r"|(?:" + _ENGLISH_DATE_MONTHS + r")\.?\s+" + _ENGLISH_ORDINAL_DAY + r",?\s+\d{4}"
     r"|(?:" + _CALENDAR_NAMES + r")\.?\s+\d{1,2},?\s+\d{4}|\d{1,2}/\d{1,2}/\d{4}|\d{4}-\d{2}-\d{2})"
     r"(?:\s+RELEASE\s*\d{2,4}-\d{1,5})?[.\s]*$", re.I,
 )
@@ -442,14 +446,17 @@ def _block_sentences(blocks):
         # A standalone date is metadata/context, not an unfinished sentence
         # to concatenate into the next paragraph's event. Keep it visible to
         # the comparison without ever borrowing it as a body date.
-        if _STANDALONE_DATE.fullmatch(block):
+        standalone_date = bool(_STANDALONE_DATE.fullmatch(block))
+        if standalone_date:
             role = "context"
         if role == "context":
             if pending_body:
                 sentences.append(pending_body)
                 roles.append("body")
                 pending_body = ""
-            parts = _source_statements(block)
+            # Month abbreviations such as Sept. are part of this ONE literal
+            # date, not sentence boundaries. Keep the whole context intact.
+            parts = [block] if standalone_date else _source_statements(block)
             sentences.extend(parts)
             roles.extend(["context"] * len(parts))
             if not re.search(r"[.!?][\"”’)]?$", block) and _UNFINISHED_CONTEXT.search(block):
