@@ -141,7 +141,7 @@ class OpenRouterRotator:
 
 async def _generate(prompt, system_instruction, temperature, max_tokens, json_output, response_format=None, timeout_seconds=25):
     key = os.getenv("OPENROUTER_API_KEY", "").strip()
-    if not key or os.getenv("OPENROUTER_ENABLED", "true").lower() != "true":
+    if not key or os.getenv("OPENROUTER_ENABLED", "true").strip().lower() != "true":
         raise OpenRouterError("not_configured", "OpenRouter não configurado ou desabilitado.")
     models = configured_models()  # Validate BEFORE any request, including fallbacks.
     messages = ([{"role": "system", "content": system_instruction}] if system_instruction else [])

@@ -60,6 +60,16 @@ class FreeRouterTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["decision_role"], "search_hints_only")
         self.assertNotIn("verdict", result)
 
+    async def test_enablement_whitespace_reaches_real_client_with_free_price_guard(self):
+        for flag in (" true ", " TRUE\t"):
+            with self.subTest(flag=flag), patch.dict(os.environ, {"OPENROUTER_ENABLED": flag}), \
+                    patch("httpx.AsyncClient.post", new=AsyncMock(return_value=httpx.Response(200, json=router_response()))) as post:
+                raw = await router.generate('Controle sem chamada externa.')
+            self.assertEqual(json.loads(raw), {"claims": []})
+            post.assert_awaited_once()
+            prices = post.call_args.kwargs['json']['provider']['max_price']
+            self.assertTrue(all(value == 0 for value in prices.values()))
+
     async def test_text_extraction_budget_preserves_free_limits_timeout_and_one_request(self):
         text = "A cidade não inaugurou a ponte em 2024."
         client = AsyncMock()
