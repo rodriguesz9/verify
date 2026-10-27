@@ -220,7 +220,7 @@ def validate_arguments(parser, args):
         parser.error("Confirm free credits without automatic paid overage first.")
     if ("hive" in selected) != args.hive_paid_budget_approved:
         parser.error("Hive requires both explicit provider selection and paid-budget approval.")
-    approved_models = {"gemini-3.7-flash", "gemini-3.1-flash-lite", "gemini-3.8-flash"}
+    approved_models = {"gemini-3.7-flash", "gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.8-flash"}
     if args.gemini_model not in approved_models or args.media_model not in approved_models:
         parser.error("Only explicitly verified free-tier Gemini models are allowed by this test runner.")
     public_cap = args.public_fetch_cap if args.public_fetch_cap is not None else 6 if args.source_crosscheck_pages else CAPS["public_fetch"]

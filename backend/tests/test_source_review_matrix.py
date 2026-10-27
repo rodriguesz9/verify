@@ -205,7 +205,8 @@ class MatrixLiveBoundaryTests(unittest.IsolatedAsyncioTestCase):
             await asyncio.Event().wait()
         async def answer(prompt, **kwargs):
             return matrix_answer(prompt)
-        with patch.dict(os.environ, {"SOURCE_CROSSCHECK_PRIMARY_PROVIDER": "gemini"}), \
+        with patch.dict(os.environ, {"SOURCE_CROSSCHECK_PRIMARY_PROVIDER": "gemini",
+                "GEMINI_API_KEY": "offline-control", "OPENROUTER_API_KEY": "offline-control", "OPENROUTER_ENABLED": "true"}), \
              patch.object(sources, "crosscheck_timeout_seconds", return_value=.2), \
              patch.object(sources.gemini_client, "generate_text", new=AsyncMock(side_effect=stalled)) as gemini, \
              patch.object(sources.openrouter_service, "generate", new=AsyncMock(side_effect=answer)) as router:

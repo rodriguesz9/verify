@@ -3,6 +3,7 @@ import json
 import math
 from datetime import datetime
 import os
+import re
 from app.core.gemini_client import generate_text, GeminiError, gemini_timeout_seconds
 from app.services.provider_diagnostics import provider_failure_metadata, provider_result_failure_metadata
 from dotenv import load_dotenv
@@ -131,12 +132,13 @@ def _clean_claims(claims: object) -> list[str]:
 
 
 def _extract_json_text(text: str) -> str:
-    text = text.strip()
-    if "```json" in text:
-        return text.split("```json", 1)[1].split("```", 1)[0].strip()
-    if "```" in text:
-        return text.split("```", 1)[1].split("```", 1)[0].strip()
-    return text
+    if not isinstance(text, str) or len(text) > 30000:
+        raise ValueError("Invalid model response envelope")
+    value = text.strip()
+    # Backticks inside a JSON string are ordinary recognized content. Only a
+    # fence covering the WHOLE response is a formatting envelope to remove.
+    fenced = re.fullmatch(r"```(?:json)?[ \t]*\r?\n([\s\S]*?)\r?\n```", value, re.IGNORECASE)
+    return fenced.group(1) if fenced else value
 
 
 async def extract_text_from_image(image_bytes: bytes, mime_type: str) -> dict:
@@ -187,13 +189,11 @@ Se não houver texto legível, use {"text": ""}.
         result = json.loads(_extract_json_text(response))
         if not isinstance(result, dict) or not isinstance(result.get("text"), str) or len(result["text"]) > 12000:
             raise ValueError("OCR inválido")
-        result["available"] = True
-        result["status"] = "success" if result["text"].strip() else "no_text"
-        result["model_used"] = response.model_name
-        result["provider"] = "gemini"
-        result["decision_role"] = "ocr_only"
-        result.pop("confidence", None)  # A self-rated confidence is not accuracy.
-        return result
+        # Only the recognized text is model-owned. Extra confidence/verdict/
+        # diagnostic fields can never become application report metadata.
+        return {"text": result["text"], "available": True,
+                "status": "success" if result["text"].strip() else "no_text",
+                "model_used": response.model_name, "provider": "gemini", "decision_role": "ocr_only"}
     except Exception as exc:
         from app.core.openrouter_service import extract_image_text
         from app.core.gemini_client import GeminiError

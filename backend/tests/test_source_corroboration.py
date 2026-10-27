@@ -267,7 +267,8 @@ class SourceCorroborationTests(unittest.IsolatedAsyncioTestCase):
             await asyncio.sleep(1)
         async def answer(prompt, **kwargs):
             return response(prompt)
-        with patch.dict(os.environ, {"SOURCE_CROSSCHECK_PRIMARY_PROVIDER": "gemini"}), \
+        with patch.dict(os.environ, {"SOURCE_CROSSCHECK_PRIMARY_PROVIDER": "gemini",
+                "GEMINI_API_KEY": "offline-control", "OPENROUTER_API_KEY": "offline-control", "OPENROUTER_ENABLED": "true"}), \
              patch("app.services.source_corroboration.crosscheck_timeout_seconds", return_value=.15), \
              patch("app.services.source_corroboration.gemini_client.generate_text", new=AsyncMock(side_effect=stall)), \
              patch("app.services.source_corroboration.openrouter_service.generate", new=AsyncMock(side_effect=answer)) as router:

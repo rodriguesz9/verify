@@ -140,16 +140,34 @@ def _near_match_gaps(text, excerpts):
     return {"scope": "lexical_research_hints_only_not_evidence_or_relations", "claims": rows}
 
 
+class ResearchResponseFormatError(ValueError):
+    """An unusable JSON/schema envelope, not a rejected research operation."""
+
+    def __init__(self, issue):
+        self.response_issue = issue
+        super().__init__("invalid_research_response")
+
+
+class ResearchOperationRejected(ValueError):
+    """A complete plan failed semantic/safety checks; do not shop for another."""
+
+
 def _decode(raw, text, lead_map):
-    data = openrouter_service._auxiliary_json(raw)
+    if not isinstance(raw, str) or len(raw) > 30000:
+        raise ResearchResponseFormatError("invalid_schema")
+    try:
+        data = openrouter_service._auxiliary_json(raw)
+    except (ValueError, TypeError, RecursionError):
+        raise ResearchResponseFormatError("invalid_json") from None
     if not isinstance(data, dict) or set(data) != {"queries", "lead_ids"}:
-        raise ValueError("invalid envelope")
+        raise ResearchResponseFormatError("invalid_schema")
     queries, ids = data["queries"], data["lead_ids"]
     if (not isinstance(queries, list) or len(queries) > MAX_QUERIES or not isinstance(ids, list)
-            or len(ids) > 2 or any(not isinstance(i, str) for i in ids)
-            or len(ids) != len(set(ids))):
-        raise ValueError("invalid plan")
-    anchors, seen, validated, rejected = _words(text), set(), [], 0
+            or len(ids) > 2 or any(not isinstance(i, str) for i in ids)):
+        raise ResearchResponseFormatError("invalid_schema")
+    if len(ids) != len(set(ids)):
+        raise ResearchOperationRejected("duplicate_research_reference")
+    anchors, seen, validated, rejected, semantic_rejections = _words(text), set(), [], 0, 0
     entities = set().union(*(_words(value) for value in re.findall(r"\b[A-ZÀ-Ý][\wÀ-ÿ-]{2,}\b", lexical_text(text))
                             if value.casefold() not in {"segundo", "the", "rainha", "queen"}))
     for item in queries:
@@ -157,11 +175,15 @@ def _decode(raw, text, lead_map):
             rejected += 1
             continue
         query, group = item["query"], item["source_group"]
-        if (not isinstance(query, str) or not 20 <= len(query.strip()) <= 180
-                or not isinstance(group, str) or group not in {"primary", "editorial", "any"}
+        if (not isinstance(query, str) or len(query.strip()) > 180
+                or not isinstance(group, str) or group not in {"primary", "editorial", "any"}):
+            rejected += 1
+            continue
+        if (len(query.strip()) < 20
                 or re.search(r"https?://|www\.|\bsite\s*:|[\x00-\x1f\x7f]", query, re.I)
                 or len(anchors & _words(query)) < 2 or (entities and not entities & _words(query))):
             rejected += 1
+            semantic_rejections += 1
             continue
         query = query.strip()
         key = (query.casefold(), group)
@@ -169,9 +191,13 @@ def _decode(raw, text, lead_map):
             validated.append({"query": query, "source_group": group})
             seen.add(key)
     selected = [lead_map[key] for key in ids if key in lead_map]
-    rejected += sum(key not in lead_map for key in ids)
+    invalid_ids = sum(key not in lead_map for key in ids)
+    rejected += invalid_ids
+    semantic_rejections += invalid_ids
     if rejected and not validated and not selected:
-        raise ValueError("no valid operation")
+        if semantic_rejections:
+            raise ResearchOperationRejected("no_valid_research_operation")
+        raise ResearchResponseFormatError("invalid_schema")
     return validated, selected, rejected
 
 
@@ -237,10 +263,11 @@ async def plan_source_research(text, leads, documents, selection_audit, source_u
     if len(prompt) > 20000:
         coverage["status"] = "not_requested"
         return finished()
-    # One plan, bounded provider fallback for transport failures only. A valid
-    # empty/invalid plan is not sent repeatedly until a desired answer appears.
+    # A technical transport/format failure may use the existing alternate once.
+    # A valid empty, partial or semantically rejected plan is final: never
+    # rewrite an operation or repeat it until a desired answer appears.
     providers = [name for name, configured in (("gemini", bool(os.getenv("GEMINI_API_KEY", "").strip())),
-        ("openrouter", bool(os.getenv("OPENROUTER_API_KEY", "").strip()) and os.getenv("OPENROUTER_ENABLED", "true").lower() == "true")) if configured]
+        ("openrouter", bool(os.getenv("OPENROUTER_API_KEY", "").strip()) and os.getenv("OPENROUTER_ENABLED", "true").strip().lower() == "true")) if configured]
     gemini_schema = _gemini_schema(SCHEMA) if "gemini" in providers else None
     for index, name in enumerate(providers):
         remaining = deadline - clock()
@@ -250,17 +277,32 @@ async def plan_source_research(text, leads, documents, selection_audit, source_u
         attempt_timeout = remaining / (len(providers) - index)
         attempt_started = clock()
         provider_coverage = coverage["provider_coverage"][name] = {
-            "attempt_wait_seconds": attempt_timeout}
+            "attempt_wait_seconds": attempt_timeout, "status": "pending"}
         try:
             operation = gemini_client.generate_text(prompt, system_instruction=INSTRUCTION, temperature=0,
                 max_tokens=1024, response_schema=gemini_schema, timeout_seconds=attempt_timeout) if name == "gemini" else openrouter_service.generate(
                     prompt, system_instruction=INSTRUCTION, temperature=0, max_tokens=1024,
                     response_format=FORMAT, timeout_seconds=attempt_timeout)
             raw = await asyncio.wait_for(operation, timeout=attempt_timeout)
+            queries, selected, rejected = _decode(raw, text, known)
             provider_coverage.update(status="success", model_used=getattr(raw, "model_name", None))
+        except ResearchResponseFormatError as exc:
+            provider_coverage.update(status="invalid_response", response_issue=exc.response_issue,
+                                     failure_kind="invalid_research_response")
+            coverage["status"] = "invalid_response"
+            continue
+        except ResearchOperationRejected:
+            provider_coverage.update(status="invalid_response", failure_kind="rejected_research_operation")
+            coverage["status"] = "invalid_response"
+            return finished()
         except (gemini_client.GeminiError, openrouter_service.OpenRouterError) as exc:
-            provider_coverage.update(status=exc.status, **provider_failure_metadata(exc))
-            coverage["status"] = exc.status
+            metadata = provider_failure_metadata(exc)
+            provider_coverage.update(status=exc.status, **metadata)
+            if exc.status != "not_configured" or coverage["status"] != "invalid_response":
+                coverage["status"] = exc.status
+            if (metadata.get("response_issue") in {"content_blocked", "unexpected_cost"}
+                    or exc.status not in {"error", "timeout", "rate_limited", "not_configured", "unavailable", "invalid_response"}):
+                return finished()
             continue
         except TimeoutError:
             provider_coverage["status"] = "timeout"
@@ -268,11 +310,6 @@ async def plan_source_research(text, leads, documents, selection_audit, source_u
             continue
         finally:
             provider_coverage["elapsed_seconds"] = round(max(0, clock() - attempt_started), 3)
-        try:
-            queries, selected, rejected = _decode(raw, text, known)
-        except (ValueError, TypeError):
-            coverage["status"] = "invalid_response"
-            return finished()
         result.update(queries=queries, leads=selected)
         coverage.update(status="partial" if rejected else "success", rejected_operation_count=rejected,
                         planned_query_count=len(queries), selected_lead_count=len(selected))

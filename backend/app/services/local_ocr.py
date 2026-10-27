@@ -10,6 +10,10 @@ from pathlib import Path
 from PIL import Image, ImageOps
 
 
+MAX_OCR_OUTPUT_BYTES = 2_000_000
+MAX_OCR_ERROR_BYTES = 64_000
+
+
 def _prepare_image(data):
     if not data or len(data) > 25 * 1024 * 1024:
         raise ValueError("Image limit")
@@ -24,10 +28,21 @@ def _prepare_image(data):
 
 
 def _parse_tsv(raw):
-    if len(raw) > 2_000_000:
+    if len(raw) > MAX_OCR_OUTPUT_BYTES:
         raise ValueError("OCR output limit")
     lines, confidences = {}, []
-    for row in csv.DictReader(io.StringIO(raw.decode("utf-8")), delimiter="\t"):
+    # Tesseract emits raw TSV, not CSV-escaped text. CSV quoting would swallow
+    # following rows when a recognized word starts with a literal quote.
+    rows = csv.DictReader(io.StringIO(raw.decode("utf-8")), delimiter="\t", quoting=csv.QUOTE_NONE)
+    required = {"level", "page_num", "block_num", "par_num", "line_num", "word_num", "conf", "text"}
+    if (not rows.fieldnames or len(rows.fieldnames) != len(set(rows.fieldnames))
+            or not required.issubset(rows.fieldnames)):
+        raise ValueError("Invalid OCR columns")
+    for row in rows:
+        if None in row or any(row.get(key) is None for key in required):
+            raise ValueError("Invalid OCR row")
+        if row["level"] not in {"1", "2", "3", "4", "5"}:
+            raise ValueError("Invalid OCR level")
         text = row.get("text", "").strip()
         if not text or row.get("level") != "5":
             continue
@@ -45,6 +60,58 @@ def _parse_tsv(raw):
     return text, usable
 
 
+async def _read_bounded(stream, limit):
+    chunks, size = [], 0
+    while chunk := await stream.read(65536):
+        size += len(chunk)
+        if size > limit:
+            raise ValueError("OCR output limit")
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
+async def _collect_output(process):
+    # Bound both pipes while the child runs; communicate() accumulates them
+    # before the parser can enforce its output cap.
+    tasks = [asyncio.create_task(_read_bounded(process.stdout, MAX_OCR_OUTPUT_BYTES)),
+             asyncio.create_task(_read_bounded(process.stderr, MAX_OCR_ERROR_BYTES)),
+             asyncio.create_task(process.wait())]
+    try:
+        results = await asyncio.gather(*tasks)
+        return results[0]
+    finally:
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+
+async def _stop_process(process):
+    if process.returncode is None:
+        try:
+            process.kill()
+        except ProcessLookupError:
+            pass  # Child exited between returncode inspection and kill().
+
+    async def drain(stream):
+        while await stream.read(65536):
+            pass
+
+    # Drain without retaining output so a full pipe cannot block reaping.
+    tasks = [asyncio.create_task(drain(process.stdout)), asyncio.create_task(drain(process.stderr)),
+             asyncio.create_task(process.wait())]
+    try:
+        async with asyncio.timeout(2):
+            await asyncio.gather(*tasks)
+    except (TimeoutError, OSError):
+        pass
+    finally:
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+
 async def extract_local_text(image_bytes):
     base = {"available": False, "provider": "tesseract", "decision_role": "ocr_only", "text": ""}
     if os.getenv("LOCAL_OCR_ENABLED", "true").lower() != "true":
@@ -52,7 +119,6 @@ async def extract_local_text(image_bytes):
     binary = shutil.which("tesseract")
     if not binary:
         return {**base, "status": "not_installed"}
-    process = None
     try:
         prepared = await asyncio.to_thread(_prepare_image, image_bytes)
         with tempfile.TemporaryDirectory(prefix="verify-ocr-") as directory:
@@ -61,7 +127,12 @@ async def extract_local_text(image_bytes):
             process = await asyncio.create_subprocess_exec(binary, str(path), "stdout", "-l", "por+eng", "--psm", "3", "tsv",
                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
                 env={**os.environ, "OMP_THREAD_LIMIT": "1"})
-            raw, _ = await asyncio.wait_for(process.communicate(), timeout=6)
+            try:
+                raw = await asyncio.wait_for(_collect_output(process), timeout=6)
+            finally:
+                # Terminate/reap BEFORE TemporaryDirectory removes the input,
+                # including overflow, timeout and caller cancellation.
+                await _stop_process(process)
             if process.returncode:
                 return {**base, "status": "unavailable", "reason": "OCR local não executou; confira idiomas português/inglês."}
             text, usable = _parse_tsv(raw)
@@ -75,7 +146,3 @@ async def extract_local_text(image_bytes):
         return {**base, "status": "timeout", "reason": "OCR local excedeu o prazo."}
     except Exception:
         return {**base, "status": "invalid_response", "reason": "OCR local não retornou texto utilizável."}
-    finally:
-        if process is not None and process.returncode is None:
-            process.kill()
-            await process.communicate()

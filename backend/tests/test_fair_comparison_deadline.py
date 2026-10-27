@@ -1,6 +1,7 @@
 """Shared opportunity/cancellation, not a factual accuracy benchmark."""
 import asyncio
 import json
+import os
 import unittest
 from unittest.mock import AsyncMock, patch
 
@@ -20,6 +21,13 @@ def coverage():
 
 
 class FairComparisonDeadlineTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        configured = patch.dict(os.environ, {"GEMINI_API_KEY": "offline-control",
+            "OPENROUTER_API_KEY": "offline-control", "OPENROUTER_ENABLED": "true",
+            "SOURCE_CROSSCHECK_PRIMARY_PROVIDER": "gemini"})
+        configured.start()
+        self.addCleanup(configured.stop)
+
     async def test_default_providers_each_receive_up_to_120_without_extending_whole_deadline(self):
         with patch.object(sources.gemini_client, "generate_text", new=AsyncMock(side_effect=GeminiError("Unavailable", "unavailable"))) as first, \
              patch.object(sources.openrouter_service, "generate", new=AsyncMock(return_value=ANSWER)) as second:

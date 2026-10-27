@@ -1674,6 +1674,9 @@ async def _compare(prompt, coverage, *, timeout_seconds=None):
     if primary not in {"gemini", "openrouter"}:
         return None, coverage, "invalid_configuration"
     providers = (primary, "openrouter" if primary == "gemini" else "gemini")
+    configured = {"gemini": bool(os.getenv("GEMINI_API_KEY", "").strip()),
+                  "openrouter": bool(os.getenv("OPENROUTER_API_KEY", "").strip())
+                  and os.getenv("OPENROUTER_ENABLED", "true").strip().lower() == "true"}
     request = json.loads(prompt)
     requested_claims = request["claims"]
     requested_passages = {(source["source_id"], passage["excerpt_id"]): passage
@@ -1683,7 +1686,7 @@ async def _compare(prompt, coverage, *, timeout_seconds=None):
     loop = asyncio.get_running_loop()
     budget = crosscheck_timeout_seconds() if timeout_seconds is None else timeout_seconds
     deadline = loop.time() + budget
-    status = "error"
+    status = "not_configured"
     for index, provider in enumerate(providers):
         remaining = deadline - loop.time()
         if remaining <= 0:
@@ -1692,7 +1695,10 @@ async def _compare(prompt, coverage, *, timeout_seconds=None):
         # Two attempts still share the original whole-request deadline.
         # Reserve a real opportunity for the alternate instead of leaving it
         # a short tail. Immediate failure releases unused time to the next.
-        attempt_timeout = min(MAX_MODEL_WAIT_SECONDS, remaining / (2 - index))
+        # An absent/disabled alternate cannot use its reserved half. Key
+        # presence is used only to divide time, never to claim service health.
+        remaining_configured = sum(configured[name] for name in providers[index:])
+        attempt_timeout = min(MAX_MODEL_WAIT_SECONDS, remaining / max(1, remaining_configured))
         attempt_started = loop.time()
         coverage[provider].update(status="pending", attempt_wait_seconds=round(attempt_timeout, 3))
         try:
@@ -1733,7 +1739,7 @@ async def _compare(prompt, coverage, *, timeout_seconds=None):
         except (openrouter_service.OpenRouterError, gemini_client.GeminiError) as exc:
             # An absent alternate must not erase a useful primary diagnosis.
             # Its own coverage still reports not_configured explicitly.
-            if exc.status != "not_configured" or status != "invalid_response":
+            if exc.status != "not_configured" or status == "not_configured":
                 status = exc.status
             metadata = provider_failure_metadata(exc)
             coverage[provider].update(status=exc.status, **metadata)
