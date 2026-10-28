@@ -1,0 +1,81 @@
+{
+  "date": "2026-10-28",
+  "scope": "offline regression and saved public-document selection/discovery replay",
+  "baseline_commit": "4f63f87",
+  "remote_requests": 0,
+  "models_invoked": 0,
+  "private_env_read_by_replay": false,
+  "new_accuracy_measurement": false,
+  "backend_tests": {"passed": 1707, "new_since_baseline": 52, "failed": 0, "skipped": 0},
+  "frontend": {"changed": false, "retested_this_stage": false},
+  "local_readiness": {
+    "reviewed_stack_restarted": true,
+    "database_volumes_preserved": true,
+    "health_http": 200,
+    "ready_http": 200,
+    "database": "ok",
+    "frontend_document_http": {"/": 200, "/app": 200, "/login": 200},
+    "check_form_observed_in_browser": true,
+    "analyses_submitted_this_stage": 0,
+    "running_implementation_hashes_match": true,
+    "railway_or_vercel_deployed": false
+  },
+  "last_real_measurement": {
+    "date": "2026-10-27",
+    "artifact": "validation-quality-2026-10-27.json",
+    "correct": 7,
+    "total": 12,
+    "accuracy_percent": 58.333333333333336,
+    "inconclusive": 5,
+    "observed_wrong_conclusions": 0,
+    "eighty_percent_demonstrated": false
+  },
+  "saved_inputs": {
+    "documents_sha256": "ebfbc38ca7fa944b9ff487a6e8854da99f29ee9526b65ef9e720f3e5a3bed4da",
+    "bodies_manifest_sha256": "4d45fcbaf02163383e6eb3b3f53b2c5bf3dd9136e8f7a954828c4cf2e4ff0cec",
+    "baseline_and_candidate_use_identical_inputs": true,
+    "selection_replay_omits_structured_official_copom_record": true,
+    "eligible_family_counts_are_not_truth_verdicts": true,
+    "all_stored_and_reread_family_counts_unchanged": true
+  },
+  "selection_cases": [
+    {"case_id": "dev12-queen_true", "baseline_stored": 2, "baseline_reread": 2, "candidate_stored": 2, "candidate_reread": 2},
+    {"case_id": "dev12-queen_false", "baseline_stored": 1, "baseline_reread": 1, "candidate_stored": 1, "candidate_reread": 1},
+    {"case_id": "dev12-dart_true", "baseline_stored": 0, "baseline_reread": 0, "candidate_stored": 0, "candidate_reread": 0},
+    {"case_id": "dev12-who_true", "baseline_stored": 1, "baseline_reread": 1, "candidate_stored": 1, "candidate_reread": 1},
+    {"case_id": "dev12-ibge_true", "baseline_stored": 2, "baseline_reread": 2, "candidate_stored": 2, "candidate_reread": 2},
+    {"case_id": "dev12-copom_false", "baseline_stored": 0, "baseline_reread": 0, "candidate_stored": 0, "candidate_reread": 0},
+    {"case_id": "dev12-copernicus_false", "baseline_stored": 0, "baseline_reread": 0, "candidate_stored": 0, "candidate_reread": 0},
+    {"case_id": "dev12-lei_false", "baseline_stored": 1, "baseline_reread": 1, "candidate_stored": 1, "candidate_reread": 1},
+    {"case_id": "dev12-webb_true", "baseline_stored": 2, "baseline_reread": 2, "candidate_stored": 2, "candidate_reread": 2},
+    {"case_id": "dev12-constitution_true", "baseline_stored": 3, "baseline_reread": 3, "candidate_stored": 3, "candidate_reread": 3},
+    {"case_id": "dev12-worldcup_false", "baseline_stored": 1, "baseline_reread": 1, "candidate_stored": 1, "candidate_reread": 1},
+    {"case_id": "dev12-artemis_false", "baseline_stored": 1, "baseline_reread": 1, "candidate_stored": 1, "candidate_reread": 1}
+  ],
+  "changed_discovery_from_saved_html": [{
+    "case_id": "dev12-artemis_false",
+    "parent_url": "https://www.bbc.com/portuguese/media-63647283",
+    "baseline_selected_direct_references": [],
+    "candidate_selected_direct_references": [{
+      "url": "https://www.bbc.com/portuguese/internacional-63647280",
+      "title": "Foguete Artemis I da Nasa parte em direção à Lua",
+      "retrieval_method": "media_origin_article_reference"
+    }],
+    "target_fetched_this_stage": false,
+    "target_facts_or_verdict_inferred": false,
+    "parent_and_target_are_same_family": true
+  }],
+  "implementation_sha256": {
+    "backend/app/core/pipeline.py": "0f6abec1e1675e750b134ecc8b043cfdabaed08b2bc53a46585f20a5f70207a2",
+    "backend/app/services/launch_relations.py": "ede1730ff85d7e596654084ea2c4324c3ec540568712b459c594f29fa788c1b4",
+    "backend/app/services/source_attribution.py": "454fe6e5abf6c7a98ac64c33a705ac4707b86c9a72e4b66dd9961076932a6deb",
+    "backend/app/services/source_corroboration.py": "42869abe25fd530ac6a6eb7fedf85f24749e1b6239f9ecdb6e571b165912dfd7",
+    "backend/app/services/source_relations.py": "bee7cbfc257e7a99aa8e2ed2980afbfe95cb7df15e3fc5f564cbe51bd2e2bc78"
+  },
+  "remaining": [
+    "fresh bounded end-to-end source retrieval and factual measurement",
+    "explicit local measurement-baseline definition binding",
+    "independent unseen controls",
+    "remote media revalidation"
+  ]
+}

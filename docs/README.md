@@ -1,5 +1,7 @@
 # Documentação do Verify
 
+**Correções locais, 28/10:** [causas, recuperação e leitura contextual](INCONCLUSIVOS-2026-10-28.md), [dados offline sanitizados](validation-inconclusive-offline-2026-10-28.json). Prioridade para lançamento concluído, referência explícita vídeo→artigo, escopo de finalidade/hipótese e comparação numérica. **1.707 testes backend, 52 novos, passaram.** Um link antes ignorado foi recuperado no HTML salvo; famílias elegíveis permanecem iguais nesse recorte. Sem chamadas remotas; última precisão real continua **58,3% (7/12)**. Mídias e 80% pendentes.
+
 **Rodada completa pela interface, 27/10:** [correções e diagnóstico](MELHORIAS-E-TESTES-2026-10-27.md), [doze resultados sanitizados](validation-quality-2026-10-27.json). **7/12 corretos (58,3%), cinco inconclusivos, nenhuma conclusão errada observada.** Doze submissões e relatórios observados na interface; Gemini 8/8 e OpenRouter 5/5 responderam HTTP 200. 1.655 testes backend e 205 frontend aprovados, com build. Datas corrigidas depois da medição foram testadas offline; detecção de autenticidade de mídias e meta de 80% continuam pendentes.
 
 **Gemini local, 27/10:** [diagnóstico, configuração e ambiente revisado](GEMINI-LOCAL-2026-10-27.md), [três controles reais](validation-gemini-local-2026-10-27.json). Cópia antiga usava 15 s e ignorava configuração nova. 3.5 Flash-Lite respondeu ao texto e OCR; transcrição integral ainda divergente. 1.616 testes backend e 205 frontend passaram novamente; sem nova precisão factual ou deploy.

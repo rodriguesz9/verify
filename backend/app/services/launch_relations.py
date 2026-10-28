@@ -25,6 +25,7 @@ is replaced by this helper. In particular, this does not create source votes.
 from dataclasses import dataclass
 from datetime import date
 import re
+import unicodedata
 from typing import Literal
 
 
@@ -274,6 +275,23 @@ def is_launch_date_claim(claim: str) -> bool:
                 and _SCOPE_LAUNCH.search(claim) and (_DATE.search(claim) or _SCOPE_YEAR.search(claim)))
 
 
+_LEAD_NUMBER_CONTINUATION = re.compile(
+    r"^\s*(?:[-–—&]|and\b|e\b)\s*(?:[1-9]\d{0,2}|[IVXLCDM]{1,8})(?!\w)", re.I)
+
+
+def _lead_mission_numbers(program, lead):
+    words = re.split(r"[ -]+", program)
+    pattern = (r"(?<!\w)" + r"[\s-]+".join(re.escape(word) for word in words)
+               + r"[\s-]+([1-9]\d{0,2}|[IVXLCDM]{1,8})(?!\w)")
+    matches = list(re.finditer(pattern, lead, re.I))
+    # A slug delimiter before an ordinary path word is legitimate. A range
+    # such as Aurora I-II or Aurora I and II does not identify one mission.
+    ambiguous = any(_LEAD_NUMBER_CONTINUATION.match(lead[match.end():]) for match in matches)
+    identities = {_number(match[1].upper()) for match in matches}
+    identities.discard(None)
+    return identities, ambiguous
+
+
 def launch_lead_identity_priority(claim: str, lead: str) -> int:
     """Reading order only: exact numbered mission, unknown, different mission.
 
@@ -287,14 +305,60 @@ def launch_lead_identity_priority(claim: str, lead: str) -> int:
     if left is None or left.identity_kind != "mission" or not isinstance(lead, str):
         return 0
     program, requested = left.identity
-    words = re.split(r"[ -]+", program)
-    pattern = (r"(?<!\w)" + r"[\s-]+".join(re.escape(word) for word in words)
-               + r"[\s-]+([1-9]\d{0,2}|[IVXLCDM]{1,8})(?![\w-])")
-    identities = {_number(match[1].upper()) for match in re.finditer(pattern, lead, re.I)}
-    identities.discard(None)
+    identities, ambiguous = _lead_mission_numbers(program, lead)
+    if ambiguous:
+        return 1
     if requested in identities:
         return 0
     return 2 if identities else 1
+
+
+_LEAD_LAUNCH_PENDING = re.compile(
+    r"\b(?:scheduled|planned|planning|prepares?|preparing|preparation|countdown|fueling|fuelling|"
+    r"rollout|attempts?|postponed|scrubbed|cancelled|canceled|expected|targeting|"
+    r"previst[oa]s?|previsao|planejad[oa]s?|planeja|prepara|preparacao|contagem|tentativa|"
+    r"adiad[oa]s?|cancelad[oa]s?|supostamente|teria|allegedly|rumou?r|boato|"
+    r"false|falso|falsa|unconfirmed|unverified|uncertain|unclear|incert[oa]|talvez)\b"
+    r"|\b(?:may|might|could|will|would)\s+(?!\d)\w"
+    r"|\b(?:set|ready|due)\s+to\b|\b(?:next|proxima|proximo)\s+(?:week|month|semana|mes)\b"
+    r"|\b(?:nao|nunca|jamais|not|never)\s+(?:(?:foi|was|has|been|yet|actually|successfully|really|ever)\s+){0,3}(?:lancad[oa]|launch\w*|decol\w*)\b"
+    r"|\b(?:wasn['’]t|hasn['’]t|hadn['’]t|didn['’]t|isn['’]t|won['’]t|can['’]t|couldn['’]t|wouldn['’]t)"
+    r"\s+(?:(?:been|have|yet|actually|successfully)\s+){0,3}(?:launch\w*|lift\w*|blast\w*)\b"
+    r"|\bfailed\s+to\s+launch\b|\bconfirma\s+(?:o\s+)?lancamento\b"
+    r"|\bchega\s+(?:a|na|the|at)\s+(?:plataforma|launch\s+pad)\b"
+)
+_LEAD_LAUNCH_COMPLETED = re.compile(
+    r"\b(?:launched|launches|decolou|decola|partiu)\b"
+    r"|\b(?:foi|foram)\s+lancad[oa]s?\b"
+    r"|\b(?:lifted|lifts|blasted|blasts)\s+off\b"
+    r"|\b(?:after|apos)\s+(?:(?:a|an|the|its|epic|historic|successful|o|um|historico)\s+){0,4}"
+    r"(?:launch|liftoff|lancamento)\b"
+    r"|\b(?:launch|lancamento)\s+(?:completed|concluido)\b"
+)
+
+
+def launch_lead_phase_priority(claim: str, lead: str) -> int | None:
+    """Discovery only: completed report, unknown phase, preparation/forecast.
+
+    Restrict this ordering to a fully parsed numbered mission claim. A wrong
+    claimed year may need a completed report from a different year; a preview
+    matching that allegation must not consume the read ahead of that report.
+    No title/path supplies a body relation, launch date or source vote.
+    Mixed numbered missions and questions cannot assert a completed phase.
+    """
+    left = _frame(claim)
+    if left is None or left.identity_kind != "mission" or not isinstance(lead, str):
+        return None
+    normalized = "".join(char for char in unicodedata.normalize("NFD", lead.casefold())
+                         if not unicodedata.combining(char))
+    normalized = re.sub(r"[-_/]+", " ", normalized)
+    if _LEAD_LAUNCH_PENDING.search(normalized):
+        return 2
+    program, requested = left.identity
+    identities, ambiguous = _lead_mission_numbers(program, lead)
+    if ambiguous or identities != {requested} or "?" in lead:
+        return 1
+    return 0 if _LEAD_LAUNCH_COMPLETED.search(normalized) else 1
 
 
 def launch_date_relation(claim: str, quote: str, *, quote_role: str = "body") -> Relation | None:

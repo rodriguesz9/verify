@@ -95,6 +95,32 @@ _NONFACTUAL_CONTEXT = re.compile(
     r"invented\s+(?:example|story|account|scenario|event))\b", re.I,
 )
 _NONFACTUAL_REASON = "Contexto de ficção, hipótese ou simulação não comprova a ocorrência factual alegada."
+_CONDITIONAL_NARRATIVE = re.compile(
+    # A conditional may govern the assertion before OR after it, including
+    # an embedded comma-separated clause. This does not match an indirect
+    # question after a verb ("test if ..." / "testar se ...").
+    r"(?:^|[.!?;,]\s+)(?:se|caso|if|unless)\s+"
+    r"[^.!?;\n]{1,180}(?:,\s*|[.!?]?\s*$)", re.I,
+)
+# A purpose sentence about possible future hazards does not qualify an already
+# completed impact. Keep this grammar closed: it cannot discuss whether that
+# impact happened, introduce another event/date, or supply missing claim facts.
+_RISK_PURPOSE_SUFFIX = re.compile(
+    r"^(?P<event>[\s\S]{20,1200})(?:\.\s+|,\s+)(?:"
+    r"(?:(?:the|this)\s+(?:collision|impact|experiment|test)\s+(?:was|is)\s+"
+    r"(?:(?:intentional\s+and\s+)?designed|conducted)\s+to"
+    r"|in\s+an?\s+(?:test|experiment)\s+designed\s+to)\s+test\s+whether\s+"
+    r"(?:space\s+rocks|objects|asteroids|comets)\s+that\s+(?:might|may|could)\s+"
+    r"threaten\s+(?:Earth|the\s+planet)\s+could\s+be\s+(?:nudged|deflected|redirected)"
+    r"(?:\s+safely)?(?:\s+out\s+of\s+the\s+way)?"
+    r"|(?:(?:o|este)\s+(?:impacto|teste|experimento)\s+foi\s+"
+    r"(?:realizado|concebido|projetado)\s+para"
+    r"|em\s+um\s+(?:teste|experimento)\s+(?:concebido|projetado)\s+para)\s+testar\s+se\s+"
+    r"(?:objetos|asteroides|cometas|rochas\s+espaciais)\s+que\s+poderiam\s+"
+    r"amea[çc]ar\s+(?:a\s+Terra|o\s+planeta)\s+poderiam\s+ser\s+"
+    r"(?:desviados|redirecionados)(?:\s+com\s+seguran[çc]a)?"
+    r")\.\s*$", re.I,
+)
 _SCOPED_NONFACTUAL_SUFFIX = re.compile(
     r"\b(?:(?:est[ea]|ess[ea]|aquel[ea]|presente)\s+"
     r"(?:texto|exemplo|relato|registro|evento|lan[çc]amento|decis[ãa]o|artigo|reprodu[çc][ãa]o|narrativa)"
@@ -109,7 +135,7 @@ _SCOPED_NONFACTUAL_SUFFIX = re.compile(
     r"|(?:this|that)\s+(?:is|was)\s+(?:(?:a|an)\s+)?"
     r"(?:fiction(?:al)?|hypothetical|simulated|simulation|invented))\b", re.I,
 )
-_UNCERTAIN = re.compile(r"\b(?:pode|poderia|teria|talvez|provável|possível|may|might|could|possibly|alleged)\b", re.I)
+_UNCERTAIN = re.compile(r"\b(?:pode(?:m)?|poderia(?:m)?|teria(?:m)?|talvez|provável|possível|may|might|could|possibly|alleged)\b", re.I)
 _PLANNED = re.compile(r"\b(?:será|serão|vai|vão|irá|irão|planeja|previsto|prevista|agendado|agendada|will|scheduled|planned|plans)\b", re.I)
 _PAST_EVENT = re.compile(r"\b(?:recebeu|morreu|faleceu|nasceu|lançou|lançada|lançado|pisou|pisaram|pagou|enviou|inaugurou|cancelou|colidiu|declarou|classificou|caracterizou|decretou|elevou|aumentou|reduziu|diminuiu|manteve|died|received|launched|walked|paid|sent|born|impacted|crashed|smashed|declared|classified|characterized|characterised)\b", re.I)
 _DATE_METADATA = re.compile(r"\b(?:publicad[oa]|publicação|atualizad[oa]|atualização|published|publication|updated|last update|posted)\b", re.I)
@@ -615,6 +641,20 @@ def _opposite_statement_scope(claim, quote):
     return matched_polarities == {not claimed[1]}
 
 
+def _conditional_narrative_scope(quote, context):
+    if _CONDITIONAL_NARRATIVE.search(quote):
+        return True
+    if context.count(quote) != 1:
+        return bool(_CONDITIONAL_NARRATIVE.search(context))
+    # A dangling conditional fragment may govern the following quotation.
+    # A separately completed earlier discussion does not govern it forever.
+    before = context.partition(quote)[0]
+    previous = input_claims(before)
+    fragment = previous[-1] if previous else ""
+    return bool(fragment and not re.search(r"[.!?]\s*$", fragment)
+                and _CONDITIONAL_NARRATIVE.match(fragment))
+
+
 def _nonfactual_context(quote, context):
     """Scope a label to the current passage, not an unrelated later example.
 
@@ -625,14 +665,31 @@ def _nonfactual_context(quote, context):
     Unknown/ambiguous quote placement stays conservative.
     """
     if context.count(quote) != 1:
-        return bool(_NONFACTUAL_CONTEXT.search(context))
+        return bool(_NONFACTUAL_CONTEXT.search(context) or _conditional_narrative_scope(quote, context))
     before, _quote, after = context.partition(quote)
     return bool(_NONFACTUAL_CONTEXT.search(before + quote)
+                or _conditional_narrative_scope(quote, context)
                 or _SCOPED_NONFACTUAL_SUFFIX.search(after))
 
 
+def _completed_event_with_risk_purpose(claim, quote, context, relation, retrieved_at):
+    match = _RISK_PURPOSE_SUFFIX.fullmatch(quote)
+    if match is None:
+        return False
+    event = match["event"]
+    # Validate a single, independently complete factual assertion, using ALL
+    # the usual subject/action/date/quantity/negation/context guards. The full
+    # quote and context stay untouched for the caller's remaining checks and
+    # eventual model review. No facts can come from the purpose suffix.
+    if (len(input_claims(event)) != 1 or "?" in event or "!" in event
+            or not _PAST_EVENT.search(event) or _uncertain_statement(event)
+            or _PLANNED.search(event)):
+        return False
+    return _relation_guard(claim, event, context, relation, retrieved_at) is None
+
+
 def _relation_guard(claim, quote, context, relation, retrieved_at, *, bound_negative_declaration=False):
-    if _nonfactual_context(quote, context):
+    if _CONDITIONAL_NARRATIVE.search(claim) or _nonfactual_context(quote, context):
         return _NONFACTUAL_REASON
     if (RELATIVE_TIME.search(claim) or any(c in claim for c in ('?', '"', '“', '”', '«', '»'))
             or (_UNASSERTED.search(context) and not (relation == "refutes" and _FALSE_PREFIX.match(quote))) or _INSTRUCTION.search(context)):
@@ -674,7 +731,8 @@ def _relation_guard(claim, quote, context, relation, retrieved_at, *, bound_nega
                 return "Negação fora do predicado de caminhada; negar quantidade de provas não nega a ocorrência do evento."
     if _COMPOUND.search(lexical_text(claim)) and not _tokens(claim) <= _tokens(quote):
         return "Afirmação composta contém partes sem correspondência no trecho; confirmação parcial não cobre o conjunto."
-    if _uncertain_statement(quote) and not _uncertain_statement(claim):
+    if (_uncertain_statement(quote) and not _uncertain_statement(claim)
+            and not _completed_event_with_risk_purpose(claim, quote, context, relation, retrieved_at)):
         return "Fonte expressa possibilidade ou condição, não confirmação categórica da afirmação."
     if _PAST_EVENT.search(claim) and _PLANNED.search(quote) and not _PLANNED.search(claim):
         return "Fonte descreve evento previsto ou planejado, não ocorrência já concluída."

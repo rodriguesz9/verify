@@ -1,5 +1,7 @@
 # Verify — estrutura e arquitetura
 
+**Correções locais, 28/10:** [recuperação e contexto](INCONCLUSIVOS-2026-10-28.md), [evidência offline](validation-inconclusive-offline-2026-10-28.json). Lançamentos concluídos priorizados e referência explícita mídia→artigo do mesmo grupo descoberta dentro dos limites existentes; hipótese, finalidade e medidas preservam seus escopos. **1.707 testes backend passaram, 52 novos.** Replay não aumenta famílias dos corpos salvos nem mede precisão. Sem chamadas remotas; taxa real permanece 7/12 (58,3%), mídias e 80% pendentes.
+
 **Rodada completa pela interface, 27/10:** [correções e diagnóstico](MELHORIAS-E-TESTES-2026-10-27.md), [doze controles sanitizados](validation-quality-2026-10-27.json). **7/12 corretos (58,3%), cinco inconclusivos, zero conclusões erradas observadas.** Pesquisa recupera falha técnica de formato, comparação não reserva tempo para alternativa ausente e OCR preserva aspas/texto literal. Gemini 8/8 e OpenRouter 5/5 responderam HTTP 200; cinco inconclusivos ocorreram antes da comparação. 1.655 testes backend e 205 frontend aprovados, com build. Correção posterior de datas foi testada offline e não altera a taxa medida; mídias e 80% continuam pendentes.
 
 **Gemini local, 27/10:** [diagnóstico e configuração](GEMINI-LOCAL-2026-10-27.md). Novo Compose local separado em 5176/8016, banco próprio, versão revisada e modelo 3.5 Flash-Lite que respondeu a texto e imagem. OCR integral ainda divergente; 1.616 testes backend e 205 frontend repetidos com sucesso. Sem nova precisão factual ou deploy.

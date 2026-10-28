@@ -75,22 +75,57 @@ def percentage_transition(text):
 
 
 _MEASURED_POSITION = re.compile(
-    r"\b(\d+(?:[.,]\d+)?)\s*(°\s*C|graus?\s+Celsius|degrees?\s+Celsius|%)\s*"
-    r"(acima|abaixo|above|below)\b", re.I,
+    r"(?<![\w.,])(\d+(?:[.,]\d+)?)\s*(°\s*C|graus?\s+Celsius|degrees?\s+Celsius|%)\s*"
+    r"(acima|abaixo|above|below|(?:warmer|colder|higher|lower)\s+than)\b", re.I,
 )
+_INTERVAL_MEASUREMENT_PREFIX = re.compile(
+    r"(?<![\w.,])(?:(?:between|entre|from|de)\s+)?\d+(?:[.,]\d+)?\s*"
+    r"(?:(?:°\s*C|graus?\s+Celsius|degrees?\s+Celsius|%)\s*)?"
+    r"(?:and|e|to|a|até|ate|para)$", re.I,
+)
+_QUALIFIED_MEASUREMENT_PREFIX = re.compile(
+    r"\b(?:at\s+(?:least|most)|more\s+than|less\s+than|up\s+to|about|approximately|around"
+    r"|pelo\s+menos|no\s+m[aá]ximo|no\s+m[ií]nimo|mais\s+de|menos\s+de|at[eé]"
+    r"|cerca\s+de|aproximadamente)$", re.I,
+)
+
+
+def _ambiguous_measurement_prefix(text, start):
+    # These helpers support an unsigned scalar only. A sign, uncertainty,
+    # dash or interval endpoint must not silently become its positive amount.
+    # A dash immediately before the value can also be punctuation; abstain
+    # rather than guess whether it is a minus sign or a sentence separator.
+    prefix = text[:start].rstrip()
+    return bool(prefix and (prefix[-1] in "+-−±–—"
+                           or _INTERVAL_MEASUREMENT_PREFIX.search(prefix)
+                           or _QUALIFIED_MEASUREMENT_PREFIX.search(prefix)))
+
+
+def _has_ambiguous_measurement(text, identities=None):
+    return any(_ambiguous_measurement_prefix(text, match.start())
+               and (identities is None or (_decimal(match[1]), "percent" if match[2] == "%" else "celsius") in identities)
+               for match in _MEASURED_POSITION.finditer(text))
 
 
 def _measured_comparisons(text):
     result = []
-    for match in _MEASURED_POSITION.finditer(text):
+    matches = list(_MEASURED_POSITION.finditer(text))
+    for index, match in enumerate(matches):
+        if _ambiguous_measurement_prefix(text, match.start()):
+            continue
         number, unit, position = match.groups()
         # A stated baseline belongs to THIS measured comparison, not a
         # different amount elsewhere in a paragraph. Keep the whole local
         # clause; a matching numeric range elsewhere cannot repair it.
-        tail = re.split(r"[.!?;]", text[match.end():match.end() + 180], maxsplit=1)[0]
+        # A following measured comparison owns its own baseline, even when
+        # both occur before a sentence-ending full stop. Do not borrow the
+        # second metric's reference range for the first one.
+        end = min(match.end() + 180, matches[index + 1].start() if index + 1 < len(matches) else len(text))
+        tail = re.split(r"[.!?;]", text[match.end():end], maxsplit=1)[0]
         ranges = set(re.findall(r"\b((?:18|19|20)\d{2})\s*[-–—]\s*((?:18|19|20)\d{2})\b", tail))
+        above = position.casefold() in {"acima", "above"} or bool(re.fullmatch(r"(?:warmer|higher)\s+than", position, re.I))
         result.append((_decimal(number), "percent" if unit == "%" else "celsius",
-            "above" if position.casefold() in {"acima", "above"} else "below", ranges))
+            "above" if above else "below", ranges))
     return result
 
 
@@ -101,7 +136,11 @@ def supporting_measurements_bound(claim, quote):
     each claimed baseline must belong to the uniquely matching measured
     value, not another metric elsewhere in the same body window.
     """
-    bounded = [value for value in _measured_comparisons(claim) if value[3]]
+    claimed = _measured_comparisons(claim)
+    if (_has_ambiguous_measurement(claim)
+            or _has_ambiguous_measurement(quote, {value[:2] for value in claimed})):
+        return False
+    bounded = [value for value in claimed if value[3]]
     observed = _measured_comparisons(quote)
     for left in bounded:
         matches = [right for right in observed if right[:2] == left[:2]]
@@ -115,10 +154,13 @@ def opposing_measurements(claim, quote):
 
     The caller still binds subject, dates, baseline numbers and model-selected
     literal evidence. Different amounts, Celsius/Fahrenheit or multiple
-    measured comparisons cannot establish a deterministic contradiction here.
+    candidates for the matching amount/unit cannot establish a deterministic
+    contradiction here. A named reference without its literal range is not
+    expanded from background knowledge.
     """
     left = _measured_comparisons(claim)
-    if len(left) != 1 or left[0][0] is None:
+    if (len(left) != 1 or left[0][0] is None or _has_ambiguous_measurement(claim)
+            or _has_ambiguous_measurement(quote, {left[0][:2]})):
         return False
     # Other metrics in the same body window no longer mask a unique matching
     # amount/unit/baseline. Duplicate matching metrics remain ambiguous.

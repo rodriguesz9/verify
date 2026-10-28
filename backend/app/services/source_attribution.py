@@ -690,8 +690,9 @@ def _editorial_reference_title(anchor, root):
 def _article_reference_leads(resource):
     """Actual visible citations/callouts, never evidence or generated URLs.
 
-    Restrict discovery to curated primary HTTPS documents. Every selected lead
-    still goes through the normal DNS-pinned bounded reader and body guards.
+    Restrict citations to curated primary HTTPS documents; a closed media-origin
+    notice can also link to an article from the same curated editorial family.
+    Every selected lead goes through the normal bounded reader and body guards.
     Neither an anchor's wording nor the cited institution supplies a truth vote.
     """
     if resource.content_type not in {"text/html", "application/xhtml+xml"}:
@@ -706,7 +707,7 @@ def _article_reference_leads(resource):
         if tag.attrs is None:
             continue
         identifiers = " ".join([str(tag.get("id", "")), *tag.get("class", [])])
-        if (tag.name in {"script", "style", "head", "nav", "header", "footer", "aside", "form", "template",
+        if (tag.name in {"script", "style", "head", "nav", "footer", "aside", "form", "template",
                          "video", "audio", "noscript", "dialog", "button", "input", "select", "textarea",
                          "blockquote", "figcaption", "caption"}
                 or tag.has_attr("hidden") or str(tag.get("aria-hidden", "")).casefold() == "true"
@@ -720,12 +721,57 @@ def _article_reference_leads(resource):
                 or "sponsored" in {str(value).casefold() for value in tag.get("rel", [])}
                 or re.search(r"(?:^|[-_\s])(?:related|share|social|menu|breadcrumb|teaser|card)(?:$|[-_\s])", identifiers, re.I)):
             tag.decompose()
+    # A media-origin notice often labels its anchor only with the actual URL.
+    # One visible page heading can label that discovery link, never the target
+    # article's evidence. Preserve semantic headers just until this check;
+    # their links remain excluded from discovery as before.
+    headings = soup.find_all("h1", limit=2)
+    media_title = _visible_text(headings[0]) if len(headings) == 1 else ""
+    if not 8 <= len(media_title) <= 300:
+        media_title = ""
+    for header in list(soup.find_all("header")):
+        header.decompose()
     root, _ = _body_root(soup)
     # Header removal is intentional for link discovery, but must not turn a
     # previously validated update stream back into just its longest entry.
     if liveblog is not None and liveblog.attrs is not None:
         root = liveblog
     own_url = _canonical_url(resource.final_url)
+    own_identity = source_identity(own_url)
+    origin_phrase = re.compile(
+        r"(?:este\s+(?:v[íi]deo|[áa]udio)\s+foi\s+publicado\s+(?:em|n[ao])"
+        r"|this\s+(?:video|audio)\s+was\s+published\s+(?:in|on))\s*", re.I,
+    )
+
+    def media_origin(anchor, paragraph, destination):
+        if not media_title or paragraph is None or paragraph.find_all("a", limit=2) != [anchor]:
+            return False
+        label, paragraph_text = _visible_text(anchor), _visible_text(paragraph)
+        # Exactly an explicit origin phrase followed by one URL. A related
+        # story, credit, qualifier, second link or suffix is not this notice.
+        if not label or not paragraph_text.endswith(label):
+            return False
+        prefix = paragraph_text[:-len(label)].strip()
+        label_url = _canonical_url(label)
+        if label_url != destination:
+            return False
+        raw = urlsplit(urljoin(resource.final_url, str(anchor.get("href", ""))))
+        shown = urlsplit(label)
+        identity = source_identity(destination)
+        path = unquote(raw.path).casefold()
+        utility = {"search", "busca", "contact", "contact-us", "contato", "about", "about-us",
+                   "login", "account", "privacy", "terms", "subscribe", "video", "videos", "audio",
+                   "media", "podcast", "podcasts", "watch", "player"}
+        return bool(origin_phrase.fullmatch(prefix) and label_url == destination
+                    and own_identity and own_identity["source_type"] == "editorial"
+                    and identity and identity["source_type"] == "editorial"
+                    and identity["publisher_family"] == own_identity["publisher_family"]
+                    and raw.scheme == shown.scheme == "https" and not raw.query and not raw.fragment
+                    and not shown.query and not shown.fragment and path.strip("/")
+                    and not utility.intersection(path.strip("/").split("/"))
+                    and not re.search(r"/(?:media|videos?|audio|podcasts?)-", path)
+                    and not known_unsupported_lead(destination) and destination != own_url)
+
     references = {}
     for anchor in root.find_all("a", href=True, limit=MAX_REFERENCE_ANCHORS):
         paragraph = anchor.find_parent("p")
@@ -738,15 +784,21 @@ def _article_reference_leads(resource):
         href = str(anchor.get("href", ""))
         if not title or len(title) > 300 or not href or href.startswith("#"):
             continue
-        url = _canonical_url(urljoin(resource.final_url, href))
+        try:
+            url = _canonical_url(urljoin(resource.final_url, href))
+        except ValueError:
+            continue
         identity = source_identity(url)
-        if not identity or identity["source_type"] != "primary":
+        media = media_origin(anchor, paragraph, url) if identity else False
+        if not identity or identity["source_type"] != "primary" and not media:
             continue
         parsed = urlsplit(url)
         if parsed.query or not parsed.path.strip("/") or url == own_url:
             continue
         reference = {"link": url, "title": title}
-        if editorial_title:
+        if media:
+            reference.update(title=media_title, reference_kind="media_origin_article")
+        elif editorial_title:
             reference["reference_kind"] = "editorial_callout"
         references.setdefault(url, reference)
         if len(references) >= MAX_REFERENCE_LEADS:
@@ -755,7 +807,7 @@ def _article_reference_leads(resource):
 
 
 def primary_reference_leads(text, documents, source_url=None, *, excluded_urls=()):
-    """Prioritize at most two cited primary bodies with a literal named topic.
+    """Prioritize at most two cited bodies with a literal named topic.
 
     Institution names and generic link text alone cannot consume the reading
     budget. Exclude already attempted/final URLs BEFORE the two-lead cap.
@@ -779,14 +831,30 @@ def primary_reference_leads(text, documents, source_url=None, *, excluded_urls=(
         if not isinstance(document, dict) or document.get("source_role") == "submitted_source":
             continue
         source = _canonical_url(document.get("url"))
-        if not source_identity(source) or source == submitted:
+        source_identity_value = source_identity(source)
+        if not source_identity_value or source == submitted:
             continue
         for reference in document.get("reference_leads", [])[:MAX_REFERENCE_LEADS]:
             if not isinstance(reference, dict):
                 continue
             url = _canonical_url(reference.get("link"))
             identity = source_identity(url)
-            if not identity or identity["source_type"] != "primary" or url == submitted or url in excluded:
+            media = reference.get("reference_kind") == "media_origin_article"
+            if not identity or url == submitted or url in excluded:
+                continue
+            if media:
+                raw = urlsplit(reference.get("link"))
+                path = unquote(raw.path).casefold()
+                utility = {"search", "busca", "contact", "contact-us", "contato", "about", "about-us",
+                           "login", "account", "privacy", "terms", "subscribe", "video", "videos", "audio",
+                           "media", "podcast", "podcasts", "watch", "player"}
+                if (identity["source_type"] != "editorial" or source_identity_value["source_type"] != "editorial"
+                        or identity["publisher_family"] != source_identity_value["publisher_family"]
+                        or raw.fragment or url == source or known_unsupported_lead(url)
+                        or re.search(r"/(?:media|videos?|audio|podcasts?)-", path)
+                        or utility.intersection(path.strip("/").split("/"))):
+                    continue
+            elif identity["source_type"] != "primary":
                 continue
             parsed = urlsplit(url)
             if parsed.query or not parsed.path.strip("/"):
@@ -798,12 +866,13 @@ def primary_reference_leads(text, documents, source_url=None, *, excluded_urls=(
             # An action such as "Read the Story" is generic. Only its local
             # visible title can establish a named topic for a callout; a URL
             # slug alone cannot repair an unrelated/missing heading.
-            topic_names = names - _EDITORIAL_GENERIC_TOPICS - set(_CALENDAR_NAMES.split("|")) if editorial else names
-            topic = title if editorial else title + " " + parsed.path
+            topic_names = names - _EDITORIAL_GENERIC_TOPICS - set(_CALENDAR_NAMES.split("|")) if editorial or media else names
+            topic = title if editorial or media else title + " " + parsed.path
             tokens = set(re.findall(r"[^\W\d_]+", topic.casefold(), re.UNICODE))
             if not topic_names.intersection(tokens):
                 continue
-            method = "editorial_cited_primary_reference" if editorial else "inline_cited_primary_reference"
+            method = ("media_origin_article_reference" if media else
+                      "editorial_cited_primary_reference" if editorial else "inline_cited_primary_reference")
             # Preserve the first two ordinary inline candidates, rather than
             # silently changing their existing selection order. At most two
             # callouts can compete for the SAME two returned reading leads.
@@ -847,7 +916,7 @@ def _retrieval_priority(text, title, url):
         _discovery_subject, neutral_source_query, discovery_target_years, discovery_topic_tokens,
     )
     from app.services.source_corroboration import source_identity
-    from app.services.launch_relations import launch_lead_identity_priority
+    from app.services.launch_relations import launch_lead_identity_priority, launch_lead_phase_priority
     from app.services.competition_relations import competition_lead_priority
     subject = neutral_source_query(text, preserve_period=True) or text
     path = unquote(urlsplit(url).path)
@@ -879,7 +948,18 @@ def _retrieval_priority(text, title, url):
     primary = (source_identity(url) or {}).get("source_type") == "primary"
     # Identity bands precede the three month bands, preserving the existing
     # tuple contract/month ordering for all non-launch or unparsed claims.
-    discovery_priority = (3 * launch_lead_identity_priority(text, lead)
+    launch_identity = launch_lead_identity_priority(text, lead)
+    launch_phase = launch_lead_phase_priority(text, lead)
+    # For one completely identified mission, completed coverage precedes
+    # previews even if its date contradicts the claimed year. Identity remains
+    # the outer band; unknown/other missions cannot win by sounding completed.
+    # Each strict-launch band exceeds every lower-order flag combined:
+    # phase (0..2), competition (0..9), topic (0..10), month (0..2).
+    # Short explicit names/flight numbers may have no generic topic token;
+    # that must not let an unknown mission or a preview cross the band.
+    launch_priority = (3 * launch_identity if launch_phase is None else
+                       100 * launch_identity + 30 * launch_phase)
+    discovery_priority = (launch_priority
                           + 3 * competition_lead_priority(text, lead) + month_priority)
     # The reader accepts HTML/plain text only. An obvious PDF, audio/video or
     # gallery lead must not consume the sole slot ahead of a readable article
@@ -892,7 +972,8 @@ def _retrieval_priority(text, title, url):
     # An official host cannot repair an unrelated title/path. Previously the
     # primary-source flag preceded topic overlap and ranked an unrelated
     # institutional overview before an article naming the actual subject.
-    return (100 * unsupported_format + discovery_priority + 10 * (shared_topics == 0), -year_matches, unrelated_period,
+    format_priority = 100 if launch_phase is None else 1000
+    return (format_priority * unsupported_format + discovery_priority + 10 * (shared_topics == 0), -year_matches, unrelated_period,
             narrower_period, -shared_topics, not primary)
 
 
@@ -1182,6 +1263,7 @@ async def collect_source_attribution(text, queries, source_url=None, *, search_r
         title = item.get("title")
         urls.setdefault(url, title[:300] if isinstance(title, str) else "")
         if item.get("retrieval_method") in {"inline_cited_primary_reference", "editorial_cited_primary_reference",
+                                           "media_origin_article_reference",
                                            "ai_selected_candidate_reference"}:
             cited_urls.add(url)
     source_limit = max_sources if (isinstance(max_sources, int) and not isinstance(max_sources, bool)

@@ -433,8 +433,8 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
                     leads = NewsSearch([*extra, *leads], status="success" if leads or extra else extra_status)
                     if not _search_can_continue(extra_status):
                         break  # Never work around a quota/credential failure.
-                # Follow only primary documents actually cited inline by a
-                # first-wave article, with a literal named-topic match. These
+                # Follow cited primary bodies or an explicit same-publisher
+                # media-origin article, with a literal named-topic match. These
                 # are retrieval leads, not evidence, extra searches or votes.
                 # The shared cache still charges every attempt against six;
                 # no recursive crawling or failure refunds are introduced.
