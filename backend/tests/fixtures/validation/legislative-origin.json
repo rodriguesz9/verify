@@ -1,0 +1,21 @@
+{
+  "scope": "synthetic acceptance fixtures only; not real legislation or truth controls",
+  "cases": [
+    {
+      "id": "synthetic_federal_law",
+      "source_url": "https://www2.camara.leg.br/legin/fed/lei/1970-1979/lei-7204-9-abril-1976-812345-norma-pl.html",
+      "legal_heading": "LEI Nº 7.204, DE 9 DE ABRIL DE 1976",
+      "origin_href": "lei-7204-9-abril-1976-812345-publicacaooriginal-56789-pl.html",
+      "target_url": "https://www2.camara.leg.br/legin/fed/lei/1970-1979/lei-7204-9-abril-1976-812345-publicacaooriginal-56789-pl.html",
+      "html": "<div id=\"content\"><h2 class=\"documentFirstHeading\">Legislação Informatizada - Dados da Norma</h2><div class=\"dadosNorma\"><h1>LEI Nº 7.204, DE 9 DE ABRIL DE 1976</h1><h1>Lei Exemplo Alfa</h1><p class=\"sessao ementa\">EMENTA: Estabelece uma regra de exemplo sintético.</p><div class=\"sessao\"><a href=\"lei-7204-9-abril-1976-812345-publicacaooriginal-56789-pl.html\"><strong>Texto - Publicação Original</strong></a><ul class=\"listaMarcada\"><li>Publicação de teste; não contém artigo.</li></ul></div></div></div>"
+    },
+    {
+      "id": "synthetic_imperial_law",
+      "source_url": "https://www2.camara.leg.br/legin/fed/leimp/1824-1899/lei-846-2-julho-1871-712345-norma-pl.html",
+      "legal_heading": "LEI Nº 846, DE 2 DE JULHO DE 1871",
+      "origin_href": "lei-846-2-julho-1871-712345-publicacaooriginal-45678-pl.html",
+      "target_url": "https://www2.camara.leg.br/legin/fed/leimp/1824-1899/lei-846-2-julho-1871-712345-publicacaooriginal-45678-pl.html",
+      "html": "<main><h2>Legislação Informatizada - Dados da Norma</h2><div class=\"dadosNorma\"><h1>LEI Nº 846, DE 2 DE JULHO DE 1871</h1><h1>Exemplo Beta</h1><p class=\"ementa\">EMENTA: Dispõe sobre um controle inventado.</p><div class=\"sessao\"><a href=\"lei-846-2-julho-1871-712345-publicacaooriginal-45678-pl.html\">Texto - Publicação Original</a></div></div></main>"
+    }
+  ]
+}

@@ -22,7 +22,7 @@ from app.services.claim_policy import input_claims, normalize_claim, RELATIVE_TI
 from app.services.source_relations import lexical_text, WORD_GROUPS, opposing_directions, percentage_transition, opposing_measurements, supporting_measurements_bound
 from app.services.launch_relations import is_launch_date_claim, launch_date_relation
 from app.services.monetary_decisions import parse_copom_claim, copom_record_relation, validate_copom_record
-from app.services.launch_body_dates import launch_body_temporal_anchor, launch_date_claim_matches_body, launch_body_dated_reading
+from app.services.launch_body_dates import launch_body_temporal_anchor, launch_date_claim_matches_body, launch_body_dated_reading, launch_body_has_scoped_plan
 from app.services.competition_relations import is_competition_outcome_claim, competition_outcome_relation, parse_competition_claim
 from app.services.typed_source_comparison import typed_review_matrix, COMPARISON_METHOD as TYPED_COMPARISON_METHOD
 from app.services.classification_body_dates import classification_body_binding
@@ -1211,12 +1211,13 @@ def _passage_guard(claim, passage, relation, stamp):
             return "Ligação do lançamento ao dia explícito do corpo inválida."
         if launch["publication_date"] > datetime.fromisoformat(stamp.replace("Z", "+00:00")).date().isoformat():
             return "Data relativa do lançamento é posterior à recuperação."
-        if launch["kind"] == "explicit_active_mission_launch_body_date":
+        if launch["kind"] in {"explicit_active_mission_launch_body_date", "explicit_mission_subject_launch_body_date"}:
             # Canonicalization owns only this completed mission/date clause.
             # It cannot erase a fiction label, conditional or adjacent denial
             # in the actual source context. Unknown scope abstains.
             launch_context = re.sub(r"\b(?:não|nao)\s+tripulad[oa]s?\b", "sem tripulação", passage["context"], flags=re.I)
-            if (_NEGATION.search(launch_context) or _uncertain_statement(launch_context)
+            if (launch_body_has_scoped_plan(passage["quote"], launch_context)
+                    or _NEGATION.search(launch_context) or _uncertain_statement(launch_context)
                     or re.search(r"\b(?:ficção|ficcao|fiction|fict[íi]ci[oa]s?|fictional|simulad[oa]s?|"
                                  r"simula[çc][ãa]o|hipot[ée]tic[oa]s?|hip[óo]tese|hypothetical|"
                                  r"inventad[oa]s?|imagin[áa]ri[oa]s?|fantasia|se|caso|if|unless)\b",

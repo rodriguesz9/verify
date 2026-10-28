@@ -1,0 +1,145 @@
+{
+  "date": "2026-10-28",
+  "scope": "post-measurement offline saved-public-document selection/discovery replay; not new factual accuracy",
+  "baseline_commit": "e0c6dc6",
+  "remote_requests": 0,
+  "models_invoked": 0,
+  "private_env_read_by_replay": false,
+  "backend_tests": {
+    "passed": 1739,
+    "failed": 0,
+    "skipped": 0,
+    "new_since_measured_commit": 32
+  },
+  "saved_documents_sha256": "2d677e8d18b94c4ae7c9833013fd16ef2e941cdfb4a002b5e6bcc7a31c6a6116",
+  "saved_bodies_manifest_sha256": "de316cfec01c09ea54dcbb0d165f1bea829314d592ca0cd6499cf2ccc590b898",
+  "identical_inputs": true,
+  "selection_replay_omits_structured_official_copom_record": true,
+  "eligible_family_counts_are_not_truth_verdicts": true,
+  "cases": [
+    {
+      "case_id": "dev12-queen_true",
+      "baseline_stored": 2,
+      "candidate_stored": 2,
+      "baseline_reread": 2,
+      "candidate_reread": 2
+    },
+    {
+      "case_id": "dev12-queen_false",
+      "baseline_stored": 2,
+      "candidate_stored": 2,
+      "baseline_reread": 2,
+      "candidate_reread": 2
+    },
+    {
+      "case_id": "dev12-dart_true",
+      "baseline_stored": 0,
+      "candidate_stored": 0,
+      "baseline_reread": 0,
+      "candidate_reread": 0
+    },
+    {
+      "case_id": "dev12-who_true",
+      "baseline_stored": 2,
+      "candidate_stored": 2,
+      "baseline_reread": 2,
+      "candidate_reread": 2
+    },
+    {
+      "case_id": "dev12-ibge_true",
+      "baseline_stored": 1,
+      "candidate_stored": 1,
+      "baseline_reread": 1,
+      "candidate_reread": 1
+    },
+    {
+      "case_id": "dev12-copom_false",
+      "baseline_stored": 0,
+      "candidate_stored": 0,
+      "baseline_reread": 0,
+      "candidate_reread": 0
+    },
+    {
+      "case_id": "dev12-copernicus_false",
+      "baseline_stored": 0,
+      "candidate_stored": 0,
+      "baseline_reread": 0,
+      "candidate_reread": 0
+    },
+    {
+      "case_id": "dev12-lei_false",
+      "baseline_stored": 0,
+      "candidate_stored": 0,
+      "baseline_reread": 0,
+      "candidate_reread": 0
+    },
+    {
+      "case_id": "dev12-webb_true",
+      "baseline_stored": 2,
+      "candidate_stored": 2,
+      "baseline_reread": 2,
+      "candidate_reread": 2
+    },
+    {
+      "case_id": "dev12-constitution_true",
+      "baseline_stored": 1,
+      "candidate_stored": 1,
+      "baseline_reread": 1,
+      "candidate_reread": 1
+    },
+    {
+      "case_id": "dev12-worldcup_false",
+      "baseline_stored": 1,
+      "candidate_stored": 1,
+      "baseline_reread": 1,
+      "candidate_reread": 1
+    },
+    {
+      "case_id": "dev12-artemis_false",
+      "baseline_stored": 1,
+      "candidate_stored": 2,
+      "baseline_reread": 1,
+      "candidate_reread": 2
+    }
+  ],
+  "changed_discovery": [
+    {
+      "case_id": "dev12-lei_false",
+      "parent_url": "https://www2.camara.leg.br/legin/fed/leimp/1824-1899/lei-3353-13-maio-1888-533138-norma-pl.html",
+      "baseline": [],
+      "candidate": [
+        {
+          "link": "https://www2.camara.leg.br/legin/fed/leimp/1824-1899/lei-3353-13-maio-1888-533138-publicacaooriginal-16269-pl.html",
+          "title": "LEI Nº 3.353, DE 13 DE MAIO DE 1888",
+          "retrieval_method": "legislative_original_reference"
+        }
+      ],
+      "target_fetched": false
+    }
+  ],
+  "implementation_sha256": {
+    "backend/app/services/launch_body_dates.py": "3685525c83b64c21e2d70d5e02aee56e7295c562fc91fbe2506e57346a5472ed",
+    "backend/app/services/source_attribution.py": "68020f777762cd2ec27d79dca1d779801560a25c4625ae1de546380d68ff3362",
+    "backend/app/services/source_corroboration.py": "03d2880424c4eeb7190a07bbf03bbe307cc67a7aa970424f65ba7b64b64de01c",
+    "backend/app/services/legislative_reference.py": "1d5d35738f533d54fcae2ca6a2427330d35073efa34b653810653ccad7a0e1df"
+  },
+  "last_real_measurement": {
+    "artifact": "validation-quality-2026-10-28.json",
+    "correct": 5,
+    "total": 12,
+    "inconclusive": 7,
+    "observed_wrong_conclusions": 0
+  },
+  "post_changes_remotely_revalidated": false,
+  "media_revalidated": false,
+  "local_readiness": {
+    "reviewed_stack_restarted": true,
+    "database_volumes_preserved": true,
+    "health_http": 200,
+    "ready_http": 200,
+    "database": "ok",
+    "frontend_app_http": 200,
+    "running_implementation_hashes_match": true,
+    "post_fix_remote_analyses_submitted": 0
+  }
+}

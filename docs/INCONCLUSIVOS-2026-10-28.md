@@ -1,5 +1,7 @@
 # Inconclusivos: recuperação e leitura contextual — 28/10/2026
 
+**Registro da etapa anterior à nova rodada real.** A medição posterior de 28/10 terminou em **5/12 acertos (41,7%)**; consultar [resultado completo e reparos seguintes](MEDICAO-E-CORRECOES-2026-10-28.md). Os valores e limites abaixo descrevem a etapa offline que precedeu essa execução.
+
 Esta revisão corrige caminhos de descoberta e comparação local. **Ainda não demonstra aumento da precisão real:** a última rodada completa continua com **7/12 acertos (58,3%), cinco inconclusivos e nenhuma conclusão errada observada**, conforme o [registro de 27/10](MELHORIAS-E-TESTES-2026-10-27.md). Os doze controles já são conhecidos e não constituem avaliação independente.
 
 ## Causa encontrada

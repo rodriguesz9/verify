@@ -1,6 +1,6 @@
 """Literal completed-launch body dates, never a date inferred from URL/title.
 
-Closed PT passive and active mission grammars connect one completed launch
+Closed PT passive, agency-active and mission-subject grammars connect one completed launch
 to an attached explicit relative weekday/day. Publication must come from the
 caller's publication metadata. A dated internal reading requires revalidation
 of the entire literal BODY frame; it never replaces that original quote.
@@ -75,6 +75,26 @@ _ACTIVE_UNSAFE = re.compile(
     r"publicad[oa]|atualizad[oa])\b"
     r"|[;!?\"“”«»'‘’]", re.I,
 )
+_FIRST_FLIGHT_COMPLEMENT = (
+    r",\s+(?i:no primeiro voo do (?:super)?foguete)\s+"
+    + _FLIGHT_NAME + r"(?:\s+\(" + _PROPER_NAME + r"\))?"
+    + r"\s+(?i:com a cápsula)\s+" + _FLIGHT_NAME
+    + r"(?:,\s+(?i:destinada a levar humanos de volta)\s+(?i:à|ao)\s+" + _PROPER_NAME + r")?,\s*"
+)
+_MISSION_SUBJECT_FRAME = re.compile(
+    r"^\s*(?:(?i:a|o)\s+)?(?i:missão)\s+(?P<name>" + _NUMBERED_MISSION + r")"
+    + r"(?P<complement>" + _FIRST_FLIGHT_COMPLEMENT + r")?\s+"
+    + r"(?P<verb>(?i:partiu|decolou))\s+(?P<expression>" + _ACTIVE_RELATIVE + r")\s*\.?\s*$"
+)
+_PLANNING_LABEL = re.compile(
+    r"(?:^|[.!?\n]\s*)(?:previs[ãa]o(?:\s+de\s+lan[çc]amento)?"
+    r"|plano(?:\s+para\s+o\s+voo|\s+do\s+voo|\s+de\s+lan[çc]amento)?"
+    r"|planejamento(?:\s+do\s+voo|\s+de\s+lan[çc]amento)?|forecast|launch\s+plan)\s*:\s*$", re.I,
+)
+_PLANNED_MISSION = re.compile(
+    r"^\s*(?i:a missão)(?:\s+(?P<name>" + _NUMBERED_MISSION + r"))?\s+"
+    r"(?i:será lançada|vai ser lançada|vai decolar|irá decolar|decolará)\b[^.!?\n]{0,180}[.!?]?\s*$"
+)
 
 
 def _active_mission(quote):
@@ -86,6 +106,59 @@ def _active_mission(quote):
     return (match, identity) if identity is not None else None
 
 
+def _mission_subject(quote):
+    """One completed liftoff; departure needs explicit first-flight context.
+
+    A bare 'partiu' may describe transport to a pad. Require the closed
+    nominal rocket/capsule complement for it; unknown appositives, actions
+    and destinations cannot be stripped to make a match. The sole parsed
+    positive predicate is the only occurrence exempt from the unsafe veto.
+    """
+    if (not isinstance(quote, str) or not 20 <= len(quote) <= 1200
+            or _ACTIVE_UNSAFE.search(quote)):
+        return None
+    match = _MISSION_SUBJECT_FRAME.fullmatch(quote)
+    if match is None or (match["verb"].casefold() == "partiu" and not match["complement"]):
+        return None
+    if any(found.span() != match.span("verb") for found in _OUT_OF_SCOPE.finditer(quote)):
+        return None
+    identity = _object_identity(match["name"])
+    return (match, identity) if identity is not None else None
+
+
+def launch_body_has_scoped_plan(quote, context):
+    """A local forecast label or the same mission's adjacent planned launch.
+
+    Future purpose and a different named mission do not qualify the completed
+    event. Only a closed launch plan about this mission can defeat it; never
+    drop that context merely because an internal date reading was generated.
+    """
+    frame = _active_mission(quote) or _mission_subject(quote)
+    if frame is None or not isinstance(context, str):
+        return False
+    def same_mission_plan(statement):
+        match = _PLANNED_MISSION.fullmatch(statement)
+        return bool(match and (match["name"] is None or _object_identity(match["name"]) == frame[1]))
+
+    parts = context.split(quote)
+    if len(parts) == 1:
+        # No reliable placement: a scoped plan must not become harmless just
+        # because the caller omitted the quotation from the context.
+        return bool(_PLANNING_LABEL.search(context) or any(same_mission_plan(statement)
+                    for statement in re.split(r"(?<=[.!?])\s+", context.strip())))
+    for before, after in zip(parts, parts[1:]):
+        if _PLANNING_LABEL.search(before):
+            return True
+        # Only immediately adjacent statements own this limited relation.
+        # When the same quote repeats, any planned occurrence makes its
+        # placement ambiguous; repetition cannot erase the governing plan.
+        adjacent = (re.split(r"(?<=[.!?])\s+", before.strip())[-1],
+                    re.split(r"(?<=[.!?])\s+", after.strip())[0])
+        if any(same_mission_plan(statement) for statement in adjacent):
+            return True
+    return False
+
+
 def launch_date_claim_matches_body(claim, quote):
     """Restrict relative-date support to the same named, date-only claim.
 
@@ -95,7 +168,7 @@ def launch_date_claim_matches_body(claim, quote):
     """
     if not isinstance(claim, str) or not isinstance(quote, str):
         return False
-    active = _active_mission(quote)
+    active = _active_mission(quote) or _mission_subject(quote)
     if active is not None:
         # The object is explicitly a numbered mission, not a vehicle inferred
         # to stand for it. The existing parser owns Roman/numeric equivalence.
@@ -130,14 +203,17 @@ def launch_body_temporal_anchor(quote, publication_date):
         published = date.fromisoformat(publication_date)
     except ValueError:
         return None
-    if _OUT_OF_SCOPE.search(quote):
+    subject = _mission_subject(quote)
+    if _OUT_OF_SCOPE.search(quote) and subject is None:
         return None
     match = _FRAME.fullmatch(quote)
     active = _active_mission(quote) if match is None else None
-    if match is None and active is None:
+    if match is None and active is None and subject is None:
         return None
     if active is not None:
         match = active[0]
+    elif subject is not None:
+        match = subject[0]
     elif (match["intro_name"] and " ".join(match["intro_name"].casefold().split())
             != " ".join(match["name"].casefold().split())):
         return None
@@ -150,6 +226,9 @@ def launch_body_temporal_anchor(quote, publication_date):
     if active is not None:
         anchor.update(kind="explicit_active_mission_launch_body_date",
                       mission_identity={"program": active[1][0], "number": active[1][1]})
+    elif subject is not None:
+        anchor.update(kind="explicit_mission_subject_launch_body_date",
+                      mission_identity={"program": subject[1][0], "number": subject[1][1]})
     return anchor
 
 
@@ -167,7 +246,7 @@ def launch_body_dated_reading(quote, anchor):
         return None
     if anchor["kind"] == "explicit_launch_body_date":
         return quote.replace(anchor["expression"], "em " + anchor["publication_date"], 1)
-    active = _active_mission(quote)
+    active = _active_mission(quote) or _mission_subject(quote)
     if active is None:
         return None
     reading = "A missão " + active[0]["name"] + " foi lançada em " + anchor["publication_date"] + "."

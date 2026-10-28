@@ -1,0 +1,1329 @@
+{
+  "date": "2026-10-28",
+  "generated_at": "2026-10-28T10:51:56.358443+00:00",
+  "scope": "COMPLETE twelve known development controls; not blind or representative general accuracy",
+  "source_commit": "e0c6dc6",
+  "source_sha256": "1013d26497876341c0abdb539234b08bd57ed000a9d1d1060d3bb954817cb3df",
+  "freeze_contract_sha256": "d8d724b556f8b44dd4958d9016c9ae0c78f69e6b86b026f295e13ddb18e48d0c",
+  "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+  "record_contract_hashes_match_round_manifest": true,
+  "round_manifest_sha256": "ab54531e624e63699f332b31bddc2c4e389db4c4bcd60384bb7fc9da0762f718",
+  "all_twelve_terminal": true,
+  "one_record_per_case": true,
+  "freeze_verified_after_all_twelve": true,
+  "freeze_verification_note": "round_contract.verify_freeze succeeded in the frozen running QA container after all twelve reports were observed and before any post-measurement code change; end record preserved.",
+  "labels_used_only_by_offline_aggregation": true,
+  "metrics": {
+    "total": 12,
+    "correct": 5,
+    "wrong": 0,
+    "inconclusive": 7,
+    "terminal_errors": 0,
+    "pending": 0,
+    "correct_fraction_including_inconclusive_and_errors": 0.4166666666666667,
+    "by_expected_class": {
+      "supported": {
+        "total": 6,
+        "correct": 3,
+        "wrong": 0,
+        "inconclusive": 3,
+        "terminal_errors": 0,
+        "pending": 0
+      },
+      "refuted": {
+        "total": 6,
+        "correct": 2,
+        "wrong": 0,
+        "inconclusive": 4,
+        "terminal_errors": 0,
+        "pending": 0
+      }
+    }
+  },
+  "previous_same_twelve": {
+    "date": "2026-10-27",
+    "source_commit": "a658ef0",
+    "source_file": "validation-quality-2026-10-27.json",
+    "source_file_sha256": "25de2a72ec098add26ec75bad00c76195307ead006f01dd327efbfb5ffc57679",
+    "correct": 7,
+    "total": 12,
+    "fraction": 0.5833333333333334,
+    "gained_correct": [
+      "dev12-queen_false"
+    ],
+    "lost_correct": [
+      "dev12-lei_false",
+      "dev12-ibge_true",
+      "dev12-constitution_true"
+    ],
+    "unchanged_actual_count": 8,
+    "net_correct_change": -2,
+    "code_effect_isolated": false
+  },
+  "submission_counts": {
+    "browser_ui": 12
+  },
+  "reports_observed_in_browser": 12,
+  "ui_proof_note": "Explicit per-case operator observation files and screenshot hashes; instrumentation labels alone do not count as UI.",
+  "coverage_entries_not_transport_sends": {
+    "research": {
+      "gemini": {
+        "success": 8
+      }
+    },
+    "comparison": {
+      "gemini": {
+        "not_requested": 12
+      },
+      "openrouter": {
+        "success": 4,
+        "not_requested": 8
+      }
+    }
+  },
+  "observed_models": {
+    "openrouter": [
+      "dots-studio/dots-3-note-preview:free",
+      "liquid/lfm-2.5-2.6b:free",
+      "nvidia/nemotron-3.5-super-vl:free"
+    ],
+    "gemini": [
+      "gemini-3.5-flash-lite"
+    ]
+  },
+  "median_elapsed_seconds": 29.154,
+  "p95_nearest_rank_seconds": 57.853,
+  "timed_terminal_cases": 12,
+  "media_revalidated": false,
+  "production_deployment_validated": false,
+  "limits": [
+    "Known development controls; no independent general accuracy claim.",
+    "No pooling of versions or selection of the best historical round.",
+    "Remote source availability, search results and model responses can vary.",
+    "Budget caps and provider coverage are reported separately from correctness.",
+    "No image, audio or video accuracy inferred from these twelve texts."
+  ],
+  "cases": [
+    {
+      "id": "dev12-who_true",
+      "original_case_id": "who_true",
+      "expected": "supported",
+      "actual": "supported",
+      "previous_actual": "supported",
+      "outcome": "correct",
+      "status": "completed",
+      "elapsed_seconds": 38.682,
+      "source_sha256": "1013d26497876341c0abdb539234b08bd57ed000a9d1d1060d3bb954817cb3df",
+      "freeze_contract_sha256": "d8d724b556f8b44dd4958d9016c9ae0c78f69e6b86b026f295e13ddb18e48d0c",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "dac1dd9cd8f33cf02712e1a9af1c3def882d598964f2b8b8138c8efa710e65c2",
+      "submission": "browser_ui",
+      "report_observed": true,
+      "screenshot_file": "ui-who_true.jpg",
+      "screenshot_sha256": "3d3f75066692f9ef8397a19597e6bbb27d17eea73218d64e0b34c07e74c7be2b",
+      "ui_proof_sha256": "2f54d1eec33e32eb94501158d03fba9242b73478c25b3bf66172013c3b188234",
+      "ui_observation_time": "2026-10-28T10:39:12.933Z",
+      "observed_heading": "Verificada como verdadeira nas fontes consultadas",
+      "comparison_status": "success",
+      "comparison_coverage": {
+        "complete_source_review": true,
+        "max_sources": 3,
+        "max_prompt_body_characters": 18000,
+        "omitted_claim_count": 0,
+        "selected_source_count": 2,
+        "grounded_evidence_count": 3,
+        "complete_claim_coverage": true,
+        "source_review_protocol": "claim_source_review_v2",
+        "assessed_claim_count": 1,
+        "literal_claim_count": 1,
+        "selected_claim_count": 1,
+        "eligible_family_count": 2,
+        "max_claims": 5,
+        "expected_source_pair_count": 2,
+        "comparison_method": "model_source_review_v2"
+      },
+      "comparison_provider_coverage": {
+        "gemini": {
+          "decision_role": "grounded_comparison_assistant",
+          "status": "not_requested"
+        },
+        "openrouter": {
+          "complete_source_review": true,
+          "free_only": true,
+          "expected_source_pair_count": 2,
+          "reviewed_source_pair_count": 2,
+          "attempt_wait_seconds": 120,
+          "model_used": "dots-studio/dots-3-note-preview:free",
+          "decision_role": "grounded_comparison_assistant",
+          "review_protocol": "claim_source_review_v2",
+          "status": "success",
+          "elapsed_seconds": 21.988
+        }
+      },
+      "research_status": "not_requested",
+      "research_coverage": {
+        "status": "not_requested"
+      },
+      "research_provider_coverage": {},
+      "eligible_source_urls": [
+        "https://www.cnnbrasil.com.br/saude/5-anos-da-covid-19-relembre-o-historico-desde-1o-caso-ate-fim-da-emergencia/",
+        "https://www.who.int/pt/news-room/speeches/item/who-director-general-s-opening-remarks-at-the-media-briefing-on-covid-19---11-march-2020"
+      ],
+      "accepted_source_urls": [
+        "https://www.cnnbrasil.com.br/saude/5-anos-da-covid-19-relembre-o-historico-desde-1o-caso-ate-fim-da-emergencia/",
+        "https://www.who.int/pt/news-room/speeches/item/who-director-general-s-opening-remarks-at-the-media-briefing-on-covid-19---11-march-2020"
+      ],
+      "accepted_evidence_count": 3,
+      "excluded_evidence_count": 0,
+      "search_statuses": [
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "timeout": 1,
+        "error": 0,
+        "unsupported_content": 0,
+        "blocked_or_unavailable": 2,
+        "oversize": 0
+      },
+      "cumulative_fetch_attempt_count": 6,
+      "direct_reference_recovery": {
+        "max_leads": 2,
+        "selected_lead_count": 0,
+        "max_depth": 1,
+        "decision_role": "retrieval_only_no_truth_vote"
+      }
+    },
+    {
+      "id": "dev12-worldcup_false",
+      "original_case_id": "worldcup_false",
+      "expected": "refuted",
+      "actual": "unverified",
+      "previous_actual": "unverified",
+      "outcome": "inconclusive",
+      "status": "completed",
+      "elapsed_seconds": 23.318,
+      "source_sha256": "1013d26497876341c0abdb539234b08bd57ed000a9d1d1060d3bb954817cb3df",
+      "freeze_contract_sha256": "d8d724b556f8b44dd4958d9016c9ae0c78f69e6b86b026f295e13ddb18e48d0c",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "a6f761c998a81a9857996103489a8aceeec21e502535706d2feb48ef4fd9e883",
+      "submission": "browser_ui",
+      "report_observed": true,
+      "screenshot_file": "ui-worldcup_false.jpg",
+      "screenshot_sha256": "1e8557324221e03fc4330d0dc78d7b9cf7b2e0720c54d444bcdedf8267e4ef76",
+      "ui_proof_sha256": "f11de0662571456c9695ae71bca7f31b50548a4a8ecc44ae0f71871e31a64db3",
+      "ui_observation_time": "2026-10-28T10:40:16.176Z",
+      "observed_heading": "Análise inconclusiva",
+      "comparison_status": "not_requested",
+      "comparison_coverage": {
+        "complete_source_review": false,
+        "max_sources": 3,
+        "max_prompt_body_characters": 18000,
+        "omitted_claim_count": 0,
+        "selected_source_count": 1,
+        "grounded_evidence_count": 0,
+        "complete_claim_coverage": false,
+        "source_review_protocol": "claim_source_review_v2",
+        "assessed_claim_count": 1,
+        "literal_claim_count": 1,
+        "selected_claim_count": 1,
+        "eligible_family_count": 1,
+        "max_claims": 5,
+        "expected_source_pair_count": 1,
+        "comparison_method": "not_requested"
+      },
+      "comparison_provider_coverage": {
+        "gemini": {
+          "decision_role": "grounded_comparison_assistant",
+          "status": "not_requested"
+        },
+        "openrouter": {
+          "free_only": true,
+          "decision_role": "grounded_comparison_assistant",
+          "status": "not_requested"
+        }
+      },
+      "research_status": "success",
+      "research_coverage": {
+        "scope_diversified_query_executed_count": 0,
+        "deterministic_gap_query_executed_count": 0,
+        "wait_budget_seconds": 60.0,
+        "planned_query_count": 2,
+        "executed_query_count": 2,
+        "scope_diversified_query_planned_count": 0,
+        "deterministic_gap_query_count": 0,
+        "planning_budget_seconds": 60,
+        "skipped_duplicate_query_count": 0,
+        "max_queries": 2,
+        "rejected_operation_count": 0,
+        "status": "success",
+        "selected_lead_count": 2,
+        "elapsed_seconds": 1.868
+      },
+      "research_provider_coverage": {
+        "gemini": {
+          "attempt_wait_seconds": 29.98350000000005,
+          "model_used": "gemini-3.5-flash-lite",
+          "status": "success",
+          "elapsed_seconds": 1.835
+        }
+      },
+      "eligible_source_urls": [
+        "https://g1.globo.com/sc/santa-catarina/noticia/2014/07/alemanha-vence-copa-do-mundo-2014-e-e-tetracampea.html"
+      ],
+      "accepted_source_urls": [],
+      "accepted_evidence_count": 0,
+      "excluded_evidence_count": 0,
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "timeout": 0,
+        "error": 0,
+        "unsupported_content": 0,
+        "blocked_or_unavailable": 3,
+        "oversize": 0
+      },
+      "cumulative_fetch_attempt_count": 10,
+      "direct_reference_recovery": {
+        "max_leads": 2,
+        "selected_lead_count": 0,
+        "max_depth": 1,
+        "decision_role": "retrieval_only_no_truth_vote"
+      }
+    },
+    {
+      "id": "dev12-copernicus_false",
+      "original_case_id": "copernicus_false",
+      "expected": "refuted",
+      "actual": "unverified",
+      "previous_actual": "unverified",
+      "outcome": "inconclusive",
+      "status": "completed",
+      "elapsed_seconds": 24.478,
+      "source_sha256": "1013d26497876341c0abdb539234b08bd57ed000a9d1d1060d3bb954817cb3df",
+      "freeze_contract_sha256": "d8d724b556f8b44dd4958d9016c9ae0c78f69e6b86b026f295e13ddb18e48d0c",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "afa1287bb2b424c2dbf74b8e4899653545664d2d495ff145ce2231ddbc6b710e",
+      "submission": "browser_ui",
+      "report_observed": true,
+      "screenshot_file": "ui-copernicus_false.jpg",
+      "screenshot_sha256": "9182735824404d5098e037f3a0d6e829ca6440860676245aed5747fafce0bfa7",
+      "ui_proof_sha256": "1347d1f05d1624faf3fafc24f362fc89fba1cce31f2436bc9dffdf920981403b",
+      "ui_observation_time": "2026-10-28T10:41:20.840Z",
+      "observed_heading": "Análise inconclusiva",
+      "comparison_status": "not_requested",
+      "comparison_coverage": {
+        "complete_source_review": false,
+        "max_sources": 3,
+        "max_prompt_body_characters": 18000,
+        "omitted_claim_count": 0,
+        "selected_source_count": 0,
+        "grounded_evidence_count": 0,
+        "complete_claim_coverage": false,
+        "source_review_protocol": "claim_source_review_v2",
+        "assessed_claim_count": 1,
+        "literal_claim_count": 1,
+        "selected_claim_count": 1,
+        "eligible_family_count": 0,
+        "max_claims": 5,
+        "expected_source_pair_count": 0,
+        "comparison_method": "not_requested"
+      },
+      "comparison_provider_coverage": {
+        "gemini": {
+          "decision_role": "grounded_comparison_assistant",
+          "status": "not_requested"
+        },
+        "openrouter": {
+          "free_only": true,
+          "decision_role": "grounded_comparison_assistant",
+          "status": "not_requested"
+        }
+      },
+      "research_status": "success",
+      "research_coverage": {
+        "scope_diversified_query_executed_count": 0,
+        "deterministic_gap_query_executed_count": 0,
+        "wait_budget_seconds": 60.0,
+        "planned_query_count": 2,
+        "executed_query_count": 2,
+        "scope_diversified_query_planned_count": 0,
+        "deterministic_gap_query_count": 0,
+        "planning_budget_seconds": 60,
+        "skipped_duplicate_query_count": 0,
+        "max_queries": 2,
+        "rejected_operation_count": 0,
+        "status": "success",
+        "selected_lead_count": 1,
+        "elapsed_seconds": 1.943
+      },
+      "research_provider_coverage": {
+        "gemini": {
+          "attempt_wait_seconds": 29.978000000000065,
+          "model_used": "gemini-3.5-flash-lite",
+          "status": "success",
+          "elapsed_seconds": 1.899
+        }
+      },
+      "eligible_source_urls": [],
+      "accepted_source_urls": [],
+      "accepted_evidence_count": 0,
+      "excluded_evidence_count": 0,
+      "search_statuses": [
+        "success",
+        "success",
+        "no_results",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "timeout": 0,
+        "error": 0,
+        "unsupported_content": 0,
+        "blocked_or_unavailable": 6,
+        "oversize": 0
+      },
+      "cumulative_fetch_attempt_count": 10,
+      "direct_reference_recovery": {
+        "max_leads": 2,
+        "selected_lead_count": 0,
+        "max_depth": 1,
+        "decision_role": "retrieval_only_no_truth_vote"
+      }
+    },
+    {
+      "id": "dev12-copom_false",
+      "original_case_id": "copom_false",
+      "expected": "refuted",
+      "actual": "refuted",
+      "previous_actual": "refuted",
+      "outcome": "correct",
+      "status": "completed",
+      "elapsed_seconds": 20.929,
+      "source_sha256": "1013d26497876341c0abdb539234b08bd57ed000a9d1d1060d3bb954817cb3df",
+      "freeze_contract_sha256": "d8d724b556f8b44dd4958d9016c9ae0c78f69e6b86b026f295e13ddb18e48d0c",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "88ace08dfe5a97dceab7c835515e66889ef19c03d33298969954e7ffa7bc3b39",
+      "submission": "browser_ui",
+      "report_observed": true,
+      "screenshot_file": "ui-copom_false.jpg",
+      "screenshot_sha256": "eefc016183d5afcd7d4d1e8f49eedbf8ad0bbd10c93f24823a8f697a8940ab82",
+      "ui_proof_sha256": "41f310f26e7e27d4d9fefd87d3d63f9d799a86159fcb143ad103518b66a8d7b9",
+      "ui_observation_time": "2026-10-28T10:42:13.457Z",
+      "observed_heading": "Verificada como falsa no registro original",
+      "comparison_status": "success",
+      "comparison_coverage": {
+        "complete_source_review": true,
+        "max_sources": 3,
+        "max_prompt_body_characters": 18000,
+        "omitted_claim_count": 0,
+        "selected_source_count": 1,
+        "grounded_evidence_count": 1,
+        "complete_claim_coverage": true,
+        "source_review_protocol": "claim_source_review_v2",
+        "assessed_claim_count": 1,
+        "literal_claim_count": 1,
+        "selected_claim_count": 1,
+        "eligible_family_count": 1,
+        "max_claims": 5,
+        "expected_source_pair_count": 1,
+        "comparison_method": "literal_typed_rules_v1"
+      },
+      "comparison_provider_coverage": {
+        "gemini": {
+          "decision_role": "grounded_comparison_assistant",
+          "status": "not_requested"
+        },
+        "openrouter": {
+          "free_only": true,
+          "decision_role": "grounded_comparison_assistant",
+          "status": "not_requested"
+        }
+      },
+      "research_status": "not_requested",
+      "research_coverage": {
+        "status": "not_requested"
+      },
+      "research_provider_coverage": {},
+      "eligible_source_urls": [],
+      "accepted_source_urls": [],
+      "accepted_evidence_count": 1,
+      "excluded_evidence_count": 0,
+      "search_statuses": [
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "timeout": 0,
+        "error": 0,
+        "unsupported_content": 0,
+        "blocked_or_unavailable": 1,
+        "oversize": 0
+      },
+      "cumulative_fetch_attempt_count": 6,
+      "direct_reference_recovery": {
+        "max_leads": 2,
+        "selected_lead_count": 0,
+        "max_depth": 1,
+        "decision_role": "retrieval_only_no_truth_vote"
+      }
+    },
+    {
+      "id": "dev12-lei_false",
+      "original_case_id": "lei_false",
+      "expected": "refuted",
+      "actual": "unverified",
+      "previous_actual": "refuted",
+      "outcome": "inconclusive",
+      "status": "completed",
+      "elapsed_seconds": 42.555,
+      "source_sha256": "1013d26497876341c0abdb539234b08bd57ed000a9d1d1060d3bb954817cb3df",
+      "freeze_contract_sha256": "d8d724b556f8b44dd4958d9016c9ae0c78f69e6b86b026f295e13ddb18e48d0c",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "25a9b31a1238dd3470dd611c4a82ee82dfff51d126f53692c744a2a5546a0264",
+      "submission": "browser_ui",
+      "report_observed": true,
+      "screenshot_file": "ui-lei_false.jpg",
+      "screenshot_sha256": "da15a4f67cd0e5e51828b550f9e02a0195545e988886c062b0653bf1726a6179",
+      "ui_proof_sha256": "dbfa3c61591af277f5311516ff8a3d4a9a9027fa2138ebd6fcc3ac255c13b09f",
+      "ui_observation_time": "2026-10-28T10:43:46.466Z",
+      "observed_heading": "Análise inconclusiva",
+      "comparison_status": "not_requested",
+      "comparison_coverage": {
+        "complete_source_review": false,
+        "max_sources": 3,
+        "max_prompt_body_characters": 18000,
+        "omitted_claim_count": 0,
+        "selected_source_count": 0,
+        "grounded_evidence_count": 0,
+        "complete_claim_coverage": false,
+        "source_review_protocol": "claim_source_review_v2",
+        "assessed_claim_count": 1,
+        "literal_claim_count": 1,
+        "selected_claim_count": 1,
+        "eligible_family_count": 0,
+        "max_claims": 5,
+        "expected_source_pair_count": 0,
+        "comparison_method": "not_requested"
+      },
+      "comparison_provider_coverage": {
+        "gemini": {
+          "decision_role": "grounded_comparison_assistant",
+          "status": "not_requested"
+        },
+        "openrouter": {
+          "free_only": true,
+          "decision_role": "grounded_comparison_assistant",
+          "status": "not_requested"
+        }
+      },
+      "research_status": "success",
+      "research_coverage": {
+        "scope_diversified_query_executed_count": 0,
+        "deterministic_gap_query_executed_count": 0,
+        "wait_budget_seconds": 60.0,
+        "planned_query_count": 2,
+        "executed_query_count": 2,
+        "scope_diversified_query_planned_count": 0,
+        "deterministic_gap_query_count": 0,
+        "planning_budget_seconds": 60,
+        "skipped_duplicate_query_count": 0,
+        "max_queries": 2,
+        "rejected_operation_count": 0,
+        "status": "success",
+        "selected_lead_count": 2,
+        "elapsed_seconds": 2.423
+      },
+      "research_provider_coverage": {
+        "gemini": {
+          "attempt_wait_seconds": 29.925500000000056,
+          "model_used": "gemini-3.5-flash-lite",
+          "status": "success",
+          "elapsed_seconds": 2.274
+        }
+      },
+      "eligible_source_urls": [],
+      "accepted_source_urls": [],
+      "accepted_evidence_count": 0,
+      "excluded_evidence_count": 0,
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "timeout": 0,
+        "error": 0,
+        "unsupported_content": 1,
+        "blocked_or_unavailable": 0,
+        "oversize": 0
+      },
+      "cumulative_fetch_attempt_count": 10,
+      "direct_reference_recovery": {
+        "max_leads": 2,
+        "selected_lead_count": 0,
+        "max_depth": 1,
+        "decision_role": "retrieval_only_no_truth_vote"
+      }
+    },
+    {
+      "id": "dev12-webb_true",
+      "original_case_id": "webb_true",
+      "expected": "supported",
+      "actual": "supported",
+      "previous_actual": "supported",
+      "outcome": "correct",
+      "status": "completed",
+      "elapsed_seconds": 21.098,
+      "source_sha256": "1013d26497876341c0abdb539234b08bd57ed000a9d1d1060d3bb954817cb3df",
+      "freeze_contract_sha256": "d8d724b556f8b44dd4958d9016c9ae0c78f69e6b86b026f295e13ddb18e48d0c",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "2cb51a9751d90da0e1b82850b23edcf4e56011a41f090dcad0f8d13cdda766d5",
+      "submission": "browser_ui",
+      "report_observed": true,
+      "screenshot_file": "ui-webb_true.jpg",
+      "screenshot_sha256": "918b18f0ae2e8bc8fc43ef06de571bffb0dbf30b94621342e99c6a87db1b1e66",
+      "ui_proof_sha256": "18c566796be4f77a4cbb6b7a216934d7ef8654c08a5b86b2337818a80727416b",
+      "ui_observation_time": "2026-10-28T10:45:08.401Z",
+      "observed_heading": "Verificada como verdadeira nas fontes consultadas",
+      "comparison_status": "success",
+      "comparison_coverage": {
+        "complete_source_review": true,
+        "max_sources": 3,
+        "max_prompt_body_characters": 18000,
+        "omitted_claim_count": 0,
+        "selected_source_count": 2,
+        "grounded_evidence_count": 2,
+        "complete_claim_coverage": true,
+        "source_review_protocol": "claim_source_review_v2",
+        "assessed_claim_count": 1,
+        "literal_claim_count": 1,
+        "selected_claim_count": 1,
+        "eligible_family_count": 2,
+        "max_claims": 5,
+        "expected_source_pair_count": 2,
+        "comparison_method": "model_source_review_v2"
+      },
+      "comparison_provider_coverage": {
+        "gemini": {
+          "decision_role": "grounded_comparison_assistant",
+          "status": "not_requested"
+        },
+        "openrouter": {
+          "complete_source_review": true,
+          "free_only": true,
+          "expected_source_pair_count": 2,
+          "reviewed_source_pair_count": 2,
+          "attempt_wait_seconds": 120,
+          "model_used": "nvidia/nemotron-3.5-super-vl:free",
+          "decision_role": "grounded_comparison_assistant",
+          "review_protocol": "claim_source_review_v2",
+          "status": "success",
+          "elapsed_seconds": 13.27
+        }
+      },
+      "research_status": "not_requested",
+      "research_coverage": {
+        "status": "not_requested"
+      },
+      "research_provider_coverage": {},
+      "eligible_source_urls": [
+        "https://brasilescola.uol.com.br/fisica/james-webb-sucessor-hubble.htm",
+        "https://www.cnnbrasil.com.br/economia/money/tecnologia/saiba-o-que-o-telescopio-james-webb-da-nasa-revelou-ate-agora/"
+      ],
+      "accepted_source_urls": [
+        "https://brasilescola.uol.com.br/fisica/james-webb-sucessor-hubble.htm",
+        "https://www.cnnbrasil.com.br/economia/money/tecnologia/saiba-o-que-o-telescopio-james-webb-da-nasa-revelou-ate-agora/"
+      ],
+      "accepted_evidence_count": 2,
+      "excluded_evidence_count": 0,
+      "search_statuses": [
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "timeout": 0,
+        "error": 0,
+        "unsupported_content": 0,
+        "blocked_or_unavailable": 3,
+        "oversize": 0
+      },
+      "cumulative_fetch_attempt_count": 6,
+      "direct_reference_recovery": {
+        "max_leads": 2,
+        "selected_lead_count": 0,
+        "max_depth": 1,
+        "decision_role": "retrieval_only_no_truth_vote"
+      }
+    },
+    {
+      "id": "dev12-artemis_false",
+      "original_case_id": "artemis_false",
+      "expected": "refuted",
+      "actual": "unverified",
+      "previous_actual": "unverified",
+      "outcome": "inconclusive",
+      "status": "completed",
+      "elapsed_seconds": 41.011,
+      "source_sha256": "1013d26497876341c0abdb539234b08bd57ed000a9d1d1060d3bb954817cb3df",
+      "freeze_contract_sha256": "d8d724b556f8b44dd4958d9016c9ae0c78f69e6b86b026f295e13ddb18e48d0c",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "e4788552f3a8d145e4a6e663c5e44b10a7133953d55a9958b7304cc73075ddce",
+      "submission": "browser_ui",
+      "report_observed": true,
+      "screenshot_file": "ui-artemis_false.jpg",
+      "screenshot_sha256": "1e8557324221e03fc4330d0dc78d7b9cf7b2e0720c54d444bcdedf8267e4ef76",
+      "ui_proof_sha256": "290bd4c05db313f9fd48e544b017094e9fa44557ef1aff6795911bab58465abc",
+      "ui_observation_time": "2026-10-28T10:46:08.760Z",
+      "observed_heading": "Análise inconclusiva",
+      "comparison_status": "not_requested",
+      "comparison_coverage": {
+        "complete_source_review": false,
+        "max_sources": 3,
+        "max_prompt_body_characters": 18000,
+        "omitted_claim_count": 0,
+        "selected_source_count": 1,
+        "grounded_evidence_count": 0,
+        "complete_claim_coverage": false,
+        "source_review_protocol": "claim_source_review_v2",
+        "assessed_claim_count": 1,
+        "literal_claim_count": 1,
+        "selected_claim_count": 1,
+        "eligible_family_count": 1,
+        "max_claims": 5,
+        "expected_source_pair_count": 1,
+        "comparison_method": "not_requested"
+      },
+      "comparison_provider_coverage": {
+        "gemini": {
+          "decision_role": "grounded_comparison_assistant",
+          "status": "not_requested"
+        },
+        "openrouter": {
+          "free_only": true,
+          "decision_role": "grounded_comparison_assistant",
+          "status": "not_requested"
+        }
+      },
+      "research_status": "success",
+      "research_coverage": {
+        "scope_diversified_query_executed_count": 0,
+        "deterministic_gap_query_executed_count": 0,
+        "wait_budget_seconds": 60.0,
+        "planned_query_count": 2,
+        "executed_query_count": 2,
+        "scope_diversified_query_planned_count": 0,
+        "deterministic_gap_query_count": 0,
+        "planning_budget_seconds": 60,
+        "skipped_duplicate_query_count": 0,
+        "max_queries": 2,
+        "rejected_operation_count": 0,
+        "status": "success",
+        "selected_lead_count": 2,
+        "elapsed_seconds": 19.82
+      },
+      "research_provider_coverage": {
+        "gemini": {
+          "attempt_wait_seconds": 29.97199999999998,
+          "model_used": "gemini-3.5-flash-lite",
+          "status": "success",
+          "elapsed_seconds": 19.764
+        }
+      },
+      "eligible_source_urls": [
+        "https://www.nasa.gov/mission/artemis-i/"
+      ],
+      "accepted_source_urls": [],
+      "accepted_evidence_count": 0,
+      "excluded_evidence_count": 0,
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "timeout": 0,
+        "error": 0,
+        "unsupported_content": 0,
+        "blocked_or_unavailable": 4,
+        "oversize": 0
+      },
+      "cumulative_fetch_attempt_count": 10,
+      "direct_reference_recovery": {
+        "max_leads": 2,
+        "selected_lead_count": 2,
+        "max_depth": 1,
+        "decision_role": "retrieval_only_no_truth_vote"
+      }
+    },
+    {
+      "id": "dev12-queen_true",
+      "original_case_id": "queen_true",
+      "expected": "supported",
+      "actual": "supported",
+      "previous_actual": "supported",
+      "outcome": "correct",
+      "status": "completed",
+      "elapsed_seconds": 30.48,
+      "source_sha256": "1013d26497876341c0abdb539234b08bd57ed000a9d1d1060d3bb954817cb3df",
+      "freeze_contract_sha256": "d8d724b556f8b44dd4958d9016c9ae0c78f69e6b86b026f295e13ddb18e48d0c",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "3750b224994bb1e6e70cefb2b5c7d9420284135ac1533a6c9852bbbd06bfc9fa",
+      "submission": "browser_ui",
+      "report_observed": true,
+      "screenshot_file": "ui-queen_true.jpg",
+      "screenshot_sha256": "918b18f0ae2e8bc8fc43ef06de571bffb0dbf30b94621342e99c6a87db1b1e66",
+      "ui_proof_sha256": "7c41497243e6f49f6be06298dd9835ae77a0a8d38d5861c08459254040d22978",
+      "ui_observation_time": "2026-10-28T10:46:46.178Z",
+      "observed_heading": "Verificada como verdadeira nas fontes consultadas",
+      "comparison_status": "success",
+      "comparison_coverage": {
+        "complete_source_review": true,
+        "max_sources": 3,
+        "max_prompt_body_characters": 18000,
+        "omitted_claim_count": 0,
+        "selected_source_count": 2,
+        "grounded_evidence_count": 2,
+        "complete_claim_coverage": true,
+        "source_review_protocol": "claim_source_review_v2",
+        "assessed_claim_count": 1,
+        "literal_claim_count": 1,
+        "selected_claim_count": 1,
+        "eligible_family_count": 2,
+        "max_claims": 5,
+        "expected_source_pair_count": 2,
+        "comparison_method": "model_source_review_v2"
+      },
+      "comparison_provider_coverage": {
+        "gemini": {
+          "decision_role": "grounded_comparison_assistant",
+          "status": "not_requested"
+        },
+        "openrouter": {
+          "complete_source_review": true,
+          "free_only": true,
+          "expected_source_pair_count": 2,
+          "reviewed_source_pair_count": 2,
+          "attempt_wait_seconds": 120,
+          "model_used": "liquid/lfm-2.5-2.6b:free",
+          "decision_role": "grounded_comparison_assistant",
+          "review_protocol": "claim_source_review_v2",
+          "status": "success",
+          "elapsed_seconds": 3.501
+        }
+      },
+      "research_status": "success",
+      "research_coverage": {
+        "scope_diversified_query_executed_count": 0,
+        "deterministic_gap_query_executed_count": 1,
+        "wait_budget_seconds": 60.0,
+        "planned_query_count": 0,
+        "executed_query_count": 0,
+        "scope_diversified_query_planned_count": 0,
+        "deterministic_gap_query_count": 1,
+        "planning_budget_seconds": 60,
+        "skipped_duplicate_query_count": 0,
+        "max_queries": 2,
+        "rejected_operation_count": 0,
+        "status": "success",
+        "selected_lead_count": 2,
+        "elapsed_seconds": 13.161
+      },
+      "research_provider_coverage": {
+        "gemini": {
+          "attempt_wait_seconds": 29.97499999999991,
+          "model_used": "gemini-3.5-flash-lite",
+          "status": "success",
+          "elapsed_seconds": 13.111
+        }
+      },
+      "eligible_source_urls": [
+        "https://agenciabrasil.ebc.com.br/internacional/noticia/2022-09/rainha-elizabeth-ii-morre-aos-96-anos-na-escocia",
+        "https://g1.globo.com/mundo/noticia/2022/09/08/rainha-elizabeth-ii-morre-aos-96-anos.ghtml"
+      ],
+      "accepted_source_urls": [
+        "https://agenciabrasil.ebc.com.br/internacional/noticia/2022-09/rainha-elizabeth-ii-morre-aos-96-anos-na-escocia",
+        "https://g1.globo.com/mundo/noticia/2022/09/08/rainha-elizabeth-ii-morre-aos-96-anos.ghtml"
+      ],
+      "accepted_evidence_count": 2,
+      "excluded_evidence_count": 0,
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "timeout": 0,
+        "error": 0,
+        "unsupported_content": 0,
+        "blocked_or_unavailable": 3,
+        "oversize": 0
+      },
+      "cumulative_fetch_attempt_count": 8,
+      "direct_reference_recovery": {
+        "max_leads": 2,
+        "selected_lead_count": 0,
+        "max_depth": 1,
+        "decision_role": "retrieval_only_no_truth_vote"
+      }
+    },
+    {
+      "id": "dev12-ibge_true",
+      "original_case_id": "ibge_true",
+      "expected": "supported",
+      "actual": "unverified",
+      "previous_actual": "supported",
+      "outcome": "inconclusive",
+      "status": "completed",
+      "elapsed_seconds": 47.177,
+      "source_sha256": "1013d26497876341c0abdb539234b08bd57ed000a9d1d1060d3bb954817cb3df",
+      "freeze_contract_sha256": "d8d724b556f8b44dd4958d9016c9ae0c78f69e6b86b026f295e13ddb18e48d0c",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "a6bdb4f6701d70b60b44b5c8dd2165ae7af6428494a2d16517db677e8e01884e",
+      "submission": "browser_ui",
+      "report_observed": true,
+      "screenshot_file": "ui-ibge_true.jpg",
+      "screenshot_sha256": "1e8557324221e03fc4330d0dc78d7b9cf7b2e0720c54d444bcdedf8267e4ef76",
+      "ui_proof_sha256": "10efd8ef0319080da518ac6dfb935e69c01f5e4716dc769157acca3d186df46a",
+      "ui_observation_time": "2026-10-28T10:47:56.086Z",
+      "observed_heading": "Análise inconclusiva",
+      "comparison_status": "not_requested",
+      "comparison_coverage": {
+        "complete_source_review": false,
+        "max_sources": 3,
+        "max_prompt_body_characters": 18000,
+        "omitted_claim_count": 0,
+        "selected_source_count": 1,
+        "grounded_evidence_count": 0,
+        "complete_claim_coverage": false,
+        "source_review_protocol": "claim_source_review_v2",
+        "assessed_claim_count": 1,
+        "literal_claim_count": 1,
+        "selected_claim_count": 1,
+        "eligible_family_count": 1,
+        "max_claims": 5,
+        "expected_source_pair_count": 1,
+        "comparison_method": "not_requested"
+      },
+      "comparison_provider_coverage": {
+        "gemini": {
+          "decision_role": "grounded_comparison_assistant",
+          "status": "not_requested"
+        },
+        "openrouter": {
+          "free_only": true,
+          "decision_role": "grounded_comparison_assistant",
+          "status": "not_requested"
+        }
+      },
+      "research_status": "success",
+      "research_coverage": {
+        "scope_diversified_query_executed_count": 0,
+        "deterministic_gap_query_executed_count": 1,
+        "wait_budget_seconds": 60.0,
+        "planned_query_count": 0,
+        "executed_query_count": 0,
+        "scope_diversified_query_planned_count": 0,
+        "deterministic_gap_query_count": 1,
+        "planning_budget_seconds": 60,
+        "skipped_duplicate_query_count": 1,
+        "max_queries": 2,
+        "rejected_operation_count": 0,
+        "status": "success",
+        "selected_lead_count": 1,
+        "elapsed_seconds": 28.465
+      },
+      "research_provider_coverage": {
+        "gemini": {
+          "attempt_wait_seconds": 29.98700000000008,
+          "model_used": "gemini-3.5-flash-lite",
+          "status": "success",
+          "elapsed_seconds": 28.439
+        }
+      },
+      "eligible_source_urls": [
+        "https://g1.globo.com/economia/noticia/2025/03/07/pib-do-brasil-cresce-34percent-em-2024-diz-ibge.ghtml"
+      ],
+      "accepted_source_urls": [],
+      "accepted_evidence_count": 0,
+      "excluded_evidence_count": 0,
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "timeout": 0,
+        "error": 0,
+        "unsupported_content": 0,
+        "blocked_or_unavailable": 6,
+        "oversize": 0
+      },
+      "cumulative_fetch_attempt_count": 10,
+      "direct_reference_recovery": {
+        "max_leads": 2,
+        "selected_lead_count": 0,
+        "max_depth": 1,
+        "decision_role": "retrieval_only_no_truth_vote"
+      }
+    },
+    {
+      "id": "dev12-queen_false",
+      "original_case_id": "queen_false",
+      "expected": "refuted",
+      "actual": "refuted",
+      "previous_actual": "unverified",
+      "outcome": "correct",
+      "status": "completed",
+      "elapsed_seconds": 57.853,
+      "source_sha256": "1013d26497876341c0abdb539234b08bd57ed000a9d1d1060d3bb954817cb3df",
+      "freeze_contract_sha256": "d8d724b556f8b44dd4958d9016c9ae0c78f69e6b86b026f295e13ddb18e48d0c",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "dc9422691e9415e232339dd48e1504b040f3559fe150a6ee5a49714cd8f1f536",
+      "submission": "browser_ui",
+      "report_observed": true,
+      "screenshot_file": "ui-queen_false.jpg",
+      "screenshot_sha256": "1c5c980349ea203f15435f34ad5c7d95d51bc5fa34d200b51d46c97c98aaf37c",
+      "ui_proof_sha256": "4d59aa8cc3b5c3e3e1efc600919a7a5b382929b1b11ca12c2d043da3be2c206d",
+      "ui_observation_time": "2026-10-28T10:50:16.908Z",
+      "observed_heading": "Verificada como falsa nas fontes consultadas",
+      "comparison_status": "success",
+      "comparison_coverage": {
+        "complete_source_review": true,
+        "max_sources": 3,
+        "max_prompt_body_characters": 18000,
+        "omitted_claim_count": 0,
+        "selected_source_count": 2,
+        "grounded_evidence_count": 2,
+        "complete_claim_coverage": true,
+        "source_review_protocol": "claim_source_review_v2",
+        "assessed_claim_count": 1,
+        "literal_claim_count": 1,
+        "selected_claim_count": 1,
+        "eligible_family_count": 2,
+        "max_claims": 5,
+        "expected_source_pair_count": 2,
+        "comparison_method": "model_source_review_v2"
+      },
+      "comparison_provider_coverage": {
+        "gemini": {
+          "decision_role": "grounded_comparison_assistant",
+          "status": "not_requested"
+        },
+        "openrouter": {
+          "complete_source_review": true,
+          "free_only": true,
+          "expected_source_pair_count": 2,
+          "reviewed_source_pair_count": 2,
+          "attempt_wait_seconds": 120,
+          "model_used": "nvidia/nemotron-3.5-super-vl:free",
+          "decision_role": "grounded_comparison_assistant",
+          "review_protocol": "claim_source_review_v2",
+          "status": "success",
+          "elapsed_seconds": 14.555
+        }
+      },
+      "research_status": "success",
+      "research_coverage": {
+        "scope_diversified_query_executed_count": 0,
+        "deterministic_gap_query_executed_count": 1,
+        "wait_budget_seconds": 60.0,
+        "planned_query_count": 0,
+        "executed_query_count": 0,
+        "scope_diversified_query_planned_count": 0,
+        "deterministic_gap_query_count": 1,
+        "planning_budget_seconds": 60,
+        "skipped_duplicate_query_count": 0,
+        "max_queries": 2,
+        "rejected_operation_count": 0,
+        "status": "success",
+        "selected_lead_count": 2,
+        "elapsed_seconds": 27.258
+      },
+      "research_provider_coverage": {
+        "gemini": {
+          "attempt_wait_seconds": 29.974499999999807,
+          "model_used": "gemini-3.5-flash-lite",
+          "status": "success",
+          "elapsed_seconds": 27.207
+        }
+      },
+      "eligible_source_urls": [
+        "https://agenciabrasil.ebc.com.br/internacional/noticia/2022-09/rainha-elizabeth-ii-morre-aos-96-anos-na-escocia",
+        "https://g1.globo.com/mundo/noticia/2022/09/08/rainha-elizabeth-ii-morre-aos-96-anos.ghtml"
+      ],
+      "accepted_source_urls": [
+        "https://agenciabrasil.ebc.com.br/internacional/noticia/2022-09/rainha-elizabeth-ii-morre-aos-96-anos-na-escocia",
+        "https://g1.globo.com/mundo/noticia/2022/09/08/rainha-elizabeth-ii-morre-aos-96-anos.ghtml"
+      ],
+      "accepted_evidence_count": 2,
+      "excluded_evidence_count": 0,
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "timeout": 0,
+        "error": 0,
+        "unsupported_content": 0,
+        "blocked_or_unavailable": 3,
+        "oversize": 0
+      },
+      "cumulative_fetch_attempt_count": 8,
+      "direct_reference_recovery": {
+        "max_leads": 2,
+        "selected_lead_count": 0,
+        "max_depth": 1,
+        "decision_role": "retrieval_only_no_truth_vote"
+      }
+    },
+    {
+      "id": "dev12-dart_true",
+      "original_case_id": "dart_true",
+      "expected": "supported",
+      "actual": "unverified",
+      "previous_actual": "unverified",
+      "outcome": "inconclusive",
+      "status": "completed",
+      "elapsed_seconds": 27.828,
+      "source_sha256": "1013d26497876341c0abdb539234b08bd57ed000a9d1d1060d3bb954817cb3df",
+      "freeze_contract_sha256": "d8d724b556f8b44dd4958d9016c9ae0c78f69e6b86b026f295e13ddb18e48d0c",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "b1e075c25e01adbc02bd1aca1c58efa73b056781d624805f86a7f91f2ed61f32",
+      "submission": "browser_ui",
+      "report_observed": true,
+      "screenshot_file": "ui-dart_true.jpg",
+      "screenshot_sha256": "1e8557324221e03fc4330d0dc78d7b9cf7b2e0720c54d444bcdedf8267e4ef76",
+      "ui_proof_sha256": "db000b382ea43984ce6b57d3237426fe745769b0c374253fe0c21dffd8d11aec",
+      "ui_observation_time": "2026-10-28T10:51:05.973Z",
+      "observed_heading": "Análise inconclusiva",
+      "comparison_status": "not_requested",
+      "comparison_coverage": {
+        "complete_source_review": false,
+        "max_sources": 3,
+        "max_prompt_body_characters": 18000,
+        "omitted_claim_count": 0,
+        "selected_source_count": 0,
+        "grounded_evidence_count": 0,
+        "complete_claim_coverage": false,
+        "source_review_protocol": "claim_source_review_v2",
+        "assessed_claim_count": 1,
+        "literal_claim_count": 1,
+        "selected_claim_count": 1,
+        "eligible_family_count": 0,
+        "max_claims": 5,
+        "expected_source_pair_count": 0,
+        "comparison_method": "not_requested"
+      },
+      "comparison_provider_coverage": {
+        "gemini": {
+          "decision_role": "grounded_comparison_assistant",
+          "status": "not_requested"
+        },
+        "openrouter": {
+          "free_only": true,
+          "decision_role": "grounded_comparison_assistant",
+          "status": "not_requested"
+        }
+      },
+      "research_status": "success",
+      "research_coverage": {
+        "scope_diversified_query_executed_count": 0,
+        "deterministic_gap_query_executed_count": 0,
+        "wait_budget_seconds": 60.0,
+        "planned_query_count": 2,
+        "executed_query_count": 2,
+        "scope_diversified_query_planned_count": 0,
+        "deterministic_gap_query_count": 0,
+        "planning_budget_seconds": 60,
+        "skipped_duplicate_query_count": 0,
+        "max_queries": 2,
+        "rejected_operation_count": 0,
+        "status": "success",
+        "selected_lead_count": 2,
+        "elapsed_seconds": 7.714
+      },
+      "research_provider_coverage": {
+        "gemini": {
+          "attempt_wait_seconds": 29.977499999999964,
+          "model_used": "gemini-3.5-flash-lite",
+          "status": "success",
+          "elapsed_seconds": 7.669
+        }
+      },
+      "eligible_source_urls": [],
+      "accepted_source_urls": [],
+      "accepted_evidence_count": 0,
+      "excluded_evidence_count": 0,
+      "search_statuses": [
+        "success",
+        "success",
+        "no_results",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "timeout": 0,
+        "error": 0,
+        "unsupported_content": 0,
+        "blocked_or_unavailable": 5,
+        "oversize": 0
+      },
+      "cumulative_fetch_attempt_count": 10,
+      "direct_reference_recovery": {
+        "max_leads": 2,
+        "selected_lead_count": 2,
+        "max_depth": 1,
+        "decision_role": "retrieval_only_no_truth_vote"
+      }
+    },
+    {
+      "id": "dev12-constitution_true",
+      "original_case_id": "constitution_true",
+      "expected": "supported",
+      "actual": "unverified",
+      "previous_actual": "supported",
+      "outcome": "inconclusive",
+      "status": "completed",
+      "elapsed_seconds": 8.586,
+      "source_sha256": "1013d26497876341c0abdb539234b08bd57ed000a9d1d1060d3bb954817cb3df",
+      "freeze_contract_sha256": "d8d724b556f8b44dd4958d9016c9ae0c78f69e6b86b026f295e13ddb18e48d0c",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "0d1a7b9ce87e1193550b64e85d2acda08d0067e46d9d585a59a44dea1d4ad9d3",
+      "submission": "browser_ui",
+      "report_observed": true,
+      "screenshot_file": "ui-constitution_true.jpg",
+      "screenshot_sha256": "746cadc18c0e9e64433d76cc4d40db06334266c6ab5719e663f7e0c20515b764",
+      "ui_proof_sha256": "2905f6c2c90e0a9a51e955446dd1931a0d7364ee572c0e1945ebf2af0611923d",
+      "ui_observation_time": "2026-10-28T10:51:43.475Z",
+      "observed_heading": "Análise inconclusiva",
+      "comparison_status": "not_requested",
+      "comparison_coverage": {
+        "complete_source_review": false,
+        "max_sources": 3,
+        "max_prompt_body_characters": 18000,
+        "omitted_claim_count": 0,
+        "selected_source_count": 1,
+        "grounded_evidence_count": 0,
+        "complete_claim_coverage": false,
+        "source_review_protocol": "claim_source_review_v2",
+        "assessed_claim_count": 1,
+        "literal_claim_count": 1,
+        "selected_claim_count": 1,
+        "eligible_family_count": 1,
+        "max_claims": 5,
+        "expected_source_pair_count": 1,
+        "comparison_method": "not_requested"
+      },
+      "comparison_provider_coverage": {
+        "gemini": {
+          "decision_role": "grounded_comparison_assistant",
+          "status": "not_requested"
+        },
+        "openrouter": {
+          "free_only": true,
+          "decision_role": "grounded_comparison_assistant",
+          "status": "not_requested"
+        }
+      },
+      "research_status": "not_requested",
+      "research_coverage": {
+        "status": "not_requested"
+      },
+      "research_provider_coverage": {},
+      "eligible_source_urls": [
+        "https://www.gov.br/pt-br/constituicao-30-anos/textos/ha-30-anos-constituicao-federal-garante-cidadania-aos-brasileiros"
+      ],
+      "accepted_source_urls": [],
+      "accepted_evidence_count": 0,
+      "excluded_evidence_count": 0,
+      "search_statuses": [
+        "success",
+        "success",
+        "error"
+      ],
+      "fetch_failure_counts": {
+        "timeout": 0,
+        "error": 0,
+        "unsupported_content": 0,
+        "blocked_or_unavailable": 4,
+        "oversize": 0
+      },
+      "cumulative_fetch_attempt_count": 6,
+      "direct_reference_recovery": {
+        "max_leads": 2,
+        "selected_lead_count": 0,
+        "max_depth": 1,
+        "decision_role": "retrieval_only_no_truth_vote"
+      }
+    }
+  ],
+  "provider_counts": {
+    "facts": 12,
+    "news": 60,
+    "public_fetch": 73,
+    "openrouter": 4,
+    "gemini": 8
+  },
+  "caps": {
+    "gemini": 16,
+    "openrouter": 12,
+    "facts": 12,
+    "news": 60,
+    "public_fetch": 120,
+    "assemblyai": 0,
+    "sightengine": 0,
+    "hf": 0,
+    "hive": 0
+  },
+  "transport_statuses": {
+    "facts": {
+      "200": 12
+    },
+    "news": {
+      "200": 60
+    },
+    "public_fetch": {
+      "200": 59,
+      "incomplete": 2,
+      "401": 2,
+      "307": 2,
+      "301": 4,
+      "403": 4
+    },
+    "openrouter": {
+      "200": 4
+    },
+    "gemini": {
+      "200": 8
+    }
+  },
+  "provider_journal_sha256": "a196168499eff5998ab1fb16b5c551a9d38e061ff945e557d0c4b26a52c85dc4",
+  "caps_reached": [
+    "facts",
+    "news"
+  ],
+  "openrouter_conservative_prior": 58,
+  "openrouter_this_round": 4,
+  "openrouter_conservative_after": 62,
+  "openrouter_authorized_cumulative_ceiling": 70,
+  "transport_success_is_not_semantic_success": true,
+  "end_record_sha256": "ebf061844eb9c8df6e9201c7a9479a9ff28087583022846044f514ad9f8b6a34",
+  "window_closed_no_unused_quota_rollover": true
+}

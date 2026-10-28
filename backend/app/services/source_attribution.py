@@ -692,12 +692,14 @@ def _article_reference_leads(resource):
 
     Restrict citations to curated primary HTTPS documents; a closed media-origin
     notice can also link to an article from the same curated editorial family.
+    A typed institutional ficha may point to its matching original publication.
     Every selected lead goes through the normal bounded reader and body guards.
     Neither an anchor's wording nor the cited institution supplies a truth vote.
     """
     if resource.content_type not in {"text/html", "application/xhtml+xml"}:
         return []
     from app.services.source_corroboration import source_identity
+    from app.services.legislative_reference import legislative_original_reference
     try:
         soup = BeautifulSoup(resource.data.decode(resource.encoding, errors="replace"), "html.parser")
     except LookupError:
@@ -738,6 +740,10 @@ def _article_reference_leads(resource):
         root = liveblog
     own_url = _canonical_url(resource.final_url)
     own_identity = source_identity(own_url)
+    # The institutional ficha can expose its real original-publication link
+    # outside paragraphs. A complete matching diploma heading only labels
+    # this reading lead; neither the ficha nor its ementa becomes article text.
+    legislative = legislative_original_reference(root, resource.final_url, max_anchors=MAX_REFERENCE_ANCHORS)
     origin_phrase = re.compile(
         r"(?:este\s+(?:v[íi]deo|[áa]udio)\s+foi\s+publicado\s+(?:em|n[ao])"
         r"|this\s+(?:video|audio)\s+was\s+published\s+(?:in|on))\s*", re.I,
@@ -776,11 +782,12 @@ def _article_reference_leads(resource):
     for anchor in root.find_all("a", href=True, limit=MAX_REFERENCE_ANCHORS):
         paragraph = anchor.find_parent("p")
         editorial_title = _editorial_reference_title(anchor, root)
+        legal_reference = legislative[1] if legislative and anchor is legislative[0] else None
         if _EDITORIAL_READ_ACTION.fullmatch(_visible_text(anchor)) and editorial_title is None:
             continue
-        if editorial_title is None and (paragraph is None or not _inside(paragraph, root)):
+        if legal_reference is None and editorial_title is None and (paragraph is None or not _inside(paragraph, root)):
             continue
-        title = editorial_title or _visible_text(anchor)
+        title = legal_reference["title"] if legal_reference else editorial_title or _visible_text(anchor)
         href = str(anchor.get("href", ""))
         if not title or len(title) > 300 or not href or href.startswith("#"):
             continue
@@ -796,7 +803,9 @@ def _article_reference_leads(resource):
         if parsed.query or not parsed.path.strip("/") or url == own_url:
             continue
         reference = {"link": url, "title": title}
-        if media:
+        if legal_reference:
+            reference = dict(legal_reference)
+        elif media:
             reference.update(title=media_title, reference_kind="media_origin_article")
         elif editorial_title:
             reference["reference_kind"] = "editorial_callout"
@@ -815,13 +824,17 @@ def primary_reference_leads(text, documents, source_url=None, *, excluded_urls=(
     following a referenced document never authorizes recursive discovery.
     """
     from app.services.source_corroboration import source_identity
+    from app.services.legislative_reference import (
+        REFERENCE_KIND as LEGISLATIVE_KIND, RETRIEVAL_METHOD as LEGISLATIVE_METHOD,
+        claim_law_identity, legislative_reference_matches,
+    )
     if not isinstance(text, str):
         return []
     generic = {"segundo", "the", "uma", "organização", "mundial", "saúde", "brasil",
                "nasa", "oms", "who", "ibge", "copernicus", "copom", "em", "para", "sobre"}
     names = {token.casefold() for token in re.findall(r"\b[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][\wÀ-ÿ-]{2,}\b", text)
              if token.casefold() not in generic}
-    if not names:
+    if not names and claim_law_identity(text) is None:
         return []
     submitted = _canonical_url(source_url)
     excluded = {_canonical_url(url) for url in excluded_urls} if isinstance(excluded_urls, (list, tuple, set, frozenset)) else set()
@@ -840,9 +853,16 @@ def primary_reference_leads(text, documents, source_url=None, *, excluded_urls=(
             url = _canonical_url(reference.get("link"))
             identity = source_identity(url)
             media = reference.get("reference_kind") == "media_origin_article"
+            legal = reference.get("reference_kind") == LEGISLATIVE_KIND
             if not identity or url == submitted or url in excluded:
                 continue
-            if media:
+            if legal:
+                # Recheck raw origin/destination, including fragments/query
+                # and the exact institutional record, before URL normalization
+                # can hide a forged or unrelated diploma reference.
+                if not legislative_reference_matches(text, document.get("url"), reference):
+                    continue
+            elif media:
                 raw = urlsplit(reference.get("link"))
                 path = unquote(raw.path).casefold()
                 utility = {"search", "busca", "contact", "contact-us", "contato", "about", "about-us",
@@ -869,9 +889,9 @@ def primary_reference_leads(text, documents, source_url=None, *, excluded_urls=(
             topic_names = names - _EDITORIAL_GENERIC_TOPICS - set(_CALENDAR_NAMES.split("|")) if editorial or media else names
             topic = title if editorial or media else title + " " + parsed.path
             tokens = set(re.findall(r"[^\W\d_]+", topic.casefold(), re.UNICODE))
-            if not topic_names.intersection(tokens):
+            if not legal and not topic_names.intersection(tokens):
                 continue
-            method = ("media_origin_article_reference" if media else
+            method = (LEGISLATIVE_METHOD if legal else "media_origin_article_reference" if media else
                       "editorial_cited_primary_reference" if editorial else "inline_cited_primary_reference")
             # Preserve the first two ordinary inline candidates, rather than
             # silently changing their existing selection order. At most two
@@ -884,8 +904,9 @@ def primary_reference_leads(text, documents, source_url=None, *, excluded_urls=(
     # generic anchor whose URL alone mentions it. This ranks real links only;
     # neither title can establish the linked article's contents or a vote.
     named_topics = names - _EDITORIAL_GENERIC_TOPICS - set(_CALENDAR_NAMES.split("|"))
-    return sorted(references.values(), key=lambda reference: -len(named_topics & set(
-        re.findall(r"[^\W\d_]+", reference["title"].casefold(), re.UNICODE))))[:2]
+    return sorted(references.values(), key=lambda reference: (
+        reference["retrieval_method"] != LEGISLATIVE_METHOD,
+        -len(named_topics & set(re.findall(r"[^\W\d_]+", reference["title"].casefold(), re.UNICODE)))))[:2]
 
 
 def _lead_month_periods(title, path):
@@ -1264,6 +1285,7 @@ async def collect_source_attribution(text, queries, source_url=None, *, search_r
         urls.setdefault(url, title[:300] if isinstance(title, str) else "")
         if item.get("retrieval_method") in {"inline_cited_primary_reference", "editorial_cited_primary_reference",
                                            "media_origin_article_reference",
+                                           "legislative_original_reference",
                                            "ai_selected_candidate_reference"}:
             cited_urls.add(url)
     source_limit = max_sources if (isinstance(max_sources, int) and not isinstance(max_sources, bool)
