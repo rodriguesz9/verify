@@ -75,15 +75,38 @@ def discovery_target_years(text):
     return years
 
 
+def _short_discovery_name(matches, index, text):
+    """Preserve literal short names; never expand or interpret an identity.
+
+    Two-letter names/acronyms can be substantive (Xi, UK). A short Roman
+    suffix needs an adjacent capitalized name; a leading I or a temperature
+    unit cannot acquire that role by dropping intervening punctuation/numbers.
+    This is a discovery hint only, not validation of a person or flight.
+    """
+    word = matches[index][0]
+    if not 1 <= len(word) <= 2 or not word[0].isupper():
+        return False
+    if re.fullmatch(r"[IVXLCDM]{1,2}", word):
+        if index == 0:
+            return False
+        previous = matches[index - 1]
+        return (len(previous[0]) >= 2 and previous[0][0].isupper()
+                and previous[0].casefold() not in _STOP | _DISPUTED | _CALENDAR
+                and bool(re.fullmatch(r"[\s-]+", text[previous.end():matches[index].start()])))
+    return len(word) == 2
+
+
 def neutral_source_query(text, *, preserve_period=False):
     if not isinstance(text, str) or not 20 <= len(text.strip()) <= 500:
         return None
     text = _discovery_subject(text)
-    words = re.findall(r"[^\W\d_]+(?:-\d+)?|\b(?:18|19|20)\d{2}\b", text, re.UNICODE)
+    words = list(re.finditer(r"[^\W\d_]+(?:-\d+)?|\b(?:18|19|20)\d{2}\b", text, re.UNICODE))
     # Stop words are dropped only from a discovery query. The original claim
     # remains untouched, including negation, every number and every date.
     omitted = _STOP | _DISPUTED | (set() if preserve_period else _CALENDAR)
-    eligible = [word for word in words if len(word) >= 3 and word.casefold() not in omitted]
+    eligible = [match[0] for index, match in enumerate(words)
+                if match[0].casefold() not in omitted
+                and (len(match[0]) >= 3 or _short_discovery_name(words, index, text))]
     names = [word for word in eligible if word[0].isupper()]
     topics = [word for word in eligible if not word[0].isupper() and not word.isdigit()]
     target_years = discovery_target_years(text)

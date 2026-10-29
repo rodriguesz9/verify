@@ -362,6 +362,7 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
     started = asyncio.get_running_loop().time()
     attribution, plan, cited_leads = None, [], []
     fetched_cache, reference_waves = {}, []
+    base_web_requests, base_skipped_duplicate_queries = set(), 0
     official_record_recovery = {"status": "not_requested", "decision_role": "official_record_retrieval_only"}
     research = {"status": "not_requested", "decision_role": "online_research_planning_only"}
     context_recovery = {"status": "not_requested", "awaited_query_count": 0,
@@ -393,6 +394,10 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
         async with asyncio.timeout(deadline):
             query = next((query for query in queries if 20 <= len(query.strip()) <= 500), None)
             previous_queries = [query] if query else []
+            if query:
+                # Track this web endpoint only. News uses a different corpus;
+                # its same-text request must not be mistaken for this one.
+                base_web_requests.add((query.strip(), "pt-br"))
             leads = (await search_web(query) if query else NewsSearch(
                 status="no_results", reason="Nenhuma frase completa cabe no limite da busca; nenhum texto foi cortado."))
             plan = [{"method": "whole_literal_claim", "status": getattr(leads, "status", "success" if leads else "no_results")}] if query else []
@@ -430,6 +435,15 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
                     # The same existing slot may use a declared English
                     # locale; never add a second request or retry a quota.
                     language = _recovery_search_language(query, recovery_method)
+                    # search_web trims only the query edges in its payload.
+                    # Preserve case, operators, quotes and internal spacing;
+                    # a different locale remains a distinct request. Register
+                    # before dispatch so failed sends cannot become retries.
+                    request_key = (qualified.strip(), language)
+                    if request_key in base_web_requests:
+                        base_skipped_duplicate_queries += 1
+                        continue
+                    base_web_requests.add(request_key)
                     extra = await search_web(qualified, language="en") if language == "en" else await search_web(qualified)
                     previous_queries.append(qualified)
                     extra_status = getattr(extra, "status", "success" if extra else "no_results")
@@ -537,6 +551,7 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
                 attribution["selection_audit"] = document_selection_audit(text, attribution.get("_documents", []), source_url)
                 attribution["_documents"] = select_comparison_documents(text, attribution.get("_documents", []), source_url)
             attribution.setdefault("coverage", {})["search_queries"] = plan
+            attribution["coverage"]["base_skipped_duplicate_query_count"] = base_skipped_duplicate_queries
             attribution["coverage"]["max_search_queries"] = limit + (2 if ai_research else 0)
             attribution["coverage"]["retrieval_deadline_seconds"] = deadline
             attribution["coverage"]["usable_source_family_count"] = len(families)
@@ -561,6 +576,7 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
                 attribution["_documents"] = select_comparison_documents(text, documents, source_url)
             attribution.setdefault("coverage", {}).update(
                 search_queries=plan, retrieval_deadline_seconds=deadline,
+                base_skipped_duplicate_query_count=base_skipped_duplicate_queries,
                 online_research={**research, "incomplete": True},
                 context_news_recovery=context_recovery,
                 cumulative_fetch_attempt_count=len(fetched_cache),
@@ -576,6 +592,7 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
                 "reason": "A leitura das referências não foi concluída no prazo ou com segurança.",
                 "limitations": ["Referências não confirmam automaticamente verdade, falsidade ou a página inteira."],
                 "coverage": {"status": "error", "decision_role": "source_attribution_only",
+                    "base_skipped_duplicate_query_count": base_skipped_duplicate_queries,
                     "context_news_recovery": context_recovery,
                     "cumulative_fetch_attempt_count": len(fetched_cache),
                     "official_record_recovery": official_record_recovery}}

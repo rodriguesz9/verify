@@ -922,6 +922,21 @@ def _lead_month_periods(title, path):
             r"\b(" + month + r")\s+(?:de\s+)?(?:(?:[0-2]?\d|3[01])\s+)?(" + year + r")\b", named))
     periods.update((match[1], int(match[2])) for match in re.finditer(
         r"(?<!\d)(" + year + r")[/-](0[1-9]|1[0-2])(?:[/-]|\b)", path))
+    # Some article routes put a named month AFTER the year. Require closed
+    # path segments and a valid complete calendar date; prose, query values
+    # and fragments cannot supply this hint. It only orders unread leads,
+    # never fills publication metadata or a date in the evidence body.
+    try:
+        article_path = urlsplit(path).path if path.startswith("/") else ""
+    except ValueError:
+        article_path = ""
+    for match in re.finditer(r"/(" + year + r")/(" + month + r")/(\d{1,2})(?=/|$)",
+                             article_path.casefold()):
+        try:
+            calendar = datetime(int(match[1]), _DISCOVERY_MONTHS[match[2]], int(match[3]))
+        except ValueError:
+            continue
+        periods.add((str(calendar.year), calendar.month))
     return periods
 
 

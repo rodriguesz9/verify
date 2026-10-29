@@ -1,0 +1,1338 @@
+{
+  "date": "2026-10-29",
+  "generated_at": "2026-10-29T09:54:20.682532+00:00",
+  "scope": "COMPLETE twelve known development controls; not blind or representative general accuracy",
+  "source_commit": "08fa80a4807305bed6e24f567170639de5797b05",
+  "source_sha256": "d48aa4d3f3f0686654d42bdc4a1d1b91335340e199d223ac2db8259b0752c6a6",
+  "freeze_contract_sha256": "cee02dcad88a06a5ae3ab5920ae88fd90734aac7859ebeaabc0dd97c124d1232",
+  "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+  "record_contract_hashes_match_round_manifest": true,
+  "round_manifest_sha256": "d3a90319ed1e08383f7c4ad5005b05b95142f22b0b667b4887b7193021164a1b",
+  "all_twelve_terminal": true,
+  "one_record_per_case": true,
+  "freeze_verified_after_all_twelve": true,
+  "freeze_verification_note": "verify_freeze succeeded in the running read-only QA container after all twelve reports and before post-measurement source changes; server then removed.",
+  "labels_used_only_by_offline_aggregation": true,
+  "metrics": {
+    "total": 12,
+    "correct": 5,
+    "wrong": 0,
+    "inconclusive": 7,
+    "terminal_errors": 0,
+    "pending": 0,
+    "correct_fraction_including_inconclusive_and_errors": 0.4166666666666667,
+    "by_expected_class": {
+      "supported": {
+        "total": 6,
+        "correct": 2,
+        "wrong": 0,
+        "inconclusive": 4,
+        "terminal_errors": 0,
+        "pending": 0
+      },
+      "refuted": {
+        "total": 6,
+        "correct": 3,
+        "wrong": 0,
+        "inconclusive": 3,
+        "terminal_errors": 0,
+        "pending": 0
+      }
+    }
+  },
+  "previous_same_twelve": {
+    "date": "2026-10-28",
+    "source_commit": "e0c6dc6",
+    "source_file": "validation-quality-2026-10-28.json",
+    "source_file_sha256": "48114acfeb4c33171998207d72884fef67ad390a90c139d0b49a5cde82323c30",
+    "correct": 5,
+    "total": 12,
+    "fraction": 0.4166666666666667,
+    "gained_correct": [
+      "dev12-lei_false"
+    ],
+    "lost_correct": [
+      "dev12-queen_true"
+    ],
+    "unchanged_actual_count": 10,
+    "net_correct_change": 0,
+    "code_effect_isolated": false
+  },
+  "submission_counts": {
+    "browser_ui": 12
+  },
+  "reports_observed_in_browser": 12,
+  "ui_proof_note": "Explicit per-case operator observation files and screenshot hashes; instrumentation labels alone do not count as UI.",
+  "coverage_entries_not_transport_sends": {
+    "research": {
+      "gemini": {
+        "success": 9
+      }
+    },
+    "comparison": {
+      "gemini": {
+        "not_requested": 12
+      },
+      "openrouter": {
+        "success": 3,
+        "not_requested": 9
+      }
+    }
+  },
+  "observed_models": {
+    "openrouter": [
+      "dots-studio/dots-3-note-preview:free",
+      "nvidia/nemotron-3.5-super-vl:free"
+    ],
+    "gemini": [
+      "gemini-3.5-flash-lite"
+    ]
+  },
+  "median_elapsed_seconds": 22.468,
+  "p95_nearest_rank_seconds": 51.536,
+  "timed_terminal_cases": 12,
+  "media_revalidated": false,
+  "production_deployment_validated": false,
+  "limits": [
+    "Known development controls; no independent general accuracy claim.",
+    "No pooling of versions or selection of the best historical round.",
+    "Remote source availability, search results and model responses can vary.",
+    "Budget caps and provider coverage are reported separately from correctness.",
+    "No image, audio or video accuracy inferred from these twelve texts."
+  ],
+  "cases": [
+    {
+      "id": "dev12-who_true",
+      "original_case_id": "who_true",
+      "expected": "supported",
+      "actual": "supported",
+      "previous_actual": "supported",
+      "outcome": "correct",
+      "status": "completed",
+      "elapsed_seconds": 51.536,
+      "source_sha256": "d48aa4d3f3f0686654d42bdc4a1d1b91335340e199d223ac2db8259b0752c6a6",
+      "freeze_contract_sha256": "cee02dcad88a06a5ae3ab5920ae88fd90734aac7859ebeaabc0dd97c124d1232",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "49d5f16bc2e04234e44973d17ddf42d0652ef0d62a3d62ab6d51232599c43f89",
+      "submission": "browser_ui",
+      "report_observed": true,
+      "screenshot_file": "ui-who_true.jpg",
+      "screenshot_sha256": "f38cc0ab8bc1c5e8d185c21256914410b412409f7da02082d3bd0b8f41392881",
+      "ui_proof_sha256": "94feb272a62169415c14828ae29e9d2e3b253ca338287b18be5af880aabc25fe",
+      "ui_observation_time": "2026-10-29T09:41:26.728Z",
+      "observed_heading": "Verificada como verdadeira nas fontes consultadas",
+      "comparison_status": "success",
+      "comparison_coverage": {
+        "grounded_evidence_count": 3,
+        "comparison_method": "model_source_review_v2",
+        "max_sources": 3,
+        "selected_source_count": 2,
+        "complete_source_review": true,
+        "selected_claim_count": 1,
+        "max_claims": 5,
+        "omitted_claim_count": 0,
+        "max_prompt_body_characters": 18000,
+        "eligible_family_count": 2,
+        "expected_source_pair_count": 2,
+        "literal_claim_count": 1,
+        "complete_claim_coverage": true,
+        "assessed_claim_count": 1,
+        "source_review_protocol": "claim_source_review_v2"
+      },
+      "comparison_provider_coverage": {
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        },
+        "openrouter": {
+          "status": "success",
+          "complete_source_review": true,
+          "expected_source_pair_count": 2,
+          "elapsed_seconds": 33.367,
+          "model_used": "nvidia/nemotron-3.5-super-vl:free",
+          "free_only": true,
+          "attempt_wait_seconds": 120,
+          "decision_role": "grounded_comparison_assistant",
+          "review_protocol": "claim_source_review_v2",
+          "reviewed_source_pair_count": 2
+        }
+      },
+      "research_status": "not_requested",
+      "research_coverage": {
+        "status": "not_requested"
+      },
+      "research_provider_coverage": {},
+      "eligible_source_urls": [
+        "https://www.cnnbrasil.com.br/saude/5-anos-da-covid-19-relembre-o-historico-desde-1o-caso-ate-fim-da-emergencia/",
+        "https://www.who.int/pt/news-room/speeches/item/who-director-general-s-opening-remarks-at-the-media-briefing-on-covid-19---11-march-2020"
+      ],
+      "accepted_source_urls": [
+        "https://www.cnnbrasil.com.br/saude/5-anos-da-covid-19-relembre-o-historico-desde-1o-caso-ate-fim-da-emergencia/",
+        "https://www.who.int/pt/news-room/speeches/item/who-director-general-s-opening-remarks-at-the-media-briefing-on-covid-19---11-march-2020"
+      ],
+      "accepted_evidence_count": 3,
+      "excluded_evidence_count": 0,
+      "search_statuses": [
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "blocked_or_unavailable": 2,
+        "unsupported_content": 0,
+        "oversize": 0,
+        "error": 0,
+        "timeout": 1
+      },
+      "cumulative_fetch_attempt_count": 6,
+      "direct_reference_recovery": {
+        "decision_role": "retrieval_only_no_truth_vote",
+        "selected_lead_count": 0,
+        "max_leads": 2,
+        "max_depth": 1
+      }
+    },
+    {
+      "id": "dev12-worldcup_false",
+      "original_case_id": "worldcup_false",
+      "expected": "refuted",
+      "actual": "unverified",
+      "previous_actual": "unverified",
+      "outcome": "inconclusive",
+      "status": "completed",
+      "elapsed_seconds": 23.45,
+      "source_sha256": "d48aa4d3f3f0686654d42bdc4a1d1b91335340e199d223ac2db8259b0752c6a6",
+      "freeze_contract_sha256": "cee02dcad88a06a5ae3ab5920ae88fd90734aac7859ebeaabc0dd97c124d1232",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "d8bb238aa910465f0c335c545d391e71eb628005b08d66591a7dfea82b6e6194",
+      "submission": "browser_ui",
+      "report_observed": true,
+      "screenshot_file": "ui-worldcup_false.jpg",
+      "screenshot_sha256": "0c21f98de883a18823937bc3d3c7216ef85f50a4fb236c9025801c5a8e36d28f",
+      "ui_proof_sha256": "aff5b00ceb6ec4dc3241a9cd0f6a6b684ff80520c7e5922e8b55993adce4cfc2",
+      "ui_observation_time": "2026-10-29T09:43:22.479Z",
+      "observed_heading": "Análise inconclusiva",
+      "comparison_status": "not_requested",
+      "comparison_coverage": {
+        "grounded_evidence_count": 0,
+        "comparison_method": "not_requested",
+        "max_sources": 3,
+        "selected_source_count": 1,
+        "complete_source_review": false,
+        "selected_claim_count": 1,
+        "max_claims": 5,
+        "omitted_claim_count": 0,
+        "max_prompt_body_characters": 18000,
+        "eligible_family_count": 1,
+        "expected_source_pair_count": 1,
+        "literal_claim_count": 1,
+        "complete_claim_coverage": false,
+        "assessed_claim_count": 1,
+        "source_review_protocol": "claim_source_review_v2"
+      },
+      "comparison_provider_coverage": {
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        },
+        "openrouter": {
+          "status": "not_requested",
+          "free_only": true,
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "research_status": "success",
+      "research_coverage": {
+        "executed_query_count": 2,
+        "status": "success",
+        "wait_budget_seconds": 60.0,
+        "scope_diversified_query_executed_count": 0,
+        "planned_query_count": 2,
+        "scope_diversified_query_planned_count": 0,
+        "elapsed_seconds": 1.166,
+        "planning_budget_seconds": 60,
+        "skipped_duplicate_query_count": 0,
+        "selected_lead_count": 2,
+        "rejected_operation_count": 0,
+        "max_queries": 2,
+        "deterministic_gap_query_count": 0,
+        "deterministic_gap_query_executed_count": 0
+      },
+      "research_provider_coverage": {
+        "gemini": {
+          "status": "success",
+          "elapsed_seconds": 1.134,
+          "model_used": "gemini-3.5-flash-lite",
+          "attempt_wait_seconds": 29.983999999999924
+        }
+      },
+      "eligible_source_urls": [
+        "https://g1.globo.com/sc/santa-catarina/noticia/2014/07/alemanha-vence-copa-do-mundo-2014-e-e-tetracampea.html"
+      ],
+      "accepted_source_urls": [],
+      "accepted_evidence_count": 0,
+      "excluded_evidence_count": 0,
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "blocked_or_unavailable": 4,
+        "unsupported_content": 0,
+        "oversize": 0,
+        "error": 0,
+        "timeout": 0
+      },
+      "cumulative_fetch_attempt_count": 10,
+      "direct_reference_recovery": {
+        "decision_role": "retrieval_only_no_truth_vote",
+        "selected_lead_count": 0,
+        "max_leads": 2,
+        "max_depth": 1
+      }
+    },
+    {
+      "id": "dev12-copernicus_false",
+      "original_case_id": "copernicus_false",
+      "expected": "refuted",
+      "actual": "unverified",
+      "previous_actual": "unverified",
+      "outcome": "inconclusive",
+      "status": "completed",
+      "elapsed_seconds": 20.629,
+      "source_sha256": "d48aa4d3f3f0686654d42bdc4a1d1b91335340e199d223ac2db8259b0752c6a6",
+      "freeze_contract_sha256": "cee02dcad88a06a5ae3ab5920ae88fd90734aac7859ebeaabc0dd97c124d1232",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "37b879504f428476331101b7cd2ea6259f40d6b22638366f1543df829be930c2",
+      "submission": "browser_ui",
+      "report_observed": true,
+      "screenshot_file": "ui-copernicus_false.jpg",
+      "screenshot_sha256": "28549cecfb055a03e51835fb67877cb87e4b716b345c072d5e2fe9f4aec1e070",
+      "ui_proof_sha256": "4d04718a31c3dc701ace07813115010129af5943ccaa1abd5f43a9e101bd960d",
+      "ui_observation_time": "2026-10-29T09:44:16.116Z",
+      "observed_heading": "Análise inconclusiva",
+      "comparison_status": "not_requested",
+      "comparison_coverage": {
+        "grounded_evidence_count": 0,
+        "comparison_method": "not_requested",
+        "max_sources": 3,
+        "selected_source_count": 0,
+        "complete_source_review": false,
+        "selected_claim_count": 1,
+        "max_claims": 5,
+        "omitted_claim_count": 0,
+        "max_prompt_body_characters": 18000,
+        "eligible_family_count": 0,
+        "expected_source_pair_count": 0,
+        "literal_claim_count": 1,
+        "complete_claim_coverage": false,
+        "assessed_claim_count": 1,
+        "source_review_protocol": "claim_source_review_v2"
+      },
+      "comparison_provider_coverage": {
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        },
+        "openrouter": {
+          "status": "not_requested",
+          "free_only": true,
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "research_status": "success",
+      "research_coverage": {
+        "executed_query_count": 2,
+        "status": "success",
+        "wait_budget_seconds": 60.0,
+        "scope_diversified_query_executed_count": 0,
+        "planned_query_count": 2,
+        "scope_diversified_query_planned_count": 0,
+        "elapsed_seconds": 1.522,
+        "planning_budget_seconds": 60,
+        "skipped_duplicate_query_count": 0,
+        "selected_lead_count": 1,
+        "rejected_operation_count": 0,
+        "max_queries": 2,
+        "deterministic_gap_query_count": 0,
+        "deterministic_gap_query_executed_count": 0
+      },
+      "research_provider_coverage": {
+        "gemini": {
+          "status": "success",
+          "elapsed_seconds": 1.48,
+          "model_used": "gemini-3.5-flash-lite",
+          "attempt_wait_seconds": 29.979000000000042
+        }
+      },
+      "eligible_source_urls": [],
+      "accepted_source_urls": [],
+      "accepted_evidence_count": 0,
+      "excluded_evidence_count": 0,
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "blocked_or_unavailable": 6,
+        "unsupported_content": 0,
+        "oversize": 0,
+        "error": 0,
+        "timeout": 0
+      },
+      "cumulative_fetch_attempt_count": 10,
+      "direct_reference_recovery": {
+        "decision_role": "retrieval_only_no_truth_vote",
+        "selected_lead_count": 0,
+        "max_leads": 2,
+        "max_depth": 1
+      }
+    },
+    {
+      "id": "dev12-copom_false",
+      "original_case_id": "copom_false",
+      "expected": "refuted",
+      "actual": "refuted",
+      "previous_actual": "refuted",
+      "outcome": "correct",
+      "status": "completed",
+      "elapsed_seconds": 16.94,
+      "source_sha256": "d48aa4d3f3f0686654d42bdc4a1d1b91335340e199d223ac2db8259b0752c6a6",
+      "freeze_contract_sha256": "cee02dcad88a06a5ae3ab5920ae88fd90734aac7859ebeaabc0dd97c124d1232",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "022adf099ce989cf3d487d83b0e10ef9de76e909c0334567a9bb67c655c98d0f",
+      "submission": "browser_ui",
+      "report_observed": true,
+      "screenshot_file": "ui-copom_false.jpg",
+      "screenshot_sha256": "418480be2e8369e00356eb4b1762a1a05d6d09a0868032840b49d8a78550dd56",
+      "ui_proof_sha256": "8a950fd4a73a2d9e006d32579abf1140ca51bb1313592f85c9c3e3e539bc202f",
+      "ui_observation_time": "2026-10-29T09:45:06.005Z",
+      "observed_heading": "Verificada como falsa no registro original",
+      "comparison_status": "success",
+      "comparison_coverage": {
+        "grounded_evidence_count": 1,
+        "comparison_method": "literal_typed_rules_v1",
+        "max_sources": 3,
+        "selected_source_count": 1,
+        "complete_source_review": true,
+        "selected_claim_count": 1,
+        "max_claims": 5,
+        "omitted_claim_count": 0,
+        "max_prompt_body_characters": 18000,
+        "eligible_family_count": 1,
+        "expected_source_pair_count": 1,
+        "literal_claim_count": 1,
+        "complete_claim_coverage": true,
+        "assessed_claim_count": 1,
+        "source_review_protocol": "claim_source_review_v2"
+      },
+      "comparison_provider_coverage": {
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        },
+        "openrouter": {
+          "status": "not_requested",
+          "free_only": true,
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "research_status": "not_requested",
+      "research_coverage": {
+        "status": "not_requested"
+      },
+      "research_provider_coverage": {},
+      "eligible_source_urls": [],
+      "accepted_source_urls": [],
+      "accepted_evidence_count": 1,
+      "excluded_evidence_count": 0,
+      "search_statuses": [
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "blocked_or_unavailable": 1,
+        "unsupported_content": 0,
+        "oversize": 0,
+        "error": 0,
+        "timeout": 0
+      },
+      "cumulative_fetch_attempt_count": 6,
+      "direct_reference_recovery": {
+        "decision_role": "retrieval_only_no_truth_vote",
+        "selected_lead_count": 0,
+        "max_leads": 2,
+        "max_depth": 1
+      }
+    },
+    {
+      "id": "dev12-lei_false",
+      "original_case_id": "lei_false",
+      "expected": "refuted",
+      "actual": "refuted",
+      "previous_actual": "unverified",
+      "outcome": "correct",
+      "status": "completed",
+      "elapsed_seconds": 14.802,
+      "source_sha256": "d48aa4d3f3f0686654d42bdc4a1d1b91335340e199d223ac2db8259b0752c6a6",
+      "freeze_contract_sha256": "cee02dcad88a06a5ae3ab5920ae88fd90734aac7859ebeaabc0dd97c124d1232",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "c25043f890abdbbd86431f24d17af9498de1b778ce361cc179d989e99fe3f7f3",
+      "submission": "browser_ui",
+      "report_observed": true,
+      "screenshot_file": "ui-lei_false.jpg",
+      "screenshot_sha256": "4355885cce4b004edad386aeed230b326853f913c8934fff8891dc2632671e1f",
+      "ui_proof_sha256": "6eb1c5be55e809edf2e2b768be18c64a7cb6200e83276dfa6c8387dc88f2a83f",
+      "ui_observation_time": "2026-10-29T09:45:56.680Z",
+      "observed_heading": "Verificada como falsa no registro original",
+      "comparison_status": "success",
+      "comparison_coverage": {
+        "grounded_evidence_count": 1,
+        "comparison_method": "literal_typed_rules_v1",
+        "max_sources": 3,
+        "selected_source_count": 1,
+        "complete_source_review": true,
+        "selected_claim_count": 1,
+        "max_claims": 5,
+        "omitted_claim_count": 0,
+        "max_prompt_body_characters": 18000,
+        "eligible_family_count": 1,
+        "expected_source_pair_count": 1,
+        "literal_claim_count": 1,
+        "complete_claim_coverage": true,
+        "assessed_claim_count": 1,
+        "source_review_protocol": "claim_source_review_v2"
+      },
+      "comparison_provider_coverage": {
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        },
+        "openrouter": {
+          "status": "not_requested",
+          "free_only": true,
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "research_status": "success",
+      "research_coverage": {
+        "executed_query_count": 2,
+        "status": "success",
+        "wait_budget_seconds": 60.0,
+        "scope_diversified_query_executed_count": 0,
+        "planned_query_count": 2,
+        "scope_diversified_query_planned_count": 0,
+        "elapsed_seconds": 1.734,
+        "planning_budget_seconds": 60,
+        "skipped_duplicate_query_count": 0,
+        "selected_lead_count": 2,
+        "rejected_operation_count": 0,
+        "max_queries": 2,
+        "deterministic_gap_query_count": 0,
+        "deterministic_gap_query_executed_count": 0
+      },
+      "research_provider_coverage": {
+        "gemini": {
+          "status": "success",
+          "elapsed_seconds": 1.734,
+          "model_used": "gemini-3.5-flash-lite",
+          "attempt_wait_seconds": 30.0
+        }
+      },
+      "eligible_source_urls": [
+        "https://www2.camara.leg.br/legin/fed/leimp/1824-1899/lei-3353-13-maio-1888-533138-publicacaooriginal-16269-pl.html"
+      ],
+      "accepted_source_urls": [
+        "https://www2.camara.leg.br/legin/fed/leimp/1824-1899/lei-3353-13-maio-1888-533138-publicacaooriginal-16269-pl.html"
+      ],
+      "accepted_evidence_count": 1,
+      "excluded_evidence_count": 0,
+      "search_statuses": [
+        "success",
+        "success",
+        "no_results",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "blocked_or_unavailable": 6,
+        "unsupported_content": 1,
+        "oversize": 0,
+        "error": 0,
+        "timeout": 0
+      },
+      "cumulative_fetch_attempt_count": 9,
+      "direct_reference_recovery": {
+        "decision_role": "retrieval_only_no_truth_vote",
+        "selected_lead_count": 1,
+        "max_leads": 2,
+        "max_depth": 1
+      }
+    },
+    {
+      "id": "dev12-webb_true",
+      "original_case_id": "webb_true",
+      "expected": "supported",
+      "actual": "supported",
+      "previous_actual": "supported",
+      "outcome": "correct",
+      "status": "completed",
+      "elapsed_seconds": 42.499,
+      "source_sha256": "d48aa4d3f3f0686654d42bdc4a1d1b91335340e199d223ac2db8259b0752c6a6",
+      "freeze_contract_sha256": "cee02dcad88a06a5ae3ab5920ae88fd90734aac7859ebeaabc0dd97c124d1232",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "fc4479c04c6029ac540396804b146fba9b0915db6e87c38ccfdf9fd4b5f5aa16",
+      "submission": "browser_ui",
+      "report_observed": true,
+      "screenshot_file": "ui-webb_true.jpg",
+      "screenshot_sha256": "88d0aee49c73effa541217d7896a41567ab9a6fbd3cb7641b9bbde53abbc1e67",
+      "ui_proof_sha256": "e2ac95f1224513249adc7f45799f7bdeefc610c5b8cc6b203fd3273d223c47cb",
+      "ui_observation_time": "2026-10-29T09:47:10.672Z",
+      "observed_heading": "Verificada como verdadeira nas fontes consultadas",
+      "comparison_status": "success",
+      "comparison_coverage": {
+        "grounded_evidence_count": 2,
+        "comparison_method": "model_source_review_v2",
+        "max_sources": 3,
+        "selected_source_count": 2,
+        "complete_source_review": true,
+        "selected_claim_count": 1,
+        "max_claims": 5,
+        "omitted_claim_count": 0,
+        "max_prompt_body_characters": 18000,
+        "eligible_family_count": 2,
+        "expected_source_pair_count": 2,
+        "literal_claim_count": 1,
+        "complete_claim_coverage": true,
+        "assessed_claim_count": 1,
+        "source_review_protocol": "claim_source_review_v2"
+      },
+      "comparison_provider_coverage": {
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        },
+        "openrouter": {
+          "status": "success",
+          "complete_source_review": true,
+          "expected_source_pair_count": 2,
+          "elapsed_seconds": 25.064,
+          "model_used": "nvidia/nemotron-3.5-super-vl:free",
+          "free_only": true,
+          "attempt_wait_seconds": 120,
+          "decision_role": "grounded_comparison_assistant",
+          "review_protocol": "claim_source_review_v2",
+          "reviewed_source_pair_count": 2
+        }
+      },
+      "research_status": "success",
+      "research_coverage": {
+        "executed_query_count": 2,
+        "status": "success",
+        "wait_budget_seconds": 60.0,
+        "scope_diversified_query_executed_count": 0,
+        "planned_query_count": 2,
+        "scope_diversified_query_planned_count": 0,
+        "elapsed_seconds": 1.5,
+        "planning_budget_seconds": 60,
+        "skipped_duplicate_query_count": 0,
+        "selected_lead_count": 2,
+        "rejected_operation_count": 0,
+        "max_queries": 2,
+        "deterministic_gap_query_count": 0,
+        "deterministic_gap_query_executed_count": 0
+      },
+      "research_provider_coverage": {
+        "gemini": {
+          "status": "success",
+          "elapsed_seconds": 1.454,
+          "model_used": "gemini-3.5-flash-lite",
+          "attempt_wait_seconds": 29.97700000000009
+        }
+      },
+      "eligible_source_urls": [
+        "https://brasilescola.uol.com.br/fisica/james-webb-sucessor-hubble.htm",
+        "https://g1.globo.com/mundo/noticia/2021/12/25/nasa-lanca-com-sucesso-novo-telescopio-espacial-james-webb.ghtml"
+      ],
+      "accepted_source_urls": [
+        "https://brasilescola.uol.com.br/fisica/james-webb-sucessor-hubble.htm",
+        "https://g1.globo.com/mundo/noticia/2021/12/25/nasa-lanca-com-sucesso-novo-telescopio-espacial-james-webb.ghtml"
+      ],
+      "accepted_evidence_count": 2,
+      "excluded_evidence_count": 0,
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "blocked_or_unavailable": 3,
+        "unsupported_content": 0,
+        "oversize": 0,
+        "error": 0,
+        "timeout": 0
+      },
+      "cumulative_fetch_attempt_count": 8,
+      "direct_reference_recovery": {
+        "decision_role": "retrieval_only_no_truth_vote",
+        "selected_lead_count": 0,
+        "max_leads": 2,
+        "max_depth": 1
+      }
+    },
+    {
+      "id": "dev12-artemis_false",
+      "original_case_id": "artemis_false",
+      "expected": "refuted",
+      "actual": "unverified",
+      "previous_actual": "unverified",
+      "outcome": "inconclusive",
+      "status": "completed",
+      "elapsed_seconds": 21.613,
+      "source_sha256": "d48aa4d3f3f0686654d42bdc4a1d1b91335340e199d223ac2db8259b0752c6a6",
+      "freeze_contract_sha256": "cee02dcad88a06a5ae3ab5920ae88fd90734aac7859ebeaabc0dd97c124d1232",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "12963c2c6c62e765f8a8368d563fb8f411a56c35ad5faf89491daba170855b66",
+      "submission": "browser_ui",
+      "report_observed": true,
+      "screenshot_file": "ui-artemis_false.jpg",
+      "screenshot_sha256": "28ee714b88d0ed4d9d06ec6f95817608f63c45c5ee622e43d9c2817e5e0723de",
+      "ui_proof_sha256": "e9e580d7ee248b04dcfe3962971ae5e817c5db824c71fe9d0c21e3be565c5963",
+      "ui_observation_time": "2026-10-29T09:48:06.106Z",
+      "observed_heading": "Análise inconclusiva",
+      "comparison_status": "not_requested",
+      "comparison_coverage": {
+        "grounded_evidence_count": 0,
+        "comparison_method": "not_requested",
+        "max_sources": 3,
+        "selected_source_count": 1,
+        "complete_source_review": false,
+        "selected_claim_count": 1,
+        "max_claims": 5,
+        "omitted_claim_count": 0,
+        "max_prompt_body_characters": 18000,
+        "eligible_family_count": 1,
+        "expected_source_pair_count": 1,
+        "literal_claim_count": 1,
+        "complete_claim_coverage": false,
+        "assessed_claim_count": 1,
+        "source_review_protocol": "claim_source_review_v2"
+      },
+      "comparison_provider_coverage": {
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        },
+        "openrouter": {
+          "status": "not_requested",
+          "free_only": true,
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "research_status": "success",
+      "research_coverage": {
+        "executed_query_count": 1,
+        "status": "success",
+        "wait_budget_seconds": 60.0,
+        "scope_diversified_query_executed_count": 0,
+        "planned_query_count": 1,
+        "scope_diversified_query_planned_count": 0,
+        "elapsed_seconds": 1.417,
+        "planning_budget_seconds": 60,
+        "skipped_duplicate_query_count": 0,
+        "selected_lead_count": 1,
+        "rejected_operation_count": 0,
+        "max_queries": 2,
+        "deterministic_gap_query_count": 0,
+        "deterministic_gap_query_executed_count": 0
+      },
+      "research_provider_coverage": {
+        "gemini": {
+          "status": "success",
+          "elapsed_seconds": 1.368,
+          "model_used": "gemini-3.5-flash-lite",
+          "attempt_wait_seconds": 29.97550000000001
+        }
+      },
+      "eligible_source_urls": [
+        "https://www.nasa.gov/mission/artemis-i/"
+      ],
+      "accepted_source_urls": [],
+      "accepted_evidence_count": 0,
+      "excluded_evidence_count": 0,
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "blocked_or_unavailable": 4,
+        "unsupported_content": 0,
+        "oversize": 0,
+        "error": 0,
+        "timeout": 0
+      },
+      "cumulative_fetch_attempt_count": 10,
+      "direct_reference_recovery": {
+        "decision_role": "retrieval_only_no_truth_vote",
+        "selected_lead_count": 2,
+        "max_leads": 2,
+        "max_depth": 1
+      }
+    },
+    {
+      "id": "dev12-queen_true",
+      "original_case_id": "queen_true",
+      "expected": "supported",
+      "actual": "unverified",
+      "previous_actual": "supported",
+      "outcome": "inconclusive",
+      "status": "completed",
+      "elapsed_seconds": 15.068,
+      "source_sha256": "d48aa4d3f3f0686654d42bdc4a1d1b91335340e199d223ac2db8259b0752c6a6",
+      "freeze_contract_sha256": "cee02dcad88a06a5ae3ab5920ae88fd90734aac7859ebeaabc0dd97c124d1232",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "365cd6d832243e1d302ace09b96226234985acea7ad21c31968535f3e7ac6f56",
+      "submission": "browser_ui",
+      "report_observed": true,
+      "screenshot_file": "ui-queen_true.jpg",
+      "screenshot_sha256": "0c21f98de883a18823937bc3d3c7216ef85f50a4fb236c9025801c5a8e36d28f",
+      "ui_proof_sha256": "28dca50d37a2570f78b81bc03219a25de7a99bbbfd519ad6bcdd1373b86d2a62",
+      "ui_observation_time": "2026-10-29T09:48:38.404Z",
+      "observed_heading": "Análise inconclusiva",
+      "comparison_status": "not_requested",
+      "comparison_coverage": {
+        "grounded_evidence_count": 0,
+        "comparison_method": "not_requested",
+        "max_sources": 3,
+        "selected_source_count": 1,
+        "complete_source_review": false,
+        "selected_claim_count": 1,
+        "max_claims": 5,
+        "omitted_claim_count": 0,
+        "max_prompt_body_characters": 18000,
+        "eligible_family_count": 1,
+        "expected_source_pair_count": 1,
+        "literal_claim_count": 1,
+        "complete_claim_coverage": false,
+        "assessed_claim_count": 1,
+        "source_review_protocol": "claim_source_review_v2"
+      },
+      "comparison_provider_coverage": {
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        },
+        "openrouter": {
+          "status": "not_requested",
+          "free_only": true,
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "research_status": "success",
+      "research_coverage": {
+        "executed_query_count": 2,
+        "status": "success",
+        "wait_budget_seconds": 60.0,
+        "scope_diversified_query_executed_count": 0,
+        "planned_query_count": 2,
+        "scope_diversified_query_planned_count": 0,
+        "elapsed_seconds": 1.167,
+        "planning_budget_seconds": 60,
+        "skipped_duplicate_query_count": 0,
+        "selected_lead_count": 2,
+        "rejected_operation_count": 0,
+        "max_queries": 2,
+        "deterministic_gap_query_count": 0,
+        "deterministic_gap_query_executed_count": 0
+      },
+      "research_provider_coverage": {
+        "gemini": {
+          "status": "success",
+          "elapsed_seconds": 1.141,
+          "model_used": "gemini-3.5-flash-lite",
+          "attempt_wait_seconds": 29.987499999999955
+        }
+      },
+      "eligible_source_urls": [
+        "https://g1.globo.com/mundo/noticia/2022/09/08/rainha-elizabeth-ii-morre-aos-96-anos.ghtml"
+      ],
+      "accepted_source_urls": [],
+      "accepted_evidence_count": 0,
+      "excluded_evidence_count": 0,
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "blocked_or_unavailable": 6,
+        "unsupported_content": 0,
+        "oversize": 0,
+        "error": 0,
+        "timeout": 0
+      },
+      "cumulative_fetch_attempt_count": 10,
+      "direct_reference_recovery": {
+        "decision_role": "retrieval_only_no_truth_vote",
+        "selected_lead_count": 0,
+        "max_leads": 2,
+        "max_depth": 1
+      }
+    },
+    {
+      "id": "dev12-ibge_true",
+      "original_case_id": "ibge_true",
+      "expected": "supported",
+      "actual": "unverified",
+      "previous_actual": "unverified",
+      "outcome": "inconclusive",
+      "status": "completed",
+      "elapsed_seconds": 23.323,
+      "source_sha256": "d48aa4d3f3f0686654d42bdc4a1d1b91335340e199d223ac2db8259b0752c6a6",
+      "freeze_contract_sha256": "cee02dcad88a06a5ae3ab5920ae88fd90734aac7859ebeaabc0dd97c124d1232",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "eecc2b53c7ec9441621bcda1b69c17d81b61ade56b1b101a3c694380d4068d12",
+      "submission": "browser_ui",
+      "report_observed": true,
+      "screenshot_file": "ui-ibge_true.jpg",
+      "screenshot_sha256": "28549cecfb055a03e51835fb67877cb87e4b716b345c072d5e2fe9f4aec1e070",
+      "ui_proof_sha256": "4ba40af5488b96cae830fc9904daee3df7704e7c0539dff05bc7b596b727b8a3",
+      "ui_observation_time": "2026-10-29T09:50:12.978Z",
+      "observed_heading": "Análise inconclusiva",
+      "comparison_status": "not_requested",
+      "comparison_coverage": {
+        "grounded_evidence_count": 0,
+        "comparison_method": "not_requested",
+        "max_sources": 3,
+        "selected_source_count": 1,
+        "complete_source_review": false,
+        "selected_claim_count": 1,
+        "max_claims": 5,
+        "omitted_claim_count": 0,
+        "max_prompt_body_characters": 18000,
+        "eligible_family_count": 1,
+        "expected_source_pair_count": 1,
+        "literal_claim_count": 1,
+        "complete_claim_coverage": false,
+        "assessed_claim_count": 1,
+        "source_review_protocol": "claim_source_review_v2"
+      },
+      "comparison_provider_coverage": {
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        },
+        "openrouter": {
+          "status": "not_requested",
+          "free_only": true,
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "research_status": "success",
+      "research_coverage": {
+        "executed_query_count": 0,
+        "status": "success",
+        "wait_budget_seconds": 60.0,
+        "scope_diversified_query_executed_count": 0,
+        "planned_query_count": 0,
+        "scope_diversified_query_planned_count": 0,
+        "elapsed_seconds": 1.528,
+        "planning_budget_seconds": 60,
+        "skipped_duplicate_query_count": 1,
+        "selected_lead_count": 1,
+        "rejected_operation_count": 0,
+        "max_queries": 2,
+        "deterministic_gap_query_count": 1,
+        "deterministic_gap_query_executed_count": 1
+      },
+      "research_provider_coverage": {
+        "gemini": {
+          "status": "success",
+          "elapsed_seconds": 1.447,
+          "model_used": "gemini-3.5-flash-lite",
+          "attempt_wait_seconds": 29.959499999999935
+        }
+      },
+      "eligible_source_urls": [
+        "https://g1.globo.com/economia/noticia/2025/03/07/pib-do-brasil-cresce-34percent-em-2024-diz-ibge.ghtml"
+      ],
+      "accepted_source_urls": [],
+      "accepted_evidence_count": 0,
+      "excluded_evidence_count": 0,
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "blocked_or_unavailable": 5,
+        "unsupported_content": 0,
+        "oversize": 0,
+        "error": 0,
+        "timeout": 0
+      },
+      "cumulative_fetch_attempt_count": 10,
+      "direct_reference_recovery": {
+        "decision_role": "retrieval_only_no_truth_vote",
+        "selected_lead_count": 0,
+        "max_leads": 2,
+        "max_depth": 1
+      }
+    },
+    {
+      "id": "dev12-queen_false",
+      "original_case_id": "queen_false",
+      "expected": "refuted",
+      "actual": "refuted",
+      "previous_actual": "refuted",
+      "outcome": "correct",
+      "status": "completed",
+      "elapsed_seconds": 47.824,
+      "source_sha256": "d48aa4d3f3f0686654d42bdc4a1d1b91335340e199d223ac2db8259b0752c6a6",
+      "freeze_contract_sha256": "cee02dcad88a06a5ae3ab5920ae88fd90734aac7859ebeaabc0dd97c124d1232",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "35e94742d8dea8f10725438844f735dfa66930dc9156669d39b312799f8b7e63",
+      "submission": "browser_ui",
+      "report_observed": true,
+      "screenshot_file": "ui-queen_false.jpg",
+      "screenshot_sha256": "757612c4357b4e0c176389066fa526bfa339bc7a94a2c24d577289b3fb2b7714",
+      "ui_proof_sha256": "1b99fd896cb654895c1bd6e3db94920947b2515acbe01e210eb278d3c99b2d66",
+      "ui_observation_time": "2026-10-29T09:51:41.300Z",
+      "observed_heading": "Verificada como falsa nas fontes consultadas",
+      "comparison_status": "success",
+      "comparison_coverage": {
+        "grounded_evidence_count": 2,
+        "comparison_method": "model_source_review_v2",
+        "max_sources": 3,
+        "selected_source_count": 2,
+        "complete_source_review": true,
+        "selected_claim_count": 1,
+        "max_claims": 5,
+        "omitted_claim_count": 0,
+        "max_prompt_body_characters": 18000,
+        "eligible_family_count": 2,
+        "expected_source_pair_count": 2,
+        "literal_claim_count": 1,
+        "complete_claim_coverage": true,
+        "assessed_claim_count": 1,
+        "source_review_protocol": "claim_source_review_v2"
+      },
+      "comparison_provider_coverage": {
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        },
+        "openrouter": {
+          "status": "success",
+          "complete_source_review": true,
+          "expected_source_pair_count": 2,
+          "elapsed_seconds": 22.57,
+          "model_used": "dots-studio/dots-3-note-preview:free",
+          "free_only": true,
+          "attempt_wait_seconds": 120,
+          "decision_role": "grounded_comparison_assistant",
+          "review_protocol": "claim_source_review_v2",
+          "reviewed_source_pair_count": 2
+        }
+      },
+      "research_status": "success",
+      "research_coverage": {
+        "executed_query_count": 2,
+        "status": "success",
+        "wait_budget_seconds": 60.0,
+        "scope_diversified_query_executed_count": 0,
+        "planned_query_count": 2,
+        "scope_diversified_query_planned_count": 0,
+        "elapsed_seconds": 9.334,
+        "planning_budget_seconds": 60,
+        "skipped_duplicate_query_count": 0,
+        "selected_lead_count": 2,
+        "rejected_operation_count": 0,
+        "max_queries": 2,
+        "deterministic_gap_query_count": 0,
+        "deterministic_gap_query_executed_count": 0
+      },
+      "research_provider_coverage": {
+        "gemini": {
+          "status": "success",
+          "elapsed_seconds": 9.285,
+          "model_used": "gemini-3.5-flash-lite",
+          "attempt_wait_seconds": 29.97550000000001
+        }
+      },
+      "eligible_source_urls": [
+        "https://g1.globo.com/mundo/noticia/2022/09/08/rainha-elizabeth-ii-morre-aos-96-anos.ghtml",
+        "https://www.bbc.com/portuguese/internacional-62848564"
+      ],
+      "accepted_source_urls": [
+        "https://g1.globo.com/mundo/noticia/2022/09/08/rainha-elizabeth-ii-morre-aos-96-anos.ghtml",
+        "https://www.bbc.com/portuguese/internacional-62848564"
+      ],
+      "accepted_evidence_count": 2,
+      "excluded_evidence_count": 0,
+      "search_statuses": [
+        "success",
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "blocked_or_unavailable": 4,
+        "unsupported_content": 0,
+        "oversize": 0,
+        "error": 0,
+        "timeout": 0
+      },
+      "cumulative_fetch_attempt_count": 10,
+      "direct_reference_recovery": {
+        "decision_role": "retrieval_only_no_truth_vote",
+        "selected_lead_count": 0,
+        "max_leads": 2,
+        "max_depth": 1
+      }
+    },
+    {
+      "id": "dev12-dart_true",
+      "original_case_id": "dart_true",
+      "expected": "supported",
+      "actual": "unverified",
+      "previous_actual": "unverified",
+      "outcome": "inconclusive",
+      "status": "completed",
+      "elapsed_seconds": 29.179,
+      "source_sha256": "d48aa4d3f3f0686654d42bdc4a1d1b91335340e199d223ac2db8259b0752c6a6",
+      "freeze_contract_sha256": "cee02dcad88a06a5ae3ab5920ae88fd90734aac7859ebeaabc0dd97c124d1232",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "2435072d5a42fcbefb45e315f6c2214d06f44f1a714f8e380b72297ee3d727f2",
+      "submission": "browser_ui",
+      "report_observed": true,
+      "screenshot_file": "ui-dart_true.jpg",
+      "screenshot_sha256": "28549cecfb055a03e51835fb67877cb87e4b716b345c072d5e2fe9f4aec1e070",
+      "ui_proof_sha256": "44343b9ac66f61aa5d399e065bd0e0796e7e0183e48089710ad86c1b0969a37a",
+      "ui_observation_time": "2026-10-29T09:53:12.015Z",
+      "observed_heading": "Análise inconclusiva",
+      "comparison_status": "not_requested",
+      "comparison_coverage": {
+        "grounded_evidence_count": 0,
+        "comparison_method": "not_requested",
+        "max_sources": 3,
+        "selected_source_count": 0,
+        "complete_source_review": false,
+        "selected_claim_count": 1,
+        "max_claims": 5,
+        "omitted_claim_count": 0,
+        "max_prompt_body_characters": 18000,
+        "eligible_family_count": 0,
+        "expected_source_pair_count": 0,
+        "literal_claim_count": 1,
+        "complete_claim_coverage": false,
+        "assessed_claim_count": 1,
+        "source_review_protocol": "claim_source_review_v2"
+      },
+      "comparison_provider_coverage": {
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        },
+        "openrouter": {
+          "status": "not_requested",
+          "free_only": true,
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "research_status": "success",
+      "research_coverage": {
+        "executed_query_count": 2,
+        "status": "success",
+        "wait_budget_seconds": 60.0,
+        "scope_diversified_query_executed_count": 0,
+        "planned_query_count": 2,
+        "scope_diversified_query_planned_count": 0,
+        "elapsed_seconds": 11.06,
+        "planning_budget_seconds": 60,
+        "skipped_duplicate_query_count": 0,
+        "selected_lead_count": 2,
+        "rejected_operation_count": 0,
+        "max_queries": 2,
+        "deterministic_gap_query_count": 0,
+        "deterministic_gap_query_executed_count": 0
+      },
+      "research_provider_coverage": {
+        "gemini": {
+          "status": "success",
+          "elapsed_seconds": 11.039,
+          "model_used": "gemini-3.5-flash-lite",
+          "attempt_wait_seconds": 29.989499999999907
+        }
+      },
+      "eligible_source_urls": [],
+      "accepted_source_urls": [],
+      "accepted_evidence_count": 0,
+      "excluded_evidence_count": 0,
+      "search_statuses": [
+        "success",
+        "success",
+        "no_results",
+        "success",
+        "success"
+      ],
+      "fetch_failure_counts": {
+        "blocked_or_unavailable": 4,
+        "unsupported_content": 0,
+        "oversize": 0,
+        "error": 0,
+        "timeout": 0
+      },
+      "cumulative_fetch_attempt_count": 10,
+      "direct_reference_recovery": {
+        "decision_role": "retrieval_only_no_truth_vote",
+        "selected_lead_count": 2,
+        "max_leads": 2,
+        "max_depth": 1
+      }
+    },
+    {
+      "id": "dev12-constitution_true",
+      "original_case_id": "constitution_true",
+      "expected": "supported",
+      "actual": "unverified",
+      "previous_actual": "unverified",
+      "outcome": "inconclusive",
+      "status": "completed",
+      "elapsed_seconds": 0.826,
+      "source_sha256": "d48aa4d3f3f0686654d42bdc4a1d1b91335340e199d223ac2db8259b0752c6a6",
+      "freeze_contract_sha256": "cee02dcad88a06a5ae3ab5920ae88fd90734aac7859ebeaabc0dd97c124d1232",
+      "fixture_sha256": "47397f9ffa4022db414d2b85614efd70bdbfe3db4510b221d3d67bcb16625e04",
+      "record_sha256": "8b741a90eb497419efe67f9434d1e43390d96cdc392923284bb56f79464a8f22",
+      "submission": "browser_ui",
+      "report_observed": true,
+      "screenshot_file": "ui-constitution_true.jpg",
+      "screenshot_sha256": "96009040f092386f358fd3dc8ce8cc93d87516f408f9786b5f24cb36764c1b36",
+      "ui_proof_sha256": "cd693325c5ee9c3dc6e5f63950ed977a1d61e4794d64165a44aec6e6a4b58d53",
+      "ui_observation_time": "2026-10-29T09:53:49.733Z",
+      "observed_heading": "Análise inconclusiva",
+      "comparison_status": "not_requested",
+      "comparison_coverage": {
+        "grounded_evidence_count": 0,
+        "comparison_method": "not_requested",
+        "max_sources": 3,
+        "selected_source_count": 0,
+        "complete_source_review": false,
+        "selected_claim_count": 1,
+        "max_claims": 5,
+        "omitted_claim_count": 0,
+        "max_prompt_body_characters": 18000,
+        "eligible_family_count": 0,
+        "expected_source_pair_count": 0,
+        "literal_claim_count": 1,
+        "complete_claim_coverage": false,
+        "assessed_claim_count": 1,
+        "source_review_protocol": "claim_source_review_v2"
+      },
+      "comparison_provider_coverage": {
+        "gemini": {
+          "status": "not_requested",
+          "decision_role": "grounded_comparison_assistant"
+        },
+        "openrouter": {
+          "status": "not_requested",
+          "free_only": true,
+          "decision_role": "grounded_comparison_assistant"
+        }
+      },
+      "research_status": "not_requested",
+      "research_coverage": {
+        "status": "not_requested"
+      },
+      "research_provider_coverage": {},
+      "eligible_source_urls": [],
+      "accepted_source_urls": [],
+      "accepted_evidence_count": 0,
+      "excluded_evidence_count": 0,
+      "search_statuses": [
+        "error"
+      ],
+      "fetch_failure_counts": {
+        "blocked_or_unavailable": 0,
+        "unsupported_content": 0,
+        "oversize": 0,
+        "error": 0,
+        "timeout": 0
+      },
+      "cumulative_fetch_attempt_count": 0,
+      "direct_reference_recovery": {
+        "decision_role": "retrieval_only_no_truth_vote",
+        "selected_lead_count": 0,
+        "max_leads": 2,
+        "max_depth": 1
+      }
+    }
+  ],
+  "provider_counts": {
+    "facts": 12,
+    "news": 60,
+    "public_fetch": 68,
+    "openrouter": 3,
+    "gemini": 9
+  },
+  "caps": {
+    "gemini": 16,
+    "openrouter": 12,
+    "facts": 12,
+    "news": 60,
+    "public_fetch": 120,
+    "assemblyai": 0,
+    "sightengine": 0,
+    "hf": 0,
+    "hive": 0
+  },
+  "transport_statuses": {
+    "facts": {
+      "200": 12
+    },
+    "news": {
+      "200": 60
+    },
+    "public_fetch": {
+      "incomplete": 1,
+      "200": 53,
+      "401": 4,
+      "301": 4,
+      "404": 1,
+      "403": 4,
+      "307": 1
+    },
+    "openrouter": {
+      "200": 3
+    },
+    "gemini": {
+      "200": 9
+    }
+  },
+  "provider_journal_sha256": "955c7bff1e2f4983cffb1bee1d40c6b1ac6a86d48004c622e69d709fd7d79089",
+  "caps_reached": [
+    "facts",
+    "news"
+  ],
+  "openrouter_conservative_prior": 62,
+  "openrouter_this_round": 3,
+  "openrouter_conservative_after": 65,
+  "openrouter_authorized_cumulative_ceiling": 74,
+  "transport_success_is_not_semantic_success": true,
+  "round_completed_record_sha256": "f94fca80d92f6b701301c3c97f411e6b765fb8407c464bee51daecf8e0a9a451"
+}
