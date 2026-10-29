@@ -17,7 +17,7 @@ import httpx
 
 from app.services.claim_policy import input_claims, normalize_claim
 from app.services.public_fetch import fetch_public_resource
-from app.services.source_readability import STATIC_CONTENT_TYPES, known_unsupported_lead
+from app.services.source_readability import STATIC_CONTENT_TYPES, known_unsupported_lead, known_paginated_listing_lead
 
 ATTRIBUTION_VERSION = "literal_source_attribution_v1"
 MAX_SOURCES = 3
@@ -994,8 +994,13 @@ def _retrieval_priority(text, title, url):
     # primary-source flag preceded topic overlap and ranked an unrelated
     # institutional overview before an article naming the actual subject.
     format_priority = 100 if launch_phase is None else 1000
+    # A paginated topic/archive page can repeat many names and otherwise win
+    # over a direct article merely by topic count. Keep format, identity,
+    # phase and date bands first; this hint never removes a readable listing
+    # or supplies evidence about its contents. Indices 0/2/3 stay stable for
+    # quality_band and publisher diversity; only the lower-order tie changes.
     return (format_priority * unsupported_format + discovery_priority + 10 * (shared_topics == 0), -year_matches, unrelated_period,
-            narrower_period, -shared_topics, not primary)
+            narrower_period, known_paginated_listing_lead(url), -shared_topics, not primary)
 
 
 def _article_jsonld_dates(soup, resource_url, visible_date):

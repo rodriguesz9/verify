@@ -88,6 +88,51 @@ _QUALIFIED_MEASUREMENT_PREFIX = re.compile(
     r"|pelo\s+menos|no\s+m[aá]ximo|no\s+m[ií]nimo|mais\s+de|menos\s+de|at[eé]"
     r"|cerca\s+de|aproximadamente)$", re.I,
 )
+_REFERENCE_RANGE = r"((?:18|19|20)\d{2})\s*[-–—]\s*((?:18|19|20)\d{2})\b"
+_LOCAL_REFERENCE_RANGE = re.compile(r"\b" + _REFERENCE_RANGE)
+_LOCAL_BASELINES = tuple(re.compile(pattern, re.I) for pattern in (
+    # The comparison owns an immediately adjacent reference complement.
+    # Arbitrary later clauses cannot lend their period to this measurement.
+    r"^\s+(?:the\s+)?" + _REFERENCE_RANGE
+        + r"\s+(?:(?:surface\s+air\s+)?temperature\s+)?(?:average|mean|baseline|reference(?:\s+period)?)\b",
+    r"^\s+(?:the\s+)?(?:(?:surface\s+air\s+)?temperature\s+)?"
+        r"(?:average|mean|baseline|reference\s+period)(?:\s+(?:of|for|from|over|during|de))?\s+"
+        + _REFERENCE_RANGE,
+    r"^\s+(?:(?:da|do|a|ao|à|de)\s+)?"
+        r"(?:m[eé]dia|temperatura\s+m[eé]dia|n[ií]vel|per[ií]odo(?:\s+de\s+refer[eê]ncia)?)"
+        r"(?:\s+(?:do\s+per[ií]odo|de|do|da|para|entre))?\s+" + _REFERENCE_RANGE,
+))
+_REFERENCE_COORDINATION = re.compile(
+    r"^\s*(?:,\s*(?:(?:and|or|e\s+também|e|ou)\s+)?|(?:as\s+well\s+as|e\s+também|and|or|e|ou)\s+|/\s*)", re.I,
+)
+
+
+def _coordinated_baseline(tail):
+    coordination = _REFERENCE_COORDINATION.match(tail)
+    if coordination is None:
+        return False
+    following = tail[coordination.end():].lstrip()
+    # A coordinated complement can omit the repeated word "average":
+    # "average for X and for Y" / "média de X e de Y" still name two
+    # references. Strip only a leading complement preposition/article;
+    # an explicit independent subject ("another series uses Y") stays intact.
+    bare = re.sub(r"^(?:for|of|from|over|during|de|para|entre)\s+",
+                  "", following, count=1, flags=re.I)
+    bare = re.sub(r"^(?:the|a|an)\s+", "", bare, count=1, flags=re.I)
+    return bool(_LOCAL_REFERENCE_RANGE.match(bare) or any(
+        pattern.match(" " + following) for pattern in _LOCAL_BASELINES))
+
+
+def _local_baseline(tail):
+    for pattern in _LOCAL_BASELINES:
+        match = pattern.match(tail)
+        if match is not None:
+            first, last = match.groups()
+            return {(first, last)} if first < last and not _coordinated_baseline(tail[match.end():]) else None
+    # None marks a literal range with unknown ownership; an empty set means
+    # no explicit range was stated. Do not let an unparsed claimed reference
+    # disappear from the support/refutation comparison.
+    return None if _LOCAL_REFERENCE_RANGE.search(tail) else set()
 
 
 def _ambiguous_measurement_prefix(text, start):
@@ -122,7 +167,7 @@ def _measured_comparisons(text):
         # second metric's reference range for the first one.
         end = min(match.end() + 180, matches[index + 1].start() if index + 1 < len(matches) else len(text))
         tail = re.split(r"[.!?;]", text[match.end():end], maxsplit=1)[0]
-        ranges = set(re.findall(r"\b((?:18|19|20)\d{2})\s*[-–—]\s*((?:18|19|20)\d{2})\b", tail))
+        ranges = _local_baseline(tail)
         above = position.casefold() in {"acima", "above"} or bool(re.fullmatch(r"(?:warmer|higher)\s+than", position, re.I))
         result.append((_decimal(number), "percent" if unit == "%" else "celsius",
             "above" if above else "below", ranges))
@@ -137,7 +182,7 @@ def supporting_measurements_bound(claim, quote):
     value, not another metric elsewhere in the same body window.
     """
     claimed = _measured_comparisons(claim)
-    if (_has_ambiguous_measurement(claim)
+    if (any(value[3] is None for value in claimed) or _has_ambiguous_measurement(claim)
             or _has_ambiguous_measurement(quote, {value[:2] for value in claimed})):
         return False
     bounded = [value for value in claimed if value[3]]
@@ -159,7 +204,7 @@ def opposing_measurements(claim, quote):
     expanded from background knowledge.
     """
     left = _measured_comparisons(claim)
-    if (len(left) != 1 or left[0][0] is None or _has_ambiguous_measurement(claim)
+    if (len(left) != 1 or left[0][0] is None or left[0][3] is None or _has_ambiguous_measurement(claim)
             or _has_ambiguous_measurement(quote, {left[0][:2]})):
         return False
     # Other metrics in the same body window no longer mask a unique matching

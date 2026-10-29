@@ -26,7 +26,7 @@ from app.services.source_corroboration import document_selection_audit
 from app.services.source_corroboration import claims_needing_research
 from app.services.source_decision import apply_source_decision
 from app.services.report_explanation import enrich_grounded_report
-from app.services.source_queries import neutral_source_query, primary_source_query, primary_source_filter, editorial_source_query
+from app.services.source_queries import neutral_source_query, primary_source_query, primary_source_filter, editorial_source_query, quantitative_source_query
 from app.services.source_research import plan_source_research, research_enabled
 from app.services.provider_diagnostics import provider_result_failure_metadata
 from app.services.launch_relations import _frame as _launch_frame
@@ -298,6 +298,7 @@ def _research_scope_plan(text, planned_queries, previous_queries):
                 and not re.search(r"https?://|www\.|\bsite\s*:|[\x00-\x1f\x7f]", neutral, re.I)):
             desired = _research_query_text(neutral, "editorial")
             group = "editorial"
+            origin = "deterministic_original_neutral"
             reason = "original_numbered_mission_editorial_gap" if mission_query else "original_neutral_editorial_gap"
             if key(desired) in seen:
                 duplicates += 1
@@ -305,17 +306,25 @@ def _research_scope_plan(text, planned_queries, previous_queries):
                 # Preserve a novel unfiltered read instead of paying twice for
                 # an identical query or adding a cosmetic search modifier.
                 group, reason = "any", "duplicate_editorial_query_already_executed"
+                quantitative = quantitative_source_query(text) if mission_query is None else None
+                # A literal amount can find a different report after the
+                # neutral editorial query already ran. It reuses this SAME
+                # open slot; earlier neutral discovery still covers false
+                # alleged amounts. No result becomes evidence at this stage.
+                if quantitative and key(quantitative) not in seen:
+                    neutral, origin = quantitative, "deterministic_original_quantitative"
+                    reason = "literal_quantity_variant_after_executed_neutral"
             final = _research_query_text(neutral, group)
             if len(final) <= 500 and key(final) not in seen:
                 selected.append({"query": neutral, "source_group": group,
-                    "requested_source_group": None, "query_origin": "deterministic_original_neutral",
+                    "requested_source_group": None, "query_origin": origin,
                     "scope_change_reason": reason})
             elif key(final) in seen:
                 duplicates += 1
     return selected[:2], {"skipped_duplicate_query_count": duplicates,
         "scope_diversified_query_planned_count": sum(item["query_origin"] == "ai_validated_query"
             and item["requested_source_group"] != item["source_group"] for item in selected),
-        "deterministic_gap_query_count": sum(item["query_origin"] == "deterministic_original_neutral" for item in selected)}
+        "deterministic_gap_query_count": sum(item["query_origin"] in {"deterministic_original_neutral", "deterministic_original_quantitative"} for item in selected)}
 
 
 def _unread_primary_reference_leads(text, documents, source_url, fetched_cache, selected_leads):
@@ -496,7 +505,7 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
                         continue
                     extra = await search_web(query_text)
                     extra_status = getattr(extra, "status", "success" if extra else "no_results")
-                    deterministic_gap_query = search["query_origin"] == "deterministic_original_neutral"
+                    deterministic_gap_query = search["query_origin"] in {"deterministic_original_neutral", "deterministic_original_quantitative"}
                     plan.append({"method": "deterministic_research_gap_recovery" if deterministic_gap_query else "ai_directed_online_research", "status": extra_status,
                                  "decision_role": "retrieval_only_original_claim_unchanged", "query_origin": search["query_origin"],
                                  "requested_source_group": search["requested_source_group"], "executed_source_group": search["source_group"],

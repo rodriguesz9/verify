@@ -74,7 +74,7 @@ A ponte vídeo→artigo corrigida antes da rodada não foi exercida nesse caso: 
 
 G1 continuou elegível. A consulta que antes encontrava uma notícia completa da CNN passou a retornar um arquivo de notícias e textos de outros períodos. O arquivo capturado não tem a afirmação completa com valor, período e divulgação nem o link necessário para recuperar aquele artigo. Não há quebra demonstrada do parser: o replay com os documentos antigos preserva as duas famílias.
 
-Uma melhoria a avaliar é diversificar um slot existente com entidade, ano e quantidade/unidade literais, mantendo consultas neutras para afirmações com números falsos. Ainda é proposta; não foi medida nem serve para reutilizar o endereço esperado do controle.
+Na continuação local de 29/10, foi implementada uma variante com entidade, ano e quantidade/unidade literais em um espaço de pesquisa já existente, mantendo as consultas neutras para afirmações com números falsos. A descoberta remota dessa variante ainda não foi medida; ela não reutiliza o endereço esperado do controle.
 
 ## Limites das correções posteriores
 
@@ -95,3 +95,19 @@ Permanecem pendentes recuperação estável de fontes independentes, vínculo au
 Ambiente local revisado reiniciado com os mesmos volumes: `/health` e `/ready` retornaram HTTP 200, banco pronto; `/app` em `http://127.0.0.1:5176` respondeu HTTP 200. Os quatro arquivos de implementação no contêiner coincidem com os hashes testados. Nenhuma análise remota foi submetida após os reparos; não houve deploy de Railway/Vercel nesta etapa.
 
 Provas visuais preservadas: [data falsa corretamente refutada](evidencias-2026-10-28/data-falsa-refutada.jpg) e [Constituição inconclusiva](evidencias-2026-10-28/constituicao-inconclusiva.jpg). As demais dez capturas e provas de submissão permanecem no registro local da rodada; seus hashes constam no resumo sanitizado.
+
+## Continuação local — 29/10/2026
+
+Três ajustes posteriores ao commit `b16104e`, sem reiniciar a rodada encerrada e sem chamadas a provedores, buscas ou páginas externas:
+
+1. **Pesquisa de números:** quando a consulta editorial neutra já foi executada e ainda há espaço na recuperação, uma variante pode incluir a quantidade literal, a entidade e o ano informado. Usa o mesmo espaço existente, sem criar uma terceira operação de pesquisa nem aumentar os limites de chamadas. As consultas anteriores sem o valor continuam disponíveis para encontrar fontes quando o número alegado for falso. Quantidades aproximadas, sinais, intervalos, vários valores ou períodos ambíguos mantêm a recuperação neutra. A afirmação original continua intacta nas validações de evidência.
+2. **Artigo antes de arquivo de notícias:** dentro das mesmas prioridades de assunto, missão, fase e período, um artigo pode ser lido antes de uma página reconhecida de arquivo paginado, mesmo quando esta repete mais palavras do assunto. O arquivo permanece disponível como alternativa; seu título e sua posição na fila não fornecem evidência factual. A mudança não recupera um artigo que a busca nunca retornou.
+3. **Referência de uma medida:** um valor não pode herdar o período de referência de outra série na mesma frase. A ligação exige uma construção local explícita em português ou inglês. Duas referências coordenadas, inclusive “média de X e de Y”, não podem ser reduzidas à primeira. Controles de valor, direção e referência corretamente vinculados continuam aceitos; menções posteriores a outra série não substituem a referência da primeira.
+
+**Validação final: 1.767 testes backend passaram, sem falhas, testes ignorados ou tentativas HTTP inesperadas.** São 28 testes novos: onze de pesquisa quantitativa, seis de prioridade de arquivos paginados e onze de vínculo de referências numéricas, com vários subcasos positivos e negativos. A revisão adicional reproduziu quatro falhas de referências coordenadas antes de corrigi-las. Execução em contêiner temporário sem rede, sem carregar `.env` e com bancos descartáveis; banco local principal preservado. Nenhum arquivo do frontend foi alterado, portanto sua suíte e build não foram repetidos nesta continuação.
+
+Ambiente local reiniciado na revisão testada: `/health`, `/ready` e a página `/app` responderam HTTP 200; hashes dos cinco arquivos de implementação no servidor coincidem com os do código testado. Volumes existentes preservados. Não houve submissão de análise, deploy ou mudança em credenciais.
+
+Esta etapa valida comportamento e proteções locais. Não mede a eficácia de uma nova busca real, uma nova taxa de acerto nem autenticidade de mídias. **A última taxa real permanece 5/12 (41,7%), com sete inconclusivos.** Os limites autorizados de rodadas encerradas não são reiniciados ou reutilizados.
+
+Próximos pontos concretos: recuperar fontes independentes ausentes; resolver definições de referência e datas de relatório a partir do próprio documento, sem completar com conhecimento da IA; medir os mesmos controles e depois controles novos em outra rodada delimitada. No corpo salvo do Copernicus, reconhecer a definição de referência isoladamente ainda não resolve a data de publicação ausente. Não há ganho de precisão atribuído a essa lacuna nesta etapa.

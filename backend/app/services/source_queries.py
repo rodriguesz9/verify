@@ -1,12 +1,14 @@
-"""Neutral retrieval leads. Never replacement claims or factual evidence.
+"""Neutral/literal retrieval leads. Never replacement claims or factual evidence.
 
 Literal queries are tried first. Recovery keeps names, topic words and years,
 without requiring a disputed amount, day or polarity to appear in a result.
-No model, network, fixed answer or per-example URL is used here.
+One optional quantitative variant only diversifies a previously used neutral
+query in the caller's existing recovery slot. No model, network, fixed answer
+or per-example URL is used here.
 """
 import re
 import unicodedata
-from app.services.source_relations import lexical_text, WORD_GROUPS
+from app.services.source_relations import lexical_text, WORD_GROUPS, _ambiguous_measurement_prefix
 
 _STOP = set("a o as os um uma uns umas de da do das dos em no na nos nas e ou que se ao aos com como para por foi são era é ser tem teve segundo informou disse sobre até após entre ainda já mais menos seu sua seus suas ele ela eles elas este esta isso isto divulgação relatório relação the of in on at and was is were has had to by her his it its an as from".split())
 _CALENDAR = set("janeiro fevereiro março abril maio junho julho agosto setembro outubro novembro dezembro january february march april may june july august september october november december jan feb mar apr jun jul aug sep sept oct nov dec".split())
@@ -93,6 +95,46 @@ def neutral_source_query(text, *, preserve_period=False):
         return None
     query = " ".join(ordered)
     return query if len(query) <= 240 else None
+
+
+_LITERAL_QUERY_MEASURE = re.compile(
+    r"(?<![\w.,])\d+(?:[.,]\d+)?\s*(?:%|°\s*C|graus?\s+Celsius|degrees?\s+Celsius)(?!\w)", re.I,
+)
+
+
+def quantitative_source_query(text):
+    """One literal scalar may diversify an already executed neutral search.
+
+    Discovery only: an alleged amount may be false. The caller keeps prior
+    neutral searches and the original assertion's evidence guards. Never
+    infer another amount, period or entity; ambiguous scalar/period frames
+    abstain rather than silently select one endpoint or comparison year.
+    """
+    if (not isinstance(text, str) or not 20 <= len(text.strip()) <= 500
+            or re.search(r"https?://|www\.|\bsite\s*:|[\x00-\x1f\x7f]", text, re.I)):
+        return None
+    from app.services.claim_policy import input_claims
+    if len(input_claims(text)) != 1:
+        return None
+    subject = _discovery_subject(text)
+    measures = list(_LITERAL_QUERY_MEASURE.finditer(subject))
+    if len(measures) != 1:
+        return None
+    measure = measures[0]
+    if (_ambiguous_measurement_prefix(subject, measure.start())
+            or re.match(r"\s*(?:(?:ou\s+|or\s+)(?:mais|menos|more|less)\b"
+                        r"|(?:[-–—]|(?:a|até|ate|to|e|and)\b)\s*\d)", subject[measure.end():], re.I)):
+        return None
+    # A number used as the amount is not a year. Likewise, an explicit release
+    # date was removed above before selecting the reported comparison period.
+    period_text = subject[:measure.start()] + " " + subject[measure.end():]
+    if len(discovery_target_years(period_text)) != 1:
+        return None
+    neutral = neutral_source_query(period_text, preserve_period=True)
+    if neutral is None or not any(word[0].isupper() for word in neutral.split() if not word.isdigit()):
+        return None
+    query = neutral + " " + " ".join(measure[0].split())
+    return query if 20 <= len(query) <= 240 else None
 
 
 def primary_source_query(text):
