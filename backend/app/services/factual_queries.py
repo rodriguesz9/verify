@@ -14,8 +14,9 @@ def build_fact_check_queries(text: str, extracted_claims, limit: int = 5, *,
                              max_query_chars: int = MAX_FACT_CHECK_QUERY_CHARS) -> tuple[list[str], dict]:
     """Prioritize extracted literal sentences, retaining a full-input fallback.
 
-    A partial literal hint selects its entire containing sentence. It is only
-    a search hint, never a replacement proposition for ``claim_assessments``.
+    A literal hint is searched as-is, so conversational framing can be omitted
+    when an extractor identifies the factual clause. It remains only a search
+    hint, never a replacement proposition for ``claim_assessments``.
     With at least two query slots, reserve one for the complete input when it
     fits the provider's limit. Oversize queries are omitted, never truncated.
     """
@@ -37,14 +38,13 @@ def build_fact_check_queries(text: str, extracted_claims, limit: int = 5, *,
             rejected_hints += 1
             continue
         literal = hint.strip()
-        parents = [segment for segment in segments if literal in segment]
-        if not parents:
+        if not any(literal in segment for segment in segments):
             # A cross-sentence extraction cannot discard the surrounding input.
             # The complete literal input remains a separate fallback candidate.
             rejected_hints += 1
             continue
         valid_hints += 1
-        extracted_sentences.extend(parents)
+        extracted_sentences.append(literal)
 
     candidates = {}
 
@@ -53,7 +53,7 @@ def build_fact_check_queries(text: str, extracted_claims, limit: int = 5, *,
             candidates.setdefault(normalize_claim(query), {"text": query, "method": method})
 
     for sentence in extracted_sentences:
-        add_candidate(sentence, "extracted_literal_sentence")
+        add_candidate(sentence, "extracted_literal_claim")
     add_candidate(whole, "whole_literal_input")
     for sentence in segments:
         add_candidate(sentence, "literal_sentence_fallback")
@@ -65,7 +65,7 @@ def build_fact_check_queries(text: str, extracted_claims, limit: int = 5, *,
     reserve_whole = limit > 1 and whole_key in admissible
     hint_slots = limit - 1 if reserve_whole else limit
     for key, candidate in admissible.items():
-        if candidate["method"] == "extracted_literal_sentence" and len(selected) < hint_slots:
+        if candidate["method"] == "extracted_literal_claim" and len(selected) < hint_slots:
             selected[key] = candidate
     if reserve_whole:
         selected.setdefault(whole_key, admissible[whole_key])

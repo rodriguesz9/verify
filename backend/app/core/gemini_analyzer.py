@@ -33,9 +33,10 @@ REGRAS:
 - Não retorne markdown.
 - Não explique.
 - Separe alegações independentes em itens diferentes.
-- Copie trechos literais completos do texto, incluindo negações, datas e valores. Não reescreva, complete ou resolva pronomes.
+- Copie trechos literais do texto, incluindo negações, datas e valores. Pode extrair apenas a oração factual de uma pergunta ou conversa; nunca reescreva, complete ou resolva pronomes.
 - No máximo cinco trechos; não avalie verdade, autoria ou origem.
-- Ignore opiniões, xingamentos, perguntas, chamadas e trechos sem afirmação factual.
+- Perguntas como "é verdade que [alegação]?", "isso aconteceu?" e "o que dizem sobre [alegação]?" podem conter uma alegação factual verificável: extraia o trecho literal da alegação e ignore apenas a moldura conversacional.
+- Ignore perguntas sem alegação factual verificável, opiniões, xingamentos, chamadas e trechos sem afirmação factual.
 - Se não houver claims verificáveis, retorne {{"claims": []}}.
 
 EXEMPLOS:
