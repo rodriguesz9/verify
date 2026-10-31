@@ -711,14 +711,14 @@ async def corroborate_sources(text, documents, source_url=None):
     provider_coverage = {"openrouter": {"status": "not_requested", "decision_role": "grounded_comparison_assistant", "free_only": True},
                          "gemini": {"status": "not_requested", "decision_role": "grounded_comparison_assistant"}}
     status, decoded = "not_requested", {}
-    reason = "Faltam duas famílias de fontes elegíveis para iniciar a comparação."
+    reason = "Nenhuma família de fonte elegível para iniciar a comparação."
     if not enabled:
         status, reason = "disabled", "Cruzamento de fontes desabilitado por configuração."
     elif not valid_input or not valid_documents:
         reason = "Entrada fora dos limites ou contrato de documentos inválido; comparação não solicitada."
     elif not claims:
         reason = "Nenhuma afirmação literal disponível para comparação."
-    elif len(families) >= 2:
+    elif len(families) >= 1:
         prompt = json.dumps({"claims": claims, "sources": [{"source_id": source["source_id"], "passages": source["passages"]}
                                                          for source in sources]}, ensure_ascii=False)
         try:

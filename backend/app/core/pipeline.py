@@ -11,12 +11,12 @@ from app.core.serper_client import search_news, search_web, NewsSearch, MAX_NEWS
 from app.core.scam_detector import analyze_scam_indicators
 from app.core.openrouter_service import analyze_with_openrouter
 from app.services.claim_policy import text_report, input_claims
-from app.services.news_relevance import filter_context_news
 from app.services.factual_queries import build_fact_check_queries
 from app.services.source_attribution import collect_source_attribution
 from app.services.source_corroboration import corroborate_sources
 from app.services.source_corroboration import select_comparison_documents, usable_source_families
 from app.services.source_corroboration import document_selection_audit
+from app.services.source_corroboration import source_identity
 from app.services.source_decision import apply_source_decision
 from app.services.report_explanation import enrich_grounded_report
 
@@ -130,7 +130,7 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
     attribution, plan = None, []
     try:
         async with asyncio.timeout(deadline):
-            query = next((query for query in queries if 20 <= len(query.strip()) <= 500), None)
+            query = next((query for query in queries if 1 <= len(query.strip()) <= 500), None)
             leads = (await search_web(query) if query else NewsSearch(
                 status="no_results", reason="Nenhuma frase completa cabe no limite da busca; nenhum texto foi cortado."))
             plan = [{"method": "whole_literal_claim", "status": getattr(leads, "status", "success" if leads else "no_results")}] if query else []
@@ -144,7 +144,7 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
                     and len(families) < 2
                     and getattr(leads, "status", "success" if leads else "no_results") in {"success", "no_results"}):
                 for qualified, recovery_method in _source_recovery_queries(query, limit):
-                    if not 20 <= len(qualified) <= 500:
+                    if not 1 <= len(qualified) <= 500:
                         continue
                     extra = await search_web(qualified)
                     extra_status = getattr(extra, "status", "success" if extra else "no_results")
@@ -222,6 +222,23 @@ def extract_source_from_url(url: str) -> dict:
     return {"source_name": hostname, "is_trusted": False, "score": 50}
 
 
+def _annotate_search_source(item: dict) -> dict:
+    """Add a curated publisher-class label; reputation is not truth evidence."""
+    link = item.get("link") if isinstance(item, dict) else None
+    reputation_url = f"https://{link[7:]}" if isinstance(link, str) and link.startswith("http://") else link
+    identity = source_identity(reputation_url) if isinstance(reputation_url, str) else None
+    if identity and identity.get("source_type") == "primary":
+        assessment = {"level": "primary", "label": "Fonte primária reconhecida",
+                      "basis": "Domínio incluído na lista curada de fontes primárias."}
+    elif identity and identity.get("source_type") == "editorial":
+        assessment = {"level": "editorial", "label": "Veículo editorial reconhecido",
+                      "basis": "Domínio incluído na lista curada de veículos editoriais."}
+    else:
+        assessment = {"level": "unclassified", "label": "Reputação não classificada",
+                      "basis": "Não há classificação curada para este domínio; isso não significa que seja ruim."}
+    return {**item, "publisher_assessment": assessment}
+
+
 def analyze_temporal_context(serper_news: list, scrape_date: str = None) -> dict:
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     dates_found = []
@@ -261,7 +278,8 @@ def analyze_temporal_context(serper_news: list, scrape_date: str = None) -> dict
 
 
 async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: bool = True,
-                       use_source_crosscheck: bool = True, use_detailed_report: bool = False) -> dict:
+                       use_source_crosscheck: bool = True, use_detailed_report: bool = False,
+                       use_gemini_report: bool = False) -> dict:
     source_url = url
     analysis_text = text
 
@@ -307,9 +325,13 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
         asyncio.create_task(search_news(query))
         for query in serper_news_queries
     ]
+    serper_web_queries, web_query_plan = build_fact_check_queries(
+        analysis_text, claims, limit=3, max_query_chars=MAX_NEWS_QUERY_CHARS)
+    serper_web_queries = [query for query in serper_web_queries if query.strip()]
+    serper_web_tasks = [asyncio.create_task(search_web(query)) for query in serper_web_queries]
     attribution_task = asyncio.create_task(_retrieve_source_attribution(
         analysis_text, fact_check_queries, source_url, use_source_crosscheck=use_source_crosscheck))
-    tasks = [*fact_tasks, *serper_news_tasks, ai_task, attribution_task]
+    tasks = [*fact_tasks, *serper_news_tasks, *serper_web_tasks, ai_task, attribution_task]
     if domain_task:
         tasks.append(domain_task)
     
@@ -347,7 +369,21 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
             serper_news_results.append(item)
 
     unique_news_count = len(serper_news_results)
-    serper_news_results, news_relevance = filter_context_news(analysis_text, serper_news_results)
+    serper_web_results = []
+    raw_web_count = 0
+    for task in serper_web_tasks:
+        if task.exception():
+            continue
+        for item in task.result():
+            raw_web_count += 1
+            link = item.get("link")
+            if link and link not in seen_links:
+                seen_links.add(link)
+                serper_web_results.append(item)
+    unique_web_count = len(serper_web_results)
+    # Search results remain context only; do not discard them via lexical anchor matching.
+    serper_news_results = [_annotate_search_source(item) for item in serper_news_results]
+    serper_web_results = [_annotate_search_source(item) for item in serper_web_results]
 
     dates_in_text = extract_dates_from_text(analysis_text)
     source_info = extract_source_from_url(source_url) if source_url else {"source_name": "Nenhuma", "is_trusted": False, "score": 50}
@@ -360,6 +396,7 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
         "claims": claims,
         "fact_checks": [fc.model_dump() for fc in fact_checks],
         "serper_news": serper_news_results,
+        "serper_web": serper_web_results,
         "source_url": source_url,
         "temporal_context": temporal_info,
         "dates_in_content": dates_in_text,
@@ -373,6 +410,7 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
     ai["search_claims_decision_role"] = "search_hints_only"
     ai["scam_analysis"] = scam_info
     ai["serper_news"] = serper_news_results
+    ai["serper_web"] = serper_web_results
     source_attribution = dict(attribution_task.result())
     source_documents = source_attribution.pop("_documents", [])
     source_comparison = None
@@ -410,6 +448,35 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
             "reason": source_comparison.get("reason"),
             "coverage": source_comparison.get("coverage", {}),
         }
+    comparison_claims = source_comparison.get("claims", []) if isinstance(source_comparison, dict) else []
+    states = {item.get("status") for item in comparison_claims if isinstance(item, dict)}
+    relations = {source.get("relation") for claim in comparison_claims if isinstance(claim, dict)
+                 for source in claim.get("evidence", []) if isinstance(source, dict)}
+    if states and states <= {"corroborated", "refuted"} and len(states) == 1:
+        evidence_strength = {"level": "strong", "direction": next(iter(states)),
+            "basis": "Trechos lidos em pelo menos duas famílias independentes de fontes elegíveis."}
+    elif "conflicting" in states:
+        evidence_strength = {"level": "mixed", "direction": "conflicting",
+            "basis": "Trechos de fontes consultadas apontam em direções diferentes."}
+    elif relations == {"supports"}:
+        evidence_strength = {"level": "limited", "direction": "single_support",
+            "basis": "Trechos consultados favorecem a afirmação, mas não atingem o mínimo de fontes independentes para confirmação."}
+    elif relations == {"refutes"}:
+        evidence_strength = {"level": "limited", "direction": "single_refute",
+            "basis": "Trechos consultados contradizem a afirmação, mas não atingem o mínimo de fontes independentes para refutação."}
+    elif relations == {"supports", "refutes"}:
+        evidence_strength = {"level": "mixed", "direction": "conflicting",
+            "basis": "Trechos consultados apontam em direções diferentes."}
+    elif any(isinstance(item, dict) and item.get("evidence") for item in comparison_claims):
+        evidence_strength = {"level": "limited", "direction": "unresolved",
+            "basis": "Há ao menos um trecho de corpo relacionado, mas sem confirmação independente suficiente."}
+    elif serper_news_results or serper_web_results:
+        evidence_strength = {"level": "limited", "direction": "unresolved",
+            "basis": "Há resultados de busca, mas títulos e prévias não bastam para confirmar a afirmação."}
+    else:
+        evidence_strength = {"level": "insufficient", "direction": "unresolved",
+            "basis": "Nenhum resultado de busca ou trecho de fonte utilizável foi recuperado."}
+    ai["evidence_strength"] = evidence_strength
     if use_ai_extraction:
         ai["provider_coverage"]["openrouter"] = {key: value for key, value in openrouter_result.items()
             if key in {"available", "status", "reason", "model_used", "decision_role", "free_only", "response_issue"}}
@@ -424,9 +491,21 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
                                           "query_plan": news_query_plan,
                                           "matches_returned": len(serper_news_results),
                                           "raw_matches_returned": raw_news_count, "unique_matches_returned": unique_news_count,
-                                          "relevance_filter": news_relevance,
-                                          "reason": "Busca omitida: nenhuma frase completa cabe no limite de 500 caracteres; nenhum texto foi cortado." if news_status == "not_requested" else
-                                                    "Busca concluída sem notícias com correspondência lexical utilizável; isso não prova falsidade." if news_status == "no_results" else next((q["reason"] for q in news_queries if q["reason"]), None)}
+                                          "reason": "Busca omitida: nenhuma consulta cabe no limite de 500 caracteres; nenhum texto foi cortado." if news_status == "not_requested" else
+                                                    "Busca concluída sem notícias; isso não prova falsidade." if news_status == "no_results" else next((q["reason"] for q in news_queries if q["reason"]), None)}
+    web_queries = [{"status": "error" if task.exception() else getattr(task.result(), "status", "success" if task.result() else "no_results"),
+                    "reason": "Falha na busca web." if task.exception() else getattr(task.result(), "reason", None)}
+                   for task in serper_web_tasks]
+    web_status = ("not_requested" if not web_queries else "success" if raw_web_count else
+                  "no_results" if any(q["status"] in {"success", "no_results"} for q in web_queries) else
+                  "not_configured" if all(q["status"] == "not_configured" for q in web_queries) else "error")
+    ai["provider_coverage"]["serper_web"] = {
+        "status": web_status, "queries": web_queries, "query_plan": web_query_plan,
+        "decision_role": "context_only", "matches_returned": len(serper_web_results),
+        "raw_matches_returned": raw_web_count, "unique_matches_returned": unique_web_count,
+        "reason": "Nenhuma consulta de 1 a 500 caracteres disponível; nenhum texto foi cortado." if web_status == "not_requested" else
+                  "Busca web concluída sem resultados." if web_status == "no_results" else
+                  next((q["reason"] for q in web_queries if q["reason"]), None)}
 
     if scam_info["is_scam"]:
         ai["verdict"] = "Scam"
@@ -442,6 +521,40 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
         if scam_info.get("suspicious_url") and scam_info.get("suspicious_url_reason"):
             ai.setdefault("red_flags", []).append(f"Link Suspeito: {scam_info['suspicious_url_reason']}")
 
+    if use_gemini_report:
+        report_context = {**context,
+            "source_attribution": source_attribution,
+            "source_corroboration": source_comparison,
+            "evidence_strength": evidence_strength,
+            "provider_coverage": ai.get("provider_coverage", {}),
+            "policy_assessment": {key: ai.get(key) for key in (
+                "verdict", "veracity_status", "analysis_status", "claim_assessments", "summary")}}
+        generated = await _run_gemini_check(analysis_text, report_context)
+        generated_status = ("error" if not isinstance(generated, dict) or generated.get("model_used") == "fallback"
+                            else "success")
+        ai.setdefault("provider_coverage", {})["gemini_report"] = {
+            "status": generated_status, "decision_role": "evidence_based_report",
+            "model_used": generated.get("model_used") if isinstance(generated, dict) else None,
+            "reason": "Gemini não gerou o relatório; explicação baseada na política de evidências foi mantida."
+                      if generated_status == "error" else None}
+        if generated_status == "success":
+            for field in ("summary", "plain_explanation", "elderly_tip", "whatsapp_share_text"):
+                value = generated.get(field)
+                if isinstance(value, str) and value.strip():
+                    ai[field] = value.strip()[:5000]
+            search_summary = generated.get("search_summary")
+            if isinstance(search_summary, str) and search_summary.strip():
+                ai["search_summary"] = search_summary.strip()[:5000]
+            for field in ("red_flags", "positives"):
+                values = generated.get(field)
+                if isinstance(values, list):
+                    valid = [item.strip()[:500] for item in values if isinstance(item, str) and item.strip()]
+                    if field == "red_flags":
+                        ai[field] = list(dict.fromkeys([*ai.get(field, []), *valid]))[:20]
+                    else:
+                        ai[field] = valid[:20]
+            ai["report_model_used"] = generated.get("model_used")
+
     # Explanations are rendered after every decision/coverage layer. No extra
     # model call, new evidence, classification, probability or quota is added.
     if use_detailed_report:
@@ -454,6 +567,7 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
             "text_ai_probability": ai_forensics.get("ai_probability"),
             "fact_checks_count": len(fact_checks),
             "serper_news_count": len(serper_news_results),
+            "serper_web_count": len(serper_web_results),
             "domain_score": domain_info.get("score"),
             "earliest_known_date": (temporal_info.get("dates_found") or [None])[0],
             "temporal_info": temporal_info,
@@ -465,6 +579,7 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
         },
         "fact_checks": fact_checks,
         "serper_news": serper_news_results,
+        "serper_web": serper_web_results,
         "domain_info": domain_info,
         "scam_analysis": scam_info,
         "temporal_context": temporal_info,

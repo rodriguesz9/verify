@@ -110,7 +110,9 @@ export function sourceAttributionPresentation(result = {}) {
   const content = result.content_analysis && typeof result.content_analysis === "object" ? result.content_analysis : result;
   const record = content.source_attribution;
   if (!record || record.decision_role !== "source_attribution_only"
-      || !["found", "no_results", "error", "not_configured"].includes(record.status)) return null;
+      || !["found", "error", "not_configured"].includes(record.status)) return null;
+  // A failed exact-copy match says nothing about whether related evidence exists.
+  if (record.status === "no_results") return null;
   const matches = (Array.isArray(record.matches) ? record.matches : []).filter((item) => item
     && item.match_method === "literal_sentence" && ["submitted_source", "retrieved_reference"].includes(item.source_role)
     && safeSourceUrl(item.url) && typeof item.excerpt === "string" && item.excerpt.trim()
@@ -121,12 +123,10 @@ export function sourceAttributionPresentation(result = {}) {
   const status = record.status === "found" && !matches.length ? "error" : record.status;
   const coverage = record.coverage && typeof record.coverage === "object" ? record.coverage : {};
   const title = status === "found" ? "Trecho localizado em uma fonte"
-    : status === "no_results" ? "Sem correspondência nas fontes consultadas" : "Pesquisa de fontes não concluída";
+    : "Pesquisa de fontes não concluída";
   const explanation = status === "found"
     ? "Uma fonte publica o trecho literal enviado. Isso indica onde o texto aparece; não confirma que a afirmação seja verdadeira, a autoria original ou a autenticidade de uma mídia."
-    : status === "no_results"
-      ? "A pesquisa não localizou uma publicação com correspondência literal nesta consulta. Isso não prova falsidade nem ausência de uma fonte original; a busca tem alcance limitado."
-      : status === "not_configured"
+    : status === "not_configured"
         ? "A pesquisa de publicações não está habilitada nesta análise. Não foi possível verificar onde o trecho aparece; isso não determina verdade ou falsidade."
         : "A pesquisa de publicações não foi concluída. Não foi possível verificar onde o trecho aparece; isso não determina verdade ou falsidade.";
   const limitations = strings(record.limitations).filter((item) => !isTechnicalReportText(item)).slice(0, 8);
@@ -669,6 +669,7 @@ export function buildReportEvidence(result = {}, query = "") {
   const factChecks = [...(Array.isArray(result.fact_checks) ? result.fact_checks : []),
     ...(content !== result && Array.isArray(content.fact_checks) ? content.fact_checks : [])];
   const news = Array.isArray(result.serper_news) ? result.serper_news : [];
+  const web = Array.isArray(result.serper_web) ? result.serper_web : [];
   const acceptedUrls = new Set(claimAssessments.flatMap((claim) => Array.isArray(claim.evidence)
     ? claim.evidence.map((source) => safeSourceUrl(source?.url)).filter(Boolean) : []));
   const excludedReasons = new Map();
@@ -696,6 +697,23 @@ export function buildReportEvidence(result = {}, query = "") {
       title: typeof item.title === "string" ? item.title : "Notícia relacionada",
       publisher: typeof item.source === "string" ? item.source : "Fonte consultada",
       date: typeof item.date === "string" ? item.date : "",
+      snippet: typeof item.snippet === "string" ? item.snippet.slice(0, 500) : "",
+      publisherAssessment: item.publisher_assessment && typeof item.publisher_assessment === "object" ? {
+        label: typeof item.publisher_assessment.label === "string" ? item.publisher_assessment.label : "",
+        basis: typeof item.publisher_assessment.basis === "string" ? item.publisher_assessment.basis : "",
+      } : null,
+      url: safeSourceUrl(item.link),
+    })),
+    ...web.filter((item) => item && typeof item === "object").map((item, index) => ({
+      id: `web-${index}`, kind: "Resultado da busca na web · prévia não é confirmação",
+      title: typeof item.title === "string" ? item.title : "Página relacionada",
+      publisher: typeof item.source === "string" && item.source ? item.source : "Busca na web",
+      date: typeof item.date === "string" ? item.date : "",
+      snippet: typeof item.snippet === "string" ? item.snippet.slice(0, 500) : "",
+      publisherAssessment: item.publisher_assessment && typeof item.publisher_assessment === "object" ? {
+        label: typeof item.publisher_assessment.label === "string" ? item.publisher_assessment.label : "",
+        basis: typeof item.publisher_assessment.basis === "string" ? item.publisher_assessment.basis : "",
+      } : null,
       url: safeSourceUrl(item.link),
     })),
   ];

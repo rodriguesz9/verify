@@ -53,11 +53,13 @@ async def check_extracted_text(body: ReviewedTextRequest, user: User | None = De
     # Validate provenance/owner BEFORE quota, external retrieval or persistence.
     source = verify_text_review(body.review_token, user)
     await verify_limit(user, db, "TEXTUAL")
-    result = await run_pipeline(text=body.text, use_ai_extraction=False, use_detailed_report=True)
+    result = await run_pipeline(text=body.text, use_ai_extraction=False, use_detailed_report=True,
+                                use_gemini_report=True)
     report = {**result["report"], "content_type": "text", "query_input": body.text,
               "analyzed_at": datetime.now(timezone.utc).isoformat(),
               "fact_checks": [fc.model_dump() for fc in result.get("fact_checks", [])],
               "serper_news": result.get("serper_news", []),
+              "serper_web": result.get("serper_web", []),
               "text_review": {**source, "status": "user_confirmed", "reviewed_text": body.text,
                               "changed": body.text != source["original_text"].strip(),
                               "reviewed_at": datetime.now(timezone.utc).isoformat()}}
@@ -77,11 +79,12 @@ async def check_extracted_text(body: ReviewedTextRequest, user: User | None = De
 async def _process_one(text: str, user: User | None, db: AsyncSession) -> dict:
     clean_text = sanitize(text)
     try:
-        result = await run_pipeline(text=clean_text, use_detailed_report=True)
+        result = await run_pipeline(text=clean_text, use_detailed_report=True, use_gemini_report=True)
         ai = {**result["report"], "content_type": "text", "query_input": clean_text,
               "analyzed_at": datetime.now(timezone.utc).isoformat()}
         ai["fact_checks"] = [fc.model_dump() for fc in result.get("fact_checks", [])]
         ai["serper_news"] = result.get("serper_news", [])
+        ai["serper_web"] = result.get("serper_web", [])
         metrics = result["metrics"]
 
         return ai, metrics
@@ -106,11 +109,12 @@ async def check_text(
     await verify_limit(user, db, "TEXTUAL")
     clean_text = sanitize(body.text)
 
-    result = await run_pipeline(text=clean_text, use_detailed_report=True)
+    result = await run_pipeline(text=clean_text, use_detailed_report=True, use_gemini_report=True)
     ai = {**result["report"], "content_type": "text", "query_input": clean_text,
           "analyzed_at": datetime.now(timezone.utc).isoformat()}
     ai["fact_checks"] = [fc.model_dump() for fc in result.get("fact_checks", [])]
     ai["serper_news"] = result.get("serper_news", [])
+    ai["serper_web"] = result.get("serper_web", [])
     metrics = result["metrics"]
 
     if user:

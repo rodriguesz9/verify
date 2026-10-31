@@ -157,7 +157,7 @@ export default function ReportPage() {
     ...(Array.isArray(result.limitations) ? result.limitations.filter((item) => typeof item === "string" && !isTechnicalReportText(item)) : [])])];
   const defaultBadge = inconclusive && verdict !== "Scam" ? {
     title: "ANÁLISE INCONCLUSIVA", color: "#FFCB55", bg: "rgba(255,203,85,.06)",
-    border: "rgba(255,203,85,.3)", headline: "Não há evidência suficiente para concluir. Isso não significa que o conteúdo seja falso ou autêntico."
+    border: "rgba(255,203,85,.3)", headline: "Análise inconclusiva. Confira abaixo o que as buscas encontraram e o que ainda ficou sem confirmação."
   } : BADGE_STYLES[verdict] || BADGE_STYLES.Suspicious;
   const mediaHeadline = reportMediaHeadline(result);
   const diagnosisHeadline = mediaHeadline || reportFactualHeadline(result) || reportSourceHeadline(result);

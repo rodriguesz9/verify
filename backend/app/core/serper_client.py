@@ -18,14 +18,15 @@ class NewsSearch(list):
 async def search_web(query: str) -> list[dict]:
     """One bounded search for candidate pages, never evidence from snippets.
 
-    Long queries are refused, not silently cut (which could remove a negation
-    or date). Only links/title are passed to the safe document retriever.
+    Queries over 500 characters are refused, not silently cut (which could
+    remove a negation or date). Snippets are retained as labeled search
+    previews; they are not evidence and do not enter source comparison.
     """
     key = os.getenv("SERPERAPI_KEY", "").strip()
     if not key:
         return NewsSearch(status="not_configured", reason="Busca de referências não configurada.")
-    if not isinstance(query, str) or not 20 <= len(query.strip()) <= 500:
-        return NewsSearch(status="no_results", reason="Nenhuma frase completa cabe no limite da busca de referências; nenhum texto foi cortado.")
+    if not isinstance(query, str) or not 1 <= len(query.strip()) <= 500:
+        return NewsSearch(status="not_requested", reason="Consulta vazia ou acima do limite de 500 caracteres; nenhum texto foi cortado.")
     try:
         async with httpx.AsyncClient(timeout=10, trust_env=False, follow_redirects=False) as client:
             response = await client.post(
@@ -51,7 +52,10 @@ async def search_web(query: str) -> list[dict]:
                 safe = False
             if safe:
                 results.append({"title": item.get("title", "")[:500] if isinstance(item.get("title"), str) else "",
-                                "link": item["link"]})
+                                "link": item["link"],
+                                "snippet": item.get("snippet", "")[:1000] if isinstance(item.get("snippet"), str) else "",
+                                "date": item.get("date") if isinstance(item.get("date"), str) else None,
+                                "source": item.get("source", "")[:200] if isinstance(item.get("source"), str) else ""})
         return NewsSearch(results, status="success" if results else "no_results")
     except httpx.TimeoutException:
         return NewsSearch(status="timeout", reason="A busca de referências excedeu o tempo permitido.")
@@ -82,8 +86,11 @@ async def search_news(query: str) -> list[dict]:
             url = urlparse(item["link"])
             if url.scheme not in {"https", "http"} or not url.hostname or url.username or url.password:
                 continue
-            results.append({"title": item.get("title", ""), "link": item["link"],
-                            "snippet": item.get("snippet", ""), "date": item.get("date"), "source": item.get("source", "")})
+            results.append({"title": item.get("title", "")[:500] if isinstance(item.get("title"), str) else "",
+                            "link": item["link"],
+                            "snippet": item.get("snippet", "")[:1000] if isinstance(item.get("snippet"), str) else "",
+                            "date": item.get("date") if isinstance(item.get("date"), str) else None,
+                            "source": item.get("source", "")[:200] if isinstance(item.get("source"), str) else ""})
         return NewsSearch(results, status="success" if results else "no_results")
     except Exception:
         return NewsSearch(status="error", reason="Resposta Serper indisponível ou inválida.")

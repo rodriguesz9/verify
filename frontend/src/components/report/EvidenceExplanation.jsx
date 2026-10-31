@@ -11,6 +11,9 @@ export default function EvidenceExplanation({result, query}) {
   const readingLabel = evidence.extractionMethod === "OCR" ? "leitura do texto na imagem" : "transcrição da fala";
   const excluded = evidence.claimAssessments.flatMap((item) =>
     Array.isArray(item.excluded_evidence) ? item.excluded_evidence.filter((source) => source && typeof source === "object") : []);
+  const strength = result.evidence_strength && typeof result.evidence_strength === "object" ? result.evidence_strength : null;
+  const strengthLabels = {strong: "Forte", mixed: "Misto", limited: "Limitado", insufficient: "Sem base suficiente"};
+  const directionLabels = {corroborated: "as fontes sustentam a afirmação", refuted: "as fontes contradizem a afirmação", single_support: "os trechos favorecem a afirmação, com confirmação limitada", single_refute: "os trechos contradizem a afirmação, com refutação limitada", conflicting: "as fontes divergem", unresolved: "os achados ainda não permitem estimar a direção"};
   return (
     <section aria-labelledby="evidence-heading" className="report-evidence min-w-0 break-words mb-8 rounded-2xl border border-[#1D3B4D] bg-[#0A1520] p-5 sm:p-8">
       <div className="flex items-start gap-3 mb-5">
@@ -21,6 +24,16 @@ export default function EvidenceExplanation({result, query}) {
           <p className="mt-3 text-sm leading-6 text-[#A7BFCD]">{evidence.interpretation}</p>
         </div>
       </div>
+
+      {(result.search_summary || strength) && <section className="mb-6 rounded-xl border border-[#00D4FF]/30 bg-[#070F17] p-4 sm:p-5" aria-labelledby="search-summary-heading">
+        <h4 id="search-summary-heading" className="font-bold text-lg">O que dizem os resultados encontrados</h4>
+        {result.search_summary && <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#CDE8F0]">{result.search_summary}</p>}
+        {strength && <div className="mt-4 border-t border-[#1D3B4D] pt-3">
+          <p className="text-sm"><strong>Indicação das fontes:</strong> {strengthLabels[strength.level] || "Não determinada"}{strength.direction ? ` · ${directionLabels[strength.direction] || "direção não determinada"}` : ""}</p>
+          {strength.basis && <p className="mt-1 text-sm leading-6 text-[#A7BFCD]">{strength.basis}</p>}
+          <p className="mt-2 text-xs leading-5 text-[#8AA2B4]">É uma avaliação da quantidade, independência e tipo das fontes consultadas; não é porcentagem matemática de verdade.</p>
+        </div>}
+      </section>}
 
       {result.text_review?.status === "user_confirmed" ? <div className="mb-6 rounded-xl border border-[#00D4FF]/30 bg-[#070F17] p-4 text-sm leading-6">
         <h4 className="font-bold">Nova checagem do texto conferido</h4>
@@ -148,6 +161,8 @@ export default function EvidenceExplanation({result, query}) {
           <div className="space-y-3">{evidence.sources.map((source) => <article key={source.id} className="p-4 rounded-xl bg-[#070F17] border border-[#1D3B4D]">
             <p className="text-xs text-[#8AA2B4] mb-2">{source.kind} · {source.publisher}{source.date ? ` · ${source.date}` : ""}</p>
             <p className="text-sm font-bold leading-6">{source.title}</p>
+            {source.snippet && <p className="mt-2 text-sm leading-6 text-[#A7BFCD]">Prévia da busca: {source.snippet}</p>}
+            {source.publisherAssessment && <p className="mt-2 text-xs leading-5 text-[#8AA2B4]">{source.publisherAssessment.label}: {source.publisherAssessment.basis} Isso avalia o tipo de fonte, não confirma esta notícia.</p>}
             {source.note && <p className="mt-2 text-sm text-[#A7BFCD]">Não usada como evidência: {source.note}</p>}
             {source.rating && <p className="text-sm text-[#FFCB55] mt-2">Avaliação da fonte para essa afirmação: {source.rating}</p>}
             {source.url && <a href={source.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 mt-3 text-sm text-[#00D4FF] underline underline-offset-4">

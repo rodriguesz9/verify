@@ -103,7 +103,8 @@ async def check_url(
         raise HTTPException(status_code=422, detail="Conteúdo insuficiente para auditoria.")
 
     source_url = validate_final_analysis_url(scraped.get("final_url", url))
-    result = await run_pipeline(text=page_text, url=source_url, use_detailed_report=True)
+    result = await run_pipeline(text=page_text, url=source_url, use_detailed_report=True,
+                                use_gemini_report=True)
     ai = {**result["report"], "content_type": "url", "source_text": page_text,
           "analyzed_at": datetime.now(timezone.utc).isoformat()}
     ai["query_input"] = url
@@ -115,6 +116,7 @@ async def check_url(
         ai["limitations"].append("Apenas os primeiros 5.000 caracteres extraídos foram analisados; o restante da página não foi checado.")
     ai["fact_checks"] = [fc.model_dump() for fc in result.get("fact_checks", [])]
     ai["serper_news"] = result.get("serper_news", [])
+    ai["serper_web"] = result.get("serper_web", [])
     metrics = result["metrics"]
 
     if user:
