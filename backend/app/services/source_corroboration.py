@@ -686,12 +686,12 @@ def _assess(claim, candidates):
         evidence.append(record)
     supporting = {item["publisher_family"] for item in evidence if item["relation"] == "supports"}
     refuting = {item["publisher_family"] for item in evidence if item["relation"] == "refutes"}
-    state = ("conflicting" if supporting and refuting else "corroborated" if len(supporting) >= 2 else
-             "refuted" if len(refuting) >= 2 else "insufficient")
-    explanations = {"corroborated": "Afirmação corroborada nos corpos consultados de duas famílias de fontes elegíveis.",
-                    "refuted": "Afirmação contradita nos corpos consultados de duas famílias de fontes elegíveis.",
+    state = ("conflicting" if supporting and refuting else "corroborated" if supporting else
+             "refuted" if refuting else "insufficient")
+    explanations = {"corroborated": "Afirmação sustentada por trecho correspondente em fonte elegível consultada.",
+                    "refuted": "Afirmação contradita por trecho correspondente em fonte elegível consultada.",
                     "conflicting": "Os corpos consultados apresentam evidências em sentidos opostos; revisão humana necessária.",
-                    "insufficient": "Faltam duas famílias elegíveis com trechos completos e correspondentes para esta afirmação."}
+                    "insufficient": "Não foi encontrado trecho completo e correspondente em fonte elegível para esta afirmação."}
     return {**claim, "state": state, "status": state, "explanation": explanations[state],
             "evidence": evidence, "excluded_evidence": excluded,
             "supporting_publishers": sorted(supporting), "refuting_publishers": sorted(refuting)}

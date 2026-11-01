@@ -454,16 +454,16 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
                  for source in claim.get("evidence", []) if isinstance(source, dict)}
     if states and states <= {"corroborated", "refuted"} and len(states) == 1:
         evidence_strength = {"level": "strong", "direction": next(iter(states)),
-            "basis": "Trechos lidos em pelo menos duas famílias independentes de fontes elegíveis."}
+            "basis": "Trecho correspondente lido em fonte elegível; uma fonte pode decidir esta afirmação."}
     elif "conflicting" in states:
         evidence_strength = {"level": "mixed", "direction": "conflicting",
             "basis": "Trechos de fontes consultadas apontam em direções diferentes."}
     elif relations == {"supports"}:
         evidence_strength = {"level": "limited", "direction": "single_support",
-            "basis": "Trechos consultados favorecem a afirmação, mas não atingem o mínimo de fontes independentes para confirmação."}
+            "basis": "Trechos consultados favorecem a afirmação, sem atender às guardas de decisão."}
     elif relations == {"refutes"}:
         evidence_strength = {"level": "limited", "direction": "single_refute",
-            "basis": "Trechos consultados contradizem a afirmação, mas não atingem o mínimo de fontes independentes para refutação."}
+            "basis": "Trechos consultados contradizem a afirmação, sem atender às guardas de decisão."}
     elif relations == {"supports", "refutes"}:
         evidence_strength = {"level": "mixed", "direction": "conflicting",
             "basis": "Trechos consultados apontam em direções diferentes."}

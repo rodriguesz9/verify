@@ -8,7 +8,7 @@ from copy import deepcopy
 
 from app.services.claim_policy import input_claims, normalize_claim
 
-POLICY_VERSION = "2026-10-13.1"
+POLICY_VERSION = "2026-10-31.1"
 SOURCE_SCORE_SEMANTICS = "not_calibrated_source_corroboration"
 _STATES = {"corroborated": "supported", "refuted": "refuted", "conflicting": "conflicting"}
 
@@ -55,7 +55,7 @@ def apply_source_decision(text, report, comparison):
                     and e.get("excerpt") and e.get("source_role") != "submitted_source"]
                 families = {e["publisher_family"] for e in usable}
                 relations = {e["relation"] for e in usable}
-                required = len(families) >= 2 and (state != "conflicting" or relations == expected)
+                required = len(families) >= 1 and (state != "conflicting" or relations == expected)
                 if required:
                     decision.update(status=state, evidence=deepcopy(usable), evidence_mode="retrieved_sources",
                         explanation=source.get("explanation") or "Comparação fundamentada nos trechos das fontes consultadas.",
@@ -68,8 +68,8 @@ def apply_source_decision(text, report, comparison):
     truth = ("supported" if states == {"supported"} else "refuted" if states == {"refuted"}
              else "conflicting" if "conflicting" in states else "mixed" if {"supported", "refuted"} <= states else "unverified")
     descriptions = {
-        "supported": "A afirmação foi corroborada nos trechos de fontes independentes consultadas. Confira as fontes, datas e contexto; isso não é garantia de verdade nem de autenticidade de uma mídia.",
-        "refuted": "A afirmação foi refutada nos trechos de fontes independentes consultadas. Confira os argumentos, datas e contexto; a conclusão tem o alcance das fontes descritas.",
+        "supported": "A afirmação foi sustentada por trecho correspondente em fonte elegível consultada. Confira a fonte, data e contexto; isso não é garantia de verdade nem de autenticidade de uma mídia.",
+        "refuted": "A afirmação foi contradita por trecho correspondente em fonte elegível consultada. Confira os argumentos, data e contexto; a conclusão tem o alcance da fonte descrita.",
         "conflicting": "As fontes consultadas apresentam informações em desacordo. É necessária conferência humana antes de concluir.",
         "mixed": "A mensagem contém afirmações corroboradas e refutadas nas fontes consultadas. Não cabe um único rótulo para todo o conteúdo.",
         "unverified": "Parte da mensagem tem evidência nas fontes consultadas, mas outras afirmações ficaram sem confirmação. A mensagem inteira não foi confirmada nem refutada.",

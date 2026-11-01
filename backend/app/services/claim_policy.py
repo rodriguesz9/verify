@@ -7,7 +7,7 @@ import unicodedata
 from datetime import datetime, timezone
 from urllib.parse import urlsplit
 
-POLICY_VERSION = "2026-10-10.1"
+POLICY_VERSION = "2026-10-31.1"
 # Editorial families: related sites never count twice. Publishers can still err.
 PUBLISHERS = {
     "aosfatos.org": "aosfatos", "boatos.org": "boatos",
@@ -84,7 +84,7 @@ def decide_claim(text: str, reviews: list[dict], now: datetime) -> dict:
         same = normalize_claim(text) == normalize_claim(str(review.get("claim_text", "")))
         reason = (
             "Afirmação diferente; similaridade não basta." if not same else
-            "Contexto relativo ou citação/pergunta exige revisão humana." if ambiguous else
+            "Contexto relativo ou citação exige revisão humana." if ambiguous else
             "Resultado sem origem de recuperação verificável." if review.get("retrieval_provider") != "google_fact_check" else
             "Publicador fora da lista editorial ou URL não segura." if not family else
             "Data da checagem ausente, inválida ou futura." if not _review_date_ok(review.get("review_date"), now) else
@@ -98,12 +98,12 @@ def decide_claim(text: str, reviews: list[dict], now: datetime) -> dict:
     supported = {r["publisher_family"] for r in matched if r["relation"] == "supported"}
     refuted = {r["publisher_family"] for r in matched if r["relation"] == "refuted"}
     status = ("conflicting" if supported and refuted else
-              "supported" if len(supported) >= 2 else "refuted" if len(refuted) >= 2 else "unverified")
+              "supported" if supported else "refuted" if refuted else "unverified")
     reasons = {
-        "supported": "Duas famílias editoriais distintas avaliaram a mesma afirmação como verdadeira.",
-        "refuted": "Duas famílias editoriais distintas avaliaram a mesma afirmação como falsa.",
+        "supported": "Uma ou mais checagens editoriais válidas avaliaram a mesma afirmação como verdadeira.",
+        "refuted": "Uma ou mais checagens editoriais válidas avaliaram a mesma afirmação como falsa.",
         "conflicting": "Checagens correspondentes discordam; conclusão exige revisão humana.",
-        "unverified": "Faltam duas checagens editoriais distintas, válidas e correspondentes para concluir."}
+        "unverified": "Não há checagem editorial válida e correspondente suficiente para concluir."}
     return {"claim": text, "status": status, "explanation": reasons[status],
             "evidence": matched, "excluded_evidence": excluded,
             "supporting_publishers": sorted(supported), "refuting_publishers": sorted(refuted)}
