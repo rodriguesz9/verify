@@ -13,7 +13,7 @@ from app.core.openrouter_service import analyze_with_openrouter
 from app.services.claim_policy import text_report, input_claims
 from app.services.factual_queries import build_fact_check_queries
 from app.services.source_attribution import collect_source_attribution
-from app.services.source_corroboration import corroborate_sources
+from app.services.source_corroboration import corroborate_sources, decompose_claim
 from app.services.source_corroboration import select_comparison_documents, usable_source_families
 from app.services.source_corroboration import document_selection_audit
 from app.services.source_corroboration import source_identity
@@ -144,7 +144,13 @@ async def _retrieve_source_attribution(text: str, queries: list[str], source_url
             if (crosscheck_enabled and limit >= 2 and query
                     and len(families) < 2
                     and getattr(leads, "status", "success" if leads else "no_results") in {"success", "no_results"}):
-                for qualified, recovery_method in _source_recovery_queries(query, limit):
+                recovery_queries = []
+                clauses = decompose_claim(query)
+                if len(clauses) > 1:
+                    recovery_queries = [(clause, "coordinated_claim_clause") for clause in clauses if clause != query]
+                if not recovery_queries:
+                    recovery_queries = _source_recovery_queries(query, limit)
+                for qualified, recovery_method in recovery_queries[:max(0, limit - 1)]:
                     if not 1 <= len(qualified) <= 500:
                         continue
                     extra = await search_web(qualified)

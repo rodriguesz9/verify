@@ -162,7 +162,8 @@ export function sourceCorroborationPresentation(result = {}) {
         .slice(0, 20).map((source, sourceIndex) => ({
           id: `cross-source-${claimIndex}-${sourceIndex}`, url: safeSourceUrl(source.url),
           title: typeof source.title === "string" && source.title.trim() ? source.title : "Documento consultado",
-          excerpt: source.excerpt, context: typeof source.context === "string" ? source.context : "", relation: source.relation,
+          excerpt: source.excerpt, context: typeof source.context === "string" ? source.context : "",
+          claimPart: typeof source.claim_part === "string" ? source.claim_part : "", relation: source.relation,
           relationLabel: source.relation === "supports" ? "Sustenta esta afirmação" : "Contradiz esta afirmação",
           reason: typeof source.reason === "string" && !isTechnicalReportText(source.reason) ? source.reason : "",
           family: source.publisher_family, sourceRole: source.source_role,

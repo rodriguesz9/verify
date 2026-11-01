@@ -126,6 +126,7 @@ export default function EvidenceExplanation({result, query}) {
             <p className="mt-3 text-sm leading-6 text-[#A7BFCD]">{claim.explanation}</p>
             {claim.evidence.length ? <div className="mt-4 space-y-4">{claim.evidence.map((source) => <div key={source.id} className="min-w-0 rounded-xl border border-[#1D3B4D] p-4">
               <p className="text-sm font-bold text-[#CDE8F0]">{source.relationLabel}</p>
+              {source.claimPart && <p className="mt-2 text-sm text-[#A7BFCD]">Parte avaliada: {source.claimPart}</p>}
               <p className="mt-2 text-sm font-bold">{source.title}</p>
               <p className="mt-2 text-xs leading-5 text-[#8AA2B4]">{source.sourceRole === "submitted_source" ? "Fonte enviada" : "Documento recuperado"} · {source.family}</p>
               <blockquote className="mt-3 border-l-2 border-[#00D4FF] pl-3 whitespace-pre-wrap text-sm leading-6">{source.excerpt}</blockquote>

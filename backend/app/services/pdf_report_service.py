@@ -87,6 +87,8 @@ def source_crosscheck_lines(report):
         for source in evidence[:6]:
             if not isinstance(source, dict):
                 continue
+            if isinstance(source.get("claim_part"), str) and source["claim_part"].strip():
+                lines.append("Parte avaliada: " + display_value(source["claim_part"]))
             if (source.get("url"), source.get("excerpt")) in incorporated:
                 lines.append("Trecho já apresentado na avaliação individual acima; não é outra fonte independente.")
             else:

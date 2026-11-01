@@ -69,6 +69,7 @@ _FALSE_CONTEXT = re.compile(r"\b(?:é falso|é falsa|afirmação falsa|afirmaç�
 _FALSE_PREFIX = re.compile(r"^\s*(?:é fals[oa] que|não é verdade que|it is false that|it is not true that)\s+", re.I)
 _CORRECTION = re.compile(r"\b(?:e não|mas não|ao contrário|na verdade|é falso|é falsa|não é verdade|instead of|rather than|not true)\b", re.I)
 _INSTRUCTION = re.compile(r"\b(?:ignore (?:as |todas |previous |all )?(?:instruções|instructions)|system prompt|retorne (?:apenas )?json|classifique .*verdadeir[oa])\b", re.I)
+_CLAUSE_JOIN = re.compile(r"\s*(?:;|\b(?:e que|and that|além disso|in addition)\b)\s*", re.I)
 _HIGH_STAKES = re.compile(r"\b(?:pix|pagamento|investimento|medicamento|vacina|tratamento|lei|judicial)\b", re.I)
 _PRESCRIPTIVE = re.compile(r"\b(?:transfira|pague|envie dinheiro|invista|tome|pare de tomar|suspenda|abandone o tratamento)\b", re.I)
 _WIRE = ((re.compile(r"\b(?:segundo|conforme|via|fonte|agência|agencia|por|according to|reported by)[\s:/-]+(?:a |the )?Reuters\b|\bReuters\s*[:/]", re.I), "reuters"),
@@ -106,10 +107,30 @@ SYSTEM_INSTRUCTION = (
     "Retorne apenas JSON no schema. Inclua cada claim_id uma vez, evidence vazio quando insuficiente. "
     "Use somente source_id/excerpt_id existentes, copie quote EXATAMENTE igual à sentença inteira fornecida. "
     "Considere também context, preserve qualificadores, negações, entidades, números e datas. "
-    "supports exige confirmação da afirmação inteira e mesmo evento; refutes exige contradição explícita do mesmo evento. "
+    "Leia com cuidado. Cada item claim é uma proposição atômica; whole_claim dá contexto para resolver sujeito omitido e ligação entre cláusulas. "
+    "Avalie cada proposição em etapas: identifique sujeito, ação, negação, condição, data e quantidade; depois confira se o conjunto dos trechos citados implica essa proposição. "
+    "Trechos podem confirmar partes diferentes da mesma afirmação composta; cada parte precisa de evidência própria, e a combinação só confirma a afirmação inteira quando todas as partes factuais estiverem cobertas. "
+    "Relação temática, proximidade de nomes, busca ou inferência plausível sem suporte textual não basta. Supports exige implicação textual da proposição avaliada; refutes exige contradição explícita da mesma proposição/evento. "
     "Ausência de informação, outro evento, fala atribuída não endossada, rumor ou citação não são confirmação nem refutação. "
     "Não invente fontes, URLs, quotes, notas, probabilidades, justificativas ou campos extras. Não avalie origem de mídia."
 )
+
+
+def decompose_claim(claim):
+    """Split only explicit coordinated clauses; keep all words covered."""
+    parts = [part.strip(" ,;:") for part in _CLAUSE_JOIN.split(claim) if part.strip(" ,;:")]
+    if len(parts) < 2 or len(parts) > 3 or any(len(part) < 12 for part in parts):
+        return [claim]
+    return parts
+
+
+def _expanded_claims(segments):
+    claims, contexts = [], {}
+    for whole_claim in segments[:MAX_CLAIMS]:
+        for part in decompose_claim(whole_claim):
+            claims.append(part)
+            contexts[part] = whole_claim
+    return claims, contexts
 
 
 def source_identity(url):
@@ -242,6 +263,18 @@ def _same_event(claim, quote):
             and (not names or names <= found))
 
 
+def _same_event_with_context(claim, quote, whole_claim):
+    if _same_event(claim, quote):
+        return True
+    # Coordinated clauses can omit a repeated person/event. Permit review when
+    # quote shares a named entity with whole claim plus anchors with this clause.
+    # Model must still cite evidence that entails the clause itself.
+    parent_names, quote_names = _names(whole_claim or ""), _names(quote)
+    anchors, found = _tokens(claim), _tokens(quote)
+    overlap = anchors & found
+    return bool(parent_names & quote_names) and len(overlap) >= 2 and len(overlap) / max(1, len(anchors)) >= .2
+
+
 def _units(text):
     currencies = set()
     for pattern, currency in ((r"R\$|\bBRL\b|\breais\b", "brl"), (r"US\$|\bUSD\b|\bdólares\b|\bdollars\b", "usd"),
@@ -326,7 +359,7 @@ def _singleton_date_bound(quote, event, claim=None):
     return False
 
 
-def _relation_guard(claim, quote, context, relation, retrieved_at):
+def _relation_guard(claim, quote, context, relation, retrieved_at, whole_claim=None):
     # Punctuation does not make a yes/no claim ambiguous; quoted claims still
     # need attribution/scope review.
     if (RELATIVE_TIME.search(claim) or any(c in claim for c in ('"', '“', '”', '«', '»'))
@@ -334,7 +367,7 @@ def _relation_guard(claim, quote, context, relation, retrieved_at):
         return "Contexto relativo, citação, instrução ou alegação não endossada exige revisão humana."
     if _PRESCRIPTIVE.search(claim):
         return "Instrução financeira, médica ou jurídica não recebe aprovação automática; procure confirmação especializada."
-    if not _same_event(claim, quote):
+    if not _same_event_with_context(claim, quote, whole_claim):
         return "Entidades e âncoras do mesmo evento não foram preservadas."
     if any(pattern.search(claim) and not pattern.search(quote) for _, pattern in _DISTINCT_ACTIONS):
         return "Ação alegada não aparece no trecho; pouso de uma nave não comprova caminhada de pessoas."
@@ -410,7 +443,7 @@ def _relation_guard(claim, quote, context, relation, retrieved_at):
     return None
 
 
-def _prepare_sources(documents, claims, source_url):
+def _prepare_sources(documents, claims, source_url, claim_contexts=None):
     sources, excluded, passages, selected_documents = [], [], {}, []
     submitted = source_identity(source_url)
     body_hashes, urls = set(), set()
@@ -495,7 +528,8 @@ def _prepare_sources(documents, claims, source_url):
             # Pure lexical admissibility is evaluated BEFORE a model call.
             # Neither titles/context nor a potentially unrelated date may make
             # a source look usable merely through token overlap.
-            if not any(_relation_guard(claim, quote, context, relation, stamp) is None
+            if not any(_relation_guard(claim, quote, context, relation, stamp,
+                       (claim_contexts or {}).get(claim)) is None
                        for claim in claims for relation in ("supports", "refutes")):
                 continue
             source["candidates"].append((index, {"quote": quote, "context": context}))
@@ -554,16 +588,16 @@ def select_comparison_documents(text, documents, source_url=None):
     """
     if not isinstance(text, str) or not 0 < len(text) <= MAX_INPUT or not isinstance(documents, list):
         return []
-    claims = input_claims(text)[:MAX_CLAIMS]
-    return _prepare_sources(documents, claims, source_url)[3] if claims else []
+    claims, contexts = _expanded_claims(input_claims(text))
+    return _prepare_sources(documents, claims, source_url, contexts)[3] if claims else []
 
 
 def usable_source_families(text, documents, source_url=None):
     """Actual eligible dependency families of the bounded selected bodies."""
     if not isinstance(text, str) or not 0 < len(text) <= MAX_INPUT or not isinstance(documents, list):
         return set()
-    claims = input_claims(text)[:MAX_CLAIMS]
-    sources = _prepare_sources(documents, claims, source_url)[0] if claims else []
+    claims, contexts = _expanded_claims(input_claims(text))
+    sources = _prepare_sources(documents, claims, source_url, contexts)[0] if claims else []
     return {source["publisher_family"] for source in sources}
 
 
@@ -576,8 +610,8 @@ def document_selection_audit(text, documents, source_url=None):
     if not isinstance(text, str) or not 0 < len(text) <= MAX_INPUT or not isinstance(documents, list):
         return {"excluded_sources": [{"exclusion_reason": "Entrada fora do contrato de seleção documental."}],
                 "selected_source_urls": [], "eligible_family_count": 0}
-    claims = input_claims(text)[:MAX_CLAIMS]
-    sources, _, excluded, _ = _prepare_sources(documents, claims, source_url)
+    claims, contexts = _expanded_claims(input_claims(text))
+    sources, _, excluded, _ = _prepare_sources(documents, claims, source_url, contexts)
     return {"excluded_sources": excluded[:MAX_RECOVERY_DOCUMENTS],
             "selected_source_urls": [source["url"] for source in sources],
             "eligible_family_count": len({source["publisher_family"] for source in sources})}
@@ -672,7 +706,8 @@ def _assess(claim, candidates):
                   "context": passage["context"], "relation": candidate["relation"],
                   "publisher_family": family, "source_role": passage["source_role"],
                   "retrieved_at": passage["retrieved_at"], "source_type": passage["source_type"]}
-        reason = _relation_guard(claim["claim"], passage["quote"], passage["context"], candidate["relation"], passage["retrieved_at"])
+        reason = _relation_guard(claim["claim"], passage["quote"], passage["context"], candidate["relation"],
+                                 passage["retrieved_at"], claim.get("whole_claim"))
         fingerprint = normalize_claim(passage["quote"])
         if fingerprint in fingerprints:
             reason = "Sentença repetida entre páginas; não contada como evidência independente."
@@ -706,9 +741,22 @@ async def corroborate_sources(text, documents, source_url=None):
     enabled = os.getenv("SOURCE_CROSSCHECK_ENABLED", "true").strip().lower() == "true"
     valid_input = isinstance(text, str) and 0 < len(text) <= MAX_INPUT
     segments = input_claims(text) if valid_input else []
-    claims = [{"claim_id": f"c{index + 1}", "claim": claim} for index, claim in enumerate(segments[:MAX_CLAIMS])]
+    claims, claim_groups = [], []
+    for index, whole_claim in enumerate(segments[:MAX_CLAIMS]):
+        parent_id = f"c{index + 1}"
+        parts = decompose_claim(whole_claim)
+        part_ids = []
+        for part_index, part in enumerate(parts):
+            claim_id = parent_id if len(parts) == 1 else f"{parent_id}p{part_index + 1}"
+            part_ids.append(claim_id)
+            claims.append({"claim_id": claim_id, "claim": part, "whole_claim": whole_claim,
+                           "parent_id": parent_id, "part_index": part_index + 1,
+                           "part_count": len(parts)})
+        claim_groups.append({"claim_id": parent_id, "claim": whole_claim, "part_ids": part_ids})
     valid_documents = isinstance(documents, list)
-    sources, passages, excluded, _ = _prepare_sources(documents if valid_documents else [], [c["claim"] for c in claims], source_url)
+    contexts = {claim["claim"]: claim["whole_claim"] for claim in claims}
+    sources, passages, excluded, _ = _prepare_sources(documents if valid_documents else [],
+        [c["claim"] for c in claims], source_url, contexts)
     families = {source["publisher_family"] for source in sources}
     provider_coverage = {"openrouter": {"status": "not_requested", "decision_role": "grounded_comparison_assistant", "free_only": True},
                          "gemini": {"status": "not_requested", "decision_role": "grounded_comparison_assistant"}}
@@ -738,7 +786,30 @@ async def corroborate_sources(text, documents, source_url=None):
                     record["status"] = "timeout"
         except (ValueError, TypeError, KeyError):
             status, reason = "invalid_response", "Resposta fora do contrato ou sem citação literal; comparação descartada integralmente."
-    assessments = [_assess(claim, decoded.get(claim["claim_id"], [])) for claim in claims]
+    part_assessments = {claim["claim_id"]: _assess(claim, decoded.get(claim["claim_id"], [])) for claim in claims}
+    assessments = []
+    for group in claim_groups:
+        parts = [part_assessments[part_id] for part_id in group["part_ids"]]
+        states_for_parts = {part["state"] for part in parts}
+        state = ("corroborated" if states_for_parts == {"corroborated"} else
+                 "refuted" if states_for_parts == {"refuted"} else
+                 "conflicting" if "conflicting" in states_for_parts else "insufficient")
+        evidence = []
+        for part in parts:
+            evidence.extend({**item, "claim_part": part["claim"]} for item in part["evidence"])
+        supporting = sorted({item["publisher_family"] for item in evidence if item["relation"] == "supports"})
+        refuting = sorted({item["publisher_family"] for item in evidence if item["relation"] == "refutes"})
+        explanations = {
+            "corroborated": "Todas as partes factuais foram sustentadas por trechos correspondentes; veja a evidência de cada parte.",
+            "refuted": "Todas as partes factuais foram contraditas por trechos correspondentes; veja a evidência de cada parte.",
+            "conflicting": "As fontes consultadas apresentam informações em desacordo sobre ao menos uma parte.",
+            "insufficient": "Uma ou mais partes da afirmação não têm evidência correspondente suficiente.",
+        }
+        assessments.append({"claim_id": group["claim_id"], "claim": group["claim"], "state": state,
+            "status": state, "explanation": explanations[state], "evidence": evidence,
+            "subclaims": [{"claim": part["claim"], "status": part["state"], "evidence_count": len(part["evidence"])}
+                          for part in parts],
+            "supporting_publishers": supporting, "refuting_publishers": refuting})
     complete = valid_input and len(segments) <= MAX_CLAIMS and bool(assessments) and all(
         item["state"] in {"corroborated", "refuted"} for item in assessments)
     states = {item["state"] for item in assessments}
@@ -762,9 +833,10 @@ async def corroborate_sources(text, documents, source_url=None):
         status = "partial"
     return {"version": VERSION, "status": status, "state": state, "decision_role": "grounded_source_comparison",
             "reason": reason, "claims": assessments, "excluded_sources": excluded,
-            "coverage": {"literal_claim_count": len(segments), "selected_claim_count": len(claims),
-                "omitted_claim_count": max(0, len(segments) - len(claims)), "selected_source_count": len(sources),
+            "coverage": {"literal_claim_count": len(segments), "selected_claim_count": len(claim_groups),
+                "omitted_claim_count": max(0, len(segments) - len(claim_groups)), "selected_source_count": len(sources),
                 "eligible_family_count": len(families), "complete_claim_coverage": complete,
-                "assessed_claim_count": len(assessments), "grounded_evidence_count": sum(len(item["evidence"]) for item in assessments),
+                "assessed_claim_count": len(assessments), "assessed_part_count": len(part_assessments),
+                "grounded_evidence_count": sum(len(item["evidence"]) for item in assessments),
                 "max_sources": MAX_SOURCES, "max_claims": MAX_CLAIMS, "max_prompt_body_characters": MAX_PROMPT_BODY},
             "provider_coverage": provider_coverage, "limitations": limitations}

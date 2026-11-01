@@ -8,7 +8,7 @@ from copy import deepcopy
 
 from app.services.claim_policy import input_claims, normalize_claim
 
-POLICY_VERSION = "2026-10-31.1"
+POLICY_VERSION = "2026-11-01.1"
 SOURCE_SCORE_SEMANTICS = "not_calibrated_source_corroboration"
 _STATES = {"corroborated": "supported", "refuted": "refuted", "conflicting": "conflicting"}
 
