@@ -6,7 +6,7 @@ Não é uma perícia, um certificado de autenticidade ou uma garantia de detecç
 
 **Revisão de 14/10:** [validação real de APIs, correções e pendências](docs/VALIDACAO-APIS-2026-10-14.md). **721 testes backend, 181 frontend e build passaram localmente.** Imagem IA conhecida identificada; Hive/Sightengine/AssemblyAI/OpenRouter exercidos. Gemini visual respondeu, comparação/ASR retornaram 503 e usaram alternativas. Corpos reais previamente capturados permitiram refutar a data falsa no componente de comparação; **a descoberta automática de notícias ainda não foi homologada**, nem a interface/produção. Corrigidos escopo de negação, markup inline e mistura de metadados/player com corpo. [Guia atualizado para reativar Railway](docs/REATIVAR-RAILWAY-2026-10-13.md).
 
-**Revisão de 13/10:** [cruzamento fundamentado de fontes](docs/CRUZAMENTO-FONTES-2026-10-13.md) complementa Google Fact Check com corpos recuperados, citações validadas e cobertura por afirmação, sem votação de IAs nem porcentagem inventada. Interface, histórico e PDF distinguem documentos de checagens editoriais. **637 testes backend, 181 frontend e build passaram localmente; os controles públicos ainda abstiveram.** Railway expirado conforme informado pelo titular; envio Git não comprova serviço online. [O que configurar e conferir na retomada](docs/REATIVAR-RAILWAY-2026-10-13.md). Descrições e contagens das etapas abaixo são históricas.
+**Revisão atual:** Gemini interpreta semanticamente notícias e fontes recuperadas, produzindo relatório por afirmação com trechos, URLs e limitações; não declara certeza absoluta. Google Fact Check é complemento editorial, não decide sozinho. **637 testes backend, 175 frontend e build passam localmente.** Descrições e contagens das etapas abaixo são históricas.
 
 **Revisão de 10–11/10:** [diagnóstico das análises inconclusivas e correções](docs/INCONCLUSIVOS-2026-10-10.md). Busca prioriza frases literais completas, também nas notícias, sem corte silencioso; fontes gerais com trechos recuperados não decidem verdade; sinais isolados, discordância e indisponibilidade de mídia agora têm explicações diferentes. **567 testes backend e 170 frontend passaram localmente; build concluído.** Ver registro para publicação/smoke e pendências; números e configurações de etapas anteriores abaixo são históricos, não validação de precisão universal.
 
@@ -60,7 +60,7 @@ Primeira etapa: a suíte atual também passou com **PostgreSQL 16.13 descartáve
 
 | Entrada | Verificações disponíveis | Limite importante |
 | --- | --- | --- |
-| Texto | Padrões de risco, checagens publicadas e cruzamento de corpos recuperados de duas famílias elegíveis | Comparação assistida exige citação validada; modelo sozinho, ambiguidade, discordância e cobertura incompleta não decidem verdade |
+| Texto | Padrões de risco, análise semântica Gemini, checagens publicadas e atribuição literal em páginas públicas | Busca, snippet, reputação e modelo não são certeza; fontes e trechos usados aparecem no relatório |
 | Link | Consulta pública limitada com validação DNS/IP/TLS; conteúdo segue a política factual de texto | Não certifica legitimidade nem consulta idade do domínio; bloqueios e limites podem impedir leitura |
 | Imagem | Decodificação real, Sightengine/Hive/Hugging Face, metadados, C2PA, OCR e inspeção visual auxiliar | Metadados podem ser forjados; visão de um LLM não é prova de geração por IA |
 | Áudio | Transcrição Gemini/AssemblyAI, triagem do discurso, Hive específico e Sightengine `ai_speech` opt-in | Transcrição não prova clonagem; segundo detector exige autorização ao modelo, não só chave |
@@ -78,10 +78,10 @@ O registro SHA-256 compara bytes com um registro anterior. Não comprova autoria
 - Indícios concordantes de detectores: **resultado parcial**, sujeito a revisão.
 - C2PA permanece inspeção sem confiança/voto até homologar CLI, configuração e corpus real; presença de âncoras não certifica validação.
 - Ausência de sinais de IA nunca transforma uma mídia em “autêntica”.
-- Corroborada/refutada é classificação atribuída às checagens ou aos trechos de documentos correspondentes, com bases distintas no relatório; `False` não é sinônimo de `AI_Generated`. OCR/transcrição têm relatório factual separado.
+- A análise semântica classifica cada fonte como apoio, contradição, contexto ou insuficiência; isso é interpretação da evidência, não certeza ou probabilidade matemática. ClaimReview é complemento editorial; atribuição de página não é voto. `False` não é sinônimo de `AI_Generated`. OCR/transcrição têm relatório factual separado.
 - Pontuações são sinais não calibrados. Não são porcentagens de acerto do Verify.
 
-As políticas experimentais estão em `backend/app/services/evidence_policy.py`, `claim_policy.py`, `source_corroboration.py` e `source_decision.py`. Limiares precisam de validação com um conjunto rotulado representativo; concordância entre dois serviços ou famílias editoriais não garante independência estatística.
+As políticas atuais estão em `backend/app/services/evidence_policy.py`, `claim_policy.py`, `content_risk.py` e `source_attribution.py`. `claim_policy.py` preserva ClaimReview como complemento; o relatório textual principal vem da análise semântica com fontes recuperadas e trechos validados. `source_attribution.py` preserva leitura literal como referência, sem votação.
 
 `GET /api/capabilities` informa configuração/ferramentas sem expor chaves nem fazer chamadas pagas. Presença de configuração não comprova acesso ou quota: disponibilidade operacional fica `not_tested`. Para métricas offline com resultados inconclusivos incluídos, use `backend/scripts/evaluate_predictions.py`, seguindo o [formato e plano de avaliação](docs/VERIFICACOES-2026-10-03.md#como-medir-precisão-de-verdade-sem-esconder-inconclusivos).
 
