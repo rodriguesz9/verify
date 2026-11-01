@@ -33,7 +33,7 @@ class GeminiDeadlineTests(unittest.IsolatedAsyncioTestCase):
             with self.subTest(raw=raw), patch.dict(os.environ, {"GEMINI_REQUEST_TIMEOUT_SECONDS": raw}):
                 self.assertEqual(gemini_timeout_seconds(), expected)
 
-    async def test_valid_reply_uses_longer_transport_and_one_shared_fallback_deadline(self):
+    async def test_503_retries_before_using_fallback_with_one_shared_deadline(self):
         seen = []
         deadline_calls = []
         original_timeout = asyncio.timeout
@@ -56,23 +56,26 @@ class GeminiDeadlineTests(unittest.IsolatedAsyncioTestCase):
             self.assertFalse(kwargs["follow_redirects"])
             return CLIENT(transport=httpx.MockTransport(handler), **kwargs)
         with patch.dict(os.environ, {"GEMINI_API_KEY": "test-only", "GEMINI_MODEL_NAME": "primary-test",
-                "GEMINI_FALLBACK_MODELS": "fallback-test", "GEMINI_REQUEST_TIMEOUT_SECONDS": "60"}), \
-                patch("app.core.gemini_client.httpx.AsyncClient", side_effect=client), \
-                patch("app.core.gemini_client.asyncio.timeout", side_effect=timeout):
+                 "GEMINI_FALLBACK_MODELS": "fallback-test", "GEMINI_REQUEST_TIMEOUT_SECONDS": "60"}), \
+                 patch("app.core.gemini_client.httpx.AsyncClient", side_effect=client), \
+                 patch("app.core.gemini_client.asyncio.sleep", new=AsyncMock()), \
+                 patch("app.core.gemini_client.asyncio.timeout", side_effect=timeout):
             result = await generate_text("fixed control")
-        self.assertEqual(result.model_name, "fallback-test")
+        self.assertEqual(result.model_name, "primary-test")
         self.assertEqual(json.loads(result)["text"], "Nao pague R$ 123,45")
         self.assertEqual(len(seen), 2)
         self.assertEqual(deadline_calls, [60])
 
-    async def test_http_503_is_explicit_unavailable_and_never_retried_implicitly(self):
+    async def test_http_503_is_explicit_unavailable_after_bounded_retries(self):
         with patch.dict(os.environ, {"GEMINI_API_KEY": "test-only", "GEMINI_FALLBACK_MODELS": ""}), \
-                patch("httpx.AsyncClient.post", new=AsyncMock(return_value=httpx.Response(503))) as post:
+                patch("httpx.AsyncClient.post", new=AsyncMock(return_value=httpx.Response(503))) as post, \
+                patch("app.core.gemini_client.asyncio.sleep", new=AsyncMock()) as sleep:
             with self.assertRaises(GeminiError) as raised:
                 await generate_text("fixed control")
         self.assertEqual(raised.exception.status, "unavailable")
         self.assertEqual(raised.exception.http_status, 503)
-        self.assertEqual(post.await_count, 1)
+        self.assertEqual(post.await_count, 3)
+        self.assertEqual(sleep.await_count, 2)
 
     async def test_total_deadline_expiration_is_sanitized(self):
         class Expired:

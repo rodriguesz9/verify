@@ -4,6 +4,7 @@ import base64
 from collections import deque
 import json
 import os
+import random
 import re
 import threading
 import time
@@ -11,6 +12,7 @@ import httpx
 
 
 MAX_GEMINI_REQUEST_BYTES = 19_000_000  # Below Google's 20 MB inline request cap.
+GEMINI_503_RETRIES = 2
 
 
 class GeneratedText(str):
@@ -119,6 +121,15 @@ def _pause_after_rate_limit(model, response):
     _gemini_admission.pause(model, duration)
 
 
+def _service_unavailable_delay(response, retry_number):
+    """Return a short bounded delay for a transient 503 response."""
+    retry_after = response.headers.get("retry-after", "").strip()
+    if re.fullmatch(r"[0-9]{1,9}(?:\.[0-9]{1,3})?", retry_after):
+        return min(30.0, max(0.0, float(retry_after)))
+    # Jitter prevents simultaneous requests from retrying in lockstep.
+    return min(30.0, (2 ** (retry_number - 1)) + random.uniform(0, 0.25))
+
+
 def _validate_request_size(body):
     try:
         size = len(json.dumps(body, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode("utf-8"))
@@ -182,17 +193,25 @@ async def _generate_text(contents, *, system_instruction=None, temperature=.1, j
             # thinkingLevel is documented only for Gemini 3+; no legacy breakage.
             body["generationConfig"] = {**config, **({"thinkingConfig": {"thinkingLevel": "LOW"}} if model.startswith("gemini-3") else {})}
             _validate_request_size(body)
-            _reserve_request(model)
-            try:
-                response = await client.post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
-                                             headers={"x-goog-api-key": key}, json=body)
-            except httpx.TimeoutException:
-                if index + 1 < len(models):
-                    continue
-                raise GeminiError("Tempo limite do Gemini atingido.", "timeout") from None
-            except httpx.HTTPError:
-                raise GeminiError("Conexão Gemini indisponível.") from None
-            if response.status_code in {404, 503} and index + 1 < len(models):
+            response = None
+            for attempt in range(GEMINI_503_RETRIES + 1):
+                # Retries are real provider requests and must share the same
+                # per-process burst budget as the initial attempt.
+                _reserve_request(model)
+                try:
+                    response = await client.post(
+                        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+                        headers={"x-goog-api-key": key}, json=body)
+                except httpx.TimeoutException:
+                    if index + 1 < len(models):
+                        break
+                    raise GeminiError("Tempo limite do Gemini atingido.", "timeout") from None
+                except httpx.HTTPError:
+                    raise GeminiError("Conexão Gemini indisponível.") from None
+                if response.status_code != 503 or attempt >= GEMINI_503_RETRIES:
+                    break
+                await asyncio.sleep(_service_unavailable_delay(response, attempt + 1))
+            if response is None or response.status_code == 503 and index + 1 < len(models):
                 continue
             if response.status_code != 200:
                 if response.status_code == 429:
