@@ -9,7 +9,7 @@ from app.core.domain_checker import check_domain_reputation
 from app.core.gptzero_client import detect_ai_text
 from app.core.serper_client import search_news, search_web, NewsSearch, MAX_NEWS_QUERY_CHARS
 from app.core.scam_detector import analyze_scam_indicators
-from app.core.openrouter_service import analyze_with_openrouter
+from app.core.openrouter_service import analyze_with_openrouter, analyze_retrieved_evidence_with_openrouter
 from app.services.claim_policy import text_report, input_claims
 from app.services.factual_queries import build_fact_check_queries
 from app.services.source_attribution import collect_source_attribution
@@ -527,11 +527,29 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
         generated = await _run_gemini_check(analysis_text, report_context)
         generated_status = ("error" if not isinstance(generated, dict) or generated.get("model_used") == "fallback"
                             else "success")
+        gemini_status = generated_status
+        fallback_used = False
+        if generated_status == "error":
+            fallback = await analyze_retrieved_evidence_with_openrouter(analysis_text, report_context)
+            if isinstance(fallback, dict) and fallback.get("model_used") != "fallback":
+                generated = fallback
+                generated_status = "success"
+                fallback_used = True
+                ai.setdefault("provider_coverage", {})["openrouter_semantic_fallback"] = {
+                    "status": "success", "decision_role": "evidence_based_report",
+                    "model_used": fallback.get("model_used"), "free_only": True,
+                }
+            else:
+                ai.setdefault("provider_coverage", {})["openrouter_semantic_fallback"] = {
+                    "status": fallback.get("status", "error") if isinstance(fallback, dict) else "error",
+                    "decision_role": "evidence_based_report", "free_only": True,
+                    "reason": fallback.get("reason") if isinstance(fallback, dict) else "Fallback indisponível.",
+                }
         ai.setdefault("provider_coverage", {})["gemini_report"] = {
-            "status": generated_status, "decision_role": "evidence_based_report",
-            "model_used": generated.get("model_used") if isinstance(generated, dict) else None,
+            "status": gemini_status, "decision_role": "evidence_based_report",
+            "model_used": None if fallback_used else (generated.get("model_used") if isinstance(generated, dict) else None),
             "reason": "Gemini não gerou o relatório; explicação baseada na política de evidências foi mantida."
-                      if generated_status == "error" else None}
+                      if gemini_status == "error" else None}
     if use_gemini_report and generated_status == "success":
             # Model interpretation is exposed as an evidence report. It does
             # not silently replace the policy verdict: callers can distinguish
@@ -562,7 +580,14 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
             for item in source_attribution.get("matches", []):
                 if isinstance(item, dict) and isinstance(item.get("url"), str):
                     source_text_by_url[item["url"]] = item.get("excerpt", "")
-                    source_scope_by_url[item["url"]] = "full_article"
+                    source_scope_by_url[item["url"]] = (
+                        "submitted_source" if item.get("source_role") == "submitted_source" else "full_article")
+            for item in source_attribution.get("semantic_documents", []):
+                if isinstance(item, dict) and isinstance(item.get("url"), str):
+                    allowed_urls.add(item["url"])
+                    source_text_by_url[item["url"]] = item.get("text", "")
+                    source_scope_by_url[item["url"]] = (
+                        "submitted_source" if item.get("source_role") == "submitted_source" else "full_article")
             evidence_assessments = []
             for assessment in generated.get("claim_assessments", []):
                 if not isinstance(assessment, dict):

@@ -1,8 +1,9 @@
-"""Literal statements found in bounded public pages, never votes on truth.
+"""Bounded public-page retrieval for literal attribution and semantic review.
 
-Search titles/snippets identify retrieval leads only. A match requires the full
-literal input sentence in fetched visible article text. Source repetition does
-not establish accuracy, independence, authorship or agreement with the article.
+Search titles/snippets identify retrieval leads only. Retrieved article text is
+available to semantic review even without a literal match; literal matches
+remain useful for exact attribution. Source repetition does not establish
+accuracy, independence, authorship or agreement with the article.
 """
 import asyncio
 from datetime import datetime, timezone
@@ -381,6 +382,7 @@ async def collect_source_attribution(text, queries, source_url=None, *, search_r
     failures = {"oversize": 0, "unsupported_content": 0, "timeout": 0,
                 "blocked_or_unavailable": 0, "error": 0}
     matches, seen_matches = [], set()
+    semantic_documents = []
     fetched_count = truncated_count = 0
     for requested_url, result in zip(selected_urls, fetched):
         if "failure" in result:
@@ -388,6 +390,14 @@ async def collect_source_attribution(text, queries, source_url=None, *, search_r
             continue
         fetched_count += 1
         truncated_count += int(result["truncated"])
+        semantic_documents.append({
+            "url": result["url"], "title": result["title"] or urls[requested_url] or "Página consultada",
+            "text": " ".join(result.get("sentences", []))[:12000],
+            "truncated": bool(result.get("truncated")),
+            "source_role": "submitted_source" if submitted in {requested_url, result["url"]}
+                           else "retrieved_reference",
+            "retrieved_at": result["retrieved_at"],
+        })
         source_sentences = {}
         for sentence, role in zip(result["sentences"], result.get("sentence_roles", ["body"] * len(result["sentences"]))):
             if role != "body":
@@ -442,4 +452,5 @@ async def collect_source_attribution(text, queries, source_url=None, *, search_r
         "As páginas selecionadas não puderam ser lidas com segurança." if selected_urls or invalid_urls else
         _SEARCH_FAILURES.get(search_status, "A busca não retornou páginas para atribuição."))
     return {"status": status, "decision_role": "source_attribution_only", "matches": matches[:MAX_MATCHES],
+            "semantic_documents": semantic_documents,
             "reason": reason, "limitations": limitations, "coverage": coverage}
