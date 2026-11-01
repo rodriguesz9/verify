@@ -1,19 +1,12 @@
 import { SearchCheck, FileText, ExternalLink, Info, CircleAlert } from "lucide-react";
 import { buildReportEvidence } from "../../utils/reportEvidence";
 
-const consultationDate = (value) => value ? new Intl.DateTimeFormat("pt-BR", {
-  dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo",
-}).format(new Date(value)) : "";
-
 export default function EvidenceExplanation({result, query}) {
   const evidence = buildReportEvidence(result, query);
   const findings = evidence.publicFindings;
   const readingLabel = evidence.extractionMethod === "OCR" ? "leitura do texto na imagem" : "transcrição da fala";
   const excluded = evidence.claimAssessments.flatMap((item) =>
     Array.isArray(item.excluded_evidence) ? item.excluded_evidence.filter((source) => source && typeof source === "object") : []);
-  const strength = result.evidence_strength && typeof result.evidence_strength === "object" ? result.evidence_strength : null;
-  const strengthLabels = {strong: "Forte", mixed: "Misto", limited: "Limitado", insufficient: "Sem base suficiente"};
-  const directionLabels = {corroborated: "as fontes sustentam a afirmação", refuted: "as fontes contradizem a afirmação", single_support: "os trechos favorecem a afirmação, com confirmação limitada", single_refute: "os trechos contradizem a afirmação, com refutação limitada", conflicting: "as fontes divergem", unresolved: "os achados ainda não permitem estimar a direção"};
   return (
     <section aria-labelledby="evidence-heading" className="report-evidence min-w-0 break-words mb-8 rounded-2xl border border-[#1D3B4D] bg-[#0A1520] p-5 sm:p-8">
       <div className="flex items-start gap-3 mb-5">
@@ -25,14 +18,23 @@ export default function EvidenceExplanation({result, query}) {
         </div>
       </div>
 
-      {(result.search_summary || strength) && <section className="mb-6 rounded-xl border border-[#00D4FF]/30 bg-[#070F17] p-4 sm:p-5" aria-labelledby="search-summary-heading">
+      {result.search_summary && <section className="mb-6 rounded-xl border border-[#00D4FF]/30 bg-[#070F17] p-4 sm:p-5" aria-labelledby="search-summary-heading">
         <h4 id="search-summary-heading" className="font-bold text-lg">O que dizem os resultados encontrados</h4>
-        {result.search_summary && <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#CDE8F0]">{result.search_summary}</p>}
-        {strength && <div className="mt-4 border-t border-[#1D3B4D] pt-3">
-          <p className="text-sm"><strong>Indicação das fontes:</strong> {strengthLabels[strength.level] || "Não determinada"}{strength.direction ? ` · ${directionLabels[strength.direction] || "direção não determinada"}` : ""}</p>
-          {strength.basis && <p className="mt-1 text-sm leading-6 text-[#A7BFCD]">{strength.basis}</p>}
-          <p className="mt-2 text-xs leading-5 text-[#8AA2B4]">É uma avaliação da quantidade, independência e tipo das fontes consultadas; não é porcentagem matemática de verdade.</p>
-        </div>}
+        <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#CDE8F0]">{result.search_summary}</p>
+      </section>}
+
+      {result.semantic_evidence_report?.claim_assessments?.length > 0 && <section className="mb-6 rounded-xl border border-[#FFCB55]/30 bg-[#070F17] p-4 sm:p-5" aria-labelledby="semantic-evidence-heading">
+        <h4 id="semantic-evidence-heading" className="font-bold text-lg">Leitura semântica das fontes</h4>
+        <p className="mt-2 text-xs text-[#8AA2B4]">Interpretação da IA baseada nas fontes recuperadas. Não é certeza nem probabilidade matemática. Grau de evidência: {result.semantic_evidence_report.certainty || "não informado"}.</p>
+        <div className="mt-4 space-y-4">{result.semantic_evidence_report.claim_assessments.map((item, index) => <article key={`${item.claim}-${index}`} className="rounded-xl border border-[#1D3B4D] p-4">
+          <p className="font-bold text-sm">{item.claim}</p>
+          <p className="mt-2 text-sm text-[#CDE8F0]">{({supports: "A fonte apoia", contradicts: "A fonte contradiz", context_only: "A fonte só fornece contexto", insufficient: "Evidência insuficiente"})[item.assessment] || "Avaliação indeterminada"}.</p>
+          {item.explanation && <p className="mt-2 text-sm leading-6 text-[#A7BFCD]">{item.explanation}</p>}
+          {item.sources?.filter((source) => source && source.url).map((source, sourceIndex) => <div key={`${source.url}-${sourceIndex}`} className="mt-3 border-l-2 border-[#00D4FF] pl-3">
+            {source.quote && <blockquote className="text-sm text-[#FFCB55]">“{source.quote}”</blockquote>}
+            <a href={source.url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex text-xs text-[#00D4FF] underline">{source.title || source.url}</a>
+          </div>)}
+        </article>)}</div>
       </section>}
 
       {result.text_review?.status === "user_confirmed" ? <div className="mb-6 rounded-xl border border-[#00D4FF]/30 bg-[#070F17] p-4 text-sm leading-6">
@@ -101,9 +103,9 @@ export default function EvidenceExplanation({result, query}) {
           <p className="text-sm leading-6 text-[#CDE8F0]">{finding.detail}</p>
           <p className="mt-3 font-mono text-[11px] text-[#8AA2B4]">{finding.origin}</p>
         </li>)}
-      </ol> : !evidence.sourceCorroboration ? <p className="mb-6 p-4 rounded-xl bg-[#070F17] text-sm leading-6 text-[#A7BFCD]">
+      </ol> : <p className="mb-6 p-4 rounded-xl bg-[#070F17] text-sm leading-6 text-[#A7BFCD]">
         Nenhuma evidência específica de falsidade foi registrada. Não seria correto inventar uma justificativa para classificar o conteúdo como falso.
-      </p> : <p className="mb-6 text-sm leading-6 text-[#A7BFCD]">Os trechos e o resultado do cruzamento aparecem por afirmação abaixo.</p>}
+      </p>}
       {evidence.positives.length > 0 && <div className="mb-6">
         <h4 className="font-bold mb-2">Sinais favoráveis registrados</h4>
         <ul className="list-disc pl-5 text-sm leading-6 space-y-2 text-[#A7BFCD]">{evidence.positives.map((signal, index) => <li key={index}>{signal}</li>)}</ul>
@@ -111,35 +113,6 @@ export default function EvidenceExplanation({result, query}) {
       </div>}
 
       <div className="border-t border-[#1D3B4D] pt-5">
-        {evidence.sourceCorroboration && <section className="mb-6 min-w-0 rounded-xl border border-[#00D4FF]/30 bg-[#070F17] p-4 sm:p-5" aria-labelledby="source-crosscheck-heading">
-          <h4 id="source-crosscheck-heading" className="font-bold text-lg mb-2">Cruzamento de fontes</h4>
-          <p className="text-sm leading-6 text-[#A7BFCD]">{evidence.sourceCorroboration.explanation}</p>
-          <p className="mt-3 text-sm leading-6 text-[#A7BFCD]">Este caminho compara trechos lidos nos documentos. Ele complementa a busca de checagens já publicadas; duas IAs concordarem ou uma notícia aparecer na busca não é uma prova.</p>
-          {evidence.sourceCorroboration.scope && <p className="mt-3 text-sm leading-6 text-[#8AA2B4]">{evidence.sourceCorroboration.scope}</p>}
-          {evidence.sourceCorroboration.limitations.length > 0 && <div className="mt-4 text-sm leading-6 text-[#FFCB55]">
-            <h5 className="font-bold">Limites deste cruzamento</h5>
-            <ul className="mt-2 list-disc pl-5 space-y-2">{evidence.sourceCorroboration.limitations.map((item, index) => <li key={index}>{item}</li>)}</ul>
-          </div>}
-          <div className="mt-5 space-y-5">{evidence.sourceCorroboration.claims.map((claim) => <article key={claim.id} className="min-w-0 border-t border-[#1D3B4D] pt-5">
-            <h5 className="font-bold text-base">{claim.title}</h5>
-            <blockquote className="mt-3 border-l-2 border-[#FFCB55] pl-3 whitespace-pre-wrap text-sm leading-6">{claim.claim}</blockquote>
-            <p className="mt-3 text-sm leading-6 text-[#A7BFCD]">{claim.explanation}</p>
-            {claim.evidence.length ? <div className="mt-4 space-y-4">{claim.evidence.map((source) => <div key={source.id} className="min-w-0 rounded-xl border border-[#1D3B4D] p-4">
-              <p className="text-sm font-bold text-[#CDE8F0]">{source.relationLabel}</p>
-              {source.claimPart && <p className="mt-2 text-sm text-[#A7BFCD]">Parte avaliada: {source.claimPart}</p>}
-              <p className="mt-2 text-sm font-bold">{source.title}</p>
-              <p className="mt-2 text-xs leading-5 text-[#8AA2B4]">{source.sourceRole === "submitted_source" ? "Fonte enviada" : "Documento recuperado"} · {source.family}</p>
-              <blockquote className="mt-3 border-l-2 border-[#00D4FF] pl-3 whitespace-pre-wrap text-sm leading-6">{source.excerpt}</blockquote>
-              {source.reason && <p className="mt-3 text-sm leading-6 text-[#A7BFCD]">{source.reason}</p>}
-              {source.context && source.context !== source.excerpt && <details className="mt-3 text-sm leading-6 text-[#A7BFCD]">
-                <summary className="cursor-pointer font-bold">Contexto do trecho</summary>
-                <blockquote className="mt-3 whitespace-pre-wrap">{source.context}</blockquote>
-              </details>}
-              {source.retrievedAt && <p className="mt-3 text-xs leading-5 text-[#8AA2B4]">Consulta: <time dateTime={source.retrievedAt}>{consultationDate(source.retrievedAt)}</time> · horário de Brasília. Esta é a data da consulta, não necessariamente a data de publicação.</p>}
-              <a href={source.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 mt-3 text-sm text-[#00D4FF] underline underline-offset-4">Abrir documento original <ExternalLink size={13} aria-hidden="true" /></a>
-            </div>)}</div> : <p className="mt-3 text-sm leading-6 text-[#8AA2B4]">Não houve trecho de fonte aceito como evidência para esta afirmação.</p>}
-          </article>)}</div>
-        </section>}
         {evidence.sourceAttribution && <section className="mb-6 min-w-0 rounded-xl border border-[#00D4FF]/30 bg-[#070F17] p-4" aria-labelledby="source-attribution-heading">
           <h4 id="source-attribution-heading" className="font-bold mb-2">{evidence.sourceAttribution.title}</h4>
           <p className="text-sm leading-6 text-[#A7BFCD]">{evidence.sourceAttribution.explanation}</p>

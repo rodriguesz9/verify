@@ -6,7 +6,7 @@ import { useAuth } from "../hooks/authContext";
 import Footer from "../components/Footer";
 import AnimatedScore from "../components/report/AnimatedScore";
 import EvidenceExplanation from "../components/report/EvidenceExplanation";
-import { visibleDetectorScore, reportMediaHeadline, reportSourceHeadline, reportFactualHeadline, publicMediaRiskNotice, providerCoveragePresentation, publicCoveragePresentation, transcriptionPresentation, isTechnicalReportText, groundedReportExplanation } from "../utils/reportEvidence";
+import { visibleDetectorScore, reportMediaHeadline, reportSourceHeadline, publicMediaRiskNotice, providerCoveragePresentation, publicCoveragePresentation, transcriptionPresentation, isTechnicalReportText, groundedReportExplanation } from "../utils/reportEvidence";
 import { pdfExportError, pdfExportState, publicReportDetails } from "../utils/reportExport";
 import { Shield, AlertTriangle, ArrowRight, Volume2, Phone, ChevronDown, ChevronUp, FileJson, Download } from "lucide-react";
 
@@ -165,7 +165,7 @@ export default function ReportPage() {
     border: "rgba(255,203,85,.3)", headline: "Análise inconclusiva. Confira abaixo o que as buscas encontraram e o que ainda ficou sem confirmação."
   } : BADGE_STYLES[verdict] || BADGE_STYLES.Suspicious;
   const mediaHeadline = reportMediaHeadline(result);
-  const diagnosisHeadline = mediaHeadline || reportFactualHeadline(result) || reportSourceHeadline(result);
+  const diagnosisHeadline = mediaHeadline || reportSourceHeadline(result);
   const badge = !probablyFalse && diagnosisHeadline ? {...defaultBadge, ...diagnosisHeadline} : defaultBadge;
   const publicSummary = !probablyFalse && diagnosisHeadline?.diagnostic ? [badge.headline, publicMediaRiskNotice(result)].filter(Boolean).join(" ")
     : typeof result.summary === "string" && !isTechnicalReportText(result.summary) ? result.summary : publicCoverage.detail;

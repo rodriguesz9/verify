@@ -13,50 +13,9 @@ from app.core.openrouter_service import analyze_with_openrouter
 from app.services.claim_policy import text_report, input_claims
 from app.services.factual_queries import build_fact_check_queries
 from app.services.source_attribution import collect_source_attribution
-from app.services.source_corroboration import corroborate_sources, decompose_claim
-from app.services.source_corroboration import select_comparison_documents, usable_source_families
-from app.services.source_corroboration import document_selection_audit
-from app.services.source_corroboration import source_identity
-from app.services.source_decision import apply_source_decision
+from app.services.source_registry import source_identity
 from app.services.report_explanation import enrich_grounded_report
 from app.services.content_risk import classify_unsubstantiated_content
-
-SOURCE_SITE_FILTER = "(site:royal.uk OR site:brasilescola.uol.com.br OR site:mundoeducacao.uol.com.br OR site:science.nasa.gov OR site:cnnbrasil.com.br OR site:aosfatos.org OR site:bbc.com)"
-PRIMARY_SITE_FILTER = "(site:royal.uk OR site:science.nasa.gov OR site:ibge.gov.br OR site:bcb.gov.br OR site:who.int)"
-EXPLAINER_SITE_FILTER = "(site:brasilescola.uol.com.br OR site:mundoeducacao.uol.com.br OR site:cnnbrasil.com.br OR site:aosfatos.org)"
-
-
-def _source_recovery_query(query):
-    """Neutral identity/event leads, NEVER a rewritten assertion or truth vote.
-
-    Literal search comes first. A wrong date can rank coverage of that date
-    above an event biography. Only narrow named-event aliases may broaden the
-    second query; the untouched original statement still receives every guard.
-    Unknown constructions keep the complete literal recovery query.
-    """
-    identity = re.search(r"\b[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][a-záàâãéêíóôõúç]{2,}\s+(?:[IVXLCDM]{1,6}|[1-9]\d?)\b", query)
-    events = [(r"\b(?:morreu|faleceu|falecimento|morte|death|died)\b", "morte OR falecimento OR morreu OR death OR died"),
-              (r"\b(?:nasceu|nascimento|birth|born)\b", "nascimento OR nasceu OR birth OR born"),
-              (r"\b(?:lançada|lançado|lançou|lançamento|launched|launch)\b", "lançamento OR lançada OR launched OR launch")]
-    matched = [aliases for pattern, aliases in events if re.search(pattern, query, re.I)]
-    if identity and len(matched) == 1:
-        return f'"{identity[0]}" ({matched[0]}) {SOURCE_SITE_FILTER}', "literal_identity_event_anchors"
-    return f"{query} {SOURCE_SITE_FILTER}", "whole_literal_claim_curated_sites"
-
-
-def _source_recovery_queries(query, limit):
-    combined, method = _source_recovery_query(query)
-    if limit < 3 or method != "literal_identity_event_anchors":
-        return [(combined, method)]
-    identity = re.search(r'"[^"\n]+"', combined)[0]
-    if re.search(r"\b(?:morreu|faleceu|falecimento|morte|death|died)\b", query, re.I):
-        primary, editorial, genre = "death OR died", "morte OR falecimento OR morreu", "biography"
-    elif re.search(r"\b(?:nasceu|nascimento|birth|born)\b", query, re.I):
-        primary, editorial, genre = "birth OR born", "nascimento OR nasceu", "biography"
-    else:
-        primary, editorial, genre = "launched OR launch", "lançamento OR lançada", "mission"
-    return [(f"{identity} ({primary}) {genre} {PRIMARY_SITE_FILTER}", "literal_identity_event_primary_sources"),
-            (f"{identity} ({editorial}) {EXPLAINER_SITE_FILTER}", "literal_identity_event_editorial_explainers")]
 
 
 def _verdicts_agree(v1: str, v2: str) -> bool:
@@ -119,76 +78,33 @@ async def _run_gemini_check(text: str, context: dict) -> dict:
     return await generate_final_report(text, context)
 
 
-async def _retrieve_source_attribution(text: str, queries: list[str], source_url: str | None,
-                                      *, use_source_crosscheck: bool = True) -> dict:
-    """One base search, optionally one qualified search, and bounded retrieval.
+async def _retrieve_source_attribution(text: str, queries: list[str], source_url: str | None) -> dict:
+    """One literal search and bounded retrieval of public pages.
 
     Source attribution cannot vote on the factual decision. Search snippets
     remain leads; only a complete sentence in a retrieved document can match.
     """
-    crosscheck_enabled = use_source_crosscheck and os.getenv("SOURCE_CROSSCHECK_ENABLED", "true").strip().lower() == "true"
-    deadline = 45 if crosscheck_enabled else 20
-    attribution, plan = None, []
+    deadline = 20
+    plan = []
     try:
         async with asyncio.timeout(deadline):
             query = next((query for query in queries if 1 <= len(query.strip()) <= 500), None)
             leads = (await search_web(query) if query else NewsSearch(
                 status="no_results", reason="Nenhuma frase completa cabe no limite da busca; nenhum texto foi cortado."))
-            plan = [{"method": "whole_literal_claim", "status": getattr(leads, "status", "success" if leads else "no_results")}] if query else []
-            fetched_cache = {}
-            attribution = await collect_source_attribution(text, queries, source_url, search_results=leads,
-                include_documents=crosscheck_enabled, fetched_cache=fetched_cache)
-            families = usable_source_families(text, attribution.get("_documents", []), source_url) if crosscheck_enabled else set()
-            configured = os.getenv("SOURCE_CROSSCHECK_SEARCH_LIMIT", "3").strip()
-            limit = (int(configured) if configured in {"1", "2", "3"} else 3) if crosscheck_enabled else 1
-            if (crosscheck_enabled and limit >= 2 and query
-                    and len(families) < 2
-                    and getattr(leads, "status", "success" if leads else "no_results") in {"success", "no_results"}):
-                recovery_queries = []
-                clauses = decompose_claim(query)
-                if len(clauses) > 1:
-                    recovery_queries = [(clause, "coordinated_claim_clause") for clause in clauses if clause != query]
-                if not recovery_queries:
-                    recovery_queries = _source_recovery_queries(query, limit)
-                for qualified, recovery_method in recovery_queries[:max(0, limit - 1)]:
-                    if not 1 <= len(qualified) <= 500:
-                        continue
-                    extra = await search_web(qualified)
-                    extra_status = getattr(extra, "status", "success" if extra else "no_results")
-                    plan.append({"method": recovery_method, "status": extra_status,
-                                 "decision_role": "retrieval_only_original_claim_unchanged"})
-                    leads = NewsSearch([*leads, *extra], status="success" if leads or extra else extra_status)
-                    if extra_status not in {"success", "no_results"}:
-                        break  # Never work around a quota/credential failure.
-                attribution = await collect_source_attribution(text, queries, source_url, search_results=leads,
-                    include_documents=True, max_sources=6, fetched_cache=fetched_cache)
-                families = usable_source_families(text, attribution.get("_documents", []), source_url)
-            if crosscheck_enabled:
-                attribution["selection_audit"] = document_selection_audit(text, attribution.get("_documents", []), source_url)
-                attribution["_documents"] = select_comparison_documents(text, attribution.get("_documents", []), source_url)
+            plan = [{"method": "whole_literal_claim",
+                     "status": getattr(leads, "status", "success" if leads else "no_results")}] if query else []
+            attribution = await collect_source_attribution(text, queries, source_url, search_results=leads)
             attribution.setdefault("coverage", {})["search_queries"] = plan
-            attribution["coverage"]["max_search_queries"] = limit
+            attribution["coverage"]["max_search_queries"] = 1
             attribution["coverage"]["retrieval_deadline_seconds"] = deadline
-            attribution["coverage"]["usable_source_family_count"] = len(families)
-            attribution["coverage"]["max_comparison_documents"] = 3
             return attribution
     except Exception:
-        if isinstance(attribution, dict):
-            # Preserve successfully read first-wave evidence if recovery fails;
-            # never hide the missing wave or treat it as additional support.
-            documents = attribution.get("_documents", [])
-            if crosscheck_enabled:
-                attribution["selection_audit"] = document_selection_audit(text, documents, source_url)
-                attribution["_documents"] = select_comparison_documents(text, documents, source_url)
-            attribution.setdefault("coverage", {}).update(
-                search_queries=plan, retrieval_deadline_seconds=deadline,
-                recovery_status="timeout_or_error", usable_source_family_count=len(usable_source_families(text, documents, source_url)))
-            attribution.setdefault("limitations", []).append("A recuperação adicional não terminou; somente a primeira leitura concluída foi preservada.")
-            return attribution
         return {"status": "error", "decision_role": "source_attribution_only", "matches": [],
                 "reason": "A leitura das referências não foi concluída no prazo ou com segurança.",
                 "limitations": ["Referências não confirmam automaticamente verdade, falsidade ou a página inteira."],
-                "coverage": {"status": "error", "decision_role": "source_attribution_only"}}
+                "coverage": {"status": "error", "decision_role": "source_attribution_only",
+                             "search_queries": plan, "max_search_queries": 1,
+                             "retrieval_deadline_seconds": deadline}}
 
 
 def extract_dates_from_text(text: str) -> list[str]:
@@ -285,7 +201,7 @@ def analyze_temporal_context(serper_news: list, scrape_date: str = None) -> dict
 
 
 async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: bool = True,
-                       use_source_crosscheck: bool = True, use_detailed_report: bool = False,
+                       use_detailed_report: bool = False,
                        use_gemini_report: bool = False, allow_content_classification: bool = True) -> dict:
     source_url = url
     analysis_text = text
@@ -337,7 +253,7 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
     serper_web_queries = [query for query in serper_web_queries if query.strip()]
     serper_web_tasks = [asyncio.create_task(search_web(query)) for query in serper_web_queries]
     attribution_task = asyncio.create_task(_retrieve_source_attribution(
-        analysis_text, fact_check_queries, source_url, use_source_crosscheck=use_source_crosscheck))
+        analysis_text, fact_check_queries, source_url))
     tasks = [*fact_tasks, *serper_news_tasks, *serper_web_tasks, ai_task, attribution_task]
     if domain_task:
         tasks.append(domain_task)
@@ -410,29 +326,38 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
         "source_info": source_info,
     }
 
-    # Preserve Juan's explicit text/link report opt-in, not the historical
-    # model-only classifier. The final decision still requires valid evidence.
+    # Google Fact Check is supplementary context. It must never be the final
+    # decision: its coverage is sparse and its editorial ratings are not a
+    # substitute for semantic analysis of the retrieved material.
     ai = text_report(analysis_text, context["fact_checks"], scam_info)
+    editorial_assessments = ai.get("claim_assessments", [])
+    ai["editorial_complement"] = {
+        "fact_checks": context["fact_checks"],
+        "claim_assessments": editorial_assessments,
+        "decision_role": "supplementary_context_only",
+        "used_for_final_verdict": False,
+    }
+    # Keep the old assessment shape for clients, but prevent the legacy
+    # literal rating from being rendered as the current decision.
+    ai["claim_assessments"] = [
+        {**item, "status": "unverified",
+         "explanation": "Checagem editorial complementar; não usada sozinha para o resultado final.",
+         "decision_role": "supplementary_context_only"}
+        for item in editorial_assessments if isinstance(item, dict)
+    ]
+    ai["verdict"] = "Scam" if scam_info.get("is_scam") else "Suspicious"
+    ai["score"] = 15 if scam_info.get("is_scam") else 50
+    ai["veracity_status"] = "unverified"
+    ai["analysis_status"] = "partial" if scam_info.get("is_scam") else "inconclusive"
+    if not scam_info.get("is_scam"):
+        ai["summary"] = "A análise semântica das fontes ainda não foi concluída; as checagens editoriais encontradas são apenas complemento."
+        ai["plain_explanation"] = ai["summary"]
     ai["search_claims"] = claims
     ai["search_claims_decision_role"] = "search_hints_only"
     ai["scam_analysis"] = scam_info
     ai["serper_news"] = serper_news_results
     ai["serper_web"] = serper_web_results
     source_attribution = dict(attribution_task.result())
-    source_documents = source_attribution.pop("_documents", [])
-    source_comparison = None
-    if use_source_crosscheck and ai.get("veracity_status") == "unverified" and not scam_info["is_scam"]:
-        try:
-            source_comparison = await corroborate_sources(analysis_text, source_documents, source_url)
-            if not isinstance(source_comparison, dict):
-                raise ValueError("Invalid comparison envelope")
-        except Exception:
-            source_comparison = {"version": "source_corroboration_v1", "status": "error", "state": "insufficient",
-                "decision_role": "grounded_source_comparison", "claims": [], "coverage": {},
-                "reason": "Não foi possível concluir a comparação das fontes; nenhuma conclusão foi acrescentada.",
-                "limitations": ["Falha de comparação não comprova verdade ou falsidade."]}
-        ai = apply_source_decision(analysis_text, ai, source_comparison)
-        ai["source_corroboration"] = source_comparison
     ai["source_attribution"] = source_attribution
     queries = [{"status": "error" if task.exception() else getattr(task.result(), "status", "success" if task.result() else "no_results"),
                 "reason": "Falha na consulta." if task.exception() else getattr(task.result(), "reason", None)} for task in fact_tasks]
@@ -448,42 +373,6 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
         "decision_role": "source_attribution_only", "matches_returned": len(source_attribution.get("matches", [])),
         "reason": source_attribution.get("reason"),
     }
-    if source_comparison is not None:
-        ai["provider_coverage"]["source_crosscheck"] = {
-            "status": source_comparison.get("status", "error"),
-            "decision_role": "grounded_source_comparison",
-            "reason": source_comparison.get("reason"),
-            "coverage": source_comparison.get("coverage", {}),
-        }
-    comparison_claims = source_comparison.get("claims", []) if isinstance(source_comparison, dict) else []
-    states = {item.get("status") for item in comparison_claims if isinstance(item, dict)}
-    relations = {source.get("relation") for claim in comparison_claims if isinstance(claim, dict)
-                 for source in claim.get("evidence", []) if isinstance(source, dict)}
-    if states and states <= {"corroborated", "refuted"} and len(states) == 1:
-        evidence_strength = {"level": "strong", "direction": next(iter(states)),
-            "basis": "Trecho correspondente lido em fonte elegível; uma fonte pode decidir esta afirmação."}
-    elif "conflicting" in states:
-        evidence_strength = {"level": "mixed", "direction": "conflicting",
-            "basis": "Trechos de fontes consultadas apontam em direções diferentes."}
-    elif relations == {"supports"}:
-        evidence_strength = {"level": "limited", "direction": "single_support",
-            "basis": "Trechos consultados favorecem a afirmação, sem atender às guardas de decisão."}
-    elif relations == {"refutes"}:
-        evidence_strength = {"level": "limited", "direction": "single_refute",
-            "basis": "Trechos consultados contradizem a afirmação, sem atender às guardas de decisão."}
-    elif relations == {"supports", "refutes"}:
-        evidence_strength = {"level": "mixed", "direction": "conflicting",
-            "basis": "Trechos consultados apontam em direções diferentes."}
-    elif any(isinstance(item, dict) and item.get("evidence") for item in comparison_claims):
-        evidence_strength = {"level": "limited", "direction": "unresolved",
-            "basis": "Há ao menos um trecho de corpo relacionado, mas sem confirmação independente suficiente."}
-    elif serper_news_results or serper_web_results:
-        evidence_strength = {"level": "limited", "direction": "unresolved",
-            "basis": "Há resultados de busca, mas títulos e prévias não bastam para confirmar a afirmação."}
-    else:
-        evidence_strength = {"level": "insufficient", "direction": "unresolved",
-            "basis": "Nenhum resultado de busca ou trecho de fonte utilizável foi recuperado."}
-    ai["evidence_strength"] = evidence_strength
     if use_ai_extraction:
         ai["provider_coverage"]["openrouter"] = {key: value for key, value in openrouter_result.items()
             if key in {"available", "status", "reason", "model_used", "decision_role", "free_only", "response_issue"}}
@@ -553,8 +442,6 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
     if use_gemini_report:
         report_context = {**context,
             "source_attribution": source_attribution,
-            "source_corroboration": source_comparison,
-            "evidence_strength": evidence_strength,
             "provider_coverage": ai.get("provider_coverage", {}),
             "policy_assessment": {key: ai.get(key) for key in (
                 "verdict", "veracity_status", "analysis_status", "claim_assessments", "summary")}}
@@ -566,7 +453,77 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
             "model_used": generated.get("model_used") if isinstance(generated, dict) else None,
             "reason": "Gemini não gerou o relatório; explicação baseada na política de evidências foi mantida."
                       if generated_status == "error" else None}
-        if generated_status == "success":
+    if use_gemini_report and generated_status == "success":
+            # Model interpretation is exposed as an evidence report. It does
+            # not silently replace the policy verdict: callers can distinguish
+            # semantic assessment from a confirmed fact.
+            allowed_urls = {
+                item.get("link") for item in [*serper_news_results, *serper_web_results]
+                if isinstance(item, dict) and isinstance(item.get("link"), str)
+            }
+            source_text_by_url = {}
+            for item in [*serper_news_results, *serper_web_results]:
+                if isinstance(item, dict) and isinstance(item.get("link"), str):
+                    source_text_by_url[item["link"]] = " ".join(
+                        str(item.get(field, "")) for field in ("title", "snippet", "source")
+                    )
+            for item in context.get("fact_checks", []):
+                if isinstance(item, dict) and isinstance(item.get("url"), str):
+                    allowed_urls.add(item["url"])
+                    source_text_by_url[item["url"]] = " ".join(
+                        str(item.get(field, "")) for field in ("claim_text", "rating", "publisher")
+                    )
+            allowed_urls.update(
+                item.get("url") for item in source_attribution.get("matches", [])
+                if isinstance(item, dict) and isinstance(item.get("url"), str)
+            )
+            for item in source_attribution.get("matches", []):
+                if isinstance(item, dict) and isinstance(item.get("url"), str):
+                    source_text_by_url[item["url"]] = item.get("excerpt", "")
+            evidence_assessments = []
+            for assessment in generated.get("claim_assessments", []):
+                if not isinstance(assessment, dict):
+                    continue
+                sources = []
+                for source in assessment.get("sources", []):
+                    if not isinstance(source, dict) or source.get("url") not in allowed_urls:
+                        continue
+                    quote = source.get("quote", "")
+                    if not isinstance(quote, str) or not quote.strip():
+                        continue
+                    source_text = source_text_by_url.get(source.get("url"), "")
+                    if quote.strip() not in source_text:
+                        continue
+                    sources.append({key: source[key] for key in ("url", "title", "quote", "source_scope")
+                                    if key in source and isinstance(source[key], str)})
+                evidence_assessments.append({
+                    "claim": assessment.get("claim", "")[:5000],
+                    "assessment": assessment.get("assessment"),
+                    "explanation": assessment.get("explanation", "")[:3000],
+                    "sources": sources,
+                    "evidence_validated": bool(sources),
+                })
+            ai["semantic_evidence_report"] = {
+                "certainty": generated.get("certainty"),
+                "claim_assessments": evidence_assessments,
+                "decision_role": "evidence_interpretation_not_certainty",
+                "source_validation": "url_must_be_retrieved_and_quote_required",
+            }
+            # Gemini interpretation is the primary textual result. Keep the
+            # certainty qualifier separate: this is an evidence reading, not
+            # a calibrated truth probability.
+            if not scam_info.get("is_scam"):
+                ai["verdict"] = generated.get("verdict", "Suspicious")
+                ai["score"] = int(generated.get("score", 50))
+                ai["analysis_status"] = "partial"
+                ai["semantic_verdict"] = generated.get("verdict", "Suspicious")
+                ai["semantic_score"] = generated.get("semantic_score")
+                if generated.get("verdict") == "Authentic":
+                    ai["veracity_status"] = "supported"
+                elif generated.get("verdict") == "Suspicious":
+                    ai["veracity_status"] = "unverified"
+                else:
+                    ai["veracity_status"] = "unverified"
             for field in ("summary", "plain_explanation", "elderly_tip", "whatsapp_share_text"):
                 value = generated.get(field)
                 if isinstance(value, str) and value.strip():
