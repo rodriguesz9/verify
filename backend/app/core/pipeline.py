@@ -78,6 +78,85 @@ async def _run_gemini_check(text: str, context: dict) -> dict:
     return await generate_final_report(text, context)
 
 
+def _claim_key(value: str) -> str:
+    """Normalize claim identity without trying to infer its meaning."""
+    return re.sub(r"\W+", " ", value.casefold(), flags=re.UNICODE).strip()
+
+
+def _promote_semantic_evidence(ai: dict, generated: dict, assessments: list[dict], text: str) -> None:
+    """Turn grounded semantic relations into the canonical textual decision.
+
+    Gemini may interpret a negation or paraphrase, but only an assessment whose
+    quoted text was validated against a retrieved source can vote. Snippets are
+    context, not proof. Claim identity stays conservative: the model cannot
+    introduce a new claim that was not in the submitted text.
+    """
+    submitted_claims = {_claim_key(text)}
+    submitted_claims.update(_claim_key(item) for item in input_claims(text))
+    eligible = []
+    for assessment in assessments:
+        if not isinstance(assessment, dict) or not assessment.get("evidence_validated"):
+            continue
+        relation = assessment.get("assessment")
+        if relation not in {"supports", "contradicts"}:
+            continue
+        claim = assessment.get("claim")
+        if not isinstance(claim, str) or _claim_key(claim) not in submitted_claims:
+            continue
+        sources = [source for source in assessment.get("sources", [])
+                   if isinstance(source, dict)
+                   and source.get("source_scope") in {"full_article", "fact_check"}
+                   and isinstance(source.get("url"), str)
+                   and isinstance(source.get("quote"), str)
+                   and source["quote"].strip()]
+        if not sources:
+            continue
+        eligible.append((assessment, sources))
+
+    if not eligible:
+        return
+
+    relations = {assessment["assessment"] for assessment, _ in eligible}
+    status = ("conflicting" if relations == {"supports", "contradicts"}
+              else "supported" if relations == {"supports"} else "refuted")
+    evidence_by_claim = {}
+    for assessment, sources in eligible:
+        evidence_by_claim[_claim_key(assessment["claim"])] = [
+            {"url": source["url"], "excerpt": source["quote"],
+             "relation": "supports" if assessment["assessment"] == "supports" else "refutes",
+             "source_role": "retrieved_source"}
+            for source in sources
+        ]
+
+    canonical = []
+    for assessment in ai.get("claim_assessments", []):
+        if not isinstance(assessment, dict):
+            continue
+        key = _claim_key(assessment.get("claim", ""))
+        matched = next((item for item, _ in eligible if _claim_key(item["claim"]) == key), None)
+        if matched:
+            relation = matched["assessment"]
+            canonical.append({**assessment,
+                              "status": "supported" if relation == "supports" else "refuted",
+                              "explanation": matched.get("explanation", ""),
+                              "evidence": evidence_by_claim[key],
+                              "evidence_mode": "retrieved_sources",
+                              "decision_role": "grounded_semantic_evidence"})
+        else:
+            canonical.append(assessment)
+
+    ai["claim_assessments"] = canonical
+    ai["veracity_status"] = status
+    ai["analysis_status"] = "partial"
+    ai["verdict"] = "Authentic" if status == "supported" else "False" if status == "refuted" else "Suspicious"
+    ai["score"] = 90 if status == "supported" else 10 if status == "refuted" else 50
+    ai["semantic_decision"] = {
+        "status": status,
+        "decision_role": "validated_semantic_evidence",
+        "evidence_count": sum(len(sources) for _, sources in eligible),
+    }
+
+
 async def _retrieve_source_attribution(text: str, queries: list[str], source_url: str | None) -> dict:
     """One literal search and bounded retrieval of public pages.
 
@@ -462,17 +541,20 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
                 if isinstance(item, dict) and isinstance(item.get("link"), str)
             }
             source_text_by_url = {}
+            source_scope_by_url = {}
             for item in [*serper_news_results, *serper_web_results]:
                 if isinstance(item, dict) and isinstance(item.get("link"), str):
                     source_text_by_url[item["link"]] = " ".join(
                         str(item.get(field, "")) for field in ("title", "snippet", "source")
                     )
+                    source_scope_by_url[item["link"]] = "snippet"
             for item in context.get("fact_checks", []):
                 if isinstance(item, dict) and isinstance(item.get("url"), str):
                     allowed_urls.add(item["url"])
                     source_text_by_url[item["url"]] = " ".join(
                         str(item.get(field, "")) for field in ("claim_text", "rating", "publisher")
                     )
+                    source_scope_by_url[item["url"]] = "fact_check"
             allowed_urls.update(
                 item.get("url") for item in source_attribution.get("matches", [])
                 if isinstance(item, dict) and isinstance(item.get("url"), str)
@@ -480,6 +562,7 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
             for item in source_attribution.get("matches", []):
                 if isinstance(item, dict) and isinstance(item.get("url"), str):
                     source_text_by_url[item["url"]] = item.get("excerpt", "")
+                    source_scope_by_url[item["url"]] = "full_article"
             evidence_assessments = []
             for assessment in generated.get("claim_assessments", []):
                 if not isinstance(assessment, dict):
@@ -494,8 +577,9 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
                     source_text = source_text_by_url.get(source.get("url"), "")
                     if quote.strip() not in source_text:
                         continue
-                    sources.append({key: source[key] for key in ("url", "title", "quote", "source_scope")
-                                    if key in source and isinstance(source[key], str)})
+                    sources.append({key: source[key] for key in ("url", "title", "quote")
+                                    if key in source and isinstance(source[key], str)}
+                                   | {"source_scope": source_scope_by_url[source["url"]]})
                 evidence_assessments.append({
                     "claim": assessment.get("claim", "")[:5000],
                     "assessment": assessment.get("assessment"),
@@ -509,9 +593,9 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
                 "decision_role": "evidence_interpretation_not_certainty",
                 "source_validation": "url_must_be_retrieved_and_quote_required",
             }
-            # Gemini interpretation is the primary textual result. Keep the
-            # certainty qualifier separate: this is an evidence reading, not
-            # a calibrated truth probability.
+            # Gemini interpretation supplies a candidate relation. The
+            # validated relation below, not the model's free-form verdict,
+            # controls the canonical textual result.
             if not scam_info.get("is_scam"):
                 ai["verdict"] = generated.get("verdict", "Suspicious")
                 ai["score"] = int(generated.get("score", 50))
@@ -539,6 +623,7 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
                         ai[field] = list(dict.fromkeys([*ai.get(field, []), *valid]))[:20]
                     else:
                         ai[field] = valid[:20]
+            _promote_semantic_evidence(ai, generated, evidence_assessments, analysis_text)
             ai["report_model_used"] = generated.get("model_used")
 
     # Explanations are rendered after every decision/coverage layer. No extra
