@@ -327,7 +327,9 @@ def _singleton_date_bound(quote, event, claim=None):
 
 
 def _relation_guard(claim, quote, context, relation, retrieved_at):
-    if (RELATIVE_TIME.search(claim) or any(c in claim for c in ('?', '"', '“', '”', '«', '»'))
+    # Punctuation does not make a yes/no claim ambiguous; quoted claims still
+    # need attribution/scope review.
+    if (RELATIVE_TIME.search(claim) or any(c in claim for c in ('"', '“', '”', '«', '»'))
             or _UNASSERTED.search(context) or _INSTRUCTION.search(context)):
         return "Contexto relativo, citação, instrução ou alegação não endossada exige revisão humana."
     if _PRESCRIPTIVE.search(claim):

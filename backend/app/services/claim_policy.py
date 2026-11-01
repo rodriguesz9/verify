@@ -27,7 +27,8 @@ _TITLE_ABBREVIATION = re.compile(r"\b(?:dr|dra|sr|sra|prof|profa)\.$", re.I)
 
 def normalize_claim(text: str) -> str:
     # Preserve accents (avó/avô), negation, numbers and interior punctuation.
-    return re.sub(r"\s+", " ", unicodedata.normalize("NFC", text).casefold()).strip().removesuffix(".").strip()
+    normalized = re.sub(r"\s+", " ", unicodedata.normalize("NFC", text).casefold()).strip()
+    return normalized.removesuffix(".").removesuffix("?").strip()
 
 
 def publisher_family(url: str | None) -> str | None:
@@ -72,7 +73,9 @@ def _review_date_ok(value, now):
 
 def decide_claim(text: str, reviews: list[dict], now: datetime) -> dict:
     matched, excluded = [], []
-    ambiguous = bool(RELATIVE_TIME.search(text)) or any(char in text for char in ('?', '"', '“', '”', '«', '»'))
+    # A yes/no question is still a checkable proposition. Quotation marks and
+    # relative time remain ambiguous because they can change attribution/scope.
+    ambiguous = bool(RELATIVE_TIME.search(text)) or any(char in text for char in ('"', '“', '”', '«', '»'))
     for review in reviews:
         if not isinstance(review, dict):
             continue
