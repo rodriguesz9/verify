@@ -3,13 +3,12 @@ from copy import deepcopy
 import unittest
 from app.services.claim_policy import text_report
 from app.services.report_explanation import enrich_grounded_report
-from app.services.source_decision import apply_source_decision
-from test_source_decision import CLAIM, layer
+from test_claim_decisions import CLAIM, pair
 
 
 class ReportExplanationTests(unittest.TestCase):
     def test_only_explanation_fields_change_and_original_is_not_mutated(self):
-        original = apply_source_decision(CLAIM, text_report(CLAIM, []), layer())
+        original = text_report(CLAIM, [])
         before = deepcopy(original)
         result = enrich_grounded_report(original)
         self.assertEqual(original, before)
@@ -17,11 +16,15 @@ class ReportExplanationTests(unittest.TestCase):
                          {k: v for k, v in original.items() if k != "plain_explanation"})
         self.assertEqual(enrich_grounded_report(result), result)
         result["claim_assessments"][0]["status"] = "refuted"
-        self.assertEqual(original["claim_assessments"][0]["status"], "supported")
+        self.assertEqual(original["claim_assessments"][0]["status"], "unverified")
 
     def test_literal_negation_dates_and_quotes_are_never_shortened(self):
         claim = "Elizabeth II não morreu em 9 de setembro de 2022."
-        original = apply_source_decision(claim, text_report(claim, []), layer(text=claim))
+        original = text_report(claim, [])
+        item = original["claim_assessments"][0]
+        item["evidence_mode"] = "retrieved_sources"
+        item["evidence"] = [{"url": "https://example.test/article", "claim_text": claim,
+                             "excerpt": claim, "relation": "supported"}]
         result = enrich_grounded_report(original)
         self.assertIn(claim, result["plain_explanation"])
         self.assertIn(claim, result["report_explanation"]["claims"][0]["references"][0]["excerpt"])
@@ -38,7 +41,7 @@ class ReportExplanationTests(unittest.TestCase):
             self.assertNotIn(secret, str(result["report_explanation"]))
 
     def test_refutation_uses_existing_decision_not_synthetic_media_guess(self):
-        report = apply_source_decision(CLAIM, text_report(CLAIM, []), layer(status="refuted"))
+        report = text_report(CLAIM, pair(CLAIM, "Falso"))
         result = enrich_grounded_report(report)
         self.assertEqual(result["verdict"], "False")
         self.assertIn("refutado", result["plain_explanation"])

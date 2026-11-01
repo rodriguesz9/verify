@@ -61,20 +61,21 @@ class NewsPipelineTests(unittest.IsolatedAsyncioTestCase):
               patch("app.core.pipeline.detect_ai_text", new=AsyncMock(return_value={"ai_probability": None}))):
             return await run_pipeline("Vacina não causa autismo.", use_ai_extraction=False)
 
-    async def test_filtered_success_is_no_results_with_raw_counts_and_unchanged_factchecks(self):
+    async def test_unrelated_success_remains_visible_context_with_raw_counts(self):
         review = FactCheckResult(claim_text="Vacina não causa autismo.", rating="true", publisher="Exemplo", url="https://example.org/checagem")
         item = news("Cassinos aceitam Pix")
         result = await self.run_with_news(NewsSearch([item]), [review])
         coverage = result["report"]["provider_coverage"]["serper"]
-        self.assertEqual(coverage["status"], "no_results")
+        self.assertEqual(coverage["status"], "success")
         self.assertEqual(coverage["queries"][0]["status"], "success")
         self.assertEqual(coverage["raw_matches_returned"], 1)
         self.assertEqual(coverage["unique_matches_returned"], 1)
-        self.assertEqual(coverage["matches_returned"], 0)
+        self.assertEqual(coverage["matches_returned"], 1)
         self.assertEqual(result["fact_checks"], [review])
         self.assertEqual(result["report"]["fact_checks"], [review.model_dump()])
-        self.assertEqual(result["serper_news"], [])
-        self.assertEqual(result["metrics"]["serper_news_count"], 0)
+        self.assertEqual(len(result["serper_news"]), 1)
+        self.assertEqual(result["serper_news"][0]["publisher_assessment"]["level"], "unclassified")
+        self.assertEqual(result["metrics"]["serper_news_count"], 1)
         self.assertEqual(result["metrics"]["earliest_known_date"], None)
         self.assertEqual(result["report"]["veracity_status"], "unverified")
 
@@ -88,7 +89,9 @@ class NewsPipelineTests(unittest.IsolatedAsyncioTestCase):
     async def test_related_context_never_votes_on_truth(self):
         item = news("Vacina não causa autismo", date="2026-10-08")
         result = await self.run_with_news(NewsSearch([item]))
-        self.assertEqual(result["serper_news"], [item])
+        self.assertEqual({key: value for key, value in result["serper_news"][0].items()
+                          if key != "publisher_assessment"}, item)
+        self.assertEqual(result["serper_news"][0]["publisher_assessment"]["level"], "unclassified")
         self.assertEqual(result["report"]["provider_coverage"]["serper"]["status"], "success")
         self.assertEqual(result["report"]["veracity_status"], "unverified")
 

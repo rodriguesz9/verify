@@ -48,7 +48,7 @@ class FactualQueryPlanTests(unittest.TestCase):
         self.assertEqual(audit["omitted_count"], 1)
         self.assertEqual(audit["literal_segments_not_queried_separately"], 1)
         self.assertTrue(audit["whole_text_queried"])
-        self.assertEqual(audit["query_methods"][0], "extracted_literal_sentence")
+        self.assertEqual(audit["query_methods"][0], "extracted_literal_claim")
 
     def test_complete_input_reserved_when_extractions_fill_the_budget(self):
         claims = [f"A cidade {number} abriu uma ponte." for number in range(5)]
@@ -66,13 +66,17 @@ class FactualQueryPlanTests(unittest.TestCase):
         self.assertEqual(audit["omitted_count"], 0)
         self.assertTrue(audit["whole_text_queried"])
 
-    def test_partial_hint_retains_negation_date_value_and_relative_context(self):
+    def test_partial_hint_is_literal_but_complete_sentence_remains_available(self):
         text = "Não é verdade que a Dra. Ávila recebeu R$ 1.500,00 em 14/10/2026 hoje. Outra afirmação."
-        queries, audit = build_fact_check_queries(text, ["a Dra. Ávila recebeu R$ 1.500,00"])
-        self.assertEqual(queries[0], input_claims(text)[0])
-        self.assertIn("Não é verdade", queries[0])
-        self.assertIn("14/10/2026 hoje", queries[0])
+        hint = "a Dra. Ávila recebeu R$ 1.500,00"
+        queries, audit = build_fact_check_queries(text, [hint])
+        self.assertEqual(queries[0], hint)
+        self.assertIn(input_claims(text)[0], queries)
+        self.assertIn(text, queries)
+        self.assertIn("Não é verdade", input_claims(text)[0])
+        self.assertIn("14/10/2026 hoje", input_claims(text)[0])
         self.assertEqual(audit["extracted_valid_count"], 1)
+        self.assertEqual(audit["query_methods"][0], "extracted_literal_claim")
 
     def test_nonliteral_or_cross_sentence_extractions_are_rejected(self):
         text = "A avó recebeu R$ 10. Ela não recebeu R$ 20."

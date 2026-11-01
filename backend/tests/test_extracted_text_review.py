@@ -101,7 +101,8 @@ class ReviewEndpointTests(unittest.TestCase):
             response = self.client.post("/api/check-extracted-text", json={"text": changed, "review_token": self.token})
         self.assertEqual(response.status_code, 200)
         report = response.json()
-        pipeline.assert_awaited_once_with(text=changed, use_ai_extraction=False, use_detailed_report=True)
+        pipeline.assert_awaited_once_with(text=changed, use_ai_extraction=False,
+                                         use_detailed_report=True, use_gemini_report=True)
         quota.assert_awaited_once_with(self.user, self.db, "TEXTUAL")
         self.assertEqual(report["content_type"], "text")
         self.assertEqual(report["text_review"]["original_text"], ORIGINAL)
@@ -147,7 +148,8 @@ class ReviewEndpointTests(unittest.TestCase):
              patch("app.api.check_text.verify_limit", new=AsyncMock()):
             response = self.client.post("/api/check-extracted-text", json={"text": literal, "review_token": self.token})
         self.assertEqual(response.status_code, 200)
-        pipeline.assert_awaited_once_with(text=literal, use_ai_extraction=False, use_detailed_report=True)
+        pipeline.assert_awaited_once_with(text=literal, use_ai_extraction=False,
+                                         use_detailed_report=True, use_gemini_report=True)
         self.assertEqual(response.json()["query_input"], literal)
         self.assertEqual(response.json()["text_review"]["reviewed_text"], literal)
 

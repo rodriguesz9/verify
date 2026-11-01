@@ -12,14 +12,13 @@ from app.core.gemini_analyzer import ClaimsExtraction
 from app.models.schemas import FactCheckResult
 from app.services.claim_policy import text_report
 from app.services.pdf_snapshot import attach_pdf_snapshot, verify_pdf_snapshot
-from test_claim_decisions import pair
-from test_source_decision import CLAIM, layer
+from test_claim_decisions import CLAIM, pair
 
 
 class DetailedPipelineTests(unittest.IsolatedAsyncioTestCase):
-    async def run_control(self, comparison=None, reviews=None, hints=None, detailed=True):
+    async def run_control(self, reviews=None, hints=None, detailed=True):
         attribution = {"status": "no_results", "matches": [], "coverage": {},
-                       "limitations": [], "_documents": []}
+                       "limitations": [], "decision_role": "source_attribution_only"}
         with ExitStack() as stack:
             stack.enter_context(patch("app.core.pipeline.extract_claims_with_ai", new=AsyncMock(
                 return_value=hints if hints is not None else [])))
@@ -28,63 +27,63 @@ class DetailedPipelineTests(unittest.IsolatedAsyncioTestCase):
                 {"title": CLAIM, "link": "https://example.test/context", "snippet": "UNVALIDATED NEWS SNIPPET"}])))
             stack.enter_context(patch("app.core.pipeline.detect_ai_text", new=AsyncMock(return_value={"ai_probability": None})))
             stack.enter_context(patch("app.core.pipeline._retrieve_source_attribution", new=AsyncMock(return_value=attribution)))
-            compare = stack.enter_context(patch("app.core.pipeline.corroborate_sources", new=AsyncMock(
-                side_effect=comparison if isinstance(comparison, Exception) else None,
-                return_value=comparison or {"version": "source_corroboration_v1", "status": "no_results",
-                    "state": "insufficient", "claims": [], "coverage": {}, "decision_role": "grounded_source_comparison"})))
             legacy = stack.enter_context(patch("app.core.pipeline.generate_final_report", new=AsyncMock(
                 side_effect=AssertionError("Legacy classifier must never run"))))
             result = await run_pipeline(CLAIM, use_detailed_report=detailed)
         legacy.assert_not_awaited()
-        return result["report"], compare
+        return result["report"]
 
     async def test_context_and_model_opinion_cannot_become_evidence_in_detailed_mode(self):
-        report, compare = await self.run_control()
+        report = await self.run_control()
         self.assertEqual(report["veracity_status"], "unverified")
         self.assertEqual(report["analysis_status"], "inconclusive")
         self.assertEqual(report["provider_coverage"]["serper"]["decision_role"], "context_only")
         self.assertNotIn("UNVALIDATED NEWS SNIPPET", report["plain_explanation"])
         self.assertNotIn("example.test/context", str(report["report_explanation"]))
-        compare.assert_awaited_once()
+        self.assertNotIn("source_corroboration", report)
+        self.assertNotIn("evidence_strength", report)
 
-    async def test_grounded_support_and_refutation_survive_detailed_mode_unchanged(self):
-        for state, verdict in (("corroborated", "Authentic"), ("refuted", "False")):
-            baseline, _ = await self.run_control(layer(status=state), detailed=False)
-            detailed, comparison = await self.run_control(layer(status=state))
+    async def test_published_review_decisions_survive_detailed_mode_unchanged(self):
+        for rating, verdict in (("Verdadeiro", "Authentic"), ("Falso", "False")):
+            reviews = [FactCheckResult(**item) for item in pair(CLAIM, rating)]
+            baseline = await self.run_control(reviews, detailed=False)
+            detailed = await self.run_control(reviews)
             self.assertEqual(detailed["verdict"], verdict)
             self.assertEqual({k: v for k, v in detailed.items() if k not in {"plain_explanation", "report_explanation"}},
                              {k: v for k, v in baseline.items() if k != "plain_explanation"})
             self.assertEqual(detailed["report_explanation"]["decision_role"], "explanation_only")
-            comparison.assert_awaited_once()
 
-    async def test_comparison_failure_never_discards_contract_or_discloses_error(self):
-        report, compare = await self.run_control(RuntimeError("PRIVATE-KEY-AND-ERROR"))
+    async def test_reference_failure_never_discards_contract_or_discloses_error(self):
+        attribution = {"status": "error", "matches": [], "coverage": {}, "limitations": [],
+                       "decision_role": "source_attribution_only", "reason": "Consulta não concluída."}
+        with patch("app.core.pipeline.extract_claims_with_ai", new=AsyncMock(return_value=[])), \
+             patch("app.core.pipeline.query_fact_check_api", new=AsyncMock(return_value=[])), \
+             patch("app.core.pipeline.search_news", new=AsyncMock(return_value=[])), \
+             patch("app.core.pipeline.detect_ai_text", new=AsyncMock(return_value={})), \
+             patch("app.core.pipeline._retrieve_source_attribution", new=AsyncMock(return_value=attribution)):
+            report = (await run_pipeline(CLAIM, use_detailed_report=True))["report"]
         self.assertEqual(report["veracity_status"], "unverified")
         self.assertEqual(report["analysis_status"], "inconclusive")
         self.assertIn("policy_version", report)
         self.assertIn("claim_assessments", report)
         self.assertNotIn("PRIVATE-KEY-AND-ERROR", str(report))
-        compare.assert_awaited_once()
 
     async def test_editorial_evidence_is_preserved_when_gemini_extraction_has_no_quota(self):
         # Same literal input as the fixture's reviews, without rewriting dates.
-        from test_claim_decisions import CLAIM as EDITORIAL_CLAIM
         with patch("app.core.pipeline.extract_claims_with_ai", new=AsyncMock(return_value=ClaimsExtraction(status="rate_limited"))), \
-             patch("app.core.pipeline.query_fact_check_api", new=AsyncMock(return_value=[FactCheckResult(**r) for r in pair()])), \
+             patch("app.core.pipeline.query_fact_check_api", new=AsyncMock(return_value=[FactCheckResult(**r) for r in pair(CLAIM)])), \
              patch("app.core.pipeline.search_news", new=AsyncMock(return_value=[])), \
              patch("app.core.pipeline.detect_ai_text", new=AsyncMock(return_value={})), \
              patch("app.core.pipeline._retrieve_source_attribution", new=AsyncMock(return_value={"status": "no_results", "matches": [], "coverage": {}})), \
-             patch("app.core.pipeline.corroborate_sources", new=AsyncMock()) as cross, \
              patch("app.core.pipeline.generate_final_report", new=AsyncMock(side_effect=TimeoutError())) as legacy:
-            report = (await run_pipeline(EDITORIAL_CLAIM, use_detailed_report=True))["report"]
+            report = (await run_pipeline(CLAIM, use_detailed_report=True))["report"]
         self.assertEqual(report["verdict"], "Authentic")
         self.assertEqual(report["veracity_status"], "supported")
         self.assertEqual(report["provider_coverage"]["gemini"]["status"], "rate_limited")
-        cross.assert_not_awaited()
         legacy.assert_not_awaited()
 
     async def test_detailed_report_remains_exportable_without_reanalysis(self):
-        report, _ = await self.run_control(layer())
+        report = await self.run_control()
         report.update(content_type="text", query_input=CLAIM, analyzed_at=datetime.now(timezone.utc).isoformat())
         signed = attach_pdf_snapshot(report)
         self.assertEqual(signed["pdf_export_status"], "ready")

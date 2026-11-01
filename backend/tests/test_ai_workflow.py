@@ -44,7 +44,8 @@ class AiWorkflowIntegrationTests(unittest.TestCase):
         self.assertIsNotNone(datetime.fromisoformat(returned["analyzed_at"]).tzinfo)
         self.assertEqual(returned["pdf_export_status"], "unavailable")  # incomplete legacy fixture
         verify_limit.assert_awaited_once_with(self.user, self.db, "TEXTUAL")
-        run_pipeline.assert_awaited_once_with(text="The Earth is flat according to one viral claim.", use_detailed_report=True)
+        run_pipeline.assert_awaited_once_with(text="The Earth is flat according to one viral claim.",
+                                             use_detailed_report=True, use_gemini_report=True)
         self.assertEqual(self.db.commits, 1)
         self.assertTrue(any(isinstance(item, Verification) for item in self.db.added))
         self.assertTrue(any(isinstance(item, AnalysisMetrics) for item in self.db.added))

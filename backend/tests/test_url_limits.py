@@ -80,7 +80,8 @@ class UrlEndpointLimitTests(unittest.TestCase):
         response, fetch, pipeline, _ = self.send(value, value)
         self.assertEqual(response.status_code, 200)
         fetch.assert_awaited_once_with(value)
-        pipeline.assert_awaited_once_with(text=PAGE_TEXT, url=value, use_detailed_report=True)
+        pipeline.assert_awaited_once_with(text=PAGE_TEXT, url=value,
+                                         use_detailed_report=True, use_gemini_report=True)
         self.assertEqual(self.db.commits, 1)
         stored = next(row for row in self.db.added if isinstance(row, Verification))
         self.assertEqual(stored.source_url, value)
@@ -126,7 +127,8 @@ class UrlEndpointLimitTests(unittest.TestCase):
         final_url = url_at_length(512)
         response, _, pipeline, _ = self.send(original, final_url)
         self.assertEqual(response.status_code, 200)
-        pipeline.assert_awaited_once_with(text=PAGE_TEXT, url=final_url, use_detailed_report=True)
+        pipeline.assert_awaited_once_with(text=PAGE_TEXT, url=final_url,
+                                         use_detailed_report=True, use_gemini_report=True)
         report = verify_pdf_snapshot(response.json()["pdf_snapshot_token"], self.user)
         self.assertEqual(report["query_input"], original)
         self.assertEqual(report["source_url"], final_url)

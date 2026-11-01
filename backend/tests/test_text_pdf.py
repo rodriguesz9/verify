@@ -9,8 +9,6 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from helpers import app, fake_user, FakeSession, override_auth_and_db
 from app.services.claim_policy import text_report
-from app.services.source_decision import apply_source_decision
-from test_source_decision import layer
 from app.services.pdf_snapshot import attach_pdf_snapshot, verify_pdf_snapshot
 from app.services.extracted_text_review import attach_text_review
 from test_extracted_text_review import source_report, ORIGINAL
@@ -24,19 +22,6 @@ def original_text_report(**overrides):
 
 
 class TextPdfTests(unittest.TestCase):
-    def test_source_grounded_pdf_preserves_quotes_without_pretending_published_reviews(self):
-        claim = "Elizabeth II morreu em 8 de setembro de 2022."
-        report = apply_source_decision(claim, text_report(claim, []), layer())
-        report.update(content_type="text", query_input=claim, analyzed_at="2026-10-13T12:00:00+00:00")
-        text = self.extract(self.export(report))
-        self.assertIn("Corroborado nas fontes consultadas", text)
-        self.assertIn("Trecho do corpo:", text)
-        self.assertIn("Relação: sustenta a afirmação", text)
-        self.assertIn("Recuperado em:", text)
-        self.assertIn("royal.example.test/article", text)
-        self.assertNotIn("Corroborado pelas checagens correspondentes", text)
-        self.assertNotIn("Avaliação: Não disponível", text)
-
     def setUp(self):
         self.user = fake_user(); self.db = FakeSession()
         override_auth_and_db(self.user, self.db)
@@ -145,7 +130,7 @@ class TextPdfTests(unittest.TestCase):
     @unittest.skipUnless(shutil.which("pdftotext"), "Poppler required")
     def test_veracity_states_and_corresponding_excluded_sources_are_faithful(self):
         for state, label in (("supported", "Corroborado"), ("refuted", "Refutado"),
-                             ("conflicting", "Fontes discordantes"), ("unverified", "Evidência insuficiente")):
+                             ("conflicting", "Checagens discordantes"), ("unverified", "Evidência insuficiente")):
             with self.subTest(state=state):
                 report = original_text_report(veracity_status=state, claim_assessments=[
                     {"claim": TEXT, "status": state, "explanation": "Controle fictício de apresentação, não valida precisão.",
@@ -156,33 +141,6 @@ class TextPdfTests(unittest.TestCase):
                     self.assertIn(value, text)
                 for forbidden in ("vpdf1", "vrev1", "ORIGEM DA MÍDIA", "EXIFTool", "Hive / Sightengine", "VER-"):
                     self.assertNotIn(forbidden, text)
-
-    @unittest.skipUnless(shutil.which("pdftotext"), "Poppler required")
-    def test_insufficient_source_crosscheck_exports_partial_evidence_without_deciding_truth(self):
-        report = original_text_report(source_corroboration={
-            "version": "source_corroboration_v1", "decision_role": "grounded_source_comparison",
-            "status": "partial", "state": "insufficient", "coverage": {"complete_claim_coverage": False},
-            "claims": [{"claim": TEXT, "state": "insufficient", "explanation": "Só uma fonte correspondente.",
-                        "evidence": [{"title": "Documento de controle", "url": "https://example.test/documento",
-                                      "excerpt": TEXT, "context": "Contexto fictício adjacente.", "relation": "supports",
-                                      "publisher_family": "controle", "retrieved_at": "2026-10-13T12:00:00+00:00"}],
-                        "excluded_evidence": [{"exclusion_reason": "Data de atualização não é data do evento."}]}],
-            "limitations": ["Não há duas fontes independentes neste controle."],
-        })
-        original = copy.deepcopy(report)
-        text = self.extract(self.export(report))
-        for value in ("CRUZAMENTO DE FONTES CONSULTADAS", "Evidência insuficiente", "Documento de controle",
-                      "https://example.test/documento", TEXT, "Contexto fictício adjacente", "Só uma fonte",
-                      "Data de atualização não é data do evento", "Não há duas fontes independentes", "completa das afirmações: Não"):
-            self.assertIn(value, text)
-        self.assertNotIn("Veracidade do conteúdo: Corroborado", text)
-        self.assertEqual(report, original)
-        source = report["source_corroboration"]["claims"][0]["evidence"][0]
-        report["source_corroboration"]["claims"][0]["evidence"] = [
-            {**source, "excerpt": f"TRECHO{i}CONTROLE", "url": f"https://example.test/documento-{i}"} for i in range(1, 7)]
-        complete = self.extract(self.export(report))
-        for i in range(1, 7):
-            self.assertIn(f"TRECHO{i}CONTROLE", complete)
 
     @unittest.skipUnless(shutil.which("pdftotext"), "Poppler required")
     def test_human_review_pdf_retains_both_texts_without_rechecking_media(self):

@@ -56,10 +56,14 @@ class ClaimDecisionTests(unittest.TestCase):
         result = text_report("  " + CLAIM.upper() + ".  ", pair(), now=NOW)
         self.assertEqual(result["veracity_status"], "supported")
 
-    def test_one_publisher_duplicate_or_related_sites_cannot_form_consensus(self):
-        for evidence in ([review()], [review(), review(url="https://aosfatos.org/another")],
-                         [review(domain="checamos.afp.com"), review(domain="factcheck.afp.com")]):
-            self.assertEqual(text_report(CLAIM, evidence, now=NOW)["veracity_status"], "unverified")
+    def test_one_valid_publisher_decides_without_pretending_related_sites_are_independent(self):
+        for evidence, family in (([review()], ["aosfatos"]),
+                                 ([review(), review(url="https://aosfatos.org/another")], ["aosfatos"]),
+                                 ([review(domain="checamos.afp.com"),
+                                   review(domain="factcheck.afp.com")], ["afp"])):
+            result = text_report(CLAIM, evidence, now=NOW)
+            self.assertEqual(result["veracity_status"], "supported")
+            self.assertEqual(result["claim_assessments"][0]["supporting_publishers"], family)
 
     def test_any_corresponding_disagreement_blocks_verdict(self):
         result = text_report(CLAIM, [*pair(), review(rating="Falso", domain="fullfact.org")], now=NOW)
@@ -71,10 +75,13 @@ class ClaimDecisionTests(unittest.TestCase):
             with self.subTest(rating=rating):
                 self.assertEqual(text_report(CLAIM, pair(rating=rating), now=NOW)["veracity_status"], "unverified")
 
-    def test_question_quote_relative_time_fail_closed(self):
-        for text in (CLAIM + "?", '"' + CLAIM + '"', CLAIM + " hoje", CLAIM + " ontem", CLAIM + " atualmente",
+    def test_question_is_checkable_but_quotes_and_relative_time_fail_closed(self):
+        question = CLAIM + "?"
+        self.assertEqual(text_report(question, pair(question), now=NOW)["veracity_status"], "supported")
+        for text in ('"' + CLAIM + '"', CLAIM + " hoje", CLAIM + " ontem", CLAIM + " atualmente",
                      CLAIM + " semana passada", CLAIM + " neste mês", CLAIM + " recentemente", CLAIM + " today"):
-            self.assertEqual(text_report(text, pair(text), now=NOW)["veracity_status"], "unverified")
+            with self.subTest(text=text):
+                self.assertEqual(text_report(text, pair(text), now=NOW)["veracity_status"], "unverified")
 
     def test_missing_date_origin_or_unsafe_source_excluded(self):
         for field, value in (("review_date", None), ("review_date", "2027-01-01"), ("review_date", "bad-date"),

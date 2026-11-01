@@ -9,7 +9,6 @@ from types import SimpleNamespace
 import tempfile
 import unittest
 from unittest.mock import AsyncMock, Mock, patch
-
 import helpers
 import httpx
 from app.services.hive_service import HiveV3Budget, HIVE_V3_API_URL
@@ -55,12 +54,6 @@ class QAArgumentTests(unittest.TestCase):
         self.assertEqual(KEYS["hive"], ("HIVE_V3_API_KEY", "HIVE_API_KEY"))
         self.assertEqual(caps["hive"], 3)
         self.assertEqual(HIVE_QA_CAPS, {"image_requests": 2, "audio_seconds": 5, "audio_jobs": 1})
-
-    def test_gemini_comparison_default_and_explicit_openrouter_profile(self):
-        default, _ = self.parse()
-        explicit, _ = self.parse("--comparison-provider", "openrouter")
-        self.assertEqual(default.comparison_provider, "gemini")
-        self.assertEqual(explicit.comparison_provider, "openrouter")
 
     def test_public_and_free_detector_caps_are_bounded_without_raising_other_caps(self):
         _, (_, caps) = self.parse("--providers", "public_fetch,sightengine", "--free-credits-confirmed",
@@ -415,37 +408,3 @@ class SourceDiagnosticTests(unittest.IsolatedAsyncioTestCase):
                 await fake_app.endpoint("../private-marker")
             self.assertEqual(missing.exception.status_code, 404)
             self.assertEqual(article.await_count, 1)
-
-    async def test_cached_component_is_not_automatic_discovery_and_cannot_repeat(self):
-        from app.core import pipeline
-        from app.services import source_attribution
-        from fastapi import HTTPException
-        from scripts.validation_ui_server import DIAGNOSTIC_FIXED_SOURCES
-        class FakeApp:
-            endpoint = None
-            def get(self, _path):
-                return lambda endpoint: endpoint
-            def post(self, _path):
-                def register(endpoint):
-                    self.endpoint = endpoint
-                    return endpoint
-                return register
-        app = FakeApp()
-        result = {"status": "success", "state": "refuted", "coverage": {}, "provider_coverage": {}}
-        with tempfile.TemporaryDirectory() as directory, \
-                patch.object(pipeline, "search_web", new=AsyncMock()) as search, \
-                patch.object(pipeline, "_retrieve_source_attribution", new=AsyncMock()), \
-                patch.object(source_attribution, "fetch_public_resource", new=AsyncMock()) as fetch, \
-                patch.object(source_attribution, "_fetch_article", new=AsyncMock()), \
-                patch("app.services.source_corroboration.corroborate_sources", new=AsyncMock(return_value=result)) as compare:
-            for name, url in DIAGNOSTIC_FIXED_SOURCES.items():
-                (Path(directory) / f"source-control-{name}.json").write_text(json.dumps(public_document(url=url)))
-            install_source_diagnostics(app, directory)
-            response = await app.endpoint()
-            self.assertIn("NOT_automatic_retrieval_or_UI", response["scope"])
-            compare.assert_awaited_once()
-            search.assert_not_awaited()
-            fetch.assert_not_awaited()
-            with self.assertRaises(HTTPException) as blocked:
-                await app.endpoint()
-            self.assertEqual(blocked.exception.status_code, 409)

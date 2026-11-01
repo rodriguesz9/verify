@@ -91,24 +91,21 @@ class ProviderStatusTests(unittest.IsolatedAsyncioTestCase):
 
 
 class CapabilityRoleTests(unittest.TestCase):
-    def test_current_roles_describe_source_comparison_without_health_claim(self):
+    def test_current_roles_describe_claim_reviews_and_explanation_only(self):
         with patch.dict(os.environ, {"GEMINI_API_KEY": "private-marker", "OPENROUTER_API_KEY": "private-marker",
-                    "SERPERAPI_KEY": "private-marker", "SOURCE_CROSSCHECK_ENABLED": "true"}), \
+                    "SERPERAPI_KEY": "private-marker"}), \
                 patch("httpx.AsyncClient.send", new=AsyncMock()) as remote:
             result = capability_report()
-        self.assertEqual(result["truth_decision_paths"], ["published_claim_reviews", "retrieved_source_bodies"])
-        self.assertEqual(result["truth_policy"], "published_claim_reviews_or_grounded_source_comparison")
-        self.assertTrue(result["source_crosscheck"]["enabled"])
-        self.assertFalse(result["source_crosscheck"]["model_agreement_is_evidence"])
+        self.assertEqual(result["truth_decision_paths"], ["published_claim_reviews"])
+        self.assertEqual(result["truth_policy"], "published_claim_reviews")
+        self.assertNotIn("source_crosscheck", result)
+        self.assertNotIn("source_comparison", result["policy_versions"])
+        self.assertEqual(result["providers"]["gemini"]["decision_role"], "claims_explanation_and_media_reading_only")
+        self.assertIn("report_explanation", result["providers"]["gemini"]["roles"])
+        self.assertEqual(result["providers"]["openrouter"]["decision_role"], "search_assistance_only")
         for name in ("gemini", "openrouter"):
-            self.assertIn("grounded_comparison_assistant", result["providers"][name]["roles"])
+            self.assertNotIn("grounded_comparison_assistant", result["providers"][name]["roles"])
             self.assertEqual(result["providers"][name]["operational_status"], "not_tested")
         self.assertFalse(result["providers"]["serper"]["search_snippets_are_decisive_evidence"])
         self.assertNotIn("private-marker", json.dumps(result))
         remote.assert_not_awaited()
-
-    def test_disabled_source_crosscheck_remains_explicit(self):
-        with patch.dict(os.environ, {"SOURCE_CROSSCHECK_ENABLED": "false"}):
-            result = capability_report()
-        self.assertFalse(result["source_crosscheck"]["enabled"])
-        self.assertEqual(result["source_crosscheck"]["operational_status"], "not_tested")

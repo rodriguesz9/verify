@@ -47,7 +47,8 @@ class ExternalApisIntegrationTests(unittest.TestCase):
         self.assertEqual(returned["pdf_export_status"], "unavailable")  # incomplete legacy fixture
         verify_limit.assert_awaited_once_with(self.user, self.db, "TEXTUAL")
         fetch_page_text.assert_awaited_once_with("https://example.com/news")
-        run_pipeline.assert_awaited_once_with(text=scraped["text"], url="https://example.com/news", use_detailed_report=True)
+        run_pipeline.assert_awaited_once_with(text=scraped["text"], url="https://example.com/news",
+                                             use_detailed_report=True, use_gemini_report=True)
         verification = next(item for item in self.db.added if isinstance(item, Verification))
         self.assertEqual(verification.source_url, "https://example.com/news")
         self.assertEqual(self.db.commits, 1)

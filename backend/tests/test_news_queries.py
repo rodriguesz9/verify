@@ -24,17 +24,17 @@ class NewsQueryPipelineTests(unittest.IsolatedAsyncioTestCase):
             result = await run_pipeline(text)
         return result, searches, facts
 
-    async def test_partial_hint_expands_to_sentence_with_negation_date_and_amount(self):
+    async def test_literal_hint_stays_bounded_while_complete_sentence_is_retained(self):
         sentence = "Não é verdade que a Dra. Ávila recebeu R$ 1.500,00 em 14/10/2026 hoje."
         text = sentence + " Outra afirmação."
-        result, searches, _ = await self.run_control(text, ["a Dra. Ávila recebeu"])
+        hint = "a Dra. Ávila recebeu"
+        result, searches, _ = await self.run_control(text, [hint])
         queries = [call.args[0] for call in searches.await_args_list]
-        self.assertEqual(queries[0], sentence)
-        self.assertIn(text, queries)
-        self.assertNotIn("a Dra. Ávila recebeu", queries)
+        self.assertEqual(queries, [hint, text, sentence])
         plan = result["report"]["provider_coverage"]["serper"]["query_plan"]
         self.assertEqual(plan["extracted_valid_count"], 1)
-        self.assertEqual(plan["query_methods"][0], "extracted_literal_sentence")
+        self.assertEqual(plan["query_methods"][0], "extracted_literal_claim")
+        self.assertTrue(plan["whole_text_queried"])
         self.assertFalse(plan["truncated"])
 
     async def test_unsupported_hint_never_becomes_query_or_checked_claim(self):
@@ -108,10 +108,13 @@ class NewsQueryPipelineTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_topical_complete_context_never_votes_on_truth(self):
         text = "Elizabeth II morreu no Castelo Balmoral, localizado na Escócia, em 8 de setembro de 2022."
+        hints = ["no Castelo Balmoral", "localizado na Escócia"]
         item = {"title": text, "snippet": "", "link": "https://example.org/news", "date": "2022-09-08"}
-        result, searches, _ = await self.run_control(text, ["no Castelo Balmoral", "localizado na Escócia"], [item])
-        searches.assert_awaited_once_with(text)
-        self.assertEqual(result["serper_news"], [item])
+        result, searches, _ = await self.run_control(text, hints, [item])
+        self.assertEqual([call.args[0] for call in searches.await_args_list], [*hints, text])
+        self.assertEqual({key: value for key, value in result["serper_news"][0].items()
+                          if key != "publisher_assessment"}, item)
+        self.assertEqual(result["serper_news"][0]["publisher_assessment"]["level"], "unclassified")
         coverage = result["report"]["provider_coverage"]["serper"]
         self.assertEqual(coverage["status"], "success")
         self.assertEqual(coverage["decision_role"], "context_only")

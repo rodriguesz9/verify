@@ -443,7 +443,7 @@ test("audio headline refers to voice and does not certify cloning or change imag
   assert.equal(reportMediaHeadline({content_type: "text", verdict: "Scam"}), null);
   const page = readFileSync(new URL("../src/pages/ReportPage.jsx", import.meta.url), "utf8");
   assert.match(page, /reportMediaHeadline\(result\)/);
-  assert.match(page, /const badge = diagnosisHeadline \? \{\.\.\.defaultBadge, \.\.\.diagnosisHeadline\}/);
+  assert.match(page, /const badge = !probablyFalse && diagnosisHeadline \? \{\.\.\.defaultBadge, \.\.\.diagnosisHeadline\}/);
 });
 
 const diagnosis = (state, scope = "image", extra = {}) => ({version: "1", state, scope,

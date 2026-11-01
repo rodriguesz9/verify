@@ -25,40 +25,6 @@ def page(text=CLAIM, *, url="https://example.test/final", content_type="text/htm
 
 
 class SourceAttributionTests(unittest.IsolatedAsyncioTestCase):
-    async def test_recovery_reuses_failures_and_bodies_with_six_total_fetch_attempts(self):
-        urls = [f"https://example.test/article-{i}" for i in range(8)]
-        cache = {}
-        async def fetch(url, **kwargs):
-            if url == urls[0]:
-                raise HTTPException(403, "Blocked control")
-            return page(url=url)
-        with patch("app.services.source_attribution.fetch_public_resource", new=AsyncMock(side_effect=fetch)) as request:
-            initial = await collect_source_attribution(CLAIM, [CLAIM], search_results=SearchResults(
-                [{"link": url} for url in urls[:3]]), include_documents=True, fetched_cache=cache)
-            recovered = await collect_source_attribution(CLAIM, [CLAIM], search_results=SearchResults(
-                [{"link": url} for url in urls]), include_documents=True, fetched_cache=cache, max_sources=6)
-        self.assertEqual(initial["coverage"]["new_fetch_count"], 3)
-        self.assertEqual(recovered["coverage"]["new_fetch_count"], 3)
-        self.assertEqual(recovered["coverage"]["reused_fetch_count"], 3)
-        self.assertEqual(recovered["coverage"]["selected_url_count"], 6)
-        self.assertEqual(recovered["coverage"]["failed_fetch_count"], 1)
-        self.assertEqual(request.await_count, 6)
-        self.assertEqual(len(cache), 6)
-        self.assertEqual([call.args[0] for call in request.await_args_list].count(urls[0]), 1)
-
-    async def test_changed_recovery_leads_do_not_reset_six_page_ceiling(self):
-        cache = {}
-        with patch("app.services.source_attribution.fetch_public_resource", new=AsyncMock(return_value=page())) as request:
-            await collect_source_attribution(CLAIM, [CLAIM], search_results=SearchResults(
-                [{"link": f"https://example.test/old-{i}"} for i in range(3)]),
-                include_documents=True, fetched_cache=cache)
-            recovered = await collect_source_attribution(CLAIM, [CLAIM], search_results=SearchResults(
-                [{"link": f"https://example.test/new-{i}"} for i in range(6)]),
-                include_documents=True, fetched_cache=cache, max_sources=6)
-        self.assertEqual(request.await_count, 6)
-        self.assertEqual(recovered["coverage"]["new_fetch_count"], 3)
-        self.assertEqual(recovered["coverage"]["cumulative_fetch_attempt_count"], 6)
-
     def test_article_body_paragraphs_do_not_merge_headline_byline_or_publication_date(self):
         body = "Elizabeth II morreu em 8 de setembro de 2022."
         html = f'''<main><article><h1>Elizabeth II morreu em 9 de setembro de 2022.</h1>
@@ -168,15 +134,13 @@ class SourceAttributionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(sentences, ["Elizabeth II morreu em 8 de setembro de 2022.", "O reinado teve 70 anos."])
         self.assertEqual(roles, ["body", "body"])
 
-    async def test_internal_document_roles_are_opt_in_and_wire_credit_is_context(self):
+    async def test_wire_credit_is_context_and_full_bodies_are_not_returned(self):
         html = f'<article><p itemprop="author">Por Associated Press</p><p>{CLAIM}</p></article>'
         resource = FetchedResource(html.encode(), "text/html", "https://example.test/final", "utf-8")
         with patch("app.services.source_attribution.fetch_public_resource", new=AsyncMock(return_value=resource)):
             regular = await collect_source_attribution(CLAIM, [CLAIM], "https://example.test/final")
-            internal = await collect_source_attribution(CLAIM, [CLAIM], "https://example.test/final", include_documents=True)
         self.assertNotIn("_documents", regular)
         self.assertNotIn("sentence_roles", json.dumps(regular))
-        self.assertEqual(internal["_documents"][0]["sentence_roles"], ["context", "body"])
         self.assertEqual(regular["matches"][0]["excerpt"], CLAIM)
 
     def test_publication_metadata_cannot_supply_event_date(self):
@@ -201,26 +165,6 @@ class SourceAttributionTests(unittest.IsolatedAsyncioTestCase):
         sentences, _, _ = _article_sentences(resource)
         self.assertEqual(len(sentences), 1)
         self.assertIn("Elizabeth II morreu em 8 de setembro de 2022", sentences[0])
-
-    async def test_internal_documents_are_opt_in_and_not_search_snippets(self):
-        with patch("app.services.source_attribution.fetch_public_resource", new=AsyncMock(return_value=page())):
-            regular = await collect_source_attribution(CLAIM, [CLAIM], "https://example.test/final")
-            internal = await collect_source_attribution(CLAIM, [CLAIM], "https://example.test/final", include_documents=True)
-        self.assertNotIn("_documents", regular)
-        self.assertEqual(internal["_documents"][0]["sentences"], [CLAIM])
-        self.assertEqual(internal["_documents"][0]["source_role"], "submitted_source")
-
-    async def test_crosscheck_prioritizes_distinct_eligible_families_with_same_fetch_budget(self):
-        urls = ["https://www.uol.com.br/a", "https://www.uol.com.br/b", "https://folha.uol.com.br/c",
-                "https://www.bbc.com/article", "https://www.royal.uk/article"]
-        async def fetch(url, **kwargs):
-            return page(url=url)
-        with patch("app.services.source_attribution.fetch_public_resource", new=AsyncMock(side_effect=fetch)) as request:
-            result = await collect_source_attribution(CLAIM, [CLAIM], search_results=SearchResults([
-                {"link": url} for url in urls]), include_documents=True)
-        self.assertEqual([call.args[0] for call in request.await_args_list], [urls[4], urls[0], urls[3]])
-        self.assertEqual(result["coverage"]["selected_url_count"], 3)
-        self.assertEqual(len(result["_documents"]), 3)
 
     async def collect(self, resource, *, text=CLAIM, queries=None, source_url="https://example.test/final", search_results=None):
         with patch("app.services.source_attribution.fetch_public_resource", new=AsyncMock(return_value=resource)) as fetch:
