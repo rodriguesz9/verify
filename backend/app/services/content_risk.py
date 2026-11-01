@@ -2,7 +2,7 @@
 import re
 
 from app.core.domain_checker import check_domain_reputation
-from app.services.source_corroboration import source_identity
+from app.services.source_registry import source_identity
 
 
 _RISK_CATEGORIES = (

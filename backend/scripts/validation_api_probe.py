@@ -39,8 +39,8 @@ CONTROLS = {
                      "provenance": "Known AI still repeated in a short silent video; not a real capture or temporal deepfake benchmark."},
 }
 REPORT_FIELDS = {"content_type", "verdict", "score", "score_semantics", "analysis_status", "summary", "plain_explanation",
-                 "veracity_status", "veracity_reason", "veracity_decision_basis", "veracity_decision_coverage_complete",
-                 "authenticity_status", "dimensions", "coverage", "source_attribution", "source_corroboration",
+                  "veracity_status", "veracity_reason",
+                 "authenticity_status", "dimensions", "coverage", "source_attribution",
                  "claims", "claim_decisions", "forensics", "limitations", "extracted_text", "transcript", "ocr",
                  "transcription", "text_review", "model_used", "error"}
 REPORT_FIELDS |= {"provider_coverage", "content_analysis", "audio_analysis", "text_review_status", "claim_assessments"}
@@ -109,14 +109,11 @@ async def main():
         record["transport_status"] = "local_request_failed_or_invalid_json"
     record["elapsed_seconds"] = round(time.monotonic() - started, 2)
     report = record.get("report", {})
-    comparison = report.get("source_corroboration") if isinstance(report.get("source_corroboration"), dict) else {}
     record["expected_label_observed"] = (report.get("veracity_status") == control["expected_veracity"]
                                           if control.get("expected_veracity") in {"supported", "refuted"} else None)
     destination.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps({key: record.get(key) for key in ("case", "http_status", "elapsed_seconds", "expected_label_observed", "transport_status")}
                      | {"veracity_status": report.get("veracity_status"), "verdict": report.get("verdict"),
-                        "comparison_status": comparison.get("status"),
-                        "comparison_state": comparison.get("state"),
                         "coverage": report.get("coverage")}, ensure_ascii=False), flush=True)
 
 

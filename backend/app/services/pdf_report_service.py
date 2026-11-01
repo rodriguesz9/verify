@@ -31,86 +31,17 @@ def detector_signal(value) -> str:
 
 
 def factual_labels(report):
-    sources = report.get("veracity_decision_basis") in {"retrieved_sources", "mixed_evidence"} or report.get("evidence_mode") == "retrieved_sources"
-    return {"supported": "Corroborado nas fontes consultadas" if sources else "Corroborado pelas checagens correspondentes",
-            "refuted": "Refutado nas fontes consultadas" if sources else "Refutado pelas checagens correspondentes",
-            "conflicting": "Fontes discordantes", "mixed": "Afirmações com resultados diferentes",
+    return {"supported": "Corroborado pelas checagens correspondentes",
+            "refuted": "Refutado pelas checagens correspondentes",
+            "conflicting": "Checagens discordantes", "mixed": "Afirmações com resultados diferentes",
             "unverified": "Evidência insuficiente", "probably_false": "Provavelmente falsa / sem fundamento"}
 
 
 def factual_source_lines(source):
-    """Display server-owned document evidence separately from ClaimReview."""
-    if source.get("relation") in {"supports", "refutes"} and source.get("excerpt"):
-        return ["Documento consultado: " + display_value(source.get("title") or source.get("publisher_family")),
-                display_value(source.get("url")),
-                "Trecho do corpo: " + display_value(source.get("excerpt")),
-                "Relação: " + ("sustenta a afirmação" if source["relation"] == "supports" else "contradiz a afirmação"),
-                "Recuperado em: " + display_value(source.get("retrieved_at")),
-                "Família da fonte: " + display_value(source.get("publisher_family")),
-                "Comparação assistida por modelo e regras conservadoras; não é checagem editorial publicada nem garantia de verdade."]
+    """Display corresponding published ClaimReview metadata only."""
     return ["Fonte correspondente: " + display_value(source.get("publisher") or source.get("publisher_family"))
             + " | Avaliação: " + display_value(source.get("rating"))
             + " | Data: " + display_value(source.get("review_date")), display_value(source.get("url"))]
-
-
-def source_crosscheck_lines(report):
-    """Preserve observations even when they were insufficient for a decision."""
-    layer = report.get("source_corroboration")
-    if (not isinstance(layer, dict) or layer.get("version") != "source_corroboration_v1"
-            or layer.get("decision_role") != "grounded_source_comparison"):
-        return []
-    labels = {"corroborated": "Corroborada nas fontes consultadas", "refuted": "Refutada nas fontes consultadas",
-              "conflicting": "Fontes discordantes", "mixed": "Afirmações com resultados diferentes",
-              "insufficient": "Evidência insuficiente"}
-    lines = ["CRUZAMENTO DE FONTES CONSULTADAS", "Estado: " + labels.get(layer.get("state"), "Evidência insuficiente"),
-             "Comparação de trechos recuperados, não votação de IAs nem certificado de verdade."]
-    if layer.get("reason"):
-        lines.append(display_value(layer["reason"]))
-    coverage = layer.get("coverage") if isinstance(layer.get("coverage"), dict) else {}
-    lines.append("Cobertura completa das afirmações: " + ("Sim" if coverage.get("complete_claim_coverage") is True else "Não"))
-    decisions = report.get("claim_assessments") if isinstance(report.get("claim_assessments"), list) else []
-    incorporated = set()
-    for decision in decisions:
-        if isinstance(decision, dict) and isinstance(decision.get("evidence"), list):
-            incorporated.update((source.get("url"), source.get("excerpt"))
-                                for source in decision["evidence"] if isinstance(source, dict))
-    claims = layer.get("claims") if isinstance(layer.get("claims"), list) else []
-    for decision in claims[:5]:
-        if not isinstance(decision, dict):
-            continue
-        lines.extend(["Afirmação comparada: " + display_value(decision.get("claim")),
-                      "Resultado do cruzamento: " + labels.get(decision.get("state"), "Evidência insuficiente"),
-                      display_value(decision.get("explanation"))])
-        evidence = decision.get("evidence") if isinstance(decision.get("evidence"), list) else []
-        if not evidence:
-            lines.append("Nenhum trecho aceito nesta comparação; ausência não comprova falsidade.")
-        for source in evidence[:6]:
-            if not isinstance(source, dict):
-                continue
-            if isinstance(source.get("claim_part"), str) and source["claim_part"].strip():
-                lines.append("Parte avaliada: " + display_value(source["claim_part"]))
-            if (source.get("url"), source.get("excerpt")) in incorporated:
-                lines.append("Trecho já apresentado na avaliação individual acima; não é outra fonte independente.")
-            else:
-                lines.extend(factual_source_lines(source))
-            if source.get("context"):
-                lines.append("Contexto adjacente: " + display_value(source["context"]))
-        if len(evidence) > 6:
-            lines.append(f"Outros {len(evidence) - 6} registros de evidência não reproduzidos neste PDF; consulte o relatório original.")
-        excluded = decision.get("excluded_evidence") if isinstance(decision.get("excluded_evidence"), list) else []
-        for source in excluded[:6]:
-            if isinstance(source, dict):
-                lines.append("Trecho NÃO usado: " + display_value(source.get("exclusion_reason")))
-        if len(excluded) > 6:
-            lines.append(f"Outros {len(excluded) - 6} motivos de exclusão não reproduzidos neste PDF; consulte o relatório original.")
-    excluded = layer.get("excluded_sources") if isinstance(layer.get("excluded_sources"), list) else []
-    for source in excluded[:3]:
-        if isinstance(source, dict):
-            lines.append("Documento NÃO usado: " + display_value(source.get("url")))
-            lines.append(display_value(source.get("exclusion_reason")))
-    limitations = layer.get("limitations") if isinstance(layer.get("limitations"), list) else []
-    lines.extend("Limite do cruzamento: " + display_value(value) for value in limitations[:8])
-    return lines
 
 
 def generate_text_pdf(report: Dict[str, Any]) -> bytes:
@@ -201,8 +132,6 @@ def generate_text_pdf(report: Dict[str, Any]) -> bytes:
             paragraph("Motivo: " + display_value(source.get("exclusion_reason")))
             if source.get("url"):
                 paragraph(source["url"])
-    for index, line in enumerate(source_crosscheck_lines(report)):
-        paragraph(line, heading if index == 0 else body)
     paragraph("ALERTAS E LIMITAÇÕES", heading)
     for alert in entries(report.get("red_flags")):
         paragraph("Alerta: " + display_value(alert))
@@ -435,8 +364,6 @@ def generate_forensic_pdf(report: Dict[str, Any], filename: str, file_hash_sha25
             paragraph("Motivo: " + display_value(source.get("exclusion_reason"), "Não corresponde à decisão."))
             if source.get("url"):
                 paragraph(source["url"])
-    for line in source_crosscheck_lines(content):
-        paragraph(line)
     for limitation in entries(content.get("limitations")):
         paragraph("Limitação do conteúdo: " + display_value(limitation))
     story.append(Spacer(1, 15))

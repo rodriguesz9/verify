@@ -42,7 +42,6 @@ HOSTS = {"generativelanguage.googleapis.com": "gemini", "openrouter.ai": "openro
          "api.assemblyai.com": "assemblyai", "api.sightengine.com": "sightengine",
          "router.huggingface.co": "hf", "api.thehive.ai": "hive",
          "www.nasa.gov": "public_fetch", "science.nasa.gov": "public_fetch"}
-ALLOW_CROSSCHECK_SOURCES = False
 LOCAL_PAGE_CONTROL_URL = "https://example.test/controle.html"
 DIAGNOSTIC_TEXT_CONTROLS = {
     "queen_true": "Elizabeth II morreu em 8 de setembro de 2022.",
@@ -84,9 +83,6 @@ def request_provider(request):
     if isinstance(sni, bytes):
         sni = sni.decode("ascii", errors="ignore")
     allowed_source = sni in {"www.nasa.gov", "science.nasa.gov"}
-    if ALLOW_CROSSCHECK_SOURCES and isinstance(sni, str):
-        from app.services.source_corroboration import source_family
-        allowed_source = bool(source_family("https://" + sni))
     if not allowed_source or request.headers.get("host") != sni:
         return None
     try:
@@ -112,12 +108,9 @@ def build_parser():
                         help="Explicit session ceiling for safe public-source HTTP reads, including redirects; maximum 40.")
     parser.add_argument("--sightengine-request-cap", type=int, choices=range(7), default=3,
                         help="Explicit free-credit session ceiling, at most six image requests.")
-    parser.add_argument("--comparison-provider", "--source-crosscheck-primary-provider", dest="comparison_provider",
-                        choices=("gemini", "openrouter"), default="gemini")
     parser.add_argument("--transcription", choices=("assemblyai", "gemini"), default="assemblyai")
     parser.add_argument("--local-ocr", choices=("true", "false"), default="true")
     parser.add_argument("--local-page-control", action="store_true", help="Simulate retrieval of example.test control only; NOT public fetch validation.")
-    parser.add_argument("--source-crosscheck-pages", action="store_true", help="Allow HTTPS pinned public bodies from the curated source families only, within the public-fetch session cap.")
     parser.add_argument("--source-diagnostics", action="store_true", help="QA only: retain bounded public HTML/bodies locally and allow one read of each fixed Royal/UOL source; never model retries.")
     parser.add_argument("--container", action="store_true")
     parser.add_argument("--port", type=int, default=8027)
@@ -136,7 +129,7 @@ def validate_arguments(parser, args):
     approved_models = {"gemini-3.7-flash", "gemini-3.1-flash-lite", "gemini-3.8-flash"}
     if args.gemini_model not in approved_models or args.media_model not in approved_models:
         parser.error("Only explicitly verified free-tier Gemini models are allowed by this test runner.")
-    public_cap = args.public_fetch_cap if args.public_fetch_cap is not None else 6 if args.source_crosscheck_pages else CAPS["public_fetch"]
+    public_cap = args.public_fetch_cap if args.public_fetch_cap is not None else CAPS["public_fetch"]
     return selected, {**CAPS, "gemini": args.gemini_request_cap,
                       "public_fetch": public_cap, "sightengine": args.sightengine_request_cap}
 
@@ -150,7 +143,7 @@ def diagnostic_source_url(value):
     if not isinstance(value, str) or not 1 <= len(value) <= 4096 or any(char.isspace() or ord(char) < 32 for char in value):
         return None
     import httpx
-    from app.services.source_corroboration import source_family
+    from app.services.source_registry import source_family
     try:
         url = httpx.URL(value)
         if (url.scheme != "https" or url.userinfo or url.port not in {None, 443}
@@ -322,34 +315,6 @@ def install_source_diagnostics(app, record_dir):
     from fastapi import HTTPException
     diagnostics = PublicSourceDiagnostics(record_dir)
 
-    @app.post("/__validation/cached-comparison/queen_false")
-    async def cached_comparison():
-        # Separate component test, NOT a successful automatic search or UI
-        # homologation. These two bodies were captured earlier by safe fetch.
-        marker = Path(record_dir) / "queen-false-cached-comparison.json"
-        try:
-            with marker.open("x", encoding="utf-8") as output:
-                json.dump({"scope": "cached_real_body_component_only", "status": "started"}, output)
-        except FileExistsError:
-            raise HTTPException(409, "Component control already attempted; no retry.") from None
-        documents = []
-        for name, url in DIAGNOSTIC_FIXED_SOURCES.items():
-            path = Path(record_dir) / f"source-control-{name}.json"
-            if path.is_symlink() or not path.is_file() or path.stat().st_size > 1024 * 1024:
-                raise HTTPException(409, "Previously captured fixed public body unavailable.")
-            try:
-                document = diagnostic_document(json.loads(path.read_text()))
-            except (OSError, ValueError):
-                document = None
-            if not document or document.get("url") != url:
-                raise HTTPException(409, "Fixed public body outside diagnostic contract.")
-            documents.append(document)
-        from app.services.source_corroboration import corroborate_sources
-        result = await corroborate_sources(DIAGNOSTIC_TEXT_CONTROLS["queen_false"], documents)
-        record = {"scope": "cached_real_body_component_only_NOT_automatic_retrieval_or_UI", "result": result}
-        marker.write_text(json.dumps(record, ensure_ascii=False, indent=2))
-        return {"scope": record["scope"], "status": result["status"], "state": result["state"],
-                "coverage": result["coverage"], "provider_coverage": result["provider_coverage"]}
     original_fetch, original_article = source_attribution.fetch_public_resource, source_attribution._fetch_article
     original_search, original_retrieval = pipeline.search_web, pipeline._retrieve_source_attribution
 
@@ -533,11 +498,9 @@ class ValidationBudgetJournal:
 
 
 def main():
-    global ALLOW_CROSSCHECK_SOURCES
     parser = build_parser()
     args = parser.parse_args()
     selected, caps = validate_arguments(parser, args)
-    ALLOW_CROSSCHECK_SOURCES = args.source_crosscheck_pages
     record_dir = Path(args.record_dir)
     try:
         budget = ValidationBudgetJournal(record_dir / "provider-transport.json", caps)
@@ -572,8 +535,7 @@ def main():
         "HIVE_API_VERSION": "v3", "HIVE_V3_MEDIA_TYPES": "image,audio" if "hive" in selected else "",
         "HIVE_V3_IMAGE_REQUEST_LIMIT": "2" if "hive" in selected else "0",
         "HIVE_V3_AUDIO_SECONDS_LIMIT": "5" if "hive" in selected else "0",
-        "VIDEO_MAX_FRAMES": "3", "SOURCE_CROSSCHECK_PRIMARY_PROVIDER": args.comparison_provider,
-        "SIGHTENGINE_AUDIO_ENABLED": "false", "HUGGINGFACE_ENABLED": "false",
+        "VIDEO_MAX_FRAMES": "3", "SIGHTENGINE_AUDIO_ENABLED": "false", "HUGGINGFACE_ENABLED": "false",
         "GOOGLE_CLIENT_ID": "", "WAYBACK_API_ENABLED": "false", "C2PATOOL_ENABLED": "false",
         "HUGGINGFACE_IMAGE_API_URL": "https://router.huggingface.co/hf-inference/models/Ateeqq/ai-vs-human-image-detector" if "hf" in selected else "",
         "HUGGINGFACE_AI_LABEL": "ai", "EXIFTOOL_ENABLED": "true",
@@ -651,7 +613,7 @@ def main():
         "started_at": datetime.now(timezone.utc).isoformat(), "providers": sorted(selected),
         "gemini_model": args.gemini_model, "media_model": args.media_model,
         "transcription": args.transcription, "local_ocr": args.local_ocr,
-        "comparison_provider": args.comparison_provider, "caps": caps, "video_max_frames": 3,
+        "caps": caps, "video_max_frames": 3,
         "source_diagnostics": {"enabled": args.source_diagnostics, "version": 2, "fixed_public_inputs_only": True},
         "hive": {"enabled": "hive" in selected, "existing_credit_approved": args.hive_paid_budget_approved,
                  "caps": HIVE_QA_CAPS, "nominal_price_ceiling_usd": .0258888889,

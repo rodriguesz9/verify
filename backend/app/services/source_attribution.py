@@ -17,7 +17,7 @@ from app.services.public_fetch import fetch_public_resource
 
 ATTRIBUTION_VERSION = "literal_source_attribution_v1"
 MAX_SOURCES = 3
-MAX_RECOVERY_SOURCES = 6
+MAX_SOURCE_LIMIT = 6
 MAX_MATCHES = 3
 MAX_INPUT_SEGMENTS = 8
 MAX_CLAIM_CHARACTERS = 1000
@@ -339,8 +339,8 @@ async def _fetch_article(url):
         return {"failure": "error"}
 
 
-async def collect_source_attribution(text, queries, source_url=None, *, search_results=None, include_documents=False,
-                                     max_sources=MAX_SOURCES, fetched_cache=None):
+async def collect_source_attribution(text, queries, source_url=None, *, search_results=None,
+                                     max_sources=MAX_SOURCES):
     """Return exact page excerpts with explicit bounded retrieval coverage.
 
     ``search_results`` is a list (optionally carrying ``status``/``reason``).
@@ -375,38 +375,12 @@ async def collect_source_attribution(text, queries, source_url=None, *, search_r
         title = item.get("title")
         urls.setdefault(url, title[:300] if isinstance(title, str) else "")
     source_limit = max_sources if (isinstance(max_sources, int) and not isinstance(max_sources, bool)
-                                   and 1 <= max_sources <= MAX_RECOVERY_SOURCES) else MAX_SOURCES
-    cache = fetched_cache if isinstance(fetched_cache, dict) else {}
+                                   and 1 <= max_sources <= MAX_SOURCE_LIMIT) else MAX_SOURCES
     selected_urls = list(urls)[:source_limit] if candidates else []
-    if include_documents and candidates:
-        from app.services.source_corroboration import source_family, source_identity
-        # Prefer distinct eligible publishers over three pages of one group;
-        # retain the submitted page for attribution, never independent proof.
-        preferred, families = ([submitted] if submitted else []), set()
-        if submitted:
-            families.add(source_family(submitted))
-        ranked_urls = sorted(urls, key=lambda url: (source_identity(url) or {}).get("source_type") != "primary")
-        for candidate in ranked_urls:
-            family = source_family(candidate)
-            if family and family not in families:
-                preferred.append(candidate)
-                families.add(family)
-        # Recovery keeps every previous attempt (including failures) inside the
-        # cumulative ceiling. No failed page is retried or silently refunded.
-        attempted = [url for url in cache if url in urls]
-        selected_urls = list(dict.fromkeys([*attempted, *preferred, *urls]))[:source_limit]
-    missing = [url for url in selected_urls if url not in cache]
-    # A caller can change the lead list between waves; prior attempts still
-    # spend this request's ceiling even when those URLs disappeared.
-    missing = missing[:max(0, source_limit - len(cache))]
-    selected_urls = [url for url in selected_urls if url in cache or url in missing]
-    new_results = await asyncio.gather(*[_fetch_article(url) for url in missing])
-    cache.update(zip(missing, new_results))
-    fetched = [cache[url] for url in selected_urls]
+    fetched = await asyncio.gather(*[_fetch_article(url) for url in selected_urls])
     failures = {"oversize": 0, "unsupported_content": 0, "timeout": 0,
                 "blocked_or_unavailable": 0, "error": 0}
     matches, seen_matches = [], set()
-    documents = []
     fetched_count = truncated_count = 0
     for requested_url, result in zip(selected_urls, fetched):
         if "failure" in result:
@@ -414,10 +388,6 @@ async def collect_source_attribution(text, queries, source_url=None, *, search_r
             continue
         fetched_count += 1
         truncated_count += int(result["truncated"])
-        if include_documents:
-            documents.append({**result,
-                "source_role": "submitted_source" if submitted in {requested_url, result["url"]}
-                               else "retrieved_reference"})
         source_sentences = {}
         for sentence, role in zip(result["sentences"], result.get("sentence_roles", ["body"] * len(result["sentences"]))):
             if role != "body":
@@ -442,17 +412,13 @@ async def collect_source_attribution(text, queries, source_url=None, *, search_r
         "version": ATTRIBUTION_VERSION, "search_status": search_status,
         "max_sources": source_limit, "max_source_bytes": MAX_SOURCE_BYTES, "candidate_url_count": len(urls),
         "selected_url_count": len(selected_urls), "omitted_url_count": len(urls) - len(selected_urls),
-        "new_fetch_count": len(missing), "reused_fetch_count": len(selected_urls) - len(missing),
-        "cumulative_fetch_attempt_count": len(cache),
-        "invalid_url_count": invalid_urls, "fetched_count": fetched_count,
+        "fetch_attempt_count": len(selected_urls), "invalid_url_count": invalid_urls, "fetched_count": fetched_count,
         "failed_fetch_count": sum(failures.values()), "fetch_failure_counts": failures,
         "oversize_fetch_count": failures["oversize"], "source_text_truncated_count": truncated_count,
         "literal_segment_count": segment_count, "eligible_claim_count": eligible_count,
         "selected_claim_count": len(candidates), "omitted_claim_count": eligible_count - len(candidates),
         "matches_count": min(len(matches), MAX_MATCHES), "omitted_match_count": max(0, len(matches) - MAX_MATCHES),
     }
-    if include_documents:
-        coverage["source_selection"] = "distinct_eligible_families_then_other_references"
     limitations = [
         "Trecho publicado na fonte consultada; isso não comprova verdade, autoria, endosso ou independência editorial.",
         f"Comparação literal de até oito frases e {source_limit} páginas; paráfrases e partes não consultadas podem ficar sem correspondência.",
@@ -475,10 +441,5 @@ async def collect_source_attribution(text, queries, source_url=None, *, search_r
         "As páginas lidas não continham uma frase completa correspondente." if fetched_count else
         "As páginas selecionadas não puderam ser lidas com segurança." if selected_urls or invalid_urls else
         _SEARCH_FAILURES.get(search_status, "A busca não retornou páginas para atribuição."))
-    response = {"status": status, "decision_role": "source_attribution_only", "matches": matches[:MAX_MATCHES],
-                "reason": reason, "limitations": limitations, "coverage": coverage}
-    if include_documents:
-        # Internal handoff only. The pipeline removes this before any report,
-        # history or signed export: full page bodies are not public results.
-        response["_documents"] = documents
-    return response
+    return {"status": status, "decision_role": "source_attribution_only", "matches": matches[:MAX_MATCHES],
+            "reason": reason, "limitations": limitations, "coverage": coverage}
