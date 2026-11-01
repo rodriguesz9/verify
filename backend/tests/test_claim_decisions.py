@@ -151,11 +151,16 @@ class EvidenceTransportTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["report"]["claims"], [CLAIM])
         model.assert_not_awaited()
 
-    async def test_pipeline_uses_retrieved_reviews_for_both_verdicts(self):
-        for rating, verdict in (("Verdadeiro", "Authentic"), ("Falso", "False")):
+    async def test_pipeline_keeps_retrieved_reviews_as_supplementary_evidence(self):
+        for rating in ("Verdadeiro", "Falso"):
             with patch("app.core.pipeline.query_fact_check_api", new=AsyncMock(return_value=[FactCheckResult(**r) for r in pair(rating=rating)])):
                 result = await run_pipeline(CLAIM)
-            self.assertEqual(result["report"]["verdict"], verdict)
+            report = result["report"]
+            self.assertEqual(report["verdict"], "Suspicious")
+            self.assertEqual(report["veracity_status"], "unverified")
+            self.assertEqual(report["editorial_complement"]["decision_role"], "supplementary_context_only")
+            self.assertFalse(report["editorial_complement"]["used_for_final_verdict"])
+            self.assertEqual(len(report["fact_checks"]), 2)
 
     async def test_one_source_failure_does_not_abort_pipeline(self):
         with patch("app.core.pipeline.query_fact_check_api", new=AsyncMock(side_effect=RuntimeError("private-detail"))), \
@@ -207,5 +212,7 @@ class EvidenceTransportTests(unittest.IsolatedAsyncioTestCase):
              patch("app.core.pipeline.query_fact_check_api", new=AsyncMock(return_value=[FactCheckResult(**r) for r in pair()])):
             report = await analyze_media(media)
         self.assertEqual(report["analysis_status"], "inconclusive")
-        self.assertEqual(report["content_analysis"]["veracity_status"], "supported")
+        # OCR is an unreviewed reading. Editorial matches remain supplementary
+        # and cannot certify extracted content automatically.
+        self.assertEqual(report["content_analysis"]["veracity_status"], "unverified")
         self.assertEqual(report["content_analysis"]["origin"], "ocr")

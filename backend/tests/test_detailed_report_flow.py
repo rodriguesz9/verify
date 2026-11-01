@@ -43,12 +43,15 @@ class DetailedPipelineTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("source_corroboration", report)
         self.assertNotIn("evidence_strength", report)
 
-    async def test_published_review_decisions_survive_detailed_mode_unchanged(self):
-        for rating, verdict in (("Verdadeiro", "Authentic"), ("Falso", "False")):
+    async def test_published_reviews_remain_supplementary_in_detailed_mode(self):
+        for rating in ("Verdadeiro", "Falso"):
             reviews = [FactCheckResult(**item) for item in pair(CLAIM, rating)]
             baseline = await self.run_control(reviews, detailed=False)
             detailed = await self.run_control(reviews)
-            self.assertEqual(detailed["verdict"], verdict)
+            self.assertEqual(detailed["verdict"], "Suspicious")
+            self.assertEqual(detailed["veracity_status"], "unverified")
+            self.assertEqual(detailed["editorial_complement"]["decision_role"], "supplementary_context_only")
+            self.assertFalse(detailed["editorial_complement"]["used_for_final_verdict"])
             self.assertEqual({k: v for k, v in detailed.items() if k not in {"plain_explanation", "report_explanation"}},
                              {k: v for k, v in baseline.items() if k != "plain_explanation"})
             self.assertEqual(detailed["report_explanation"]["decision_role"], "explanation_only")
@@ -77,8 +80,10 @@ class DetailedPipelineTests(unittest.IsolatedAsyncioTestCase):
              patch("app.core.pipeline._retrieve_source_attribution", new=AsyncMock(return_value={"status": "no_results", "matches": [], "coverage": {}})), \
              patch("app.core.pipeline.generate_final_report", new=AsyncMock(side_effect=TimeoutError())) as legacy:
             report = (await run_pipeline(CLAIM, use_detailed_report=True))["report"]
-        self.assertEqual(report["verdict"], "Authentic")
-        self.assertEqual(report["veracity_status"], "supported")
+        self.assertEqual(report["verdict"], "Suspicious")
+        self.assertEqual(report["veracity_status"], "unverified")
+        self.assertEqual(report["editorial_complement"]["decision_role"], "supplementary_context_only")
+        self.assertFalse(report["editorial_complement"]["used_for_final_verdict"])
         self.assertEqual(report["provider_coverage"]["gemini"]["status"], "rate_limited")
         legacy.assert_not_awaited()
 
