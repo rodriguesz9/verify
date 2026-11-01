@@ -211,7 +211,7 @@ export default function Dashboard() {
                 <tbody>
                   {items.map((item) => {
                     const Icon = TYPES[item.content_type] || FileSearch;
-                    const color = VERDICT_COLORS[item.verdict_label] || "#8AA2B4";
+                    const color = item.veracity_status === "probably_false" ? "#FFB830" : VERDICT_COLORS[item.verdict_label] || "#8AA2B4";
                     return (
                       <tr
                         key={item.id}
@@ -228,7 +228,7 @@ export default function Dashboard() {
                             className="whitespace-nowrap font-mono text-[10px] font-bold uppercase tracking-wider"
                             style={{ color }}
                           >
-                            {item.analysis_status === "inconclusive" ? "Inconclusivo" : VERDICT_LABELS[item.verdict_label] || "Revisar"}
+                            {item.veracity_status === "probably_false" ? "Provavelmente falsa" : item.analysis_status === "inconclusive" ? "Inconclusivo" : VERDICT_LABELS[item.verdict_label] || "Revisar"}
                           </span>
                         </td>
                         <td className="px-5 py-4 font-mono text-xs" style={{ color }}>

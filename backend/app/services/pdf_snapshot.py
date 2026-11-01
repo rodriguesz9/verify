@@ -62,7 +62,7 @@ def _valid_report(report: Any) -> bool:
                  and isinstance(report.get("claim_assessments"), list)
                  and isinstance(report.get("limitations"), list)
                  and isinstance(report.get("veracity_status"), str)
-                 and report.get("veracity_status") in {"supported", "refuted", "conflicting", "mixed", "unverified"})
+                 and report.get("veracity_status") in {"supported", "refuted", "conflicting", "mixed", "unverified", "probably_false"})
         if report["content_type"] == "url":
             valid = (valid and isinstance(report.get("source_url"), str)
                      and isinstance(report.get("source_text"), str) and bool(report["source_text"].strip())

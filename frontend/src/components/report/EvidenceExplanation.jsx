@@ -47,7 +47,7 @@ export default function EvidenceExplanation({result, query}) {
 
       {evidence.media && (result.veracity_status || evidence.video || evidence.mediaDiagnosis) && <div className={`mb-6 grid min-w-0 gap-3 text-sm ${evidence.video ? "lg:grid-cols-3" : "sm:grid-cols-2"}`}>
         <div className="rounded-xl border border-[#1D3B4D] p-4"><h4 className="font-bold mb-2">Veracidade da informação</h4>
-          <p>{evidence.veracityLabel || ({supported: "Corroborada nas checagens", refuted: "Refutada nas checagens", mixed: "Afirmações mistas", conflicting: "Fontes em desacordo", unverified: "Não determinada"})[evidence.veracityStatus] || "Não determinada"}</p>
+          <p>{evidence.veracityLabel || ({supported: "Corroborada nas checagens", refuted: "Refutada nas checagens", mixed: "Afirmações mistas", conflicting: "Fontes em desacordo", unverified: "Não determinada", probably_false: "Provavelmente falsa / sem fundamento"})[evidence.veracityStatus] || "Não determinada"}</p>
           {evidence.media && <p className="mt-2 text-xs text-[#8AA2B4]">{evidence.extractionMethod
             ? `Texto obtido pela ${readingLabel}: pode conter erros. Isso é separado da origem da mídia.`
             : evidence.transcriptionState.notice ? evidence.transcriptionState.contentMessage

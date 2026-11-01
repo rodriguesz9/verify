@@ -19,6 +19,7 @@ from app.services.source_corroboration import document_selection_audit
 from app.services.source_corroboration import source_identity
 from app.services.source_decision import apply_source_decision
 from app.services.report_explanation import enrich_grounded_report
+from app.services.content_risk import classify_unsubstantiated_content
 
 SOURCE_SITE_FILTER = "(site:royal.uk OR site:brasilescola.uol.com.br OR site:mundoeducacao.uol.com.br OR site:science.nasa.gov OR site:cnnbrasil.com.br OR site:aosfatos.org OR site:bbc.com)"
 PRIMARY_SITE_FILTER = "(site:royal.uk OR site:science.nasa.gov OR site:ibge.gov.br OR site:bcb.gov.br OR site:who.int)"
@@ -279,7 +280,7 @@ def analyze_temporal_context(serper_news: list, scrape_date: str = None) -> dict
 
 async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: bool = True,
                        use_source_crosscheck: bool = True, use_detailed_report: bool = False,
-                       use_gemini_report: bool = False) -> dict:
+                       use_gemini_report: bool = False, allow_content_classification: bool = True) -> dict:
     source_url = url
     analysis_text = text
 
@@ -506,6 +507,28 @@ async def run_pipeline(text: str, url: str | None = None, *, use_ai_extraction: 
         "reason": "Nenhuma consulta de 1 a 500 caracteres disponível; nenhum texto foi cortado." if web_status == "not_requested" else
                   "Busca web concluída sem resultados." if web_status == "no_results" else
                   next((q["reason"] for q in web_queries if q["reason"]), None)}
+
+    content_classification = (classify_unsubstantiated_content(
+        analysis_text, ai, source_url, domain_info, source_attribution,
+        [*serper_news_results, *serper_web_results])
+        if allow_content_classification else None)
+    if content_classification:
+        for assessment in ai.get("claim_assessments", []):
+            if isinstance(assessment, dict) and assessment.get("status") == "unverified":
+                assessment.update(status="probably_false",
+                    explanation=content_classification["explanation"],
+                    classification_category=content_classification["category"])
+        ai.update(
+            veracity_status="probably_false",
+            verdict="Suspicious",
+            analysis_status="inconclusive",
+            content_classification=content_classification,
+            summary=content_classification["explanation"],
+            plain_explanation=content_classification["explanation"],
+            whatsapp_share_text="⚠️ Verify: " + content_classification["explanation"],
+        )
+        ai.setdefault("red_flags", []).append(
+            content_classification["category"] + ": " + content_classification["category_description"])
 
     if scam_info["is_scam"]:
         ai["verdict"] = "Scam"

@@ -149,20 +149,25 @@ export default function ReportPage() {
   if (!result) return null;
 
   const verdict = result.verdict || "Suspicious";
+  const probablyFalse = result.veracity_status === "probably_false";
   const exportState = pdfExportState(result, exportNow);
   const inconclusive = result.analysis_status === "inconclusive";
   const publicCoverage = publicCoveragePresentation(result);
   const transcriptionState = transcriptionPresentation(result);
   const publicLimitations = [...new Set([...publicCoverage.limitations,
     ...(Array.isArray(result.limitations) ? result.limitations.filter((item) => typeof item === "string" && !isTechnicalReportText(item)) : [])])];
-  const defaultBadge = inconclusive && verdict !== "Scam" ? {
+  const defaultBadge = probablyFalse ? {
+    title: "PROVAVELMENTE FALSA / SEM FUNDAMENTO",
+    color: "#FFB830", bg: "rgba(255,184,48,0.06)", border: "rgba(255,184,48,0.25)",
+    headline: result.content_classification?.explanation || "A reputação da fonte e o teor do conteúdo apresentam sinais de risco; consulte os fundamentos desta avaliação.",
+  } : inconclusive && verdict !== "Scam" ? {
     title: "ANÁLISE INCONCLUSIVA", color: "#FFCB55", bg: "rgba(255,203,85,.06)",
     border: "rgba(255,203,85,.3)", headline: "Análise inconclusiva. Confira abaixo o que as buscas encontraram e o que ainda ficou sem confirmação."
   } : BADGE_STYLES[verdict] || BADGE_STYLES.Suspicious;
   const mediaHeadline = reportMediaHeadline(result);
   const diagnosisHeadline = mediaHeadline || reportFactualHeadline(result) || reportSourceHeadline(result);
-  const badge = diagnosisHeadline ? {...defaultBadge, ...diagnosisHeadline} : defaultBadge;
-  const publicSummary = diagnosisHeadline?.diagnostic ? [badge.headline, publicMediaRiskNotice(result)].filter(Boolean).join(" ")
+  const badge = !probablyFalse && diagnosisHeadline ? {...defaultBadge, ...diagnosisHeadline} : defaultBadge;
+  const publicSummary = !probablyFalse && diagnosisHeadline?.diagnostic ? [badge.headline, publicMediaRiskNotice(result)].filter(Boolean).join(" ")
     : typeof result.summary === "string" && !isTechnicalReportText(result.summary) ? result.summary : publicCoverage.detail;
   const publicExplanation = groundedReportExplanation(result)?.text || (
     !diagnosisHeadline?.diagnostic && typeof result.plain_explanation === "string"
@@ -341,7 +346,12 @@ export default function ReportPage() {
 
         {/* Actionable Steps for Seniors */}
         <div className="mb-8">
-          {inconclusive && verdict !== "Scam" ? (
+          {probablyFalse ? (
+            <div className="p-6 rounded-2xl bg-[#FFB830]/10 border border-[#FFB830]/30 text-[#CDE8F0]">
+              <h4 className="font-bold mb-2">Como interpretar esta classificação</h4>
+              <p className="text-sm leading-6">A fonte tem reputação baixa ou não classificada e o conteúdo corresponde a uma categoria de risco. Isso indica provável falta de fundamento; não é refutação factual nem prova de intenção. Não compartilhe como fato confirmado.</p>
+            </div>
+          ) : inconclusive && verdict !== "Scam" ? (
             <div className="p-6 rounded-2xl bg-[#FFCB55]/10 border border-[#FFCB55]/30 text-[#CDE8F0]">
               <h4 className="font-bold mb-2">Próximo passo: confirme a fonte</h4>
               <p className="text-sm leading-6">Não use este resultado como prova de falsidade ou autenticidade. Procure o arquivo original e confirme a informação por um canal independente.</p>

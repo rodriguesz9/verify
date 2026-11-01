@@ -330,6 +330,7 @@ export function publicCoveragePresentation(result = {}) {
   const partial = layers.some((layer) => layer.status === "partial");
   const media = ["image", "audio", "video"].includes(result.content_type);
   const inconclusive = result.analysis_status === "inconclusive";
+  const probablyFalse = result.veracity_status === "probably_false";
   const signal = mediaSignalPresentation(result.media_signal, result.content_type === "video" ? "sampled_video_frames" : result.content_type);
   const voiceSignal = result.content_type === "video" && result.media_details?.has_audio !== false
     ? mediaSignalPresentation(result.audio_analysis?.media_signal, "audio") : null;
@@ -337,10 +338,12 @@ export function publicCoveragePresentation(result = {}) {
   const cross = sourceCorroborationPresentation(result);
   const factualHeadline = reportFactualHeadline(result);
   const diagnosisAvailable = Boolean(signal || voiceSignal || attribution || cross);
-  const title = diagnosisAvailable ? "O alcance deste resultado" : inconclusive ? "Não foi possível chegar a uma conclusão"
+  const title = probablyFalse ? "Classificação: provavelmente falsa / sem fundamento"
+    : diagnosisAvailable ? "O alcance deste resultado" : inconclusive ? "Não foi possível chegar a uma conclusão"
     : failed ? "Algumas etapas não foram concluídas"
     : partial || skipped ? "Análise com alcance limitado" : "Como usar este resultado";
-  const detail = factualHeadline ? factualHeadline.headline : cross && !media ? cross.explanation : diagnosisAvailable
+  const detail = probablyFalse ? result.content_classification?.explanation || result.summary
+    : factualHeadline ? factualHeadline.headline : cross && !media ? cross.explanation : diagnosisAvailable
     ? media ? "As observações sobre a origem aparecem separadas da leitura e da checagem da informação. Cada resultado vale apenas para as consultas e partes do arquivo descritas; não é uma certificação de autenticidade ou verdade."
       : "A pesquisa de fontes indica onde um trecho aparece. Checagens publicadas avaliam afirmações; encontrar o mesmo texto em uma publicação não confirma sua verdade. Confira as correspondências e o alcance da pesquisa abaixo."
     : inconclusive
@@ -350,7 +353,7 @@ export function publicCoveragePresentation(result = {}) {
     : media ? "A análise da produção do arquivo é separada da verdade da mensagem. Indícios de inteligência artificial não comprovam uma informação falsa; ausência de indícios não certifica uma mídia autêntica."
     : "Compare a afirmação, a data e o contexto com as fontes citadas. Notícias relacionadas ou ausência de checagens não comprovam verdade nem falsidade.";
   const limitations = [];
-  if (inconclusive) limitations.push(media ? "A origem do arquivo não foi confirmada." : "A informação não foi confirmada nem refutada pelas evidências disponíveis.");
+  if (inconclusive && !probablyFalse) limitations.push(media ? "A origem do arquivo não foi confirmada." : "A informação não foi confirmada nem refutada pelas evidências disponíveis.");
   if (failed) limitations.push("Não foi possível concluir todas as etapas desta análise.");
   if (skipped) limitations.push("Algumas consultas não foram realizadas; a cobertura ficou limitada.");
   if (layers.some((layer) => layer.status === "not_configured")) limitations.push("Algumas consultas não estão habilitadas nesta análise; a cobertura ficou limitada.");
@@ -528,6 +531,11 @@ export function buildReportEvidence(result = {}, query = "") {
     quote: typeof item.matched_excerpt === "string" ? item.matched_excerpt : "",
     origin: "Regra de triagem do texto · indício, não comprovação",
   }));
+  if (result.content_classification && typeof result.content_classification === "object") {
+    findings.push({id: "content-classification", title: result.content_classification.category || "Categoria de conteúdo",
+      detail: result.content_classification.category_description || result.content_classification.explanation || "Categoria de risco identificada.",
+      quote: "", origin: "Classificação de conteúdo · não prova intenção nem falsidade por si só"});
+  }
   if (["static_html", "plain_text"].includes(result.source_extraction?.method)) {
     findings.push({id: "page-extraction", title: "Leitura do conteúdo da página",
       detail: `${result.source_extraction.method === "plain_text" ? "Resposta de texto simples, sem interpretar marcações como HTML." : "Leitura estática do texto principal, sem executar JavaScript nem resolver toda a visibilidade por CSS."} ${result.source_extraction.truncated === true ? "Apenas os primeiros 5.000 caracteres extraídos foram analisados; o restante não foi checado." : "Isso não certifica a legitimidade do site nem a veracidade de todo o seu conteúdo."}`,
@@ -561,7 +569,7 @@ export function buildReportEvidence(result = {}, query = "") {
   }
   const claimAssessments = Array.isArray(content.claim_assessments) ? content.claim_assessments.filter((item) =>
     item && typeof item.claim === "string" && typeof item.status === "string") : [];
-  const claimLabels = {supported: "Corroborada nas checagens", refuted: "Refutada nas checagens", conflicting: "Fontes em desacordo", unverified: "Não verificada"};
+  const claimLabels = {supported: "Corroborada nas checagens", refuted: "Refutada nas checagens", conflicting: "Fontes em desacordo", unverified: "Não verificada", probably_false: "Provavelmente falsa / sem fundamento"};
   for (const [index, item] of claimAssessments.entries()) {
     // Grounded documents have separate cards with actual body excerpts. They
     // must not be presented as editorial ClaimReview ratings.
@@ -569,7 +577,7 @@ export function buildReportEvidence(result = {}, query = "") {
     const accepted = Array.isArray(item.evidence) ? item.evidence : [];
     findings.push({id: `claim-${index}`, title: claimLabels[item.status] || "Revisão necessária",
       quote: item.claim, detail: typeof item.explanation === "string" ? item.explanation : "Confira as checagens correspondentes.",
-      origin: `${accepted.length} avaliações correspondentes · comparação conservadora da afirmação`});
+      origin: item.status === "probably_false" ? "Sinal de reputação da fonte + categoria de risco no conteúdo" : `${accepted.length} avaliações correspondentes · comparação conservadora da afirmação`});
   }
   for (const [index, indicator] of strings(result.content_risk?.indicators).entries()) {
     findings.push({
@@ -750,7 +758,8 @@ export function buildReportEvidence(result = {}, query = "") {
     publicFindings, technicalFindings, publicMissing: publicPresentation.limitations, publicPresentation, sourceAttribution, sourceCorroboration,
     mediaDiagnosis: mediaSignalPresentation(result.media_signal, result.content_type),
     veracityStatus: typeof content.veracity_status === "string" ? content.veracity_status : "unverified",
-    veracityLabel: sourceCorroboration && ["retrieved_sources", "mixed_evidence"].includes(content.veracity_decision_basis)
+    veracityLabel: content.veracity_status === "probably_false" ? "Provavelmente falsa / sem fundamento"
+      : sourceCorroboration && ["retrieved_sources", "mixed_evidence"].includes(content.veracity_decision_basis)
       ? corroborationLabels[({supported: "corroborated", refuted: "refuted", conflicting: "conflicting", mixed: "mixed"})[content.veracity_status] || "insufficient"] : null,
     contentSummary: typeof content.summary === "string" ? content.summary : "",
     contentOrigin: content.origin || "text",

@@ -13,6 +13,7 @@ LABELS = {
     "refuted": "refutado nas evidências utilizadas",
     "conflicting": "evidências em desacordo; exige conferência humana",
     "unverified": "sem evidência correspondente suficiente para concluir",
+    "probably_false": "provavelmente falsa/sem fundamento, com base em sinais de reputação da fonte e categoria de risco no conteúdo",
 }
 
 

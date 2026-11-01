@@ -35,7 +35,7 @@ def factual_labels(report):
     return {"supported": "Corroborado nas fontes consultadas" if sources else "Corroborado pelas checagens correspondentes",
             "refuted": "Refutado nas fontes consultadas" if sources else "Refutado pelas checagens correspondentes",
             "conflicting": "Fontes discordantes", "mixed": "Afirmações com resultados diferentes",
-            "unverified": "Evidência insuficiente"}
+            "unverified": "Evidência insuficiente", "probably_false": "Provavelmente falsa / sem fundamento"}
 
 
 def factual_source_lines(source):
