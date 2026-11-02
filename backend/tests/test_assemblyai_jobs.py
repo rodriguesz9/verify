@@ -313,6 +313,9 @@ class AssemblyJobsTests(unittest.IsolatedAsyncioTestCase):
 class PendingFallbackTests(unittest.IsolatedAsyncioTestCase):
     async def test_pending_or_blocked_assembly_does_not_submit_to_gemini(self):
         from app.services.audio_service import analyze_audio_quick_for_demonstration
+        # audio_service imports this helper lazily, so load its module before
+        # patching the current provider-preparation hook.
+        from app.services import speech_input  # noqa: F401
         for status in ("pending", "in_progress", "blocked_uncertain", "blocked_expired", "capacity_exceeded"):
             with self.subTest(status=status), patch.dict(os.environ, {
                 "ASSEMBLYAI_API_KEY": "test-only", "GEMINI_API_KEY": "test-only", "AUDIO_TRANSCRIPTION_PROVIDER": "assemblyai",

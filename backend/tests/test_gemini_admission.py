@@ -106,11 +106,14 @@ class GeminiAdmissionTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_explicit_fallback_reserves_own_window_after_unavailability(self):
         with patch.dict(os.environ, {"GEMINI_FALLBACK_MODELS": "fallback-model"}), \
-                patch.object(httpx.AsyncClient, "post", new=AsyncMock(side_effect=[httpx.Response(503), reply()])) as post:
+                patch.object(httpx.AsyncClient, "post", new=AsyncMock(side_effect=[
+                    httpx.Response(503), httpx.Response(503), httpx.Response(503), reply()
+                ])) as post, \
+                patch("app.core.gemini_client.asyncio.sleep", new=AsyncMock()):
             value = await gemini.generate_text("fixed control")
         self.assertEqual(value.model_name, "fallback-model")
-        self.assertEqual(post.await_count, 2)
-        self.assertEqual(len(self.guard._models["gemini-3.8-flash"][0]), 1)
+        self.assertEqual(post.await_count, 4)
+        self.assertEqual(len(self.guard._models["gemini-3.8-flash"][0]), 3)
         self.assertEqual(len(self.guard._models["fallback-model"][0]), 1)
 
     async def test_numeric_retry_after_and_retry_info_pause_without_sleep(self):

@@ -147,11 +147,15 @@ class MultimodalResilienceTests(unittest.IsolatedAsyncioTestCase):
     async def test_explicit_media_model_does_not_rotate_global_fallback(self):
         response = httpx.Response(503)
         with patch.dict(os.environ, {"GEMINI_API_KEY": "test", "GEMINI_FALLBACK_MODELS": "gemini-3.7-flash"}), \
-             patch("httpx.AsyncClient.post", new=AsyncMock(return_value=response)) as post:
+             patch("httpx.AsyncClient.post", new=AsyncMock(return_value=response)) as post, \
+             patch("app.core.gemini_client.asyncio.sleep", new=AsyncMock()):
             with self.assertRaises(GeminiError):
                 await generate_text("controle", model_name="gemini-3.1-flash-lite")
-        self.assertEqual(post.await_count, 1)
-        self.assertIn("gemini-3.1-flash-lite:generateContent", post.call_args.args[0])
+        self.assertEqual(post.await_count, 3)
+        requested_models = [call.args[0] for call in post.await_args_list]
+        self.assertEqual(requested_models, [
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent"
+        ] * 3)
 
     async def test_invalid_model_blocked_before_request(self):
         with patch.dict(os.environ, {"GEMINI_API_KEY": "test"}), patch("httpx.AsyncClient.post", new=AsyncMock()) as post:
