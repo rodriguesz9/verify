@@ -25,6 +25,14 @@ def hive_v3(classes):
 
 
 class FreeRouterTests(unittest.IsolatedAsyncioTestCase):
+    async def test_semantic_report_has_larger_bounded_output_without_paid_routing(self):
+        with patch.dict(os.environ, {"OPENROUTER_API_KEY": "unit-test", "OPENROUTER_ENABLED": "true", "OPENROUTER_MODEL": "openrouter/free", "OPENROUTER_FALLBACK_MODELS": ""}), patch("httpx.AsyncClient.post", new=AsyncMock(return_value=httpx.Response(200, json=router_response('{"claim_assessments": [], "certainty": "low"}')))) as post:
+            await router.analyze_retrieved_evidence_with_openrouter("Uma afirmação.", {})
+        payload = post.call_args.kwargs["json"]
+        self.assertEqual(payload["max_tokens"], 4096)
+        self.assertTrue(all(value == 0 for value in payload["provider"]["max_price"].values()))
+        self.assertEqual(post.await_count, 1)
+
     def setUp(self):
         self.env = patch.dict(os.environ, {"OPENROUTER_API_KEY": "unit-test-not-secret", "OPENROUTER_MODEL": "openrouter/free",
             "OPENROUTER_FALLBACK_MODELS": "", "OPENROUTER_ENABLED": "true", "OPENROUTER_DAILY_LIMIT": "40"})
