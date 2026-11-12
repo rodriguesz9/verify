@@ -1,0 +1,46 @@
+# Render Blueprint: existing application code, free services only.
+services:
+  - type: web
+    name: verify-backend
+    runtime: docker
+    plan: free
+    region: virginia
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /ready
+    autoDeployTrigger: off
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: verify-postgres
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: HMAC_SECRET_KEY
+        generateValue: true
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_SAME_SITE
+        value: none
+      - key: CORS_ORIGINS
+        value: https://verifybr.vercel.app
+      - key: CORS_ORIGIN_REGEX
+        value: ""
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: SERPERAPI_KEY
+        sync: false
+      - key: GOOGLE_FACT_CHECK_KEY
+        sync: false
+databases:
+  - name: verify-postgres
+    plan: free
+    region: virginia
+    databaseName: verify
+    user: verify
+    ipAllowList: []
