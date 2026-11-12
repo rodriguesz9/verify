@@ -78,7 +78,7 @@ class FreeRouterTests(unittest.IsolatedAsyncioTestCase):
         factory.assert_called_once_with(timeout=25, trust_env=False, follow_redirects=False)
         client.post.assert_awaited_once()
         payload = client.post.await_args.kwargs["json"]
-        self.assertEqual(payload["max_tokens"], 2048)
+        self.assertEqual(payload["max_tokens"], 4096)
         self.assertEqual(payload["model"], "openrouter/free")
         self.assertTrue(all(value == 0 for value in payload["provider"]["max_price"].values()))
         self.assertTrue(payload["provider"]["require_parameters"])
