@@ -12,7 +12,7 @@ import httpx
 
 
 MAX_GEMINI_REQUEST_BYTES = 19_000_000  # Below Google's 20 MB inline request cap.
-GEMINI_503_RETRIES = 2
+GEMINI_503_RETRIES = 5
 
 
 class GeneratedText(str):
