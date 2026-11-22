@@ -151,11 +151,11 @@ class MultimodalResilienceTests(unittest.IsolatedAsyncioTestCase):
              patch("app.core.gemini_client.asyncio.sleep", new=AsyncMock()):
             with self.assertRaises(GeminiError):
                 await generate_text("controle", model_name="gemini-3.1-flash-lite")
-        self.assertEqual(post.await_count, 3)
+        self.assertEqual(post.await_count, 6)
         requested_models = [call.args[0] for call in post.await_args_list]
         self.assertEqual(requested_models, [
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent"
-        ] * 3)
+        ] * 6)
 
     async def test_invalid_model_blocked_before_request(self):
         with patch.dict(os.environ, {"GEMINI_API_KEY": "test"}), patch("httpx.AsyncClient.post", new=AsyncMock()) as post:
