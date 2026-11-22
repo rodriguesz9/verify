@@ -8,8 +8,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-async def _generate_with_rotation(prompt: str, system_instruction: str = None, temperature: float = 0.1) -> str:
-    return await generate_text(prompt, system_instruction=system_instruction, temperature=temperature)
+async def _generate_with_rotation(prompt: str, system_instruction: str = None, temperature: float = 0.1,
+                                  max_tokens: int = 2048) -> str:
+    return await generate_text(prompt, system_instruction=system_instruction, temperature=temperature,
+                               max_tokens=max_tokens)
 
 
 class ClaimsExtraction(list):
@@ -416,7 +418,7 @@ Retorne APENAS o JSON, sem markdown e sem textos adicionais.
 """
 
     try:
-        response_text = await _generate_with_rotation(prompt, temperature=0.2)
+        response_text = await _generate_with_rotation(prompt, temperature=0.2, max_tokens=4096)
         result = json.loads(_extract_json_text(response_text))
         if not isinstance(result, dict) or result.get("verdict") not in {"Authentic", "AI_Generated", "Manipulated", "Out_Of_Context", "Suspicious", "Scam"}:
             raise ValueError("Veredito inválido")

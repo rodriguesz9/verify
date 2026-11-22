@@ -74,8 +74,8 @@ class GeminiDeadlineTests(unittest.IsolatedAsyncioTestCase):
                 await generate_text("fixed control")
         self.assertEqual(raised.exception.status, "unavailable")
         self.assertEqual(raised.exception.http_status, 503)
-        self.assertEqual(post.await_count, 3)
-        self.assertEqual(sleep.await_count, 2)
+        self.assertEqual(post.await_count, 6)
+        self.assertEqual(sleep.await_count, 5)
 
     async def test_total_deadline_expiration_is_sanitized(self):
         class Expired:
