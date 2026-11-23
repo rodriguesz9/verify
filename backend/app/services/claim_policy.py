@@ -140,9 +140,7 @@ def text_report(text: str, reviews: list[dict], scam: dict | None = None, now=No
               "confidence": None, "authenticity_percentage": None,
               "semantic_score": None, "sensationalism": None, "domain_score": None,
               "policy_version": POLICY_VERSION, "model_used": "retrieved_evidence_policy",
-              "limitations": ["Classificação atribuída às checagens consultadas; fontes também podem errar ou ser atualizadas.",
-                              "Correspondência exata conservadora pode deixar paráfrases corretas sem conclusão.",
-                              "Notícia relacionada, estilo e concordância entre modelos não provam verdade ou falsidade."]}
+              "limitations": ["Classificação atribuída às checagens consultadas; fontes também podem errar ou ser atualizadas."]}
     if not complete:
         report["limitations"].append("Limite de cinco segmentos: mensagem não foi integralmente checada.")
     if scam and scam.get("is_scam"):
