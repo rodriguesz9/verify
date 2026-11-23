@@ -247,22 +247,6 @@ export default function ReportPage() {
             <ArrowRight size={14} /> Nova Checagem
           </button>
 
-          <div className="report-view-switch rounded-lg p-1 bg-[#0A1520] border border-[#132435]" role="group" aria-label="Detalhamento do relatório">
-            <button
-              onClick={() => setViewMode("simple")}
-              aria-pressed={viewMode === "simple"}
-              className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${viewMode === "simple" ? "bg-[#00D4FF] text-[#04080C]" : "text-[#5A7E94]"}`}
-            >
-              Visão Simples
-            </button>
-            <button
-              onClick={() => setViewMode("technical")}
-              aria-pressed={viewMode === "technical"}
-              className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${viewMode === "technical" ? "bg-[#00D4FF] text-[#04080C]" : "text-[#5A7E94]"}`}
-            >
-              Visão Técnica
-            </button>
-          </div>
         </div>
 
         <div className="report-result-card min-w-0 break-words p-6 sm:p-8 rounded-xl border mb-8" style={{ backgroundColor: badge.bg, borderColor: badge.border }}>
