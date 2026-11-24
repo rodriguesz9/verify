@@ -82,8 +82,8 @@ export default function Home() {
     if (tab === 0) return textInput.valid;
     if (tab === 1) return urlInput.valid;
     if (tab === 2) return !!imageFile;
-    if (tab === 3) return !!audioFile;
-    if (tab === 4) return !!videoFile;
+    if (tab === 3) return false;
+    if (tab === 4) return false;
     return false;
   };
 
@@ -274,7 +274,7 @@ export default function Home() {
                     )}
                   </div>
                 )}
-
+                {/*
                 <div className="flex flex-wrap items-center gap-2 pt-1">
                   <span className="text-xs text-[#5A7E94] font-mono">Testar exemplo:</span>
                   {EXAMPLES.map((ex, i) => (
@@ -288,6 +288,8 @@ export default function Home() {
                     </button>
                   ))}
                 </div>
+                
+                */}
               </div>
             )}
 
@@ -315,13 +317,18 @@ export default function Home() {
               </div>
             )}
 
-            {tab === 4 && <div className="space-y-4">
-              <label htmlFor="video-upload" className="flex flex-col items-center border-2 border-dashed border-[#132435] rounded-lg p-8 cursor-pointer bg-[#04080C] text-center">
-                <Video size={28} className="text-[#00D4FF] mb-3" />
-                <span className="font-bold">Enviar vídeo</span>
-                <input id="video-upload" type="file" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm" className="mt-4 max-w-full text-xs" onChange={e => setVideoFile(e.target.files?.[0] || null)} />
-              </label>
-              <p className="text-xs text-[#8AA2B4]">Até 25 MB e 2 minutos. Verifica quadros amostrados; não comprova identidade, voz ou sincronização labial.</p>
+            {tab === 4 && <div className="relative min-h-56 overflow-hidden rounded-lg" aria-label="Verificação de vídeo em breve">
+              <div aria-hidden="true" className="pointer-events-none select-none space-y-4 blur-md opacity-60">
+                <label htmlFor="video-upload" className="flex flex-col items-center border-2 border-dashed border-[#132435] rounded-lg p-8 bg-[#04080C] text-center">
+                  <Video size={28} className="text-[#00D4FF] mb-3" />
+                  <span className="font-bold">Enviar vídeo</span>
+                  <input id="video-upload" type="file" disabled accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm" className="mt-4 max-w-full text-xs" />
+                </label>
+                <p className="text-xs text-[#8AA2B4]">Até 25 MB e 2 minutos. Verifica quadros amostrados; não comprova identidade, voz ou sincronização labial.</p>
+              </div>
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#04080C99]" role="status">
+                <h2 className="font-syne text-2xl font-extrabold text-[#CDE8F0]">Em breve</h2>
+              </div>
             </div>}
 
             {tab === 2 && (
@@ -342,20 +349,18 @@ export default function Home() {
             )}
 
             {tab === 3 && (
-              <div className="space-y-4">
-                <label htmlFor="audio-upload" className="check-upload flex flex-col items-center border-2 border-dashed border-[#132435] hover:border-[#00D4FF] rounded-lg p-8 text-center cursor-pointer bg-[#04080C] transition-all">
-                  <Mic size={28} className="text-[#00D4FF] mb-3 mx-auto" />
-                  <div className="font-syne font-bold text-sm text-[#CDE8F0] mb-1">Clique para enviar o áudio do WhatsApp</div>
-                  <div className="text-xs text-[#5A7E94] font-mono">Formatos suportados: .mp3, .ogg (WhatsApp), .m4a, .wav</div>
-                  <input id="audio-upload" type="file" accept="audio/*,.mp3,.ogg,.wav,.m4a,.aac,.opus" onChange={(e) => setAudioFile(e.target.files[0] || null)} className="mt-4 max-w-full text-xs" />
-                </label>
-
-                {audioFile && (
-                  <div className="p-4 rounded-lg bg-[#00FF8710] border border-[#00FF8730] text-sm text-[#00FF87] flex items-center justify-between font-mono">
-                    <span>Áudio pronto para checagem: <strong>{audioFile.name}</strong></span>
-                    <button onClick={() => setAudioFile(null)} className="text-red-400 hover:underline cursor-pointer">Remover</button>
-                  </div>
-                )}
+              <div className="relative min-h-56 overflow-hidden rounded-lg" aria-label="Verificação de áudio em breve">
+                <div aria-hidden="true" className="pointer-events-none select-none space-y-4 blur-md opacity-60">
+                  <label htmlFor="audio-upload" className="check-upload flex flex-col items-center border-2 border-dashed border-[#132435] rounded-lg p-8 text-center bg-[#04080C]">
+                    <Mic size={28} className="text-[#00D4FF] mb-3 mx-auto" />
+                    <div className="font-syne font-bold text-sm text-[#CDE8F0] mb-1">Clique para enviar o áudio do WhatsApp</div>
+                    <div className="text-xs text-[#5A7E94] font-mono">Formatos suportados: .mp3, .ogg (WhatsApp), .m4a, .wav</div>
+                    <input id="audio-upload" type="file" disabled accept="audio/*,.mp3,.ogg,.wav,.m4a,.aac,.opus" className="mt-4 max-w-full text-xs" />
+                  </label>
+                </div>
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#04080C99]" role="status">
+                  <h2 className="font-syne text-2xl font-extrabold text-[#CDE8F0]">Em breve</h2>
+                </div>
               </div>
             )}
 
@@ -386,7 +391,7 @@ export default function Home() {
               </button>
             ) : (
               <button
-                disabled={!canSubmit() || loading}
+                disabled={tab === 3 || tab === 4 || !canSubmit() || loading}
                 onClick={handleAnalyze}
                 className="w-full sm:w-auto font-syne font-extrabold text-sm sm:text-base tracking-wider px-8 py-4 rounded-lg transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
                 style={{

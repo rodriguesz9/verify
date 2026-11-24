@@ -22,7 +22,6 @@ export default function Footer() {
               <li><Link to="/app" className="text-[#8AA2B4] no-underline hover:text-[#00D4FF] transition-colors flex items-center gap-2"><FileText size={12} /> Checar Notícia</Link></li>
               <li><Link to="/dashboard" className="text-[#8AA2B4] no-underline hover:text-[#00D4FF] transition-colors flex items-center gap-2"><Shield size={12} /> Painel</Link></li>
               <li><Link to="/history" className="text-[#8AA2B4] no-underline hover:text-[#00D4FF] transition-colors flex items-center gap-2"><Lock size={12} /> Histórico</Link></li>
-              <li><Link to="/demo" className="text-[#8AA2B4] no-underline hover:text-[#00D4FF] transition-colors flex items-center gap-2"><Lightbulb size={12} /> Demonstração</Link></li>
               <li><Link to="/mission" className="text-[#8AA2B4] no-underline hover:text-[#00D4FF] transition-colors flex items-center gap-2"><Shield size={12} /> Nossa Missão</Link></li>
             </ul>
           </div>

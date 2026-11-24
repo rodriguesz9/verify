@@ -6,8 +6,8 @@ import { useAccessibility } from "../hooks/useAccessibility";
 import { getOfflineCount } from "../services/offlineCache";
 import EasyModeButton from "./EasyModeButton";
 
-const APP_LINKS = [{ to: "/app", label: "Checar" }, { to: "/dashboard", label: "Painel" }, { to: "/demo", label: "Demonstração" }, { to: "/mission", label: "Sobre nós" }];
-const LANDING_LINKS = [{ href: "#como-funciona", label: "Como funciona" }, { href: "#protege", label: "Sua proteção" }, { to: "/demo", label: "Demonstração" }, { to: "/mission", label: "Sobre nós" }];
+const APP_LINKS = [{ to: "/app", label: "Checar" }, { to: "/dashboard", label: "Painel" }, { to: "/mission", label: "Sobre nós" }];
+const LANDING_LINKS = [{ href: "#como-funciona", label: "Como funciona" }, { href: "#protege", label: "Sua proteção" }, { to: "/mission", label: "Sobre nós" }];
 const MORE_LINKS = [{ to: "/limitacoes", label: "Limitações" }, { to: "/terms", label: "Termos de uso" }, { to: "/privacy", label: "Privacidade" }];
 
 export default function Navbar({ variant = "app" }) {
