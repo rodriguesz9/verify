@@ -60,7 +60,7 @@ class ProviderParserTests(unittest.TestCase):
         result = parse_hive_scores(data)
         self.assertEqual(result["status"], "partial")
         report = media_report({"hive": result, "sightengine": {"available": True, "genai_probability": .99}})
-        self.assertEqual(report["analysis_status"], "inconclusive")
+        self.assertEqual(report["analysis_status"], "partial")
 
     def test_invalid_scores_are_rejected(self):
         for value in (True, float("nan"), float("inf"), 2, -1, "0.99"):

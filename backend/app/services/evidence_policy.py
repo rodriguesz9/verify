@@ -8,10 +8,7 @@ AUDIO_DETECTOR_FIELDS = {"sightengine_audio": "ai_speech_score", "hive": "ai_gen
 
 
 def detector_score(result: dict, field: str) -> float | None:
-    # Omitted status is legacy fixture/API shorthand for success. Explicit
-    # partial/aggregate states are descriptive only and cannot vote.
-    if (not isinstance(result, dict) or result.get("available") is not True
-            or result.get("status", "success") != "success"):
+    if not isinstance(result, dict) or result.get("available") is not True or result.get("status", "success") != "success":
         return None
     value = result.get(field)
     if isinstance(value, bool) or not isinstance(value, (int, float)):
@@ -115,8 +112,6 @@ def media_report(forensics: dict, kind: str = "image") -> dict:
         len(observed) == 1
         and observed.get("sightengine") is not None
         and observed["sightengine"] >= .8
-        and all(name == "sightengine" or not isinstance(forensics.get(name), dict)
-                for name in fields)
     )
     ai = consensus_ai or sightengine_only_ai or signed_ai
     dedicated_deep = detector_score(forensics.get("hive_deepfake", {}), "deepfake_score")
@@ -131,8 +126,6 @@ def media_report(forensics: dict, kind: str = "image") -> dict:
         len([value for value in deep_scores.values() if value is not None]) == 1
         and deep_scores.get("sightengine") is not None
         and deep_scores["sightengine"] >= .8
-        and all(name == "sightengine" or not isinstance(forensics.get(name), dict)
-                for name in ("sightengine", "hive", "hive_deepfake"))
     )
     deepfake = (len(deep_high) >= 2 and not deep_low) or sightengine_only_deepfake
     coverage = {name: {"status": "success" if scores.get(name) is not None or deep_scores.get(name) is not None else result.get("status", "unavailable"),

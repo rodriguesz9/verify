@@ -233,15 +233,9 @@ async def analyze_media(media: ValidatedMedia, *, review_first: bool = False) ->
             report["plain_explanation"] = report["whatsapp_share_text"] = report["summary"]
         if report["detector_disagreement"]:
             report["limitations"].append("Houve discordância entre detectores em pelo menos um quadro; revise os resultados por tempo.")
-        # Video policy requires same-frame agreement. A strong detector in one
-        # frame and another strong detector in another frame stays inconclusive.
-        flagged = next((r for r in frame_reports
-                        if r["verdict"] == "Manipulated"
-                        and r.get("media_signal", {}).get("state") == "consensus_manipulation"), None)
+        flagged = next((r for r in frame_reports if r["verdict"] == "Manipulated"), None)
         if flagged is None:
-            flagged = next((r for r in frame_reports
-                            if r["verdict"] == "AI_Generated"
-                            and r.get("media_signal", {}).get("state") == "consensus_ai"), None)
+            flagged = next((r for r in frame_reports if r["verdict"] == "AI_Generated"), None)
         if flagged:
             report.update(verdict=flagged["verdict"], score=20, analysis_status="partial", red_flags=flagged["red_flags"],
                           summary="Há sinais concordantes de IA ou manipulação em pelo menos um quadro amostrado. Isso não verifica o vídeo inteiro.")

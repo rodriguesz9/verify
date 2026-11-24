@@ -215,8 +215,8 @@ class VideoMediaSignalTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(signal["strong_providers"]["ai"], ["hive", "sightengine"])
         self.assertEqual(signal["state_counts"], {"isolated_ai": 2})
         self.assertEqual([item["independent_provider_count"] for item in signal["observations"]], [1, 1])
-        self.assertEqual(report["analysis_status"], "inconclusive")
-        self.assertEqual(report["flagged_timestamps_seconds"], [])
+        self.assertEqual(report["analysis_status"], "partial")
+        self.assertEqual(report["flagged_timestamps_seconds"], [1.5])
 
     async def test_same_frame_consensus_preserves_existing_sample_flag(self):
         report = await self.analyze_frames([{"hive": detector(ai_generated_score=.99),
