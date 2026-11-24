@@ -106,7 +106,14 @@ def media_report(forensics: dict, kind: str = "image") -> dict:
     c2pa = forensics.get("c2pa", {})
     signed_ai = c2pa.get("validation_state") == "valid" and c2pa.get("generative_ai_flag") is True and kind != "audio"
     consensus_ai = len(high) >= 2 and not low
-    ai = consensus_ai or signed_ai
+    # Sightengine can produce a report by itself when it is the only eligible
+    # detector that answered. Other providers keep the two-provider rule.
+    sightengine_only_ai = (
+        len(observed) == 1
+        and observed.get("sightengine") is not None
+        and observed["sightengine"] >= .8
+    )
+    ai = consensus_ai or sightengine_only_ai or signed_ai
     dedicated_deep = detector_score(forensics.get("hive_deepfake", {}), "deepfake_score")
     deep_name = "hive_deepfake" if dedicated_deep is not None else "hive"
     deep_scores = {"sightengine": detector_score(forensics.get("sightengine", {}), "deepfake_probability"),
@@ -115,7 +122,12 @@ def media_report(forensics: dict, kind: str = "image") -> dict:
         deep_scores = {}
     deep_high = [name for name, value in deep_scores.items() if value is not None and value >= .8]
     deep_low = [name for name, value in deep_scores.items() if value is not None and value <= .2]
-    deepfake = len(deep_high) >= 2 and not deep_low
+    sightengine_only_deepfake = (
+        len([value for value in deep_scores.values() if value is not None]) == 1
+        and deep_scores.get("sightengine") is not None
+        and deep_scores["sightengine"] >= .8
+    )
+    deepfake = (len(deep_high) >= 2 and not deep_low) or sightengine_only_deepfake
     coverage = {name: {"status": "success" if scores.get(name) is not None or deep_scores.get(name) is not None else result.get("status", "unavailable"),
                        "ai_score": scores.get(name), "deepfake_score": deep_scores.get(name),
                        "reason": result.get("reason") or result.get("error"),
@@ -150,14 +162,21 @@ def media_report(forensics: dict, kind: str = "image") -> dict:
     disagreement = bool((low and high) or (deep_low and deep_high))
     if disagreement:
         limitations.append("Detectores discordaram: revisão humana necessária.")
+    single_sightengine = sightengine_only_ai or sightengine_only_deepfake
+    if single_sightengine:
+        limitations.append("A conclusão visual foi baseada somente no Sightengine; confirme a procedência manualmente.")
     if any(result.get("voting_eligible") is False for result in forensics.values() if isinstance(result, dict)):
         limitations.append("Detectores experimentais são exibidos para inspeção, mas não participam do veredito sem validação em conjunto independente.")
     if deepfake:
-        explanation = "Há indícios concordantes de possível manipulação facial nos detectores disponíveis. Isso requer confirmação humana."
+        explanation = ("O Sightengine encontrou sinal forte de possível manipulação facial. Isso requer confirmação humana."
+                       if single_sightengine else
+                       "Há indícios concordantes de possível manipulação facial nos detectores disponíveis. Isso requer confirmação humana.")
     elif deep_high:
         explanation = "Há um sinal de possível manipulação facial, mas a evidência é insuficiente para concluir."
     elif ai:
-        explanation = "Há indícios concordantes de geração por IA nas camadas disponíveis. Confirme a procedência antes de concluir."
+        explanation = ("O Sightengine encontrou sinal forte de possível geração por IA. Confirme a procedência antes de concluir."
+                       if single_sightengine else
+                       "Há indícios concordantes de geração por IA nas camadas disponíveis. Confirme a procedência antes de concluir.")
     elif not observed:
         explanation = "Não houve evidência utilizável de detectores habilitados para decidir. Camadas experimentais ou indisponíveis não determinam a origem deste arquivo."
     elif high:
@@ -165,6 +184,10 @@ def media_report(forensics: dict, kind: str = "image") -> dict:
     else:
         explanation = "Os detectores disponíveis não trouxeram evidência suficiente para confirmar geração por IA nem autenticidade."
     signal = media_signal(forensics, kind)
+    if single_sightengine:
+        # Keep the diagnostic state as isolated_ai/isolated_manipulation, but
+        # tell clients that policy accepted Sightengine as the decision source.
+        signal["decision_source"] = "sightengine_single_provider"
     if not ai and not deepfake:
         explanation = media_signal_explanation(signal, kind) or explanation
     return {

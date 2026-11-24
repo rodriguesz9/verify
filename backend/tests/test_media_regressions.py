@@ -28,8 +28,19 @@ class MediaPolicyTests(unittest.TestCase):
     def test_zero_detection_is_not_proof_of_authenticity(self):
         self.assertEqual(media_report({"sightengine": {"available": True, "genai_probability": 0}})["analysis_status"], "inconclusive")
 
-    def test_one_strong_detector_is_not_consensus(self):
+    def test_one_strong_non_sightengine_detector_is_not_consensus(self):
         self.assertEqual(media_report({"hive": {"available": True, "ai_generated_score": .99}})["verdict"], "Suspicious")
+
+    def test_sightengine_alone_can_report_strong_ai_signal(self):
+        report = media_report({"sightengine": {"available": True, "status": "success", "genai_probability": .99}})
+        self.assertEqual(report["verdict"], "AI_Generated")
+        self.assertEqual(report["analysis_status"], "partial")
+        self.assertIn("Sightengine", report["summary"])
+
+    def test_sightengine_alone_can_report_strong_manipulation_signal(self):
+        report = media_report({"sightengine": {"available": True, "status": "success", "deepfake_probability": .99}})
+        self.assertEqual(report["verdict"], "Manipulated")
+        self.assertEqual(report["analysis_status"], "partial")
 
     def test_two_strong_detectors_show_indications_not_certainty(self):
         report = media_report({"hive": {"available": True, "ai_generated_score": .96},

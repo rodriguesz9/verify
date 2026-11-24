@@ -75,11 +75,12 @@ export function mediaSignalPresentation(signal, scope) {
       || signal.scope !== scope || !mediaSignalStates.includes(signal.state)) return null;
   const voice = scope === "audio";
   const video = scope === "sampled_video_frames";
+  const sightengineDecision = signal.decision_source === "sightengine_single_provider";
   const labels = {
     consensus_ai: voice ? "Indícios de possível voz sintética" : video ? "Indícios de IA em quadros amostrados" : "Indícios de geração por IA",
     consensus_manipulation: voice ? "Indícios de possível alteração do áudio" : video ? "Indícios de manipulação em quadros amostrados" : "Indícios de possível manipulação",
-    isolated_ai: voice ? "Sinal de possível voz sintética" : "Sinal de possível IA — confirmação pendente",
-    isolated_manipulation: voice ? "Sinal de possível alteração do áudio — confirmação pendente" : "Sinal de possível manipulação — confirmação pendente",
+    isolated_ai: voice ? "Sinal de possível voz sintética" : sightengineDecision ? "Indícios de geração por IA" : "Sinal de possível IA — confirmação pendente",
+    isolated_manipulation: voice ? "Sinal de possível alteração do áudio — confirmação pendente" : sightengineDecision ? "Indícios de possível manipulação" : "Sinal de possível manipulação — confirmação pendente",
     disagreement: "Detectores em desacordo",
     no_high_signal: "Sem indícios fortes nas consultas feitas",
     unavailable: "Análise da origem indisponível",
@@ -87,8 +88,8 @@ export function mediaSignalPresentation(signal, scope) {
   const explanations = {
     consensus_ai: "Consultas de detectores independentes registraram indícios de geração por IA.",
     consensus_manipulation: "Consultas de detectores independentes registraram indícios de possível manipulação.",
-    isolated_ai: "Um detector registrou um sinal forte, sem confirmação independente suficiente. A confirmação continua pendente; este sinal não conclui que o arquivo foi gerado por IA.",
-    isolated_manipulation: "Um detector registrou um sinal forte de possível alteração, sem confirmação independente suficiente. A confirmação continua pendente; este sinal não conclui que o arquivo foi manipulado.",
+    isolated_ai: sightengineDecision ? "O Sightengine registrou sinal forte de possível geração por IA. A conclusão é limitada a este detector e requer confirmação humana da procedência." : "Um detector registrou um sinal forte, sem confirmação independente suficiente. A confirmação continua pendente; este sinal não conclui que o arquivo foi gerado por IA.",
+    isolated_manipulation: sightengineDecision ? "O Sightengine registrou sinal forte de possível alteração. A conclusão é limitada a este detector e requer confirmação humana da procedência." : "Um detector registrou um sinal forte de possível alteração, sem confirmação independente suficiente. A confirmação continua pendente; este sinal não conclui que o arquivo foi manipulado.",
     disagreement: "As consultas retornaram sinais incompatíveis. É necessária uma conferência humana; não há uma conclusão segura sobre a origem.",
     no_high_signal: "Nas consultas que retornaram resultados utilizáveis, não apareceram sinais fortes. Isso não prova autenticidade: alterações podem passar despercebidas, e nem todas as dimensões podem ter sido analisadas.",
     unavailable: "Nenhuma consulta sobre a origem retornou observação utilizável nesta análise. A leitura de texto e a checagem da informação, quando disponíveis, continuam úteis e são avaliadas separadamente.",

@@ -470,6 +470,14 @@ test("versioned media observations expose uncertainty without changing canonical
   assert.equal(reportMediaHeadline({content_type: "audio", media_signal: diagnosis("isolated_ai", "audio")}).title, "Sinal de possível voz sintética");
 });
 
+test("single Sightengine decision is not presented as confirmation pending", () => {
+  const result = {content_type: "image", analysis_status: "partial", verdict: "AI_Generated",
+    authenticity_status: "ai_indications", media_signal: diagnosis("isolated_ai", "image", {
+      decision_source: "sightengine_single_provider"})};
+  assert.equal(reportMediaHeadline(result).title, "Indícios de geração por IA");
+  assert.match(buildReportEvidence(result).publicFindings[0].detail, /Sightengine registrou sinal forte/);
+});
+
 test("unknown media diagnosis versions, states and modality mismatches keep legacy fallback", () => {
   for (const signal of [diagnosis("isolated_ai", "audio"), diagnosis("unexpected"), diagnosis("isolated_ai", "image", {version: "2"})]) {
     assert.equal(reportMediaHeadline({content_type: "image", media_signal: signal}), null);

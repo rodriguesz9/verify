@@ -201,11 +201,12 @@ class MultimodalResilienceTests(unittest.IsolatedAsyncioTestCase):
                 await transcribe_and_extract_audio(b"control")
         self.assertEqual(raised.exception.status, "invalid_response")
 
-    def test_experimental_detector_visible_but_cannot_cast_decisive_vote(self):
+    def test_experimental_detector_visible_while_sightengine_decides(self):
         result = media_report({"sightengine": {"available": True, "status": "success", "genai_probability": .99},
             "huggingface": {"available": True, "status": "success", "ai_probability": .99, "voting_eligible": False,
                             "decision_role": "experimental_signal"}})
-        self.assertEqual(result["analysis_status"], "inconclusive")
+        self.assertEqual(result["analysis_status"], "partial")
+        self.assertEqual(result["verdict"], "AI_Generated")
         self.assertEqual(result["provider_coverage"]["huggingface"]["ai_score"], .99)
         self.assertFalse(result["provider_coverage"]["huggingface"]["voting_eligible"])
         self.assertIsNone(result["authenticity_percentage"])
